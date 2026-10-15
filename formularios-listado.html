@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNEMI - Listado de Formularios Clínicos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/layout.css">
+  <link rel="stylesheet" href="assets/css/pacientes.css">
+  <link rel="stylesheet" href="css/formularios-listado.css">
+  <link rel="stylesheet" href="css/chat-widget.css">
+</head>
+<body>
+
+  <!-- SIDEBAR (Navegación Unificada, misma familia que formulario-clinica.html) -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img src="assets/img/logo-cardiounemi.png" alt="CARDIOUNEMI" class="sidebar-logo">
+      <div>
+        <div class="sidebar-brand-title">CARDIOUNEMI</div>
+      </div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="sidebar-heading">Navegación</div>
+      <a href="formularios-listado.html" class="nav-btn active">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <span>Listado de Formularios</span>
+      </a>
+      <a href="dashboard-cardiounemi.html" class="nav-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        <span>Dashboard</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- MAIN WRAPPER -->
+  <div class="main-wrapper">
+
+    <!-- BARRA DE FILTROS -->
+    <section class="top-bar">
+      <div class="top-bar-header">
+        <div class="page-title">
+          <h1>Listado de Formularios Clínicos</h1>
+        </div>
+        <div data-user-menu style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+          <!-- Exportación en bloque (dataset): marca formularios con la
+               palomita de cada tarjeta y exporta solo esos; si no marcas
+               ninguno, se exporta todo lo filtrado. El PDF NO usa esto -
+               cada formulario tiene su propio botón "PDF" en su tarjeta,
+               porque un PDF es siempre de un solo historial clínico. -->
+          <label class="selection-toggle" title="Si no marcas ninguno, se exporta todo lo filtrado en pantalla">
+            <input type="checkbox" id="seleccionarTodos" onchange="toggleSeleccionarTodos(this.checked)">
+            Seleccionar todos
+          </label>
+          <div class="export-group">
+            <button type="button" class="btn" onclick="exportCSV()">CSV</button>
+            <button type="button" class="btn" onclick="exportSAV()">SAV</button>
+          </div>
+          <div class="sample-pill">
+            <span class="status-dot"></span>
+            <span id="formulariosCount">Mostrando 8 de 8 formularios</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="slicers-container">
+        <div class="slicer-group">
+          <label for="filtroBusqueda">Buscar</label>
+          <input type="text" class="form-input" id="filtroBusqueda" placeholder="Nombre o código...">
+        </div>
+
+        <div class="slicer-group">
+          <label for="filtroAnio">Año</label>
+          <select id="filtroAnio" class="form-select slicer-select">
+            <option value="all">Todos los Años</option>
+            <option value="2023">2023</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+          </select>
+        </div>
+
+        <div class="slicer-group">
+          <label for="filtroEstamento">Estamento</label>
+          <select id="filtroEstamento" class="form-select slicer-select">
+            <option value="all">Todos</option>
+            <option value="PDI">PDI</option>
+            <option value="AD">AD</option>
+            <option value="SERVICIO">SERVICIO</option>
+            <option value="ESTUDIANTES">ESTUDIANTES</option>
+          </select>
+        </div>
+
+        <div class="slicer-group">
+          <label for="filtroSexo">Sexo</label>
+          <select id="filtroSexo" class="form-select slicer-select">
+            <option value="all">Ambos</option>
+            <option value="H">Hombre</option>
+            <option value="M">Mujer</option>
+          </select>
+        </div>
+
+        <div class="slicer-group">
+          <label for="ordenarPor">Ordenar por</label>
+          <select id="ordenarPor" class="form-select slicer-select">
+            <option value="nombre">Nombre (A-Z)</option>
+            <option value="codigo">Código</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- GRID DE TARJETAS -->
+    <main class="contenedor listado-content">
+      <div class="grid formularios-grid" id="formulariosGrid"></div>
+
+      <!-- El documento del ÚNICO formulario que se está exportando en PDF
+           en este momento (botón "PDF" de una tarjeta). Solo visible al
+           imprimir: es el documento del formulario, no una tabla. Lo
+           llena exportarPDF(id) en JS. -->
+      <div id="printFormsContainer"></div>
+    </main>
+
+  </div>
+
+  <!-- TELÓN Y VENTANA FLOTANTE DEL ASISTENTE CARDIOUNEMI -->
+  <div id="chat-backdrop-widget" class="chat-backdrop-widget"></div>
+
+  <button id="btn-flotante-chat" class="btn-flotante-chat" title="Abrir Asistente CARDIOUNEMI">
+    <span class="pulso-badge"></span>
+    <svg viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+  </button>
+
+  <div id="contenedor-chat" class="ventana-chat-flotante oculta">
+    <header class="chatbot-encabezado">
+      <div class="encabezado-identidad">
+        <div class="titulos-encabezado">
+          <h2>CARDIOUNEMI</h2>
+          <span class="subtitulo">Asistente Clínico & Estadístico</span>
+        </div>
+      </div>
+
+      <div class="encabezado-metadatos">
+        <button id="btn-expandir-chat" class="btn-control" title="Ampliar / Reducir">
+          <svg viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+        </button>
+        <button id="btn-limpiar-chat" class="btn-control" title="Limpiar conversación">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        </button>
+        <button id="btn-cerrar-chat" class="btn-control btn-cerrar" title="Cerrar Asistente">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="chatbot-cuerpo-mensajes" id="chat-messages">
+      <!-- Área limpia de plantilla -->
+    </main>
+
+    <div id="typing-indicator" class="indicador-escribiendo oculto">
+      <div class="burbuja-animada">
+        <span class="punto"></span>
+        <span class="punto"></span>
+        <span class="punto"></span>
+      </div>
+      <span class="texto-procesando">CARDIOUNEMI está procesando...</span>
+    </div>
+
+    <footer class="chatbot-barra-entrada">
+      <form id="formulario-chat" onsubmit="return false;">
+        <div class="campo-entrada-grupo">
+          <input
+            type="text"
+            id="chat-input"
+            placeholder="Escriba su consulta clínica o estadística..."
+            autocomplete="off"
+            required
+          />
+          <button type="submit" id="send-btn" class="btn-enviar" title="Enviar consulta">
+            <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          </button>
+        </div>
+      </form>
+    </footer>
+  </div>
+
+  <script src="assets/vendor/marked.min.js"></script>
+  <script src="assets/data/dashboard-cardiounemi-data.js"></script>
+  <script src="js/pacientes.js"></script>
+  <script src="js/menu-usuario.js"></script>
+  <script src="js/formularios-listado.js"></script>
+  <script src="js/chat-engine.js"></script>
+</body>
+</html>

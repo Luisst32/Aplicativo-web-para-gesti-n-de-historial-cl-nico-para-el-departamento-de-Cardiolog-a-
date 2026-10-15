@@ -1,0 +1,2600 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNEMI - Estudio Cardiovascular (Sistema Clínico)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/layout.css">
+  <link rel="stylesheet" href="assets/css/pacientes.css">
+  <link rel="stylesheet" href="css/formulario.css">
+  <link rel="stylesheet" href="css/chat-widget.css">
+</head>
+<body>
+
+  <!-- SIDEBAR (Navegación Unificada) -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img src="assets/img/logo-cardiounemi.png" alt="CARDIOUNEMI" class="sidebar-logo">
+      <div>
+        <div class="sidebar-brand-title">CARDIOUNEMI</div>
+      </div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="sidebar-heading">Módulos Unificados</div>
+      <button class="nav-btn active" id="sideBtn-mod1" onclick="scrollToModule('mod-sociodemo')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span>1. Ficha y Sociodemográfico</span>
+      </button>
+
+      <button class="nav-btn" id="sideBtn-mod2" onclick="scrollToModule('mod-exploracion')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+        <span>2. Exploración y Signos</span>
+      </button>
+
+      <button class="nav-btn" id="sideBtn-mod3" onclick="scrollToModule('mod-cardio')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        <span>3. Riesgo e Historia Cardio</span>
+      </button>
+
+      <button class="nav-btn" id="sideBtn-mod4" onclick="scrollToModule('mod-nocardio')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"></path><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="15" y2="16"></line></svg>
+        <span>4. No Cardio y Cuestionarios</span>
+      </button>
+
+      <button class="nav-btn" id="sideBtn-mod5" onclick="scrollToModule('mod-laboratorio')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6v4l4 8a2 2 0 0 1-1.8 2.9H6.8A2 2 0 0 1 5 15l4-8V3z"></path><line x1="9" y1="3" x2="15" y2="3"></line><line x1="8" y1="14" x2="16" y2="14"></line></svg>
+        <span>5. Laboratorio y ECG</span>
+      </button>
+
+      <button class="nav-btn" id="sideBtn-mod6" onclick="scrollToModule('mod-estilovida')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <span>6. Estilo de Vida y Estudios</span>
+      </button>
+    </div>
+
+    <a href="formularios-listado.html" class="nav-back" title="Regresar al listado de formularios">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+      <span>Volver al Listado</span>
+    </a>
+  </aside>
+
+  <!-- MAIN WRAPPER -->
+  <div class="main-wrapper">
+
+    <!-- TOP HEADER (la ficha es de UN solo paciente: se abre desde el
+         listado con ?paciente=<id>; sus datos se ven en la franja de abajo) -->
+    <header class="top-header">
+      <div class="header-left">
+        <h1 class="header-title">Ficha Clínica</h1>
+      </div>
+
+      <div data-user-menu style="display: flex; align-items: center; gap: 8px;">
+        <button class="btn" onclick="window.print()">Imprimir</button>
+        <button class="btn btn-primary" id="btnGuardarFicha" onclick="guardarFichaCompleta()">Guardar Ficha</button>
+      </div>
+    </header>
+
+    <!-- PATIENT HERO STRIP (ejemplo.png) -->
+    <div class="patient-strip">
+      <div class="patient-profile">
+        <div class="avatar-circle" id="heroAvatar">--</div>
+        <div>
+          <div class="patient-meta-name">
+            <span id="heroNombre">--</span>
+            <span class="badge-age" id="heroEdad">--</span>
+            <span class="badge-estamento" id="heroEstamento">--</span>
+          </div>
+          <div class="patient-meta-details">
+            <span>Código: <strong id="heroCodigo" style="font-family: 'Consolas', 'Courier New', monospace;">--</strong></span>
+            <span>F. Nacimiento: <strong id="heroFechaNac">--</strong></span>
+            <span>Sexo: <strong id="heroSexo">--</strong></span>
+            <span>Facultad: <strong id="heroFacultad">--</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="strip-vitals">
+        <div class="mini-vital">
+          <span class="mini-vital-label">Peso</span>
+          <span class="mini-vital-val" id="heroPeso">-- kg</span>
+        </div>
+        <div class="mini-vital">
+          <span class="mini-vital-label">Talla</span>
+          <span class="mini-vital-val" id="heroTalla">-- cm</span>
+        </div>
+        <div class="mini-vital">
+          <span class="mini-vital-label">IMC</span>
+          <span class="mini-vital-val" id="heroImc" style="color:#3AA0FF;">--</span>
+        </div>
+        <div class="mini-vital">
+          <span class="mini-vital-label">ASC</span>
+          <span class="mini-vital-val" id="heroAsc">--</span>
+        </div>
+        <div class="mini-vital">
+          <span class="mini-vital-label">Presión (TAS/TSI)</span>
+          <span class="mini-vital-val" id="heroPresion">-- / --</span>
+        </div>
+        <div class="mini-vital">
+          <span class="mini-vital-label">Sat. O2</span>
+          <span class="mini-vital-val" id="heroSatO2">--%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN FORM BODY -->
+    <main class="content-area">
+
+      <form id="ehrCleanForm" onsubmit="return false;">
+
+        <!-- ================= MÓDULO 1: FICHA Y SOCIODEMOGRÁFICO ================= -->
+        <div class="module-section" id="mod-sociodemo">
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Datos del Individuo <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0001</span>
+            </div>
+            <div class="card-body">
+
+            <!-- Encabezado UNEMI -->
+            <div class="sub-section-header">Identificación Institucional</div>
+            <div class="grid form-grid-4" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">Universidad</label>
+                <select class="form-select" id="f_universidad" name="f_universidad">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="UNEMI">UNEMI</option>
+                  <option value="ESPOL">ESPOL</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">N.&deg; de visita</label>
+                <select class="form-select" id="f_visita" name="f_visita">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="1">1 (primera visita)</option>
+                  <option value="2">2 (seguimiento)</option>
+                  <option value="3">3 (seguimiento)</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">Estamento UNEMI</label>
+                <select class="form-select" id="f_estamento" onchange="document.getElementById('heroEstamento').textContent = this.value;" name="f_estamento">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="PDI">PDI</option>
+                  <option value="AD">AD</option>
+                  <option value="PAS">PAS (Personal de Administración y Servicios)</option>
+                  <option value="SERVICIO">SERVICIO</option>
+                  <option value="ESTUDIANTES">ESTUDIANTES</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">&bull; Código</label>
+                <input type="text" class="form-input" id="f_codigo" placeholder="Ej: 0482/2026" oninput="document.getElementById('heroCodigo').textContent = this.value;" name="f_codigo">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Fecha visita <small>(Calendario editable)</small></label>
+                <input type="date" class="form-input" id="f_fecha_visita" name="f_fecha_visita">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Facultad (si procede)</label>
+                <input type="text" class="form-input" id="f_facultad" placeholder="Facultad" oninput="document.getElementById('heroFacultad').textContent = this.value;" name="f_facultad">
+              </div>
+            </div>
+
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- Nombres del paciente</label>
+                <input type="text" class="form-input" id="f_nombre" placeholder="Nombres" oninput="actualizarNombreCompleto();" name="f_nombre">
+              </div>
+              <div class="form-field">
+                <label class="field-label">- Primer apellido</label>
+                <input type="text" class="form-input" id="f_apellido1" placeholder="Primer apellido" oninput="actualizarNombreCompleto();" name="f_apellido1">
+              </div>
+              <div class="form-field">
+                <label class="field-label">- Segundo apellido</label>
+                <input type="text" class="form-input" id="f_apellido2" placeholder="Segundo apellido" oninput="actualizarNombreCompleto();" name="f_apellido2">
+              </div>
+              <div class="form-field">
+                <label class="field-label">- C.I. / Cédula</label>
+                <input type="text" class="form-input" id="f_cedula" placeholder="0912345678" name="f_cedula" inputmode="numeric" pattern="[0-9]*" maxlength="10">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- Correo electrónico</label>
+                <input type="email" class="form-input" id="f_correo" placeholder="correo@unemi.edu.ec" name="f_correo">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Ciudad de residencia</label>
+                <input type="text" class="form-input" id="f_ciudad" placeholder="Ciudad" name="f_ciudad">
+              </div>
+              <div class="form-field">
+                <label class="field-label">-Provincia</label>
+                <select class="form-select" id="f_provincia" name="f_provincia">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="AZUAY">Azuay</option>
+                  <option value="BOLIVAR">Bolívar</option>
+                  <option value="CANAR">Cañar</option>
+                  <option value="CARCHI">Carchi</option>
+                  <option value="CHIMBORAZO">Chimborazo</option>
+                  <option value="COTOPAXI">Cotopaxi</option>
+                  <option value="EL ORO">El Oro</option>
+                  <option value="ESMERALDAS">Esmeraldas</option>
+                  <option value="GALAPAGOS">Galápagos</option>
+                  <option value="GUAYAS">Guayas</option>
+                  <option value="IMBABURA">Imbabura</option>
+                  <option value="LOJA">Loja</option>
+                  <option value="LOS RIOS">Los Ríos</option>
+                  <option value="MANABI">Manabí</option>
+                  <option value="MORONA SANTIAGO">Morona Santiago</option>
+                  <option value="NAPO">Napo</option>
+                  <option value="ORELLANA">Orellana</option>
+                  <option value="PASTAZA">Pastaza</option>
+                  <option value="PICHINCHA">Pichincha</option>
+                  <option value="SANTA ELENA">Santa Elena</option>
+                  <option value="SANTO DOMINGO DE LOS TSACHILAS">Santo Domingo de los Tsáchilas</option>
+                  <option value="SUCUMBIOS">Sucumbíos</option>
+                  <option value="TUNGURAHUA">Tungurahua</option>
+                  <option value="ZAMORA CHINCHIPE">Zamora Chinchipe</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- Teléfono (con prefijo)</label>
+                <input type="text" class="form-input" id="f_telefono" placeholder="0987654321" name="f_telefono" inputmode="numeric" pattern="[0-9]*" maxlength="13">
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Cuestionario Sociodemográfico <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0001</span>
+            </div>
+            <div class="card-body">
+
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- Lugar nac. Municipio</label>
+                <input type="text" class="form-input" id="f_municipio" placeholder="Municipio de nacimiento" name="f_municipio">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Provincia</label>
+                <select class="form-select" id="f_provincia_nac" name="f_provincia_nac" onchange="toggleProvinciaExtranjera()">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="AZUAY">Azuay</option>
+                  <option value="BOLIVAR">Bolívar</option>
+                  <option value="CANAR">Cañar</option>
+                  <option value="CARCHI">Carchi</option>
+                  <option value="CHIMBORAZO">Chimborazo</option>
+                  <option value="COTOPAXI">Cotopaxi</option>
+                  <option value="EL ORO">El Oro</option>
+                  <option value="ESMERALDAS">Esmeraldas</option>
+                  <option value="GALAPAGOS">Galápagos</option>
+                  <option value="GUAYAS">Guayas</option>
+                  <option value="IMBABURA">Imbabura</option>
+                  <option value="LOJA">Loja</option>
+                  <option value="LOS RIOS">Los Ríos</option>
+                  <option value="MANABI">Manabí</option>
+                  <option value="MORONA SANTIAGO">Morona Santiago</option>
+                  <option value="NAPO">Napo</option>
+                  <option value="ORELLANA">Orellana</option>
+                  <option value="PASTAZA">Pastaza</option>
+                  <option value="PICHINCHA">Pichincha</option>
+                  <option value="SANTA ELENA">Santa Elena</option>
+                  <option value="SANTO DOMINGO DE LOS TSACHILAS">Santo Domingo de los Tsáchilas</option>
+                  <option value="SUCUMBIOS">Sucumbíos</option>
+                  <option value="TUNGURAHUA">Tungurahua</option>
+                  <option value="ZAMORA CHINCHIPE">Zamora Chinchipe</option>
+                  <option value="EXTRANJERO">Otro país (especificar)</option>
+                </select>
+              </div>
+              <div class="form-field" id="campo_pais_nac" style="display: none;">
+                <label class="field-label">- País de nacimiento</label>
+                <input type="text" class="form-input" id="f_pais_nac" name="f_pais_nac" placeholder="Ej: CUBA, VENEZUELA">
+              </div>
+              <div class="form-field">
+                <label class="field-label">5.- Raza</label>
+                <select class="form-select" id="f_raza" name="f_raza">
+                  <option value="">-- Seleccionar raza/etnia --</option>
+                  <option value="MESTIZO">Mestizo/a</option>
+                  <option value="AFRICANA">Afroecuatoriano/a / Africana</option>
+                  <option value="BLANCA">Blanco/a</option>
+                  <option value="INDÍGENA">Indígena</option>
+                  <option value="MONTUBIA">Montubio/a</option>
+                  <option value="OTRA">Otra</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">2.- Fecha de nacimiento <small>(Calendario)</small></label>
+                <input type="date" class="form-input" id="f_fecha_nac" oninput="onBirthDateChange(this.value)" name="f_fecha_nac">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- Edad <small>(Calculada automáticamente)</small></label>
+                <input type="text" class="form-input calc" id="f_edad" readonly placeholder="--" name="f_edad">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- Sexo</label>
+                <select class="form-select" id="f_sexo" onchange="document.getElementById('heroSexo').textContent = this.value === 'H' ? 'Hombre' : 'Mujer';" name="f_sexo">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="H">H (Hombre)</option>
+                  <option value="M">M (Mujer)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Seleccionables para preguntas 6 a 14 (evitando saturación visual) -->
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">6.- Estado Civil</label>
+                <select class="form-select" id="f_estado_civil" name="f_estado_civil">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="1_soltero">1 Soltero/a.</option>
+                  <option value="2_casado">2 Casado/a.</option>
+                  <option value="3_divorciado">3 Divorciado/a a separado/a.</option>
+                  <option value="4_viudo">4 Viudo/a</option>
+                  <option value="5_union_libre">5 Unión Libre / Conviviente</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label class="field-label">7.- ¿Cuántos hijos tiene?</label>
+                <select class="form-select" id="f_hijos" name="f_hijos">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="0">0</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="mas">más.........</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label class="field-label">9.- Personas convivientes</label>
+                <input type="number" class="form-input" id="f_convivientes" placeholder="0" name="f_convivientes">
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">8.- ¿Con quién vive usted ahora?</label>
+                <select class="form-select" id="f_convive_con" name="f_convive_con">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="1">1 Sólo/a</option>
+                  <option value="2">2 Con su pareja</option>
+                  <option value="3">3 Con su pareja e hijos</option>
+                  <option value="4">4 Con sus hijos</option>
+                  <option value="5">5 Con su pareja, hijos y otros familiares</option>
+                  <option value="6">6 Con sus padres y hermanos/as.</option>
+                  <option value="7">7 Con otros no familiares</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label class="field-label">10.- Mayor nivel de estudios</label>
+                <select class="form-select" id="f_estudios" name="f_estudios">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="1">1 No sabe leer o escribir.</option>
+                  <option value="2">2 Preescolar</option>
+                  <option value="3">3 Estudios Primarios</option>
+                  <option value="4">4 Estudios secundarios</option>
+                  <option value="5">5 Ciclo post-bachillerato</option>
+                  <option value="6">6 Estudios superiores</option>
+                  <option value="7">7 Postgrado</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid form-grid-4">
+              <div class="form-field">
+                <label class="field-label">11.- Horario laboral</label>
+                <select class="form-select" id="f_horario" name="f_horario">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="1">1 Jornada partida (Mañana/tarde)</option>
+                  <option value="2">2 Jornada continua en mañanas y tarde</option>
+                  <option value="3">3 Jornada continua en tardes</option>
+                  <option value="4">4 Turnos rotativos</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">12.- Categoría profesión</label>
+                <select class="form-select" id="f_profesion" name="f_profesion">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="1">1 Profesor permanente</option>
+                  <option value="2">2 Profesor no permanente</option>
+                  <option value="3">3 Personal de administración.</option>
+                  <option value="4">4 Personal de servicios</option>
+                  <option value="5">5 Otra categoría.</option>
+                  <option value="6">6 Estudiante</option>
+                  <option value="7">7 Jubilado</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">13.- Su vivienda es:</label>
+                <select class="form-select" id="f_vivienda" name="f_vivienda">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="1">1 Propia</option>
+                  <option value="2">2 Alquilada</option>
+                  <option value="3">3 Vivienda familiar</option>
+                  <option value="4">4 Otro</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">14.- Ingresos totales familia</label>
+                <select class="form-select" id="f_ingresos" name="f_ingresos">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="1">1.- Menos de 500 dólares/mes</option>
+                  <option value="2">2.- Entre 500-1.000 dólares/mes</option>
+                  <option value="3">3.- 1001-1500 dólares /mes</option>
+                  <option value="4">4.- 1501 -2000 dólares/mes</option>
+                  <option value="5">5.- 2001-2500 dólares/mes</option>
+                  <option value="6">6. 2501-3000 dólares/mes</option>
+                  <option value="7">7.- 3001-3500 ............dólares/mes</option>
+                  <option value="8">8.- Otras.....................</option>
+                </select>
+              </div>
+            </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= MÓDULO 2: EXPLORACIÓN FÍSICA ================= -->
+        <div class="module-section" id="mod-exploracion">
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Exploración Física <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0001</span>
+            </div>
+            <div class="card-body">
+
+            <div class="sub-section-header">Medidas Corporales y Constantes Vitales (Ítems 1 al 7)</div>
+            <div class="grid form-grid-3" style="margin-bottom: 14px;">
+              <div class="form-field">
+                <label class="field-label">1.- Peso (kg)</label>
+                <input type="number" class="form-input" id="f_peso" placeholder="kg" step="0.1" oninput="calcIMC()" name="f_peso">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Talla (cm)</label>
+                <input type="number" class="form-input" id="f_talla" placeholder="cm" step="0.1" oninput="calcIMC()" name="f_talla">
+              </div>
+              <div class="form-field">
+                <label class="field-label">5.- Perímetro Abdominal (cm)</label>
+                <input type="number" class="form-input" id="f_perimetro" placeholder="cm" step="0.1" name="f_perimetro">
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 14px;">
+              <div class="form-field">
+                <label class="field-label">3.- IMC (kg/m²) <small>(Calculado automáticamente)</small></label>
+                <input type="text" class="form-input calc" id="f_imc" readonly placeholder="--" name="f_imc">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- ASC (m²) <small>(Calculada automáticamente)</small></label>
+                <input type="text" class="form-input calc" id="f_asc" readonly placeholder="--" name="f_asc">
+              </div>
+            </div>
+
+            <!-- Ítems 6 y 7 del Protocolo Escaneado (img0001_p2) -->
+            <div class="grid form-grid-3" style="margin-bottom: 18px;">
+              <div class="form-field">
+                <label class="field-label">6.- Saturación O2 (%)</label>
+                <input type="number" class="form-input" id="f_sat_o2" name="f_sat_o2" min="50" max="100" placeholder="98" oninput="if(document.getElementById('heroSatO2')) document.getElementById('heroSatO2').textContent = this.value ? this.value + '%' : '--'">
+              </div>
+              <div class="form-field">
+                <label class="field-label">7.- TAS - Sistólica (mm Hg)</label>
+                <input type="number" class="form-input" id="f_tas" name="f_tas" min="50" max="260" placeholder="120" oninput="actualizarHeroPresion()">
+              </div>
+              <div class="form-field">
+                <label class="field-label">7.- TSI - Diastólica/Contralateral (mm Hg)</label>
+                <input type="number" class="form-input" id="f_tsi" name="f_tsi" min="30" max="160" placeholder="80" oninput="actualizarHeroPresion()">
+              </div>
+            </div>
+
+            <!-- Hallazgos Cardiovasculares y Respiratorios con Condicionales (Ítems 8 al 13) -->
+            <div class="sub-section-header">Hallazgos Físicos (Ítems 8 al 13 - Condicionales: Input sólo si Sí)</div>
+
+            <!-- 8. Soplos (Ítem 8 en PDF) -->
+            <div class="condition-row" id="row_soplos" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">8.- Soplos cardiacos:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="soplos" value="No" checked onchange="toggleCondition('row_soplos', false)"> No</label>
+                  <label class="yes"><input type="radio" name="soplos" value="Si" onchange="toggleCondition('row_soplos', true)"> Si</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">9. Grado:</span>
+                <input type="text" class="form-input" id="soplo_grado" name="soplo_grado" style="width: 100px;" placeholder="Grado">
+                <span class="field-label" style="margin-left: 10px;">Tipo:</span>
+                <input type="text" class="form-input" id="soplo_tipo" name="soplo_tipo" style="flex: 1;" placeholder="Tipo de soplo">
+              </div>
+            </div>
+
+            <!-- 10. Extra-tonos (Ítem 10 en PDF) -->
+            <div class="condition-row" id="row_extratonos" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">10.- Extra-tonos:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="extratonos" value="No" checked onchange="toggleCondition('row_extratonos', false)"> No</label>
+                  <label class="yes"><input type="radio" name="extratonos" value="Si" onchange="toggleCondition('row_extratonos', true)"> Si</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cual:</span>
+                <input type="text" class="form-input" id="extratonos_detalle" name="extratonos_detalle" style="flex: 1;" placeholder="Especificar extra-tonos">
+              </div>
+            </div>
+
+            <!-- 11. Pulsos pedios (Ítem 11 en PDF) -->
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">11.- Pulsos pedios palpables:</span>
+                <div style="display:flex; gap:16px; align-items:center;">
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pulsos_palp" value="No"> No</label>
+                    <label class="yes"><input type="radio" name="pulsos_palp" value="Si" checked> Sí</label>
+                  </div>
+                  <span style="font-size:0.8rem; font-weight:600; color:#486581;">simétricos:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pulsos_sim" value="No"> No</label>
+                    <label class="yes"><input type="radio" name="pulsos_sim" value="Si" checked> Si</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 12. Exploración respiratoria (Ítem 12 en PDF) -->
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">12.- Exploración respiratoria normal:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="resp_norm" value="No"> No</label>
+                  <label class="yes"><input type="radio" name="resp_norm" value="Si" checked> Si</label>
+                </div>
+              </div>
+              <div style="display:flex; gap:16px; align-items:center; margin-top:6px; flex-wrap:wrap;">
+                <span class="field-label">Existe Estertores:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="estert" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="estert" value="Si"> Si</label>
+                </div>
+                <span class="field-label" style="margin-left: 10px;">sibilancias:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="sibil" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="sibil" value="Si"> Si</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 13. Exploración abdominal (Ítem 13 en PDF - Condicional si alterada) -->
+            <div class="condition-row" id="row_abdomen" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">13.- Exploración abdominal normal:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="abdom_norm" value="No" onchange="toggleCondition('row_abdomen', true)"> No</label>
+                  <label class="yes"><input type="radio" name="abdom_norm" value="Si" checked onchange="toggleCondition('row_abdomen', false)"> Sí</label>
+                </div>
+              </div>
+              <!-- Si NO es normal, aparecen los hallazgos patológicos -->
+              <div class="condition-details">
+                <label class="field-label"><input type="checkbox" name="hepatomegalia" id="abdom_hepato"> Tiene hepatomegalia</label>
+                <label class="field-label"><input type="checkbox" name="organomegalia" id="abdom_organo"> Tiene organomegalia.</label>
+                <span class="field-label" style="margin-left: 8px;">Otras Cuales:</span>
+                <input type="text" class="form-input" id="abd_alteracion_detalle" name="abd_alteracion_detalle" style="flex: 1; min-width: 160px;" placeholder="Detalles de alteración abdominal...">
+              </div>
+            </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= MÓDULO 3: RIESGO E HISTORIA CARDIOVASCULAR (UNIFICADO) ================= -->
+        <div class="module-section" id="mod-cardio">
+
+          <!-- SUB-BLOQUE 1: FACTORES DE RIESGO MODIFICABLES (1 AL 18) -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Factores de Riesgo Modificables <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0002</span>
+            </div>
+            <div class="card-body">
+
+            <!-- 1. Hipertension -->
+            <div class="condition-row" id="row_hta" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">&bull;1.- Hipertensión:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_hta" value="No" checked onchange="toggleCondition('row_hta', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_hta" value="Si" onchange="toggleCondition('row_hta', true)"> SI</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <label class="field-label"><input type="radio" name="r_hta_trat" value="No" checked> No tratada</label>
+                <label class="field-label"><input type="radio" name="r_hta_trat" value="Si"> Si tratada</label>
+              </div>
+            </div>
+
+            <!-- 2. Diabetes mellitus -->
+            <div class="condition-row" id="row_dm" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">2.- Diabetes mellitus:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_dm" id="dm_toggle_no" value="No" checked onchange="toggleCondition('row_dm', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_dm" id="dm_toggle_si" value="Si" onchange="toggleCondition('row_dm', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Clasificación:</span>
+                <select class="form-select" id="dm_clasificacion" style="width: 320px;" name="dm_clasificacion">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="Diabetes tipo 2, tratada solo con antidiabéticos orales.">Diabetes tipo 2, tratada solo con antidiabéticos orales</option>
+                  <option value="Diabetes tipo 2, tratada con insulina y antidiabéticos orales">Diabetes tipo 2, tratada con insulina y antidiabéticos orales</option>
+                  <option value="Diabetes tipo 2, no tratada.">Diabetes tipo 2, no tratada</option>
+                  <option value="Diabetes tipo 1, tratada con insulina">Diabetes tipo 1, tratada con insulina</option>
+                  <option value="Diabetes tipo 1, no tratada.">Diabetes tipo 1, no tratada</option>
+                  <option value="Tiene diabetes pero no especifica tipo">Tiene diabetes pero no especifica tipo</option>
+                </select>
+                <span class="field-label" style="margin-left: 6px;">Fármacos:</span>
+                <input type="text" class="form-input" id="dm_farmacos" name="dm_farmacos" style="width: 140px;" placeholder="Cuáles fármacos...">
+              </div>
+            </div>
+
+            <!-- 3. Dislipemia -->
+            <div class="condition-row" id="row_dislip" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">3.- Dislipemia:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_dislip" value="No" checked onchange="toggleCondition('row_dislip', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_dislip" value="Si" onchange="toggleCondition('row_dislip', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <label class="field-label"><input type="radio" name="r_dislip_trat" value="No" checked> SI, no tratada con farmacos</label>
+                <label class="field-label"><input type="radio" name="r_dislip_trat" value="Si"> SI, tratada con farmacos</label>
+                <span class="field-label" style="margin-left: 8px;">Tipo:</span>
+                <input type="text" class="form-input" id="dislip_tipo" name="dislip_tipo" style="width: 140px;" placeholder="Tipo de dislipemia...">
+              </div>
+            </div>
+
+            <!-- 4. Tabaquismo -->
+            <div class="condition-row" id="row_tabaco" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">4.- Tabaquismo:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_tabaco" id="tabaco_toggle_no" value="No" checked onchange="setEstadoTabaquismo('toggle_no')"> No</label>
+                  <label class="yes"><input type="radio" name="r_tabaco" id="tabaco_toggle_si" value="Si" onchange="setEstadoTabaquismo('toggle_si')"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details" id="details_tabaco">
+                <span class="field-label">Frecuencia:</span>
+                <select class="form-select" id="tabaco_frecuencia" style="width: 190px;" onchange="onTabacoFrecuenciaChange()" name="tabaco_frecuencia">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="Sí, menos de 5 al día">Menos de 5 al día</option>
+                  <option value="Sí, entre 5 y 10 al día">Entre 5 y 10 al día</option>
+                  <option value="Sí, entre 10 y 20 al día">Entre 10 y 20 al día</option>
+                  <option value="Sí, más de 20 al día">Más de 20 al día</option>
+                </select>
+                <span class="field-label" id="lbl_tabaco_cantidad" style="margin-left: 8px;">Cantidad:</span>
+                <input type="number" class="form-input" id="tabaco_cantidad" style="width: 65px;" value="" min="0" oninput="onTabacoCantidadInput()" name="tabaco_cantidad">
+                <label class="field-label" style="margin-left: 12px; cursor: pointer;">
+                  <input type="checkbox" id="chk_exfumador" onchange="setEstadoTabaquismo('chk_exfumador')" name="chk_exfumador">
+                  Exfumador &gt; 1 año
+                </label>
+                <label class="field-label" style="cursor: pointer;">
+                  <input type="checkbox" id="chk_nunca_fumo" checked onchange="setEstadoTabaquismo('chk_nunca')" name="chk_nunca_fumo">
+                  nunca fumó
+                </label>
+              </div>
+            </div>
+
+            <!-- 5. Alcohol -->
+            <div class="condition-row" id="row_alcohol" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">5.- Alcohol:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_alcohol" id="alcohol_toggle_no" value="No" checked onchange="setEstadoAlcohol('toggle_no')"> No</label>
+                  <label class="yes"><input type="radio" name="r_alcohol" id="alcohol_toggle_si" value="Si" onchange="setEstadoAlcohol('toggle_si')"> Si</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Frecuencia:</span>
+                <select class="form-select" id="alcohol_frecuencia" style="width: 210px;" name="alcohol_frecuencia">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="Consume alcohol de manera ocasional">De manera ocasional</option>
+                  <option value="Consume alcohol semanalmente">Semanalmente</option>
+                  <option value="Consume alcohol diariamente">Diariamente</option>
+                </select>
+                <label class="field-label" style="margin-left: 12px;"><input type="checkbox" id="chk_ex_alcohol" onchange="setEstadoAlcohol('chk_ex')" name="chk_ex_alcohol"> Ex tomador &gt; 1 año</label>
+                <span class="field-label" style="margin-left: 8px;">Unidades:</span>
+                <input type="text" class="form-input" id="alcohol_unidades" style="width: 60px;" value="" name="alcohol_unidades">
+              </div>
+            </div>
+
+            <!-- 6. Drogas -->
+            <div class="condition-row" id="row_drogas" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">6.- Drogas:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_drogas" id="drogas_toggle_no" value="No" checked onchange="setEstadoDrogas('toggle_no')"> No</label>
+                  <label class="yes"><input type="radio" name="r_drogas" id="drogas_toggle_si" value="Si" onchange="setEstadoDrogas('toggle_si')"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuales:</span>
+                <input type="text" class="form-input" id="drogas_cuales" style="width: 120px;" placeholder="Sustancia..." name="drogas_cuales">
+                <span class="field-label">Frecuencia:</span>
+                <select class="form-select" id="drogas_frecuencia" style="width: 170px;" name="drogas_frecuencia">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="Consume drogas ocasionalmente">Ocasionalmente</option>
+                  <option value="Consume drogas semanalmente">Semanalmente</option>
+                  <option value="Consume drogas diariamente">Diariamente</option>
+                </select>
+                <label class="field-label" style="margin-left: 10px;"><input type="checkbox" id="chk_ex_drogas" onchange="setEstadoDrogas('chk_ex')" name="chk_ex_drogas"> Ex consumidor &gt; 1 año</label>
+              </div>
+            </div>
+
+            <!-- 7. Obesidad -->
+            <div class="condition-row" id="row_obesidad" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">7.- Obesidad:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_obesidad" value="No" checked onchange="toggleCondition('row_obesidad', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_obesidad" value="Si" onchange="toggleCondition('row_obesidad', true)"> Si</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Grado según base:</span>
+                <select class="form-select" id="obesidad_grado" style="width: 230px;" name="obesidad_grado">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="Obesidad grado 1 (leve)">Obesidad grado 1 (leve)</option>
+                  <option value="Obesidad grado 2 (moderada)">Obesidad grado 2 (moderada)</option>
+                  <option value="Obesidad grado 3 (mórbida)">Obesidad grado 3 (mórbida)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 8. Sobrepeso -->
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">8.- Sobrepeso:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_sobrepeso" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="r_sobrepeso" value="Si"> Si</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 9. Arritmias -->
+            <div class="condition-row" id="row_arritmias" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">9.- Arritmias:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_arritmias" value="No" checked onchange="toggleCondition('row_arritmias', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_arritmias" value="Si" onchange="toggleCondition('row_arritmias', true)"> Si</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Tipo de arritmia:</span>
+                <select class="form-select" id="arritmias_tipo" style="width: 240px;" name="arritmias_tipo">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="Sí, arritmia tipo taquicardia">Taquicardia</option>
+                  <option value="Sí, arritmia tipo bradicardia">Bradicardia</option>
+                  <option value="Sí, arritmia tipo extrasístoles">Extrasístoles</option>
+                  <option value="Sí, arritmia tipo palpitaciones">Palpitaciones</option>
+                  <option value="Sí, arritmia tipo BCRDHH">BCRDHH</option>
+                  <option value="Sí, arritmia tipo extensible aislada">Extensible aislada</option>
+                  <option value="Sí, no especifica">No especifica</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 10. Sincopes -->
+            <div class="condition-row" id="row_sincopes" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">10.- Síncopes.:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_sincopes" value="No" checked onchange="toggleCondition('row_sincopes', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_sincopes" value="Si" onchange="toggleCondition('row_sincopes', true)"> Si</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Tipo de síncope:</span>
+                <select class="form-select" id="sincopes_tipo" style="width: 230px;" name="sincopes_tipo">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="Sí, síncope vasovagal">Síncope vasovagal</option>
+                  <option value="Sí, síncope ortostático">Síncope ortostático</option>
+                  <option value="Sí, síncope cardíaco">Síncope cardíaco</option>
+                  <option value="Sí, síncope neurológico">Síncope neurológico</option>
+                  <option value="Sí, no especifica tipo">No especifica tipo</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 2. Prueba de Mapa. Ítem 2 de CUESTIONARIO UNEMI_definitivo 2026.pdf;
+                 en el escaneo quedó tapado por una marca roja. Alimenta la columna
+                 USTED_SE_HA_REALIZADO_ESTUDIOS_DE_MAPA. -->
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+
+            </div>
+
+            <!-- 12. Holter. En el escaneo (pág. 3) el ítem está tapado con marca roja,
+                 pero la base guarda la columna PRUEBA_HOLTER, así que se repone. El texto
+                 del papel dice que a todo paciente con arritmias y/o síncope se le pone un
+                 Holter de 24 horas. -->
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+
+            </div>
+
+            <!-- 11 y 13 -->
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">11.- Vasculopatía periférica:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="r_vasc_perif" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="r_vasc_perif" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">12.- Vasculopatía carotídea:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="r_vasc_carot" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="r_vasc_carot" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+
+            </div>
+
+            <!-- 13. Insuficiencia renal -->
+            <div class="condition-row" id="row_irc" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">13.- Insuficiencia renal crónica:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_irc" value="No" checked onchange="toggleCondition('row_irc', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_irc" value="Si" onchange="toggleCondition('row_irc', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <label class="field-label"><input type="radio" name="r_irc_tipo" value="dialisis"> Diálisis</label>
+                <label class="field-label"><input type="radio" name="r_irc_tipo" value="trasplante"> Trasplante renal</label>
+              </div>
+            </div>
+
+            <!-- 14 a 17 -->
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">14.- Antecedentes ictus/AIT:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="r_ictus" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="r_ictus" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">15.- Disfunción eréctil:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="r_disfunc" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="r_disfunc" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">16.- Hígado graso:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="r_higado" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="r_higado" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">17.- Apnea del sueño:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="r_apnea" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="r_apnea" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 18. Otros -->
+            <div class="condition-row" id="row_otros">
+              <div class="condition-header">
+                <span class="condition-title">18. Otros:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_otros" value="No" checked onchange="toggleCondition('row_otros', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_otros" value="Si" onchange="toggleCondition('row_otros', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuales:</span>
+                <input type="text" class="form-input" id="otros_factores_detalle" name="otros_factores_detalle" style="flex: 1;" placeholder="Especificar otros factores...">
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE 2: FACTORES EMERGENTES (1 AL 9) -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Factores Emergentes <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0002</span>
+            </div>
+            <div class="card-body">
+
+            <div class="grid form-grid-3" style="margin-bottom: 12px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">1.- Cantidad de sueño:</span>
+                  <select class="form-select" id="sueno_cantidad" name="sueno_cantidad" style="width: 110px;">
+                  <option value="">-- Seleccionar --</option>
+                    <option value="Buena">Buena</option>
+                    <option value="Regular">Regular</option>
+                    <option value="Mala">Mala</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">2.- Calidad del sueño:</span>
+                  <select class="form-select" id="sueno_calidad" name="sueno_calidad" style="width: 110px;">
+                  <option value="">-- Seleccionar --</option>
+                    <option value="Buena">Buena</option>
+                    <option value="Regular">Regular</option>
+                    <option value="Mala">Mala</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 3. Toxicos condicional -->
+              <div class="condition-row" id="row_toxicos">
+                <div class="condition-header">
+                  <span class="condition-title">3.- Trabaja con tóxicos:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="em_toxicos" value="No" checked onchange="toggleCondition('row_toxicos', false)"> No</label>
+                    <label class="yes"><input type="radio" name="em_toxicos" value="Si" onchange="toggleCondition('row_toxicos', true)"> Sí</label>
+                  </div>
+                </div>
+                <div class="condition-details">
+                  <span class="field-label">Cuales:</span>
+                  <input type="text" class="form-input" id="toxicos_cuales" name="toxicos_cuales" style="flex: 1;" placeholder="Tóxicos...">
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 12px;">
+              <div class="condition-row" id="row_estrogenos">
+                <div class="condition-header">
+                  <span class="condition-title">4. – Niveles bajos de estrógenos en la mujer:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="em_estrogenos" value="No" checked onchange="toggleCondition('row_estrogenos', false)"> No</label>
+                    <label class="yes"><input type="radio" name="em_estrogenos" value="Si" onchange="toggleCondition('row_estrogenos', true)"> Si</label>
+                  </div>
+                </div>
+                <div class="condition-details">
+                  <label class="field-label"><input type="checkbox" id="em_estrogenos_menopausia" name="em_estrogenos_menopausia" value="1"> menopausia.</label>
+                  <label class="field-label"><input type="checkbox" id="em_estrogenos_otras" name="em_estrogenos_otras" value="1"> Otras causas</label>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">5.- Usa anticonceptivo &gt;35 años</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="em_anticonceptivos" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="em_anticonceptivos" value="Si"> Si</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 12px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">6.— Tiene estrés en el trabajo</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="em_estres_trab" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="em_estres_trab" value="Si"> Si</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">7.— Tiene estrés en la vida familiar</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="em_estres_fam" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="em_estres_fam" value="Si"> Si</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">8.- Mal ambiente laboral</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="em_mal_amb" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="em_mal_amb" value="Si"> Si</label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 9. PERSONALIDAD TIPO A. Los seis rasgos estaban tapados con marcas
+                   rojas en el escaneo; se reponen porque la base guarda una columna por
+                   cada uno (EXIGENTE, PERFECCIONISTA, HIPERACTIVO, AMBICIOSO, HOSTILIDAD,
+                   AISLAMIENTO_SOCIAL). La redacción se tomó del vocabulario de
+                   PERSONALIDAD_TIPO_A en Base_CardioUNEMI_legible.csv. -->
+              <div class="condition-row" id="row_pers_a">
+                <div class="condition-header">
+                  <span class="condition-title">9.- Personalidad tipo A</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="em_pers_a" value="No" checked onchange="toggleCondition('row_pers_a', false)"> No</label>
+                    <label class="yes"><input type="radio" name="em_pers_a" value="Si" onchange="toggleCondition('row_pers_a', true)"> Si</label>
+                  </div>
+                </div>
+                <div class="condition-details" style="flex-direction: column; align-items: stretch;">
+
+
+
+
+
+
+                </div>
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE 3: OTROS FACTORES DE RIESGO NO MODIFICABLES -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Otros Factores de Riesgo No Modificables <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0002</span>
+            </div>
+            <div class="card-body">
+
+            <div class="grid form-grid-2" style="margin-bottom: 16px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">1. Antecedentes familiares de cardiopatía Isquémica <small>(Angina, infarto, muerte súbita)</small></span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="nm_cardiopatia" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="nm_cardiopatia" value="Si"> S i</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">2.- Algún familiar directo ha fallecido cardiopatía Isquémica <small>(&lt;55v / &lt;65m)</small></span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="nm_fallecido" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="nm_fallecido" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE 3b: ANTECEDENTES FAMILIARES -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Antecedentes Familiares <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0002</span>
+            </div>
+            <div class="card-body">
+
+            <div class="grid form-grid-3">
+              <div class="condition-row">
+                <div class="condition-header"><span class="condition-title">1.- Padre con:</span></div>
+                <div style="display:flex; gap:12px; margin-top:4px;">
+                  <label class="field-label"><input type="checkbox" id="ant_padre_hta" name="ant_padre_hta" value="Si"> HTA</label>
+                  <label class="field-label"><input type="checkbox" id="ant_padre_dm" name="ant_padre_dm" value="Si"> Diabetes</label>
+                  <label class="field-label"><input type="checkbox" id="ant_padre_dislip" name="ant_padre_dislip" value="Si"> Dislipemia:</label>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header"><span class="condition-title">2.- Madre con:</span></div>
+                <div style="display:flex; gap:12px; margin-top:4px;">
+                  <label class="field-label"><input type="checkbox" id="ant_madre_hta" name="ant_madre_hta" value="Si"> HTA</label>
+                  <label class="field-label"><input type="checkbox" id="ant_madre_dm" name="ant_madre_dm" value="Si"> Diabetes</label>
+                  <label class="field-label"><input type="checkbox" id="ant_madre_dislip" name="ant_madre_dislip" value="Si"> Dislipemia</label>
+                </div>
+              </div>
+
+              <div class="condition-row" id="row_ant_otras">
+                <div class="condition-header">
+                  <span class="condition-title">3. Otras enfermedades:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="ant_otras_tog" value="No" checked onchange="toggleCondition('row_ant_otras', false)"> No</label>
+                    <label class="yes"><input type="radio" name="ant_otras_tog" value="Si" onchange="toggleCondition('row_ant_otras', true)"> Si</label>
+                  </div>
+                </div>
+                <div class="condition-details">
+                  <input type="text" class="form-input" id="ant_familiares_cuales" name="ant_familiares_cuales" style="flex:1;" placeholder="¿Cuáles enfermedades familiares?">
+                </div>
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE 4: HISTORIA CLÍNICA ACTUAL CARDIOVASCULAR (ÍTEM 1 DEL ORIGINAL;
+               los ítems 2 a 6 -Cardiopatía isquémica, Revascularización, Insuficiencia
+               cardíaca, Valvulopatía, Ingreso hospitalario- se quitaron a pedido del
+               usuario) -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Historia Clínica Actual Cardiovascular <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0002</span>
+            </div>
+            <div class="card-body">
+
+            <!-- 1. Problema del corazon -->
+            <div class="condition-row" id="row_hc_prob">
+              <div class="condition-header">
+                <span class="condition-title">1.- Historia de cualquier problema del corazón:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="hc_prob" value="No" checked onchange="toggleCondition('row_hc_prob', false)"> No</label>
+                  <label class="yes"><input type="radio" name="hc_prob" value="Si" onchange="toggleCondition('row_hc_prob', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuales:</span>
+                <input type="text" class="form-input" id="prob_corazon_detalle" name="prob_corazon_detalle" style="flex: 1;" placeholder="Detalles de problemas del corazón...">
+              </div>
+            </div>
+
+
+
+
+
+
+
+
+
+
+
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ================= MÓDULO 4: HISTORIA NO CARDIOVASCULAR Y CUESTIONARIOS ================= -->
+        <!-- Fuente: escaneo/img0003.pdf (págs. 5-6 de 19). No se incluye el detalle de
+             tipo de cáncer ni ¿recibió Qt?/¿recibió Rt? del ítem 2 (tachados en el
+             original); tampoco la sección "Resultados del Electrocardiograma"
+             (ítems 1-21, tachada con una X), salvo el ítem 8 (Intervalo QT). La
+             Clasificación NYHA se deja solo como selección de clase, sin el texto
+             descriptivo de cada clase. -->
+        <div class="module-section" id="mod-nocardio">
+
+          <!-- SUB-BLOQUE A: HISTORIA CLÍNICA NO CARDIOVASCULAR -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Historia Clínica No Cardiovascular <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0003</span>
+            </div>
+            <div class="card-body">
+
+            <!-- 1. Enfermedad reumatológica/inmunológica -->
+            <div class="condition-row" id="row_nc_reuma" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">1.- Enfermedad reumatológica/inmunológica:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="nc_reuma" value="No" checked onchange="toggleCondition('row_nc_reuma', false)"> No</label>
+                  <label class="yes"><input type="radio" name="nc_reuma" value="Si" onchange="toggleCondition('row_nc_reuma', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuáles:</span>
+                <input type="text" class="form-input" id="reuma_detalle" name="reuma_detalle" style="flex: 1;" placeholder="Especificar enfermedad...">
+              </div>
+            </div>
+
+            <!-- 2. Historia de cáncer (el detalle de tipo/Qt/Rt está tachado en el
+                 escaneo original, así que no se digitaliza) -->
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <!-- 2. Historia de cáncer. El tipo y el tratamiento estaban tachados en
+                   azul en el escaneo (pág. 5); se reponen porque la base guarda
+                   TRATAMIENTO_CANCER. -->
+              <div class="condition-row" id="row_nc_cancer">
+                <div class="condition-header">
+                  <span class="condition-title">2.- Historia de cáncer:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="nc_cancer" value="No" checked onchange="toggleCondition('row_nc_cancer', false)"> No</label>
+                    <label class="yes"><input type="radio" name="nc_cancer" value="Si" onchange="toggleCondition('row_nc_cancer', true)"> Sí</label>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">3.- EPOC:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="nc_epoc" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="nc_epoc" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">4.- Asma:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="nc_asma" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="nc_asma" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">5.- Depresión:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="nc_depresion" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="nc_depresion" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">6.- Ansiedad:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="nc_ansiedad" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="nc_ansiedad" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 7. Alergia a medicamentos -->
+            <div class="condition-row" id="row_nc_alergia" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">7.- Alergia a medicamentos:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="nc_alergia" value="No" checked onchange="toggleCondition('row_nc_alergia', false)"> No</label>
+                  <label class="yes"><input type="radio" name="nc_alergia" value="Si" onchange="toggleCondition('row_nc_alergia', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">¿Cuál?:</span>
+                <input type="text" class="form-input" id="alergia_medicamento" name="alergia_medicamento" style="flex: 1;" placeholder="¿A qué medicamento?">
+              </div>
+            </div>
+
+            <!-- 8. Otras -->
+            <div class="condition-row" id="row_nc_otras">
+              <div class="condition-header">
+                <span class="condition-title">8.- Otras:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="nc_otras" value="No" checked onchange="toggleCondition('row_nc_otras', false)"> No</label>
+                  <label class="yes"><input type="radio" name="nc_otras" value="Si" onchange="toggleCondition('row_nc_otras', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuáles:</span>
+                <input type="text" class="form-input" id="otras_enf_detalle" name="otras_enf_detalle" style="flex: 1;" placeholder="Especificar otras...">
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE B: COVID-19 -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">COVID-19 <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0003</span>
+            </div>
+            <div class="card-body">
+
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">1.- Ha pasado el COVID-19:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="covid_paso" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="covid_paso" value="Si"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">2.- ¿Estuvo ingresado en el hospital?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="covid_ingreso" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="covid_ingreso" value="Si"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="condition-row" id="row_covid_cv" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">3.- Le detectaron alguna afectación cardiovascular debida al COVID-19:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="covid_cv" value="No" checked onchange="toggleCondition('row_covid_cv', false)"> No</label>
+                  <label class="yes"><input type="radio" name="covid_cv" value="Si" onchange="toggleCondition('row_covid_cv', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">¿Cuál?:</span>
+                <input type="text" class="form-input" id="covid_cv_detalle" name="covid_cv_detalle" style="flex: 1;" placeholder="Especificar afectación cardiovascular...">
+              </div>
+            </div>
+
+            <div class="condition-row" id="row_covid_pulm" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">4.- Le detectaron alguna afectación pulmonar debida al COVID-19:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="covid_pulm" value="No" checked onchange="toggleCondition('row_covid_pulm', false)"> No</label>
+                  <label class="yes"><input type="radio" name="covid_pulm" value="Si" onchange="toggleCondition('row_covid_pulm', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">¿Cuál?:</span>
+                <input type="text" class="form-input" id="covid_pulm_detalle" name="covid_pulm_detalle" style="flex: 1;" placeholder="Especificar afectación pulmonar...">
+              </div>
+            </div>
+
+            <div class="condition-row" id="row_covid_otras">
+              <div class="condition-header">
+                <span class="condition-title">5.- Otras:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="covid_otras" value="No" checked onchange="toggleCondition('row_covid_otras', false)"> No</label>
+                  <label class="yes"><input type="radio" name="covid_otras" value="Si" onchange="toggleCondition('row_covid_otras', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuáles:</span>
+                <input type="text" class="form-input" id="covid_otras_detalle" name="covid_otras_detalle" style="flex: 1;" placeholder="Especificar otras...">
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE Bb: LONG-COVID -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Long-COVID <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0003</span>
+            </div>
+            <div class="card-body">
+
+            <div class="condition-row" id="row_longcovid">
+              <div class="condition-header">
+                <span class="condition-title">1.- Ha presentado después del COVID, algún síntoma que antes no tenía:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="longcovid" value="No" checked onchange="toggleCondition('row_longcovid', false)"> No</label>
+                  <label class="yes"><input type="radio" name="longcovid" value="Si" onchange="toggleCondition('row_longcovid', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuál/es:</span>
+                <input type="text" class="form-input" id="longcovid_sintomas" name="longcovid_sintomas" style="flex: 1;" placeholder="Especificar síntoma(s)...">
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE C: CUESTIONARIO DE DOLOR DE PECHO DE G. ROSE -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Cuestionario de Dolor de Pecho de G. Rose <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0003</span>
+            </div>
+            <div class="card-body">
+
+            <div class="condition-row" style="margin-bottom: 14px;">
+              <div class="condition-header">
+                <span class="condition-title">1.- ¿A veces tiene algún dolor o molestia en el pecho?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="rose_1" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="rose_1" value="Si"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="sub-section-header">2.- ¿En qué lugar localiza este dolor o molestia? <small>(marque el o los cuadrantes)</small></div>
+
+            <div style="display:flex; gap:24px; align-items:center; flex-wrap:wrap; margin-bottom:16px;">
+              <svg width="260" height="225" viewBox="0 0 600 520" style="flex-shrink:0;">
+                <!-- Líneas punteadas divisorias (guías de cuadrantes) -->
+                <g stroke="#333333" stroke-width="1.8" stroke-dasharray="5,5" fill="none">
+                  <line x1="180" y1="185" x2="180" y2="480" />
+                  <line x1="255" y1="65" x2="255" y2="480" />
+                  <line x1="345" y1="65" x2="345" y2="480" />
+                  <line x1="420" y1="185" x2="420" y2="480" />
+                  <line x1="120" y1="445" x2="480" y2="445" />
+                </g>
+
+                <!-- Contornos anatómicos del cuerpo -->
+                <g stroke="#1a1a1a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                  <path d="M 285,68 L 293,92" stroke-width="2.4" />
+                  <path d="M 315,68 L 307,92" stroke-width="2.4" />
+                  <path d="M 265,60 C 265,85 260,105 240,120 C 215,138 165,160 140,195" />
+                  <path d="M 335,60 C 335,85 340,105 360,120 C 385,138 435,160 460,195" />
+                  <circle cx="300" cy="142" r="3.2" stroke="#1a1a1a" stroke-width="2.2" fill="#ffffff" />
+                  <path d="M 250,150 C 275,160 325,160 350,150" stroke-width="2" />
+                  <path d="M 350,150 C 385,148 425,165 440,178" stroke-width="1.8" />
+                  <path d="M 140,195 C 122,230 120,265 130,290 C 115,340 100,400 110,480" />
+                  <path d="M 178,270 C 172,320 156,400 160,480" />
+                  <path d="M 460,195 C 478,230 480,265 470,290 C 485,340 500,400 490,480" />
+                  <path d="M 422,270 C 428,320 444,400 440,480" />
+                  <path d="M 180,270 C 190,298 230,298 250,275 C 265,258 285,250 300,250 C 315,250 335,258 350,275 C 370,298 410,298 420,270" stroke-width="2.5" />
+                  <path d="M 215,280 C 220,283 228,283 232,280" stroke-width="2.2" />
+                  <path d="M 368,280 C 372,283 380,283 385,280" stroke-width="2.2" />
+                  <path d="M 215,440 C 240,430 270,365 300,340 C 330,365 360,430 385,440" stroke-width="2.6" />
+                  <path d="M 412,278 L 402,475" stroke-width="2.4" />
+                </g>
+
+                <!-- Textos laterales: "Derecha" e "Izquierda" -->
+                <g font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="bold" fill="#2d3748">
+                  <text x="60" y="235" text-anchor="middle">Derecha</text>
+                  <text x="540" y="235" text-anchor="middle">Izquierda</text>
+                </g>
+
+                <!-- Números de las regiones (1 al 9) -->
+                <g font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="bold" fill="#2d3748" text-anchor="middle" dominant-baseline="central">
+                  <text x="300" y="118">1</text>
+                  <text x="156" y="240">2</text>
+                  <text x="218" y="215">3</text>
+                  <text x="300" y="215">4</text>
+                  <text x="382" y="215">5</text>
+                  <text x="444" y="240">6</text>
+                  <text x="218" y="350">7</text>
+                  <text x="300" y="350">8</text>
+                  <text x="382" y="350">9</text>
+                </g>
+              </svg>
+              <div class="grid" style="grid-template-columns: repeat(3, 1fr); gap:8px 20px;">
+                <label class="field-label"><input type="checkbox" name="rose_zona_1"> Zona 1</label>
+                <label class="field-label"><input type="checkbox" name="rose_zona_2"> Zona 2</label>
+                <label class="field-label"><input type="checkbox" name="rose_zona_3"> Zona 3</label>
+                <label class="field-label"><input type="checkbox" name="rose_zona_4"> Zona 4</label>
+                <label class="field-label"><input type="checkbox" name="rose_zona_5"> Zona 5</label>
+                <label class="field-label"><input type="checkbox" name="rose_zona_6"> Zona 6</label>
+                <label class="field-label"><input type="checkbox" name="rose_zona_7"> Zona 7</label>
+                <label class="field-label"><input type="checkbox" name="rose_zona_8"> Zona 8</label>
+                <label class="field-label"><input type="checkbox" name="rose_zona_9"> Zona 9</label>
+              </div>
+            </div>
+
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">3.- ¿Cuándo camina a paso habitual, esto le produce la molestia?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="rose_3" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="rose_3" value="Si"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">4.- ¿Cuándo camina cuesta arriba o apurado, esto le produce la molestia?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="rose_4" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="rose_4" value="Si"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="form-field">
+                <label class="field-label">5.- ¿Cuándo tiene dolor caminando, qué hace?</label>
+                <select class="form-select" id="rose_5" name="rose_5">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="se_para">Se para</option>
+                  <option value="disminuye">Disminuye la marcha</option>
+                  <option value="continua">Continúa al mismo paso</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">7.- ¿En cuánto tiempo desaparece?</label>
+                <select class="form-select" id="rose_7" name="rose_7">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="10_o_menos">10 minutos o menos</option>
+                  <option value="mas_10">Más de 10 minutos</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">6.- ¿Desaparece el dolor o molestia en el pecho si se queda quieto?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="rose_6" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="rose_6" value="Si"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="condition-row" style="background:var(--color-ice-blue); border-color:var(--color-primary-blue);">
+              <div class="condition-header">
+                <span class="condition-title" style="color:var(--color-link-hover); font-weight:700;">8.- Cuestionario de dolor de pecho de G. Rose</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="rose_8" value="Negativo" checked> Negativo</label>
+                  <label class="yes"><input type="radio" name="rose_8" value="Positivo"> Positivo</label>
+                </div>
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE D: CLASIFICACIÓN NYHA
+               Solo la clase (I-IV), sin el texto descriptivo de cada clase. La
+               sección "Resultados del Electrocardiograma" (tachada completa con
+               una X en el escaneo) se quitó por completo, incluido el ítem 8
+               (Intervalo QT) que se había conservado como excepción. -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Clasificación Funcional NYHA <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0003</span>
+            </div>
+            <div class="card-body">
+
+            <div class="form-field" style="max-width: 320px;">
+              <label class="field-label">Clasificación Funcional NYHA</label>
+              <select class="form-select" id="nyha_clase" name="nyha_clase">
+                  <option value="">-- Seleccionar --</option>
+                <option value="I">Clase I</option>
+                <option value="II">Clase II</option>
+                <option value="III">Clase III</option>
+                <option value="IV">Clase IV</option>
+              </select>
+            </div>
+
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ================= MÓDULO 5: LABORATORIO Y ECOCARDIOGRAMA ================= -->
+        <!-- Fuente: escaneo/img0004.pdf (págs. 7-8 de 19), continuación de img0003.
+             No se incluyen los ítems 22-27 de "Resultados del Electrocardiograma"
+             (siguen tachados con una raya/X en el escaneo, misma sección que ya se
+             excluyó de img0003) ni "Resultados del Ecocardiograma 2D / Eje
+             paraesternal largo" (tachada por completo con una X). Sí se incluyen
+             "ECG Normal"/"Comentario del ECG" (rodeados, no tachados) y todo lo
+             demás de la página (Análisis Clínicos, Hemograma, Función Tiroidea/
+             Renal, Orina, Iones, Parámetros Diabéticos y de Riesgo Cardiovascular,
+             Factores analíticos emergentes, Función Hepática), que no tiene
+             ninguna marca de exclusión. -->
+        <div class="module-section" id="mod-laboratorio">
+
+                    <!-- SUB-BLOQUE A: RESULTADOS DEL ELECTROCARDIOGRAMA
+               La sección está tachada con una X en el escaneo (img0003 pág. 6 e
+               img0004 pág. 7). De sus 27 ítems, la base unificada ESPOL + UNEMI solo
+               guarda dos columnas: ECG_RITMO (ítem 1) y ECG_NORMAL. Se conservan esos
+               y se descarta el resto, según la regla de que lo tachado solo se
+               digitaliza si la base lo registra. -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Resultados del Electrocardiograma <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0003 + img0004</span>
+            </div>
+            <div class="card-body">
+
+            <div class="grid form-grid-2" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- ECG Ritmo</label>
+                <select class="form-select" id="ecg_ritmo" name="ecg_ritmo">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="RS">RS (ritmo sinusal)</option>
+                  <option value="RL">RL</option>
+                  <option value="SIUNSAL">SIUNSAL</option>
+                  <option value="ACXFA">ACXFA</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">ECG Normal:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="ecg_normal" value="No"> No</label>
+                  <label class="yes"><input type="radio" name="ecg_normal" value="Si" checked> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label class="field-label">Comentario del ECG</label>
+              <input type="text" class="form-input" id="ecg_comentario" placeholder="Observaciones del electrocardiograma..." name="ecg_comentario">
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE B: ANÁLISIS CLÍNICOS (una sola tarjeta: en el escaneo,
+               Hemograma / Bioquímica General / Iones / Parámetros Diabéticos /
+               Parámetros de Riesgo Cardiovascular / Factores Analíticos
+               Emergentes / Función Hepática son subtítulos DENTRO de
+               "Analisis Clinicos", no secciones aparte) -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Análisis Clínicos <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0004</span>
+            </div>
+            <div class="card-body">
+
+            <div class="condition-row" style="margin-bottom: 16px;">
+              <div class="condition-header">
+                <span class="condition-title">Prueba realizada:</span>
+                <div style="display:flex; gap:16px; align-items:center;">
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="ac_prueba" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="ac_prueba" value="Si"> Sí</label>
+                  </div>
+                  <span class="field-label">Resultado:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="ac_resultado" value="Normal" checked> Normal</label>
+                    <label><input type="radio" name="ac_resultado" value="Alterada"> Alterada</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="sub-section-header">Hemograma</div>
+            <div class="grid form-grid-4" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- Hematíes</label>
+                <input type="number" class="form-input" id="hemo_hematies" name="hemo_hematies" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Hemoglobina</label>
+                <input type="number" class="form-input" id="hemo_hemoglobina" name="hemo_hemoglobina" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- Hematocrito</label>
+                <input type="number" class="form-input" id="hemo_hematocrito" name="hemo_hematocrito" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- VCM</label>
+                <input type="number" class="form-input" id="hemo_vcm" name="hemo_vcm" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">5.- HCM</label>
+                <input type="number" class="form-input" id="hemo_hcm" name="hemo_hcm" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">6.- CHCM</label>
+                <input type="number" class="form-input" id="hemo_chcm" name="hemo_chcm" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">9.- Leucocitos</label>
+                <input type="number" class="form-input" id="hemo_leucocitos" name="hemo_leucocitos" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">10.- Neutrófilos</label>
+                <input type="number" class="form-input" id="hemo_neutrofilos" name="hemo_neutrofilos" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">11.- Eosinófilos</label>
+                <input type="number" class="form-input" id="hemo_eosinofilos" name="hemo_eosinofilos" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">12.- Basófilos</label>
+                <input type="number" class="form-input" id="hemo_basofilos" name="hemo_basofilos" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">13.- Linfocitos</label>
+                <input type="number" class="form-input" id="hemo_linfocitos" name="hemo_linfocitos" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">14.- Monocitos</label>
+                <input type="number" class="form-input" id="hemo_monocitos" name="hemo_monocitos" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">15.- Plaquetas</label>
+                <input type="number" class="form-input" id="hemo_plaquetas" name="hemo_plaquetas" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">16.- INR</label>
+                <input type="number" class="form-input" id="hemo_inr" name="hemo_inr" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">17.- Tiempo parcial de tromboplastina</label>
+                <input type="number" class="form-input" id="hemo_tpt" name="hemo_tpt" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">18.- Fibrinógeno</label>
+                <input type="number" class="form-input" id="hemo_fibrinogeno" name="hemo_fibrinogeno" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Bioquímica General</div>
+            <div class="sub-section-header">Función Tiroidea</div>
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- TSH</label>
+                <input type="number" class="form-input" id="tiroidea_tsh" name="tiroidea_tsh" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Hormonas tiroideas T4</label>
+                <input type="number" class="form-input" id="tiroidea_t4" name="tiroidea_t4" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Hormonas tiroideas T3</label>
+                <input type="number" class="form-input" id="tiroidea_t3" name="tiroidea_t3" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Función Renal</div>
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- Urea</label>
+                <input type="number" class="form-input" id="renal_urea" name="renal_urea" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Creatinina</label>
+                <input type="number" class="form-input" id="renal_creatinina" name="renal_creatinina" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- Filtrado glomerular</label>
+                <input type="number" class="form-input" id="renal_filtrado" name="renal_filtrado" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Orina</div>
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">Microalbuminuria</label>
+                <input type="number" class="form-input" id="orina_microalbuminuria" name="orina_microalbuminuria" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Iones</div>
+            <div class="grid form-grid-4" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- Potasio</label>
+                <input type="number" class="form-input" id="ion_potasio" name="ion_potasio" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Calcio</label>
+                <input type="number" class="form-input" id="ion_calcio" name="ion_calcio" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- Magnesio</label>
+                <input type="number" class="form-input" id="ion_magnesio" name="ion_magnesio" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- Sodio</label>
+                <input type="number" class="form-input" id="ion_sodio" name="ion_sodio" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Parámetros Diabéticos</div>
+            <div class="grid form-grid-4" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- Glucosa en sangre</label>
+                <input type="number" class="form-input" id="diab_glucosa" name="diab_glucosa" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Hemoglobina glicosilada</label>
+                <input type="number" class="form-input" id="diab_hba1c" name="diab_hba1c" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- HOMA IR</label>
+                <input type="number" class="form-input" id="diab_homair" name="diab_homair" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- Insulina en Ayunas</label>
+                <input type="number" class="form-input" id="diab_insulina" name="diab_insulina" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Parámetros de Riesgo Cardiovascular</div>
+            <div class="grid form-grid-4" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- Colesterol Total</label>
+                <input type="number" class="form-input" id="riesgo_colesterol" name="riesgo_colesterol" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- HDL</label>
+                <input type="number" class="form-input" id="riesgo_hdl" name="riesgo_hdl" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- LDL</label>
+                <input type="number" class="form-input" id="riesgo_ldl" name="riesgo_ldl" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- VLDL</label>
+                <input type="number" class="form-input" id="riesgo_vldl" name="riesgo_vldl" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">5.- Triglicéridos</label>
+                <input type="number" class="form-input" id="riesgo_trigliceridos" name="riesgo_trigliceridos" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">6.- Lipoproteína a</label>
+                <input type="number" class="form-input" id="riesgo_lipoproteina_a" name="riesgo_lipoproteina_a" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Apolipoproteína B</label>
+                <input type="number" class="form-input" id="riesgo_apo_b" name="riesgo_apo_b" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Factores Analíticos Emergentes</div>
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- Homocisteína</label>
+                <input type="number" class="form-input" id="emerg_homocisteina" name="emerg_homocisteina" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- PCR ultrasensible</label>
+                <input type="number" class="form-input" id="emerg_pcr" name="emerg_pcr" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- Ácido Úrico</label>
+                <input type="number" class="form-input" id="emerg_acido_urico" name="emerg_acido_urico" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Función Hepática</div>
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- GGT</label>
+                <input type="number" class="form-input" id="hepatica_ggt" name="hepatica_ggt" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- GPT (ALT)</label>
+                <input type="number" class="form-input" id="hepatica_gpt" name="hepatica_gpt" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- GOT (AST)</label>
+                <input type="number" class="form-input" id="hepatica_got" name="hepatica_got" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- Fosfatasa alcalina</label>
+                <input type="number" class="form-input" id="hepatica_fosfatasa" name="hepatica_fosfatasa" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">5.- Bilirrubina</label>
+                <input type="number" class="form-input" id="hepatica_bilirrubina" name="hepatica_bilirrubina" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label class="field-label">Comentario de los Análisis Clínicos</label>
+              <input type="text" class="form-input" id="comentario_analisis" placeholder="Observaciones generales de los análisis clínicos..." name="comentario_analisis">
+            </div>
+
+            </div>
+          </div>
+
+
+
+          <!-- SUB-BLOQUE G: INSUFICIENCIA PULMONAR
+               Fuente: escaneo/img0006.pdf (pág 15). Los ítems 5 al 8 y las
+               secciones "Insuficiencia Aortica"/"Estenosis Pulmonar" que
+               preceden a esta en la misma página están tachados con una X
+               grande y no se incluyen; se empieza justo donde termina esa X. -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Insuficiencia Pulmonar <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0006</span>
+            </div>
+            <div class="card-body">
+
+            <div class="grid form-grid-2">
+              <div class="form-field">
+                <label class="field-label">1.- Medida del chorro regurgitante <small>(%)</small></label>
+                <input type="number" class="form-input" id="ip_medida_chorro" step="0.1" min="0" max="100" placeholder="0 - 100" name="ip_medida_chorro">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Insuficiencia pulmonar</label>
+                <select class="form-select" id="ip_grado" name="ip_grado">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="No">No</option>
+                  <option value="Leve">Leve</option>
+                  <option value="Moderada">Moderada</option>
+                  <option value="Severa">Severa</option>
+                </select>
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE H: PERICARDIO -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Pericardio <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0006</span>
+            </div>
+            <div class="card-body">
+
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">1.- Derrame pericárdico:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="peri_derrame" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="peri_derrame" value="Si"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label class="field-label">2.- Grosor derrame pericárdico <small>(&lt;1cm leve, &gt;1cm moderado, &gt;2cm severo)</small></label>
+              <input type="number" class="form-input" id="ip_ancho_chorro" name="ip_ancho_chorro" style="max-width: 160px;" step="0.1" min="0" placeholder="cm">
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE I: RESULTADOS (Ecocardiograma) -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Resultados <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0006</span>
+            </div>
+            <div class="card-body">
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">1.- Ventrículo Izquierdo Dilatado:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_vi_dilatado" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="res_vi_dilatado" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row" id="row_res_vi_hipertrofico">
+                <div class="condition-header">
+                  <span class="condition-title">2.- Ventrículo Izquierdo Hipertrófico:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_vi_hipertrofico" value="No" checked onchange="toggleCondition('row_res_vi_hipertrofico', false)"> No</label>
+                    <label class="yes"><input type="radio" name="res_vi_hipertrofico" value="Si" onchange="toggleCondition('row_res_vi_hipertrofico', true)"> Sí</label>
+                  </div>
+                </div>
+                <div class="condition-details">
+                  <span class="field-label">Tipo:</span>
+                  <input type="text" class="form-input" id="res_vi_hipertrofico_tipo" name="res_vi_hipertrofico_tipo" style="flex: 1;" placeholder="Tipo de hipertrofia...">
+                </div>
+                <div class="condition-details">
+                  <span class="field-label">Tipo:</span>
+                  <input type="text" class="form-input" id="ip_tipo_especificar" name="ip_tipo_especificar" style="flex: 1;" placeholder="Especificar tipo...">
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">3.- Función Sistólica del Ventrículo Izquierdo:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_fsvi" value="Normal" checked> Normal</label>
+                    <label class="yes"><input type="radio" name="res_fsvi" value="Alterada"> Alterada</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">3.- Función Diastólica del Ventrículo Izquierdo:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_fdvi" value="Normal" checked> Normal</label>
+                    <label class="yes"><input type="radio" name="res_fdvi" value="Alterada"> Alterada</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">4.- Presiones de llenado del Ventrículo Izquierdo:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_presiones_vi" value="Normales" checked> Normales</label>
+                    <label class="yes"><input type="radio" name="res_presiones_vi" value="Alteradas"> Alteradas</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">5.- Alteraciones de la Contractilidad:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_contractilidad" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="res_contractilidad" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">6.- Ventrículo Derecho Dilatado:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_vd_dilatado" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="res_vd_dilatado" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">7.- Ventrículo Derecho Hipertrófico:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_vd_hipertrofico" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="res_vd_hipertrofico" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">8.- Función Sistólica del Ventrículo Derecho:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_fsvd" value="Normal" checked> Normal</label>
+                    <label class="yes"><input type="radio" name="res_fsvd" value="Alterada"> Alterada</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">9.- Función Diastólica del Ventrículo Derecho:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_fdvd" value="Normal" checked> Normal</label>
+                    <label class="yes"><input type="radio" name="res_fdvd" value="Alterada"> Alterada</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-3" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">10.- Raíz Aortica Dilatada:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_raiz_aortica" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="res_raiz_aortica" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">11.- AI Dilatada:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_ai_dilatada" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="res_ai_dilatada" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">12.- AD Dilatada:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_ad_dilatada" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="res_ad_dilatada" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="condition-row" id="row_res_valvulopatia" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">13.- Valvulopatía:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="res_valvulopatia" value="No" checked onchange="toggleCondition('row_res_valvulopatia', false)"> No</label>
+                  <label class="yes"><input type="radio" name="res_valvulopatia" value="Si" onchange="toggleCondition('row_res_valvulopatia', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Tipo:</span>
+                <input type="text" class="form-input" id="valvulopatia_tipo_detalle" name="valvulopatia_tipo_detalle" style="flex: 1;" placeholder="Especificar tipo de valvulopatía...">
+              </div>
+            </div>
+
+            <div class="condition-row" id="row_res_derrame" style="margin-bottom: 16px;">
+              <div class="condition-header">
+                <span class="condition-title">14.- Derrame pericárdico:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="res_derrame" value="No" checked onchange="toggleCondition('row_res_derrame', false)"> No</label>
+                  <label class="yes"><input type="radio" name="res_derrame" value="Si" onchange="toggleCondition('row_res_derrame', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuántos cms:</span>
+                <input type="number" class="form-input" id="derrame_grosor_cm" name="derrame_grosor_cm" style="width: 100px;" step="0.1" min="0" placeholder="cm">
+              </div>
+            </div>
+
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">15.- Ecocardiografía Normal:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="res_eco_normal" value="No"> No</label>
+                  <label class="yes"><input type="radio" name="res_eco_normal" value="Si" checked> Sí</label>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:5px;">
+                <span class="field-label">Comentario:</span>
+                <input type="text" class="form-input" id="res_eco_comentario" name="res_eco_comentario">
+              </div>
+            </div>
+
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">16.- Ecografía Vascular Normal:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="res_eco_vascular" value="No"> No</label>
+                  <label class="yes"><input type="radio" name="res_eco_vascular" value="Si" checked> Sí</label>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:5px;">
+                <span class="field-label">Comentario:</span>
+                <input type="text" class="form-input" id="res_eco_vascular_comentario" name="res_eco_vascular_comentario">
+              </div>
+            </div>
+
+            <div class="condition-row">
+              <div class="condition-header">
+                <span class="condition-title">17.- Ecografía Digestiva. Hígado Graso:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="res_higado_graso" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="res_higado_graso" value="Si"> Sí</label>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:5px;">
+                <span class="field-label">Comentario:</span>
+                <input type="text" class="form-input" id="res_higado_comentario" name="res_higado_comentario">
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ================= MÓDULO 6: CUESTIONARIOS DE ESTILO DE VIDA Y ESTUDIOS ================= -->
+        <!-- Fuente: escaneo/img0007.pdf (págs. 17-18 de 19). "Estudios que se le
+             ha mandado al paciente": los ítems 2 al 5 están tachados con una X
+             grande en el escaneo (Ergometría, TAC, RNM, Electrofisiología); solo
+             se incluye el ítem 1 (Análisis clínicos). -->
+        <div class="module-section" id="mod-estilovida">
+
+          <!-- SUB-BLOQUE A: CUESTIONARIO PREDIMED -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0007</span>
+            </div>
+            <div class="card-body">
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">1.- ¿Usa el aceite de oliva principalmente para cocinar?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q1" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q1" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">2.- ¿Consume dos o más cucharadas de aceite de oliva al día?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q2" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q2" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">3.- ¿Consume dos o más raciones de verduras u hortalizas al día?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q3" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q3" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">4.- ¿Consume tres o más piezas de fruta al día?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q4" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q4" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">5.- ¿Consume menos de una ración de carnes rojas/embutidos al día?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q5" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q5" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">6.- ¿Consume menos de una ración de mantequilla/margarina/nata al día?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q6" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q6" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">7.- ¿Consume menos de una bebida carbonatada/azucarada al día?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q7" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q7" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">9.- ¿Consume tres o más raciones de legumbres a la semana?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q9" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q9" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 8. Vino tinto (compuesta: "bebe" es informativo, el punto lo da el umbral semanal) -->
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">8.- ¿Bebe vino tinto?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="pred_q8_bebe" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="pred_q8_bebe" value="Si"> Sí</label>
+                </div>
+              </div>
+              <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
+                <span class="field-label">Consume tres o más vasos por semana:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="pred_q8" value="No" checked onchange="calcPredimed()"> No</label>
+                  <label class="yes"><input type="radio" name="pred_q8" value="Si" onchange="calcPredimed()"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">10.- ¿Consume tres o más raciones de pescado/mariscos a la semana?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q10" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q10" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">11.- ¿Consume dos o más raciones de pescado azul a la semana?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q11" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q11" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="condition-row" style="margin-bottom: 16px;">
+              <div class="condition-header">
+                <span class="condition-title">12.- ¿Consume menos de tres veces por semana repostería comercial?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="pred_q12" value="No" checked onchange="calcPredimed()"> No</label>
+                  <label class="yes"><input type="radio" name="pred_q12" value="Si" onchange="calcPredimed()"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 13-15: solo recolección de datos, no suman puntos (el escaneo no
+                 les asigna "= 1 punto" como al resto) -->
+            <div class="sub-section-header">Lácteos <small>(no puntúan, solo se registran)</small></div>
+            <div class="condition-row" id="row_pred_leche" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">13.- ¿Consume leche de vaca?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="pred_q13_consume" value="No" checked onchange="toggleCondition('row_pred_leche', false)"> No</label>
+                  <label class="yes"><input type="radio" name="pred_q13_consume" value="Si" onchange="toggleCondition('row_pred_leche', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Vasos al día:</span>
+                <input type="number" class="form-input" id="pred_leche_vasos_dia" name="pred_leche_vasos_dia" style="width: 70px;" step="1" min="0">
+                <span class="field-label">a la semana:</span>
+                <input type="number" class="form-input" id="pred_leche_vasos_sem" name="pred_leche_vasos_sem" style="width: 70px;" step="1" min="0">
+                <span class="field-label">Tipo de leche:</span>
+                <input type="text" class="form-input" id="pred_leche_tipo" name="pred_leche_tipo" style="flex: 1;">
+              </div>
+            </div>
+
+            <div class="condition-row" id="row_pred_queso" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">14.- ¿Consume queso?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="pred_q14_consume" value="No" checked onchange="toggleCondition('row_pred_queso', false)"> No</label>
+                  <label class="yes"><input type="radio" name="pred_q14_consume" value="Si" onchange="toggleCondition('row_pred_queso', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Veces a la semana:</span>
+                <input type="number" class="form-input" id="pred_queso_veces_sem" name="pred_queso_veces_sem" style="width: 70px;" step="1" min="0">
+                <span class="field-label">Gramos:</span>
+                <input type="number" class="form-input" id="pred_queso_gramos" name="pred_queso_gramos" style="width: 90px;" step="0.1" min="0">
+              </div>
+            </div>
+
+            <div class="condition-row" id="row_pred_yogurt" style="margin-bottom: 16px;">
+              <div class="condition-header">
+                <span class="condition-title">15.- ¿Consume yogurt?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="pred_q15_consume" value="No" checked onchange="toggleCondition('row_pred_yogurt', false)"> No</label>
+                  <label class="yes"><input type="radio" name="pred_q15_consume" value="Si" onchange="toggleCondition('row_pred_yogurt', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuántos a la semana:</span>
+                <input type="number" class="form-input" id="pred_yogurt_cant_sem" name="pred_yogurt_cant_sem" style="width: 70px;" step="1" min="0">
+                <span class="field-label">De qué tipo:</span>
+                <input type="text" class="form-input" id="pred_yogurt_tipo" name="pred_yogurt_tipo" style="flex: 1;">
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">16.- ¿Consume dos o más raciones de frutos secos a la semana?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q16" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q16" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">17.- ¿Consume cereales integrales 3-4 veces por semana?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q17" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q17" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 16px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">18.- ¿Consume preferentemente carne de pollo/pavo/conejo en vez de ternera/cerdo?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q18" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q18" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">19.- ¿Consume sofrito dos o más veces por semana?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q19" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q19" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Resultado final: calculado automáticamente por calcPredimed() -->
+            <div class="condition-row" style="background:var(--color-ice-blue); border-color:var(--color-primary-blue);">
+              <div class="condition-header">
+                <span class="condition-title" style="color:var(--color-link-hover); font-weight:700;">Resultado final, puntuación total</span>
+                <div style="display:flex; align-items:center; gap:14px;">
+                  <span class="field-label">Puntuación:</span>
+                  <input type="text" class="form-input calc" id="pred_puntuacion_total" readonly style="width: 70px; text-align:center;" value="0 / 16" name="pred_puntuacion_total">
+                  <span class="field-label" id="pred_adherencia" style="font-weight:800;">Baja adherencia</span>
+                </div>
+              </div>
+              <div class="condition-details" style="display:flex;">
+                <span class="field-label"><small>Puntuación total: &lt; 9 baja adherencia, &gt;= 9 buena adherencia</small></span>
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE B: CUESTIONARIO DE ACTIVIDAD FÍSICA -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text">Cuestionario de Actividad Física <span class="card-toggle-icon"></span></span>
+              <span class="origin-badge">img0007</span>
+            </div>
+            <div class="card-body">
+
+            <div class="form-field" style="max-width: 360px; margin-bottom: 16px;">
+              <label class="field-label">1.- ¿Qué actividad física ha hecho durante su tiempo libre el último mes?</label>
+              <select class="form-select" id="af_actividad" name="af_actividad">
+                  <option value="">-- Seleccionar --</option>
+                <option value="No realiza ninguna actividad">No realiza ninguna actividad</option>
+                <option value="Sí realiza actividad física">Sí realiza actividad física</option>
+              </select>
+            </div>
+
+            <div class="condition-row" id="row_af_aerobicos" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">2.- Realiza ejercicios aeróbicos <small>(caminar, correr, bicicleta, piscina, baile-terapia, etc.)</small>:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="af_aerobicos" value="No" checked onchange="toggleCondition('row_af_aerobicos', false)"> No</label>
+                  <label class="yes"><input type="radio" name="af_aerobicos" value="Si" onchange="toggleCondition('row_af_aerobicos', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuál:</span>
+                <input type="text" class="form-input" id="af_aero_cual" name="af_aero_cual" style="width: 140px;">
+                <span class="field-label">Veces/semana:</span>
+                <input type="number" class="form-input" id="af_aero_veces_sem" name="af_aero_veces_sem" style="width: 70px;" step="1" min="0">
+                <span class="field-label">Minutos/día:</span>
+                <input type="number" class="form-input" id="af_aero_minutos_dia" name="af_aero_minutos_dia" style="width: 70px;" step="1" min="0">
+              </div>
+            </div>
+
+            <div class="condition-row" id="row_af_anaerobicos" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">3.- Realiza ejercicios físicos anaeróbicos de fuerza <small>(pesas, abdominales, etc.)</small>:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="af_anaerobicos" value="No" checked onchange="toggleCondition('row_af_anaerobicos', false)"> No</label>
+                  <label class="yes"><input type="radio" name="af_anaerobicos" value="Si" onchange="toggleCondition('row_af_anaerobicos', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuál:</span>
+                <input type="text" class="form-input" id="af_anaero_cual" name="af_anaero_cual" style="width: 140px;">
+                <span class="field-label">Veces/semana:</span>
+                <input type="number" class="form-input" id="af_anaero_veces_sem" name="af_anaero_veces_sem" style="width: 70px;" step="1" min="0">
+                <span class="field-label">Minutos/día:</span>
+                <input type="number" class="form-input" id="af_anaero_minutos_dia" name="af_anaero_minutos_dia" style="width: 70px;" step="1" min="0">
+              </div>
+            </div>
+
+            <div class="condition-row" id="row_af_deporte">
+              <div class="condition-header">
+                <span class="condition-title">4.- ¿Hace deporte?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="af_deporte" value="No" checked onchange="toggleCondition('row_af_deporte', false)"> No</label>
+                  <label class="yes"><input type="radio" name="af_deporte" value="Si" onchange="toggleCondition('row_af_deporte', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Qué tipo:</span>
+                <input type="text" class="form-input" id="af_dep_tipo" name="af_dep_tipo" style="width: 140px;">
+                <span class="field-label">Veces/semana:</span>
+                <input type="number" class="form-input" id="af_dep_veces_sem" name="af_dep_veces_sem" style="width: 70px;" step="1" min="0">
+                <span class="field-label">Minutos/día:</span>
+                <input type="number" class="form-input" id="af_dep_minutos_dia" name="af_dep_minutos_dia" style="width: 70px;" step="1" min="0">
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+
+
+        </div>
+
+      </form>
+    </main>
+
+  </div>
+
+  <!-- TELÓN Y VENTANA FLOTANTE DEL ASISTENTE CARDIOUNEMI -->
+  <div id="chat-backdrop-widget" class="chat-backdrop-widget"></div>
+
+  <button id="btn-flotante-chat" class="btn-flotante-chat" title="Abrir Asistente CARDIOUNEMI">
+    <span class="pulso-badge"></span>
+    <svg viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+  </button>
+
+  <div id="contenedor-chat" class="ventana-chat-flotante oculta">
+    <header class="chatbot-encabezado">
+      <div class="encabezado-identidad">
+        <div class="titulos-encabezado">
+          <h2>CARDIOUNEMI</h2>
+          <span class="subtitulo">Asistente Clínico & Estadístico</span>
+        </div>
+      </div>
+
+      <div class="encabezado-metadatos">
+        <button id="btn-expandir-chat" class="btn-control" title="Ampliar / Reducir">
+          <svg viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+        </button>
+        <button id="btn-limpiar-chat" class="btn-control" title="Limpiar conversación">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        </button>
+        <button id="btn-cerrar-chat" class="btn-control btn-cerrar" title="Cerrar Asistente">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="chatbot-cuerpo-mensajes" id="chat-messages">
+      <!-- Área limpia de plantilla -->
+    </main>
+
+    <div id="typing-indicator" class="indicador-escribiendo oculto">
+      <div class="burbuja-animada">
+        <span class="punto"></span>
+        <span class="punto"></span>
+        <span class="punto"></span>
+      </div>
+      <span class="texto-procesando">CARDIOUNEMI está procesando...</span>
+    </div>
+
+    <footer class="chatbot-barra-entrada">
+      <form id="formulario-chat" onsubmit="return false;">
+        <div class="campo-entrada-grupo">
+          <input
+            type="text"
+            id="chat-input"
+            placeholder="Escriba su consulta clínica o estadística..."
+            autocomplete="off"
+            required
+          />
+          <button type="submit" id="send-btn" class="btn-enviar" title="Enviar consulta">
+            <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          </button>
+        </div>
+      </form>
+    </footer>
+  </div>
+
+  <script src="assets/vendor/marked.min.js"></script>
+  <script src="assets/data/dashboard-cardiounemi-data.js"></script>
+  <script src="js/pacientes.js"></script>
+  <script src="js/menu-usuario.js"></script>
+  <script src="js/formulario.js"></script>
+  <script src="js/chat-engine.js"></script>
+</body>
+</html>
