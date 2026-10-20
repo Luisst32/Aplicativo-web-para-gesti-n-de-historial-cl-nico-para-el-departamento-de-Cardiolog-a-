@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iniciar sesión - Portal Cardiológico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+
+<div class="card">
+
+  <div class="illustration-panel">
+    <svg width="100%" height="100%" viewBox="0 0 420 560" preserveAspectRatio="xMidYMid slice" role="img" aria-hidden="true">
+      <title>Ilustración cardiológica</title>
+      <desc>Panel azul con un corazón coral, electrocardiograma y estetoscopio, símbolo del cuidado cardiológico.</desc>
+
+      <rect x="0" y="0" width="420" height="560" fill="#3AA0FF"/>
+
+      <circle cx="380" cy="50" r="150" fill="#CFE9FF" opacity="0.22"/>
+      <circle cx="30" cy="500" r="140" fill="#1B2A41" opacity="0.16"/>
+      <circle cx="60" cy="90" r="70" fill="#CFE9FF" opacity="0.15"/>
+
+      <path d="M0 494 C 90 468, 160 512, 245 504 C 320 496, 372 472, 420 480 L 420 560 L 0 560 Z" fill="#1B2A41"/>
+
+      <circle cx="210" cy="280" r="165" fill="#F4FAFF" opacity="0.12"/>
+
+      <g transform="translate(210,286) scale(0.82) translate(-296.5,-247)">
+        <path d="M400 305 C 326 252, 296 212, 296 176 C 296 144, 320 124, 348 124 C 372 124, 391 139, 400 159 C 409 139, 428 124, 452 124 C 480 124, 504 144, 504 176 C 504 212, 474 252, 400 305 Z" fill="#FF5A5F"/>
+        <path d="M400 159 C 409 139, 428 124, 452 124 C 480 124, 504 144, 504 176 C 504 212, 474 252, 400 305 C 436 250, 456 212, 458 178 C 460 148, 440 130, 400 159 Z" fill="#1B2A41" opacity="0.16"/>
+        <path d="M348 124 C 322 126, 302 146, 302 176 C 302 200, 318 228, 346 258 C 328 222, 320 196, 322 174 C 324 148, 334 132, 348 124 Z" fill="#F4FAFF" opacity="0.28"/>
+        <path d="M312 210 L 348 210 L 358 190 L 372 242 L 386 168 L 398 210 L 462 210" fill="none" stroke="#F4FAFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+
+        <path d="M94 114 C 100 168, 130 198, 168 220" fill="none" stroke="#1B2A41" stroke-width="15" stroke-linecap="round"/>
+        <path d="M188 88 C 194 154, 186 198, 179 218" fill="none" stroke="#1B2A41" stroke-width="15" stroke-linecap="round"/>
+        <circle cx="94" cy="102" r="16" fill="#1B2A41"/>
+        <circle cx="188" cy="76" r="16" fill="#1B2A41"/>
+        <circle cx="176" cy="226" r="16" fill="#1B2A41"/>
+        <path d="M176 238 C 162 334, 208 418, 310 422 C 396 425, 448 378, 462 324" fill="none" stroke="#1B2A41" stroke-width="16" stroke-linecap="round"/>
+        <circle cx="472" cy="306" r="42" fill="#1B2A41"/>
+        <circle cx="472" cy="306" r="28" fill="#FF5A5F"/>
+        <circle cx="472" cy="306" r="13" fill="#F4FAFF"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="form-panel">
+    <h1><span class="title-accent"></span>CARDIOUNEMI</h1>
+    <p class="subtitle">Inicia sesión para acceder al panel de tus pacientes</p>
+
+    <div class="alert-box" id="alertBox"></div>
+
+    <form id="loginForm" novalidate>
+
+      <div class="field">
+        <label for="email">Correo</label>
+        <div class="input-wrap">
+          <input type="email" id="email" name="email" placeholder="tu@correo.com" autocomplete="email" autofocus required/>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="password">Contraseña</label>
+        <div class="input-wrap">
+          <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required/>
+          <button type="button" class="btn btn-toggle-eye" id="btnEye" aria-label="Mostrar u ocultar contraseña" title="Mostrar u ocultar contraseña">
+            <svg id="iconEye" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg id="iconEyeSlash" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="options-row">
+        <label class="keep-session"><input type="checkbox" id="keepSession" checked/>Mantener sesión</label>
+        <button type="button" class="btn forgot-link" id="btnForgot">¿Olvidaste tu contraseña?</button>
+      </div>
+
+      <button type="submit" class="btn btn-entrar" id="btnEntrar">Entrar</button>
+    </form>
+  </div>
+
+</div>
+
+<script src="js/login.js"></script>
+</body>
+</html>
