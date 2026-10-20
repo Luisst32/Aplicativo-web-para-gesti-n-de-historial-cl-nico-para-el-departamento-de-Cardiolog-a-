@@ -160,7 +160,7 @@ function aplicarOrdenDesdeSelect(valor) {
 }
 
 function actualizarIconosOrdenCabeceras() {
-  const columnas = ['nombre', 'historiales', 'fecha'];
+  const columnas = ['nombre'];
   columnas.forEach(col => {
     const th = document.querySelector(`.th-sortable[data-sort="${col}"]`);
     const icono = document.getElementById(`sort-icon-${col}`);
@@ -266,12 +266,8 @@ function cambiarPagina(nuevaPagina) {
 
 function actualizarStatsCards() {
   const totalPacientes = pacientes.length;
-  let totalHistoriales = 0;
-
-  pacientes.forEach(p => {
-    const hList = obtenerHistorialesPaciente(p);
-    totalHistoriales += hList.length;
-  });
+  // Cada paciente tiene un único historial clínico consolidado
+  const totalHistoriales = totalPacientes;
 
   const elTotalP = document.getElementById('statTotalPacientes');
   const elTotalH = document.getElementById('statTotalHistoriales');
@@ -300,7 +296,6 @@ function crearFilaPaciente(p) {
 
   const inits = inicialesDe(p.nombre);
   const historiales = obtenerHistorialesPaciente(p);
-  const cantHistoriales = historiales.length;
   const ultHistorial = historiales[0] || null;
   const fechaUltima = ultHistorial ? formatearFechaLegible(ultHistorial.fechaVisita) : '--';
 
@@ -312,7 +307,7 @@ function crearFilaPaciente(p) {
       <div class="celda-paciente">
         <div class="avatar-paciente">${inits}</div>
         <div class="info-paciente">
-          <span class="nombre-paciente" title="Haga clic para ver los historiales clínicos de este paciente">${p.nombre}</span>
+          <span class="nombre-paciente" title="Haga clic para ver el expediente y ficha médica de este paciente">${p.nombre}</span>
           <div class="meta-secundaria">
             <span>C.I: ${p.cedula || '0900000000'}</span>
             <span>·</span>
@@ -320,15 +315,6 @@ function crearFilaPaciente(p) {
           </div>
         </div>
       </div>
-    </td>
-    <td>
-      <button type="button" class="historiales-badge" onclick="event.stopPropagation(); abrirHistorialesPaciente('${p.id}')" title="Ver los ${cantHistoriales} historiales clínicos de ${p.nombre}">
-        <span class="pulse-point"></span>
-        <span>${cantHistoriales} ${cantHistoriales === 1 ? 'historial' : 'historiales'}</span>
-      </button>
-    </td>
-    <td>
-      <span class="fecha-atencion">${fechaUltima}</span>
     </td>
   `;
 
@@ -372,32 +358,27 @@ function abrirHistorialesPaciente(pacienteId) {
   document.getElementById('expEdadSexo').textContent = `${calcAgeStr(p.fechaNac)} · ${p.sexo === 'H' ? 'Hombre' : 'Mujer'}`;
   document.getElementById('expEstamentoFacultad').textContent = `${p.estamento} · ${p.facultad || 'UNEMI'}`;
 
-  // 3. Renderizar la lista de historiales clínicos (despejada y ordenada)
+  // 3. Renderizar el historial clínico (despejado y ordenado)
   const historiales = obtenerHistorialesPaciente(p);
   const containerTimeline = document.getElementById('timelineHistoriales');
   containerTimeline.innerHTML = '';
 
-  document.getElementById('expContadorHistoriales').textContent = `${historiales.length} ${historiales.length === 1 ? 'evaluación registrada' : 'evaluaciones registradas'}`;
-
-  historiales.forEach((h, idx) => {
+  historiales.forEach((h) => {
     const cardH = document.createElement('div');
     cardH.className = 'historial-fila-limpia';
 
     const fechaFmt = formatearFechaLegible(h.fechaVisita);
-    const imcH = h.imc || calcIMCValor(h.peso, h.talla);
 
     cardH.innerHTML = `
       <div class="historial-info-principal">
         <div class="historial-encabezado-linea">
-          <span class="historial-tag-numero">Historial #${h.numeroVisita || (historiales.length - idx)}</span>
+          <span class="historial-tag-numero">Historial Clínico Único</span>
+          <span style="font-size:0.84rem; color:var(--color-text-muted); font-weight:600;">Última atención: ${fechaFmt}</span>
+          <span style="font-size:0.75rem; background:var(--color-ice-blue); color:var(--color-primary-blue); padding:2px 8px; border-radius:4px; font-weight:600;">Ficha Médica Activa</span>
         </div>
 
         <div class="historial-evaluador-linea">
           <span><strong>Evaluador:</strong> ${h.medico || 'Dra. María Pérez - Cardiología UNEMI'}</span>
-        </div>
-
-        <div class="historial-diagnostico-limpio">
-          ${h.diagnostico || 'Sin observaciones adicionales registradas.'}
         </div>
       </div>
 
@@ -406,8 +387,8 @@ function abrirHistorialesPaciente(pacienteId) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
           <span>PDF</span>
         </button>
-        <a class="btn btn-sm btn-primary" href="formulario-clinica.html?paciente=${encodeURIComponent(p.id)}&historial=${encodeURIComponent(h.id)}" title="Abrir el formulario clínico completo de esta evaluación">
-          <span>Abrir Ficha Clínica Completa &rarr;</span>
+        <a class="btn btn-sm btn-primary" href="formulario-clinica.html?paciente=${encodeURIComponent(p.id)}" title="Abrir la ficha médica completa para analizar antecedentes y registrar atención">
+          <span>Abrir Ficha Médica Completa &rarr;</span>
         </a>
       </div>
     `;
@@ -449,38 +430,14 @@ function volverAListadoPacientes() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// =========================================================================
-// REGISTRAR NUEVO HISTORIAL CLÍNICO
-// =========================================================================
-
+// Al atender al paciente se navega directamente a su ficha clínica para consultar antecedentes
 function abrirModalNuevoHistorial(pacienteId) {
-  let p = null;
-  if (pacienteId) {
-    p = pacientes.find(item => item.id === pacienteId);
-    if (p) pacienteActivoExpediente = p;
-  } else {
-    p = pacienteActivoExpediente;
-  }
-
+  const p = pacienteId ? pacientes.find(item => item.id === pacienteId) : pacienteActivoExpediente;
   if (!p) {
-    alert('Por favor seleccione un paciente para registrar un nuevo historial.');
+    alert('Por favor seleccione un paciente.');
     return;
   }
-
-  document.getElementById('nh_nombrePaciente').textContent = p.nombre;
-
-  const hoyStr = new Date().toISOString().split('T')[0];
-  document.getElementById('nh_fecha').value = hoyStr;
-  document.getElementById('nh_motivo').value = 'Control de Factores de Riesgo Cardiovascular';
-  document.getElementById('nh_tas').value = p.tas || 120;
-  document.getElementById('nh_tsi').value = p.tsi || 80;
-  document.getElementById('nh_peso').value = p.peso || 70;
-  document.getElementById('nh_talla').value = p.talla || 170;
-
-  const modal = document.getElementById('modalNuevoHistorial');
-  if (modal) {
-    modal.classList.add('active');
-  }
+  window.location.href = `formulario-clinica.html?paciente=${encodeURIComponent(p.id)}`;
 }
 
 function cerrarModalNuevoHistorial() {
@@ -492,34 +449,7 @@ function cerrarModalNuevoHistorial() {
 
 function confirmarNuevoHistorial() {
   if (!pacienteActivoExpediente) return;
-
-  const fechaVisita = document.getElementById('nh_fecha').value;
-  if (!fechaVisita) {
-    alert('Por favor seleccione la fecha de la consulta.');
-    return;
-  }
-
-  const datosNuevoHistorial = {
-    fechaVisita: fechaVisita,
-    tipo: document.getElementById('nh_tipo').value,
-    motivo: document.getElementById('nh_motivo').value.trim() || 'Consulta Cardiológica',
-    medico: document.getElementById('nh_medico').value.trim() || 'Dra. María Pérez - Cardiología UNEMI',
-    tas: parseInt(document.getElementById('nh_tas').value, 10) || 120,
-    tsi: parseInt(document.getElementById('nh_tsi').value, 10) || 80,
-    peso: parseFloat(document.getElementById('nh_peso').value) || 70,
-    talla: parseFloat(document.getElementById('nh_talla').value) || 170,
-    satO2: 98,
-    perimetro: pacienteActivoExpediente.perimetro || 85,
-    riesgoGlobal: 'Bajo',
-    diagnostico: 'Nueva evaluación cardiológica registrada. Se abre el formulario clínico para completar exploración y cuestionarios.'
-  };
-
-  const nuevoH = crearNuevoHistorial(pacienteActivoExpediente.id, datosNuevoHistorial);
-
-  cerrarModalNuevoHistorial();
-
-  // Redirigir a la ficha clínica completa cargando este nuevo historial
-  window.location.href = `formulario-clinica.html?paciente=${encodeURIComponent(pacienteActivoExpediente.id)}&historial=${encodeURIComponent(nuevoH.id)}&nuevo=1`;
+  window.location.href = `formulario-clinica.html?paciente=${encodeURIComponent(pacienteActivoExpediente.id)}`;
 }
 
 // =========================================================================
@@ -722,7 +652,7 @@ function generarExportacionCSV(pacs, estructura, mods, fechaIso) {
     cols.push('Codigo', 'Cedula', 'Nombre', 'FechaNacimiento', 'Edad', 'Sexo', 'Estamento', 'Facultad', 'Ciudad');
   }
   if (estructura === 'historiales') {
-    if (mods.modClinico) cols.push('NumeroVisita', 'FechaVisita', 'TipoEvaluacion', 'Motivo', 'Medico', 'EstadoConsulta', 'Diagnostico');
+    if (mods.modClinico) cols.push('NumeroVisita', 'FechaVisita', 'TipoEvaluacion', 'Motivo', 'Medico', 'EstadoConsulta');
     if (mods.modBiometria) cols.push('TAS', 'TSI', 'Peso', 'Talla', 'IMC', 'ASC', 'SatO2', 'Perimetro', 'RiesgoGlobal');
   } else {
     cols.push('TotalHistoriales');
@@ -742,7 +672,7 @@ function generarExportacionCSV(pacs, estructura, mods, fechaIso) {
           fila.push(p.codigo, p.cedula || '', p.nombre, p.fechaNac, parseInt(calcAgeStr(p.fechaNac), 10), p.sexo, p.estamento, p.facultad, p.ciudad || '');
         }
         if (mods.modClinico) {
-          fila.push(h.numeroVisita, h.fechaVisita, h.tipo || '', h.motivo || '', h.medico || '', h.estado || '', h.diagnostico || '');
+          fila.push(h.numeroVisita, h.fechaVisita, h.tipo || '', h.motivo || '', h.medico || '', h.estado || '');
         }
         if (mods.modBiometria) {
           fila.push(h.tas || p.tas || '', h.tsi || p.tsi || '', h.peso || p.peso || '', h.talla || p.talla || '', h.imc || calcIMCValor(h.peso, h.talla) || '', h.asc || calcASCValor(h.peso, h.talla) || '', h.satO2 || 98, h.perimetro || p.perimetro || '', h.riesgoGlobal || 'Bajo');
@@ -1130,10 +1060,6 @@ function exportarPDFHistorial(pacienteId, historialId) {
           <span class="print-field-value" style="color:#1d4ed8; font-weight:800;">${h.riesgoGlobal || 'Bajo'}</span>
         </div>
         <div class="print-field print-field-full">
-          <span class="print-field-label">Diagnóstico y Conclusiones Médicas</span>
-          <span class="print-field-value">${h.diagnostico || 'Evaluación clínica completa registrada.'}</span>
-        </div>
-        <div class="print-field print-field-full">
           <span class="print-field-label">Médico o Especialista Evaluador</span>
           <span class="print-field-value">${h.medico || 'Dpto. de Cardiología UNEMI'}</span>
         </div>
@@ -1163,7 +1089,6 @@ function exportarPDFPaciente(pacienteId) {
       <td style="padding:8px 6px;">${h.peso || '--'} kg</td>
       <td style="padding:8px 6px;">${h.imc || calcIMCValor(h.peso, h.talla)}</td>
       <td style="padding:8px 6px;"><strong>${h.riesgoGlobal || 'Bajo'}</strong></td>
-      <td style="padding:8px 6px; font-size:0.75rem;">${h.diagnostico || ''}</td>
     </tr>
   `).join('');
 
@@ -1200,20 +1125,19 @@ function exportarPDFPaciente(pacienteId) {
       </div>
 
       <h3 style="font-size:1.05rem; color:#0f172a; border-bottom:1.5px solid #cbd5e1; padding-bottom:6px; margin-top:20px;">
-        Historiales Clínicos y Consultas Realizadas (${historiales.length})
+        Historial Clínico Único (Ficha Médica)
       </h3>
 
       <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-top:10px;">
         <thead>
           <tr style="background:#f8fafc; border-bottom:2px solid #cbd5e1; text-align:left;">
-            <th style="padding:6px;">Visita</th>
+            <th style="padding:6px;">Historial</th>
             <th style="padding:6px;">Fecha</th>
-            <th style="padding:6px;">Tipo de Evaluación</th>
+            <th style="padding:6px;">Tipo de Ficha</th>
             <th style="padding:6px;">PA</th>
             <th style="padding:6px;">Peso</th>
             <th style="padding:6px;">IMC</th>
             <th style="padding:6px;">Riesgo</th>
-            <th style="padding:6px;">Diagnóstico / Observaciones</th>
           </tr>
         </thead>
         <tbody>

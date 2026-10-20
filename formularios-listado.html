@@ -111,8 +111,8 @@
           <select id="ordenarPor" class="form-select slicer-select">
             <option value="nombre_asc">Nombre (A-Z)</option>
             <option value="nombre_desc">Nombre (Z-A)</option>
-            <option value="historiales_desc">Más Historiales</option>
             <option value="fecha_desc">Fecha más reciente</option>
+            <option value="fecha_asc">Fecha más antigua</option>
           </select>
         </div>
       </div>
@@ -143,7 +143,7 @@
             </div>
             <div>
               <div class="stat-metric-value" id="statTotalHistoriales">--</div>
-              <div class="stat-metric-label">Historiales Clínicos</div>
+              <div class="stat-metric-label">Historiales Clínicos (1 por Paciente)</div>
             </div>
           </div>
         </div>
@@ -159,12 +159,6 @@
                   </th>
                   <th class="th-sortable" data-sort="nombre" onclick="cambiarOrdenPorColumna('nombre')">
                     <span>Paciente</span> <span class="sort-icon" id="sort-icon-nombre">⇅</span>
-                  </th>
-                  <th class="th-sortable" data-sort="historiales" onclick="cambiarOrdenPorColumna('historiales')">
-                    <span>Cantidad de Historias</span> <span class="sort-icon" id="sort-icon-historiales">⇅</span>
-                  </th>
-                  <th class="th-sortable" data-sort="fecha" onclick="cambiarOrdenPorColumna('fecha')">
-                    <span>Fecha</span> <span class="sort-icon" id="sort-icon-fecha">⇅</span>
                   </th>
                 </tr>
               </thead>
@@ -221,23 +215,13 @@
                 <span id="expEstamentoFacultad">--</span>
               </div>
             </div>
-
-            <div class="expediente-acciones-header">
-              <button type="button" class="btn btn-primary" onclick="abrirModalNuevoHistorial()" title="Registrar una nueva evaluación clínica">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                <span>Registrar Nuevo Historial</span>
-              </button>
-            </div>
           </div>
 
-          <!-- Título de sección de historiales -->
+          <!-- Título de sección del expediente -->
           <div class="expediente-historiales-cabecera">
-            <div style="display:flex; align-items:center; gap:10px;">
-              <h3 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--color-navy);">
-                Historiales Clínicos y Consultas Realizadas
-              </h3>
-              <span class="historiales-badge" id="expContadorHistoriales">0 registrados</span>
-            </div>
+            <h3 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--color-navy);">
+              Historial Clínico (Ficha Médica)
+            </h3>
           </div>
 
           <!-- Lista ordenada y limpia de historiales (sin saturación de signos ni código) -->

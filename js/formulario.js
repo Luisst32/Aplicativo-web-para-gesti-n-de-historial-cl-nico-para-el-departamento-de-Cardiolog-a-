@@ -12,14 +12,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   pacienteActual = paciente;
 
-  if (idHistorial) {
-    historialActual = obtenerHistorialPorId(paciente.id, idHistorial);
-  }
-  if (!historialActual) {
-    historialActual = obtenerUltimoHistorial(paciente);
-  }
+  // Cada paciente tiene un único historial clínico (ficha médica)
+  historialActual = obtenerUltimoHistorial(paciente);
 
-  // Actualizar enlace "Volver al Expediente" para volver directamente al modal de este paciente
+  // Actualizar enlace "Volver al Expediente" para volver directamente a la vista de este paciente
   const btnVolver = document.getElementById('btnVolverListado');
   if (btnVolver) {
     btnVolver.href = `formularios-listado.html?paciente=${encodeURIComponent(paciente.id)}`;
@@ -28,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Actualizar badge de historial activo en el header
   const badgeTxt = document.getElementById('textoHistorialActivo');
   if (badgeTxt && historialActual) {
-    badgeTxt.textContent = `Historial #${historialActual.numeroVisita || 1} · ${historialActual.tipo || 'Evaluación'} (${historialActual.fechaVisita || ''})`;
+    badgeTxt.textContent = `Historial Clínico Único · ${historialActual.fechaVisita || ''}`;
   }
 
   // Fecha visita por defecto del historial o de hoy
@@ -553,9 +549,7 @@ function guardarFichaCompleta() {
   };
 
   try {
-    if (historialActual && historialActual.id) {
-      localStorage.setItem('cardiounemi_ficha_' + codigo + '_' + historialActual.id, JSON.stringify(fichaGuardada));
-    }
+    // Persistencia centralizada: 1 historial clínico único por paciente
     localStorage.setItem('cardiounemi_ficha_' + codigo, JSON.stringify(fichaGuardada));
 
     // Sincronizar en el objeto en memoria del paciente y en su historial activo
@@ -567,6 +561,7 @@ function guardarFichaCompleta() {
       const pTas = parseInt(document.getElementById('f_tas')?.value, 10) || p.tas;
       const pTsi = parseInt(document.getElementById('f_tsi')?.value, 10) || p.tsi;
       const pSat = parseInt(document.getElementById('f_sat_o2')?.value, 10) || p.satO2;
+      const fVis = document.getElementById('f_fecha_visita')?.value;
 
       p.peso = pPeso;
       p.talla = pTalla;
@@ -585,12 +580,13 @@ function guardarFichaCompleta() {
         historialActual.imc = calcIMCValor(pPeso, pTalla);
         historialActual.asc = calcASCValor(pPeso, pTalla);
         historialActual.estado = 'Completada';
+        if (fVis) historialActual.fechaVisita = fVis;
+        p.historiales = [historialActual];
         persistirHistorialesPaciente(p.id, p.historiales);
       }
     }
 
-    const etiquetaH = historialActual ? `Historial #${historialActual.numeroVisita}` : 'Ficha Clínica';
-    mostrarNotificacionToast(`✓ ${etiquetaH} de ${p ? p.nombre : codigo} guardado exitosamente en el expediente.`);
+    mostrarNotificacionToast(`✓ Historial Clínico de ${p ? p.nombre : codigo} guardado exitosamente en el expediente.`);
   } catch (err) {
     console.error('Error al guardar en localStorage:', err);
     alert('Ficha guardada en la sesión actual.');
@@ -600,12 +596,9 @@ function guardarFichaCompleta() {
 // RESTAURAR FICHA CLÍNICA PREVIAMENTE GUARDADA
 function restaurarFichaPaciente(codigo, idHistorial) {
   try {
-    let raw = null;
-    if (idHistorial) {
+    let raw = localStorage.getItem('cardiounemi_ficha_' + codigo);
+    if (!raw && idHistorial) {
       raw = localStorage.getItem('cardiounemi_ficha_' + codigo + '_' + idHistorial);
-    }
-    if (!raw) {
-      raw = localStorage.getItem('cardiounemi_ficha_' + codigo);
     }
     if (!raw) return;
     const ficha = JSON.parse(raw);

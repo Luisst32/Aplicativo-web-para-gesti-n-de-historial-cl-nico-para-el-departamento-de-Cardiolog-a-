@@ -958,12 +958,6 @@ body {
   color: var(--color-navy);
 }
 
-.historial-diagnostico-limpio {
-  font-size: 0.82rem;
-  color: #475569;
-  font-style: italic;
-  line-height: 1.35;
-}
 
 .historial-acciones-derecha {
   display: flex;
