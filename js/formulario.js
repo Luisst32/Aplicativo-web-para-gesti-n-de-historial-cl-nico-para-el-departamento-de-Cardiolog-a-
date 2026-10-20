@@ -1,22 +1,45 @@
+let pacienteActual = null;
+let historialActual = null;
+
 document.addEventListener('DOMContentLoaded', () => {
-  // Cada ficha es de UN paciente: se abre desde el listado con
-  // ?paciente=<id>. Sin un paciente válido no hay ficha que mostrar.
-  const idPaciente = new URLSearchParams(location.search).get('paciente');
+  const urlParams = new URLSearchParams(location.search);
+  const idPaciente = urlParams.get('paciente');
+  const idHistorial = urlParams.get('historial');
   const paciente = pacientes.find(p => p.id === idPaciente);
   if (!paciente) {
     location.replace('formularios-listado.html');
     return;
   }
+  pacienteActual = paciente;
 
-  // Fecha visita por defecto hoy
-  const hoy = new Date().toISOString().split('T')[0];
+  if (idHistorial) {
+    historialActual = obtenerHistorialPorId(paciente.id, idHistorial);
+  }
+  if (!historialActual) {
+    historialActual = obtenerUltimoHistorial(paciente);
+  }
+
+  // Actualizar enlace "Volver al Expediente" para volver directamente al modal de este paciente
+  const btnVolver = document.getElementById('btnVolverListado');
+  if (btnVolver) {
+    btnVolver.href = `formularios-listado.html?paciente=${encodeURIComponent(paciente.id)}`;
+  }
+
+  // Actualizar badge de historial activo en el header
+  const badgeTxt = document.getElementById('textoHistorialActivo');
+  if (badgeTxt && historialActual) {
+    badgeTxt.textContent = `Historial #${historialActual.numeroVisita || 1} · ${historialActual.tipo || 'Evaluación'} (${historialActual.fechaVisita || ''})`;
+  }
+
+  // Fecha visita por defecto del historial o de hoy
   const fVis = document.getElementById('f_fecha_visita');
-  if (fVis) fVis.value = hoy;
+  if (fVis) {
+    fVis.value = (historialActual && historialActual.fechaVisita) ? historialActual.fechaVisita : new Date().toISOString().split('T')[0];
+  }
 
-  // Formulario limpio y luego los datos del paciente (y su ficha guardada,
-  // si ya se había guardado en este navegador)
+  // Formulario limpio y luego los datos del paciente e historial
   limpiarFormularioCompleto();
-  seleccionarPaciente(paciente);
+  seleccionarPaciente(paciente, historialActual);
 
   restringirCamposNumericos();
 });
@@ -387,13 +410,13 @@ function calcIMC() {
   }
 }
 
-// SELECCIÓN Y CARGA DE DATOS DEL PACIENTE
-function seleccionarPaciente(p) {
+// SELECCIÓN Y CARGA DE DATOS DEL PACIENTE E HISTORIAL
+function seleccionarPaciente(p, h) {
 
   document.getElementById('heroNombre').textContent = p.nombre;
   const edadStr = calcAgeStr(p.fechaNac);
   document.getElementById('heroEdad').textContent = edadStr;
-  document.getElementById('heroCodigo').textContent = p.codigo;
+  document.getElementById('heroCodigo').textContent = (h && h.codigoEstudio) ? h.codigoEstudio : p.codigo;
   document.getElementById('heroFechaNac').textContent = p.fechaNac;
   document.getElementById('heroSexo').textContent = p.sexo === 'H' ? 'Hombre' : 'Mujer';
   document.getElementById('heroEstamento').textContent = p.estamento;
@@ -402,7 +425,7 @@ function seleccionarPaciente(p) {
   const inits = p.nombre.split(' ').map(n => n[0]).slice(0, 2).join('');
   document.getElementById('heroAvatar').textContent = inits;
 
-  document.getElementById('f_codigo').value = p.codigo;
+  document.getElementById('f_codigo').value = (h && h.codigoEstudio) ? h.codigoEstudio : p.codigo;
   const trozos = (p.nombre || '').trim().split(/\s+/);
   document.getElementById('f_nombre').value = trozos.slice(0, trozos.length > 2 ? 1 : 1).join(' ');
   document.getElementById('f_apellido1').value = trozos[1] || '';
@@ -421,20 +444,28 @@ function seleccionarPaciente(p) {
   document.getElementById('f_sexo').value = p.sexo;
   document.getElementById('f_estamento').value = p.estamento;
 
-  document.getElementById('f_peso').value = p.peso || '';
-  document.getElementById('f_talla').value = p.talla || '';
-  document.getElementById('f_perimetro').value = p.perimetro || '';
+  // Medidas y constantes del historial específico (o de paciente si no hay historial)
+  const pesoVal = (h && h.peso) ? h.peso : (p.peso || '');
+  const tallaVal = (h && h.talla) ? h.talla : (p.talla || '');
+  const perimetroVal = (h && h.perimetro) ? h.perimetro : (p.perimetro || '');
+  const tasVal = (h && h.tas) ? h.tas : (p.tas || '');
+  const tsiVal = (h && h.tsi) ? h.tsi : (p.tsi || '');
+  const satVal = (h && h.satO2) ? h.satO2 : (p.satO2 || '');
 
-  if (document.getElementById('f_sat_o2')) document.getElementById('f_sat_o2').value = p.satO2 || '';
-  if (document.getElementById('f_tas')) document.getElementById('f_tas').value = p.tas || '';
-  if (document.getElementById('f_tsi')) document.getElementById('f_tsi').value = p.tsi || '';
-  if (document.getElementById('heroSatO2')) document.getElementById('heroSatO2').textContent = p.satO2 ? p.satO2 + '%' : '--';
+  document.getElementById('f_peso').value = pesoVal;
+  document.getElementById('f_talla').value = tallaVal;
+  document.getElementById('f_perimetro').value = perimetroVal;
+
+  if (document.getElementById('f_sat_o2')) document.getElementById('f_sat_o2').value = satVal;
+  if (document.getElementById('f_tas')) document.getElementById('f_tas').value = tasVal;
+  if (document.getElementById('f_tsi')) document.getElementById('f_tsi').value = tsiVal;
+  if (document.getElementById('heroSatO2')) document.getElementById('heroSatO2').textContent = satVal ? satVal + '%' : '--';
   actualizarHeroPresion();
 
   calcIMC();
 
-  // Restaurar ficha si el paciente ya fue guardado previamente en este navegador
-  restaurarFichaPaciente(p.codigo);
+  // Restaurar ficha si el paciente y este historial ya fueron guardados
+  restaurarFichaPaciente(p.codigo, h ? h.id : null);
 }
 
 // NAVEGACIÓN Y SCROLL SUAVE ENTRE MÓDULOS UNIFICADOS
@@ -516,25 +547,50 @@ function guardarFichaCompleta() {
 
   const fichaGuardada = {
     codigo: codigo,
+    idHistorial: historialActual ? historialActual.id : null,
     fechaGuardado: new Date().toISOString(),
     datos: data
   };
 
   try {
+    if (historialActual && historialActual.id) {
+      localStorage.setItem('cardiounemi_ficha_' + codigo + '_' + historialActual.id, JSON.stringify(fichaGuardada));
+    }
     localStorage.setItem('cardiounemi_ficha_' + codigo, JSON.stringify(fichaGuardada));
 
-    // Sincronizar en el objeto en memoria del paciente
-    const p = pacientes.find(item => item.codigo === codigo);
+    // Sincronizar en el objeto en memoria del paciente y en su historial activo
+    const p = pacienteActual || pacientes.find(item => item.codigo === codigo);
     if (p) {
-      if (document.getElementById('f_peso')) p.peso = parseFloat(document.getElementById('f_peso').value) || p.peso;
-      if (document.getElementById('f_talla')) p.talla = parseFloat(document.getElementById('f_talla').value) || p.talla;
-      if (document.getElementById('f_perimetro')) p.perimetro = parseFloat(document.getElementById('f_perimetro').value) || p.perimetro;
-      if (document.getElementById('f_tas')) p.tas = parseInt(document.getElementById('f_tas').value, 10) || p.tas;
-      if (document.getElementById('f_tsi')) p.tsi = parseInt(document.getElementById('f_tsi').value, 10) || p.tsi;
-      if (document.getElementById('f_sat_o2')) p.satO2 = parseInt(document.getElementById('f_sat_o2').value, 10) || p.satO2;
+      const pPeso = parseFloat(document.getElementById('f_peso')?.value) || p.peso;
+      const pTalla = parseFloat(document.getElementById('f_talla')?.value) || p.talla;
+      const pPerim = parseFloat(document.getElementById('f_perimetro')?.value) || p.perimetro;
+      const pTas = parseInt(document.getElementById('f_tas')?.value, 10) || p.tas;
+      const pTsi = parseInt(document.getElementById('f_tsi')?.value, 10) || p.tsi;
+      const pSat = parseInt(document.getElementById('f_sat_o2')?.value, 10) || p.satO2;
+
+      p.peso = pPeso;
+      p.talla = pTalla;
+      p.perimetro = pPerim;
+      p.tas = pTas;
+      p.tsi = pTsi;
+      p.satO2 = pSat;
+
+      if (historialActual) {
+        historialActual.peso = pPeso;
+        historialActual.talla = pTalla;
+        historialActual.perimetro = pPerim;
+        historialActual.tas = pTas;
+        historialActual.tsi = pTsi;
+        historialActual.satO2 = pSat;
+        historialActual.imc = calcIMCValor(pPeso, pTalla);
+        historialActual.asc = calcASCValor(pPeso, pTalla);
+        historialActual.estado = 'Completada';
+        persistirHistorialesPaciente(p.id, p.historiales);
+      }
     }
 
-    mostrarNotificacionToast(`✓ Ficha Clínica de ${codigo} guardada exitosamente en el sistema.`);
+    const etiquetaH = historialActual ? `Historial #${historialActual.numeroVisita}` : 'Ficha Clínica';
+    mostrarNotificacionToast(`✓ ${etiquetaH} de ${p ? p.nombre : codigo} guardado exitosamente en el expediente.`);
   } catch (err) {
     console.error('Error al guardar en localStorage:', err);
     alert('Ficha guardada en la sesión actual.');
@@ -542,9 +598,15 @@ function guardarFichaCompleta() {
 }
 
 // RESTAURAR FICHA CLÍNICA PREVIAMENTE GUARDADA
-function restaurarFichaPaciente(codigo) {
+function restaurarFichaPaciente(codigo, idHistorial) {
   try {
-    const raw = localStorage.getItem('cardiounemi_ficha_' + codigo);
+    let raw = null;
+    if (idHistorial) {
+      raw = localStorage.getItem('cardiounemi_ficha_' + codigo + '_' + idHistorial);
+    }
+    if (!raw) {
+      raw = localStorage.getItem('cardiounemi_ficha_' + codigo);
+    }
     if (!raw) return;
     const ficha = JSON.parse(raw);
     if (!ficha || !ficha.datos) return;

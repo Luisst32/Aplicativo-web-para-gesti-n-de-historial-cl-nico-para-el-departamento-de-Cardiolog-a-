@@ -57,20 +57,23 @@
       </button>
     </div>
 
-    <a href="formularios-listado.html" class="nav-back" title="Regresar al listado de formularios">
+    <a href="formularios-listado.html" class="nav-back" id="btnVolverListado" title="Regresar al expediente del paciente">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-      <span>Volver al Listado</span>
+      <span>Volver al Expediente</span>
     </a>
   </aside>
 
   <!-- MAIN WRAPPER -->
   <div class="main-wrapper">
 
-    <!-- TOP HEADER (la ficha es de UN solo paciente: se abre desde el
-         listado con ?paciente=<id>; sus datos se ven en la franja de abajo) -->
+    <!-- TOP HEADER -->
     <header class="top-header">
-      <div class="header-left">
-        <h1 class="header-title">Ficha Clínica</h1>
+      <div class="header-left" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <h1 class="header-title" style="margin:0;">Ficha Clínica</h1>
+        <div id="badgeHistorialActivo" style="display:inline-flex; align-items:center; gap:6px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:0.78rem; font-weight:700; padding:4px 10px; border-radius:999px;">
+          <span style="width:7px; height:7px; border-radius:50%; background:#3aa0ff; box-shadow:0 0 6px #3aa0ff;"></span>
+          <span id="textoHistorialActivo">Historial Clínico</span>
+        </div>
       </div>
 
       <div data-user-menu style="display: flex; align-items: center; gap: 8px;">
