@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'seguridad',
     'catalogo',
+    'auditoria',
 ]
 
 AUTH_USER_MODEL = 'seguridad.Usuario'
