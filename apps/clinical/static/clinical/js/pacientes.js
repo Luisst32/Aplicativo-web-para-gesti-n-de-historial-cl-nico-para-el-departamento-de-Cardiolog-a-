@@ -694,17 +694,7 @@ function crearNuevoHistorial(pacienteId, datosHistorial) {
   return nuevoHistorial;
 }
 
-// Cálculos matemáticos
-function calcIMCValor(peso, talla) {
-  if (!peso || !talla) return 0;
-  const tM = talla / 100;
-  return parseFloat((peso / (tM * tM)).toFixed(1));
-}
-
-function calcASCValor(peso, talla) {
-  if (!peso || !talla) return 0;
-  return parseFloat(Math.sqrt((talla * peso) / 3600).toFixed(2));
-}
+// Cálculos matemáticos (calcIMCValor y calcASCValor provistos globalmente en static/js/global/utils.js)
 
 // Año de la ficha: sale del código (0482/2026 -> 2026) o del último historial
 function anioDePaciente(p) {

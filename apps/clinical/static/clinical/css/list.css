@@ -1,41 +1,7 @@
 /* ==========================================================================
-   LIST.CSS - Variables de color locales para badges y estados clínicos
+   LIST.CSS - Estilos específicos del listado clínico
+   (Variables de color absorbidas en static/css/global/variables.css)
    ========================================================================== */
-:root {
-  --blue-badge-bg: #eff6ff;
-  --blue-badge-border: #bfdbfe;
-  --blue-badge-text: #1d4ed8;
-  --blue-accent-bg: #dbeafe;
-  --blue-accent-border: #93c5fd;
-  --blue-hover-bg: #f1f8ff;
-  --blue-card-bg: #f0f7ff;
-  --blue-gradient-end: #1e3a8a;
-  --sky-badge-bg: #e0f2fe;
-  --sky-badge-border: #bae6fd;
-  --sky-badge-text: #0369a1;
-  --purple-badge-bg: #f3e8ff;
-  --purple-badge-border: #e9d5ff;
-  --purple-badge-text: #7e22ce;
-  --purple-accent: #7c3aed;
-  --purple-badge-sav-bg: #ede9fe;
-  --purple-badge-sav-text: #6d28d9;
-  --amber-badge-bg: #fef3c7;
-  --amber-badge-border: #fde68a;
-  --amber-badge-text: #b45309;
-  --amber-soft-bg: #fffbeb;
-  --emerald-badge-border: #a7f3d0;
-  --emerald-badge-text: #047857;
-  --emerald-accent: #059669;
-  --emerald-soft-bg: #ecfdf5;
-  --green-csv-bg: #dcfce7;
-  --green-csv-text: #15803d;
-  --green-summary-bg-start: #f0fdf4;
-  --green-summary-border: #bbf7d0;
-  --green-summary-title: #166534;
-  --green-summary-text: #14532d;
-  --red-badge-bg: #fef2f2;
-  --red-badge-text: #dc2626;
-}
 
 /* ==========================================================================
    FORMULARIOS-LISTADO.CSS
