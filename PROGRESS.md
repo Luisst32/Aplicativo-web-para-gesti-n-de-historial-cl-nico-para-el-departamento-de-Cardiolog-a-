@@ -4,7 +4,7 @@
 - [x] Respaldo `backup-antes-estructura` creado
 - [x] Respaldo `backup-antes-correccion` creado
 - [x] feature/django-setup (Recreada limpia como `feature/django-setup-clean`, original preservada como `feature/django-setup-old`)
-- [ ] feature/ui-templates (En proceso: recreación `-clean` con `templates/base.html` y `static/` global)
+- [x] feature/ui-templates (Recreada limpia como `feature/ui-templates-clean`, original preservada como `feature/ui-templates-old`)
 - [ ] feature/security (Estado: Mezclada - Pendiente recreación -clean en `apps/security/`)
 - [ ] feature/catalog (Estado: Mezclada - Pendiente recreación -clean en `apps/catalog/`)
 - [ ] feature/clinical (Estado: Mezclada - Pendiente recreación -clean en `apps/clinical/`)
@@ -51,7 +51,7 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
 | Rama | Carpeta Permitida | Archivos Dentro | Archivos Fuera | Estado |
 | :--- | :--- | :---: | :---: | :---: |
 | `feature/django-setup-clean` | `config/`, `apps/__init__.py`, `manage.py`, `requirements.txt`, `.env.example`, `.gitignore`, `README.md` | 10 | 0 | **Completada y 100% Aislada** |
-| `feature/ui-templates` | `templates/`, `static/` | 6 | 53 (`config/`, `manage.py`, `assets/`, `css/`, `js/`) | **Mezclada** (En proceso `-clean`) |
+| `feature/ui-templates-clean` | `templates/`, `static/` | 14 | 0 | **Completada y 100% Aislada** |
 | `feature/security` | `apps/security/` | 0 (`security/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
 | `feature/catalog` | `apps/catalog/` | 0 (`catalog/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
 | `feature/clinical` | `apps/clinical/` | 0 (`clinical/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
@@ -75,9 +75,33 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
   4. De `pacientes.css`: solo pasa a `static/css/global/components.css` lo que se use en 2 o más páginas; lo exclusivo de pacientes permanece en `clinical`.
   5. La rama local `static-templates` es el commit inicial original (commit `9a6b1a8` / merge `6121e64`) creado por Luis antes de iniciar la integración Django; se mantendrá intacta sin tocarla.
 
-## Rama procesada: `feature/django-setup-clean`
+## Ramas procesadas
+
+### 1. `feature/django-setup-clean`
 - Rama original preservada: `feature/django-setup-old`.
 - Base: Creada desde `main`.
 - Archivos incluidos: `config/` (settings, urls, asgi, wsgi), `apps/__init__.py`, `manage.py`, `requirements.txt`, `.env.example`, `.gitignore`, `README.md`.
 - Aislamiento: 100% verificado (0 archivos fuera de regla).
 - Subida a remoto: `origin/feature/django-setup-clean`.
+
+### 2. `feature/ui-templates-clean`
+- Rama original preservada: `feature/ui-templates-old`.
+- Base: Creada desde `main`, recursos base extraídos de `backup-antes-estructura`.
+- Archivos incluidos (14 archivos, 100% en `templates/` y `static/`):
+  - `templates/base.html` (template maestro con carga secuencial de CSS/JS y bloques title, content, extra_css, extra_js)
+  - `static/css/global/variables.css` (tokens de diseño, colores oficiales CARDIOUNEMI, fuentes, radios, sombras)
+  - `static/css/global/reset.css` (reset y box-sizing unificado)
+  - `static/css/global/typography.css` (jerarquía tipográfica, encabezados, párrafos, enlaces)
+  - `static/css/global/layout.css` (sidebar shell, brand-header, user-menu dropdown y navegación compartida)
+  - `static/css/global/components.css` (botones, inputs, selects, field-labels, modales, badges, alertas, tablas, paginación)
+  - `static/css/global/utilities.css` (utilidades de layout, flex, grid, texto)
+  - `static/js/global/utils.js` (helpers DOM, formateo de fechas y números, cookies CSRF)
+  - `static/js/global/api.js` (wrapper fetch con token CSRF de Django y manejo unificado de errores)
+  - `static/js/global/ui.js` (inicialización de user menu con avatar, modales, toasts)
+  - `static/assets/images/logo-cardiounemi.png` y `logo-cardiounemi-transparent.png`
+  - `static/assets/icons/.gitkeep`, `static/assets/fonts/.gitkeep`
+- Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v -E "^(templates/|static/)"` es vacío).
+- Subida a remoto: `origin/feature/ui-templates-clean`.
+
+## Siguiente paso (requiere confirmación del usuario)
+- Procesar `feature/security`: Recrear `feature/security-clean` desde `main`, conservando `feature/security-old`, ubicando la app en `apps/security/` (models, views, urls, templates/security/login.html, static/security/{css/login.css, js/login.js}).
