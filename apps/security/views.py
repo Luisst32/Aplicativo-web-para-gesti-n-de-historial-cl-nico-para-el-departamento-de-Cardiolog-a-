@@ -10,7 +10,7 @@ def login_view(request):
     """
     if request.user.is_authenticated:
         next_url = request.GET.get('next')
-        return redirect(next_url if next_url else '/dashboard/')
+        return redirect(next_url if next_url else 'dashboard:index')
 
     error_message = None
 
@@ -34,7 +34,7 @@ def login_view(request):
                 if user.is_active:
                     login(request, user)
                     next_url = request.GET.get('next')
-                    return redirect(next_url if next_url else '/dashboard/')
+                    return redirect(next_url if next_url else 'dashboard:index')
                 else:
                     error_message = 'Tu cuenta de usuario se encuentra inactiva.'
             else:
