@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models.functions import Power, Round
+from django.db.models.functions import Cast, Power, Round
 
 
 class Anthropometry(models.Model):
@@ -41,7 +41,13 @@ class Anthropometry(models.Model):
     )
     bmi = models.GeneratedField(
         expression=Round(
-            models.F('weight_kg') / Power(models.F('height_cm') / 100.0, 2),
+            Cast(
+                models.ExpressionWrapper(
+                    models.F('weight_kg') / Power(models.F('height_cm') / 100.0, 2),
+                    output_field=models.FloatField()
+                ),
+                models.DecimalField(max_digits=5, decimal_places=2)
+            ),
             2
         ),
         output_field=models.DecimalField(max_digits=5, decimal_places=2),
@@ -49,7 +55,13 @@ class Anthropometry(models.Model):
     )
     body_surface_area = models.GeneratedField(
         expression=Round(
-            models.Value(0.007184) * Power(models.F('weight_kg'), 0.425) * Power(models.F('height_cm'), 0.725),
+            Cast(
+                models.ExpressionWrapper(
+                    models.Value(0.007184) * Power(models.F('weight_kg'), 0.425) * Power(models.F('height_cm'), 0.725),
+                    output_field=models.FloatField()
+                ),
+                models.DecimalField(max_digits=4, decimal_places=2)
+            ),
             2
         ),
         output_field=models.DecimalField(max_digits=4, decimal_places=2),
