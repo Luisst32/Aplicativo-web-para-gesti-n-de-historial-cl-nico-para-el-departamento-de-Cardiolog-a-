@@ -1,0 +1,80 @@
+{% load static %}
+<!-- =========================================================================
+     CARDIOUNEMI - Widget Flotante del Asistente Clínico & Estadístico
+     Componente autosuficiente: incluye su propio CSS, vendor (KaTeX, Marked),
+     estructura HTML y motor de ejecución JS (chat.js).
+     Uso en otras aplicaciones: include "chatbot/widget.html"
+     ========================================================================= -->
+
+<!-- Estilos del Widget y KaTeX (Autosuficiente) -->
+<link rel="stylesheet" href="{% static 'chatbot/vendor/katex/katex.min.css' %}">
+<link rel="stylesheet" href="{% static 'chatbot/css/chat-widget.css' %}">
+
+<!-- Telón de fondo para modo centrado/expandido -->
+<div id="chat-backdrop-widget" class="chat-backdrop-widget"></div>
+
+<!-- Botón flotante de activación -->
+<button id="btn-flotante-chat" class="btn-flotante-chat" type="button" title="Abrir Asistente CARDIOUNEMI" aria-label="Abrir Asistente CARDIOUNEMI">
+  <span class="pulso-badge"></span>
+  <svg viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+</button>
+
+<!-- Ventana emergente del Asistente -->
+<div id="contenedor-chat" class="ventana-chat-flotante oculta" role="dialog" aria-modal="true" aria-labelledby="chat-widget-brand-title">
+  <header class="chatbot-encabezado">
+    <div class="encabezado-identidad">
+      <div class="titulos-encabezado">
+        <h2 id="chat-widget-brand-title">CARDIOUNEMI</h2>
+        <span class="subtitulo">Asistente Clínico & Estadístico</span>
+      </div>
+    </div>
+
+    <div class="encabezado-metadatos">
+      <button id="btn-expandir-chat" class="btn-control" type="button" title="Ampliar / Reducir ventana" aria-label="Ampliar o reducir ventana">
+        <svg viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+      </button>
+      <button id="btn-limpiar-chat" class="btn-control" type="button" title="Limpiar conversación" aria-label="Limpiar conversación">
+        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+      </button>
+      <button id="btn-cerrar-chat" class="btn-control btn-cerrar" type="button" title="Cerrar Asistente" aria-label="Cerrar Asistente">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="chatbot-cuerpo-mensajes" id="chat-messages" tabindex="0">
+    <!-- Mensajes generados dinámicamente -->
+  </main>
+
+  <div id="typing-indicator" class="indicador-escribiendo oculto">
+    <div class="burbuja-animada">
+      <span class="punto"></span>
+      <span class="punto"></span>
+      <span class="punto"></span>
+    </div>
+    <span class="texto-procesando">CARDIOUNEMI está procesando...</span>
+  </div>
+
+  <footer class="chatbot-barra-entrada">
+    <form id="formulario-chat" onsubmit="return false;">
+      <div class="campo-entrada-grupo">
+        <input
+          type="text"
+          id="chat-input"
+          placeholder="Escriba su consulta clínica o estadística..."
+          autocomplete="off"
+          required
+        />
+        <button type="submit" id="send-btn" class="btn-enviar" title="Enviar consulta">
+          <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+      </div>
+    </form>
+  </footer>
+</div>
+
+<!-- Scripts Vendor e Inicialización del Chatbot (Autosuficiente) -->
+<script src="{% static 'chatbot/vendor/marked.min.js' %}"></script>
+<script src="{% static 'chatbot/vendor/katex/katex.min.js' %}"></script>
+<script src="{% static 'chatbot/vendor/katex/auto-render.min.js' %}"></script>
+<script src="{% static 'chatbot/js/chat.js' %}"></script>

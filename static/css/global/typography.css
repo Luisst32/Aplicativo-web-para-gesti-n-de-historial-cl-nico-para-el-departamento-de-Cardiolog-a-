@@ -1,0 +1,45 @@
+/* ==========================================================================
+   TYPOGRAPHY.CSS
+   Estilos globales para jerarquía tipográfica, encabezados, párrafos y enlaces.
+   ========================================================================== */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans);
+  color: var(--color-navy);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+h1 { font-size: 1.75rem; font-weight: 800; }
+h2 { font-size: 1.35rem; font-weight: 700; }
+h3 { font-size: 1.15rem; font-weight: 700; }
+h4 { font-size: 1.00rem; font-weight: 600; }
+
+p {
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+a {
+  color: var(--color-primary-blue);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-link-hover);
+}
+
+small {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+strong, b {
+  font-weight: 700;
+}
+
+code, pre {
+  font-family: var(--font-mono);
+}

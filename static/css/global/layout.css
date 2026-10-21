@@ -1,0 +1,173 @@
+/* ==========================================================================
+   LAYOUT.CSS
+   Estructura compartida: shell de aplicación (sidebar + main-wrapper),
+   encabezado con logo institucional, navegación y menú de usuario.
+   ========================================================================== */
+
+.contenedor {
+  width: 100%;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.main-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Encabezado de la barra lateral: logo + "CARDIOUNEMI" */
+.sidebar-header {
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.sidebar-logo {
+  height: 38px;
+  width: 38px;
+  object-fit: contain;
+  background: var(--color-white);
+  padding: 4px;
+  border-radius: var(--radius-xs);
+}
+
+.sidebar-brand-title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--color-white);
+  line-height: 1.2;
+}
+
+/* Enlace "Volver al Listado" / navegación al pie de la barra lateral */
+.nav-back {
+  margin: auto 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted-light);
+  text-decoration: none;
+  font-size: 0.84rem;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.nav-back:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-white);
+}
+
+/* MENÚ DE USUARIO (js/global/ui.js) */
+.user-menu {
+  position: relative;
+  margin-left: 0.25rem;
+}
+
+.user-menu-trigger,
+.user-menu-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary-blue), var(--color-navy));
+  color: var(--color-white);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.user-menu-trigger {
+  border: 2px solid var(--color-white);
+  box-shadow: 0 0 0 1px var(--slate-300);
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast);
+}
+
+.user-menu-trigger:hover,
+.user-menu.open .user-menu-trigger {
+  box-shadow: 0 0 0 2px var(--color-primary-blue);
+}
+
+.user-menu-panel {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 250px;
+  background: var(--color-white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  z-index: 300;
+}
+
+.user-menu.open .user-menu-panel {
+  display: block;
+}
+
+.user-menu-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--slate-200);
+}
+
+.user-menu-texts {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.user-menu-info-name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+
+.user-menu-info-role,
+.user-menu-info-mail {
+  font-size: 0.74rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-menu-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-navy);
+  text-decoration: none;
+  transition: background var(--transition-fast);
+}
+
+.user-menu-option:hover {
+  background: var(--slate-50);
+}
+
+.user-menu-logout {
+  color: var(--color-emergency-red);
+}
+
+.user-menu-logout:hover {
+  background: rgba(255, 90, 95, 0.08);
+}
