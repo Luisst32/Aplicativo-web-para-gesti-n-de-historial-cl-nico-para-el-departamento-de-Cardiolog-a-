@@ -7,6 +7,10 @@ class Anthropometry(models.Model):
     Anthropometric Measurements and Body Composition (VisitaAntropometria).
     1:1 satellite table linked to clinical.Visit.
     Includes persistent generated fields for BMI and Body Surface Area (BSA).
+    Fiel a bd_final (CK_Antropometria_Peso, CK_Antropometria_Talla, CK_Antropometria_Perimetro):
+      - Peso: BETWEEN 20.00 AND 350.00
+      - Talla: BETWEEN 50.0 AND 250.0
+      - Perímetro abdominal: IS NULL OR BETWEEN 35.0 AND 220.0
     """
     visit = models.OneToOneField(
         'clinical.Visit',
@@ -80,6 +84,12 @@ class VitalSigns(models.Model):
     """
     Vital Signs and Physical Examination Findings (VisitaSignosVitales).
     1:1 satellite table linked to clinical.Visit.
+    Fiel a bd_final (CK_SignosVitales_Tas, CK_SignosVitales_Tad, CK_SignosVitales_SatO2, CK_SignosVitales_Fc, CK_SignosVitales_GradoSoplo):
+      - TAS: BETWEEN 50 AND 300
+      - TAD: BETWEEN 30 AND 200
+      - SatO2: IS NULL OR BETWEEN 40 AND 100
+      - FC: IS NULL OR BETWEEN 30 AND 250
+      - GradoSoplo: IS NULL OR BETWEEN 1 AND 6
     """
     visit = models.OneToOneField(
         'clinical.Visit',
