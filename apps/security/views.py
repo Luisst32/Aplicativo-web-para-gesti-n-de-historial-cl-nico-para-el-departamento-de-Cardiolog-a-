@@ -10,7 +10,9 @@ def login_view(request):
     """
     if request.user.is_authenticated:
         next_url = request.GET.get('next')
-        return redirect(next_url if next_url else 'dashboard:index')
+        if not next_url or next_url in ('/', '/dashboard/'):
+            return redirect('clinical:list')
+        return redirect(next_url)
 
     error_message = None
 
@@ -34,7 +36,9 @@ def login_view(request):
                 if user.is_active:
                     login(request, user)
                     next_url = request.GET.get('next')
-                    return redirect(next_url if next_url else 'dashboard:index')
+                    if not next_url or next_url in ('/', '/dashboard/'):
+                        return redirect('clinical:list')
+                    return redirect(next_url)
                 else:
                     error_message = 'Tu cuenta de usuario se encuentra inactiva.'
             else:

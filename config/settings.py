@@ -140,7 +140,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Authentication URLs
 LOGIN_URL = 'security:login'
-LOGIN_REDIRECT_URL = 'dashboard:index'
+LOGIN_REDIRECT_URL = 'clinical:list'
 LOGOUT_REDIRECT_URL = 'security:login'
 
 
