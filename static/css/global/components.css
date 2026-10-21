@@ -251,13 +251,13 @@
 
 .alert-danger {
   background: var(--rose-200);
-  color: #991B1B;
+  color: var(--rose-800);
   border: 1px solid rgba(255, 90, 95, 0.3);
 }
 
 .alert-success {
-  background: #D1FAE5;
-  color: #065F46;
+  background: var(--emerald-100);
+  color: var(--emerald-800);
   border: 1px solid rgba(16, 185, 129, 0.3);
 }
 

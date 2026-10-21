@@ -18,6 +18,9 @@
   --slate-800: #1E293B;
   --slate-900: #0F172A;
   --rose-200:  #FECACA;
+  --rose-800:  #991B1B;
+  --emerald-100: #D1FAE5;
+  --emerald-800: #065F46;
 
   /* ---------- Tipografías ---------- */
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
