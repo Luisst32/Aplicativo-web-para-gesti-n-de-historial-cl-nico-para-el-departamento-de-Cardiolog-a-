@@ -73,16 +73,16 @@ class ProfessionalCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(EducationLevel)
 class EducationLevelAdmin(admin.ModelAdmin):
-    list_display = ('education_level_id', 'name', 'order')
+    list_display = ('education_level_id', 'name', 'display_order')
     search_fields = ('name',)
-    ordering = ('order',)
+    ordering = ('display_order',)
 
 
 @admin.register(IncomeRange)
 class IncomeRangeAdmin(admin.ModelAdmin):
-    list_display = ('income_range_id', 'name', 'lower_limit_usd', 'upper_limit_usd', 'order')
+    list_display = ('income_range_id', 'name', 'lower_limit_usd', 'upper_limit_usd', 'display_order')
     search_fields = ('name',)
-    ordering = ('order',)
+    ordering = ('display_order',)
 
 
 @admin.register(MaritalStatus)
@@ -118,35 +118,35 @@ class EcgRhythmAdmin(admin.ModelAdmin):
 class QuestionInline(admin.TabularInline):
     model = Question
     extra = 1
-    fields = ('code', 'text', 'response_type', 'order')
+    fields = ('code', 'text', 'response_type', 'display_order')
 
 
 @admin.register(QuestionnaireSection)
 class QuestionnaireSectionAdmin(admin.ModelAdmin):
-    list_display = ('section_id', 'code', 'name', 'order')
+    list_display = ('section_id', 'code', 'name', 'display_order')
     search_fields = ('code', 'name')
-    ordering = ('order',)
+    ordering = ('display_order',)
     inlines = [QuestionInline]
 
 
 class AnswerOptionInline(admin.TabularInline):
     model = AnswerOption
     extra = 2
-    fields = ('label', 'order', 'scores_predimed')
+    fields = ('label', 'display_order', 'scores_predimed')
 
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ('question_id', 'section', 'code', 'text', 'response_type', 'order')
+    list_display = ('question_id', 'section', 'code', 'text', 'response_type', 'display_order')
     search_fields = ('code', 'text')
     list_filter = ('section', 'response_type')
-    ordering = ('section', 'order')
+    ordering = ('section', 'display_order')
     inlines = [AnswerOptionInline]
 
 
 @admin.register(AnswerOption)
 class AnswerOptionAdmin(admin.ModelAdmin):
-    list_display = ('option_id', 'question', 'label', 'order', 'scores_predimed')
+    list_display = ('option_id', 'question', 'label', 'display_order', 'scores_predimed')
     search_fields = ('label', 'question__code')
     list_filter = ('scores_predimed', 'question__section')
-    ordering = ('question', 'order')
+    ordering = ('question', 'display_order')

@@ -91,14 +91,14 @@ class EducationLevel(models.Model):
     """
     education_level_id = models.AutoField(primary_key=True, db_column='education_level_id')
     name = models.CharField(max_length=60, db_column='name')
-    order = models.PositiveSmallIntegerField(db_column='order')
+    display_order = models.PositiveSmallIntegerField(db_column='display_order')
 
     class Meta:
         db_table = 'catalog"."education_level'
         constraints = [
             models.UniqueConstraint(fields=['name'], name='uq_education_level_name')
         ]
-        ordering = ['order']
+        ordering = ['display_order']
         verbose_name = "Education Level"
         verbose_name_plural = "Education Levels"
 
@@ -114,7 +114,7 @@ class IncomeRange(models.Model):
     name = models.CharField(max_length=60, db_column='name')
     lower_limit_usd = models.DecimalField(max_digits=9, decimal_places=2, null=True, blank=True, db_column='lower_limit_usd')
     upper_limit_usd = models.DecimalField(max_digits=9, decimal_places=2, null=True, blank=True, db_column='upper_limit_usd')
-    order = models.PositiveSmallIntegerField(db_column='order')
+    display_order = models.PositiveSmallIntegerField(db_column='display_order')
 
     class Meta:
         db_table = 'catalog"."income_range'
@@ -127,7 +127,7 @@ class IncomeRange(models.Model):
                 name='ck_income_range_limits'
             )
         ]
-        ordering = ['order']
+        ordering = ['display_order']
         verbose_name = "Income Range"
         verbose_name_plural = "Income Ranges"
 

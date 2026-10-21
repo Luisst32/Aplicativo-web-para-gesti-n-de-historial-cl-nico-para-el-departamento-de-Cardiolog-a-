@@ -8,14 +8,14 @@ class QuestionnaireSection(models.Model):
     section_id = models.AutoField(primary_key=True, db_column='section_id')
     code = models.CharField(max_length=30, db_column='code')
     name = models.CharField(max_length=120, db_column='name')
-    order = models.SmallIntegerField(db_column='order')
+    display_order = models.SmallIntegerField(db_column='display_order')
 
     class Meta:
         db_table = 'catalog"."questionnaire_section'
         constraints = [
             models.UniqueConstraint(fields=['code'], name='uq_questionnaire_section_code')
         ]
-        ordering = ['order']
+        ordering = ['display_order']
         verbose_name = "Questionnaire Section"
         verbose_name_plural = "Questionnaire Sections"
 
@@ -47,7 +47,7 @@ class Question(models.Model):
         choices=ResponseType.choices,
         db_column='response_type'
     )
-    order = models.SmallIntegerField(db_column='order')
+    display_order = models.SmallIntegerField(db_column='display_order')
 
     class Meta:
         db_table = 'catalog"."question'
@@ -58,7 +58,7 @@ class Question(models.Model):
                 name='ck_question_response_type'
             )
         ]
-        ordering = ['section', 'order']
+        ordering = ['section', 'display_order']
         verbose_name = "Question"
         verbose_name_plural = "Questions"
 
@@ -78,7 +78,7 @@ class AnswerOption(models.Model):
         related_name='options'
     )
     label = models.CharField(max_length=200, db_column='label')
-    order = models.SmallIntegerField(db_column='order')
+    display_order = models.SmallIntegerField(db_column='display_order')
     scores_predimed = models.BooleanField(
         default=False,
         db_column='scores_predimed',
@@ -89,9 +89,9 @@ class AnswerOption(models.Model):
         db_table = 'catalog"."answer_option'
         constraints = [
             models.UniqueConstraint(fields=['question', 'label'], name='uq_answer_option_label'),
-            models.UniqueConstraint(fields=['question', 'order'], name='uq_answer_option_order')
+            models.UniqueConstraint(fields=['question', 'display_order'], name='uq_answer_option_display_order')
         ]
-        ordering = ['question', 'order']
+        ordering = ['question', 'display_order']
         verbose_name = "Answer Option"
         verbose_name_plural = "Answer Options"
 
