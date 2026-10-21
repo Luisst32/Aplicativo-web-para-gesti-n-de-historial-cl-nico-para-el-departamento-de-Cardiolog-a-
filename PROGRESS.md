@@ -98,14 +98,16 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
       - `chatbot:chat`
   15. **WIDGET DE CHATBOT AUTOSUFICIENTE**: `apps/chatbot/templates/chatbot/widget.html` cargará su propio CSS (`chat-widget.css`), librerías vendor (`marked.min.js`, `katex`) y script del motor JS (`chat.js`). Las demás aplicaciones únicamente incluyen `{% include "chatbot/widget.html" %}`.
   16. **PENDIENTES PARA LA INTEGRACIÓN FINAL EN DEVELOP**:
-      - Absorber en la capa global `static/css/global/` las variables de color locales definidas en el `:root` de `list.css`.
+      - Absorber en la capa global `static/css/global/` las variables de color locales definidas en el `:root` de `list.css` y `dashboard.css`.
       - Migrar las funciones auxiliares `calcIMC` y `calcASC` de `pacientes.js` y `form.js` a `static/js/global/utils.js`.
       - Configurar en `config/settings.py`: `LOGIN_URL = 'security:login'`, `LOGIN_REDIRECT_URL = 'dashboard:index'`.
       - Probar exhaustivamente las columnas generadas en PostgreSQL (`makemigrations`, `sqlmigrate clinical 0001`, `migrate` sobre BD limpia).
+      - Sanear el HTML de las respuestas del chatbot (por ejemplo con DOMPurify) antes de insertarlo en el DOM, cuando el bot comience a utilizar datos reales y no respuestas simuladas.
       - **Fuente de verdad única**: `bd_final/gemini-code-1792555117056.sql`. El script de `bd/` queda permanentemente descartado.
-  17. **DECISIÓN DE ARQUITECTURA: ALIMENTACIÓN DE LA TABLA DE AUDITORÍA (`audit.change_log`)**:
-      - **Decisión acordada:** Se utilizarán **Triggers en PostgreSQL** (adaptados de los triggers originales de `bd_final`). Esta solución garantiza auditoría completa e ineludible campo por campo, registrando valores anteriores, nuevos y login de BD para cualquier mutación (ORM, SQL crudo o mantenimiento directo).
-      - **Momento de implementación:** Se ejecutará **después de la integración final en `develop`** como un paso técnico desacoplado, mediante una migración `migrations.RunSQL` y un middleware en Django que establezca la variable de sesión (`SET LOCAL app.current_user_id = ...`) para propagar el ID del usuario web al trigger.
+  17. **PROPUESTA: triggers en PostgreSQL, pendiente de confirmación de Luis**:
+      - **Enfoque propuesto:** Utilizar Triggers en PostgreSQL (adaptados de los triggers originales de `bd_final`). Esta solución garantiza auditoría completa e ineludible campo por campo, registrando valores anteriores, nuevos y login de BD para cualquier mutación (ORM, SQL crudo o mantenimiento directo).
+      - **Alternativa:** Señales de Django (`post_save`/`post_delete`), que son 100% Python y conocen de inmediato a `request.user`, pero omiten operaciones masivas y cambios directos en BD.
+      - **Estado:** Pendiente de confirmación final. De confirmarse la opción de triggers, se implementará **después de la integración final en `develop`** como un paso técnico desacoplado (vía migración `RunSQL` y middleware de sesión `SET LOCAL app.current_user_id`).
 
 ## Ramas procesadas
 
