@@ -1,0 +1,511 @@
+/* ==========================================================================
+   FORMULARIO.CSS
+   Reglas EXCLUSIVAS de formulario-clinica.html. Reset, tokens de color y
+   componentes genéricos (.btn, .card, .card-visual, .grid, .contenedor,
+   .form-input, .form-select) vienen de assets/css/base.css; la estructura
+   de barra lateral + panel principal compartida con el dashboard vive en
+   assets/css/layout.css.
+
+   Esta página usaba originalmente una paleta distinta a la del dashboard
+   ("Sistema Clínico": azul cielo + teal + grises slate). Se re-pintó por
+   completo con la paleta CARDIOUNEMI (navy/azul/rojo/verde) para que todo
+   el sitio comparta una sola identidad visual: mismas tarjetas, mismos
+   botones, mismos inputs y desplegables que el dashboard.
+   ========================================================================== */
+
+body {
+  background-color: var(--slate-50);
+  color: var(--color-navy);
+  display: flex;
+  line-height: 1.4;
+}
+
+/* SIDEBAR (display/flex-direction/flex-shrink vienen de layout.css;
+   mismo fondo navy y misma sombra que la barra lateral del dashboard) */
+.sidebar {
+  width: 260px;
+  background: var(--color-navy);
+  color: var(--color-white);
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  box-shadow: 4px 0 18px rgba(0, 0, 0, 0.18);
+}
+
+.sidebar-nav {
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  overflow-y: auto;
+}
+.sidebar-heading {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-text-muted-light);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 12px 12px 4px 12px;
+}
+
+/* .nav-btn NO compone con la clase genérica .btn: este archivo ya define
+   su propio .btn (más abajo) para los botones tipo Cancelar/Guardar, y
+   componerlos habría hecho que ese .btn "se colara" aquí (fondo blanco).
+   Por eso lleva sus propios cursor/borde/fondo/decoración. */
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted-light);
+  text-decoration: none;
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-white);
+}
+.nav-btn.active {
+  background: var(--color-primary-blue);
+  color: var(--color-white);
+  font-weight: 700;
+  box-shadow: 0 6px 20px rgba(58, 160, 255, 0.45);
+}
+
+/* MAIN WRAPPER (display/flex-direction/min-width vienen de layout.css) */
+.main-wrapper {
+  margin-left: 260px;
+  flex: 1;
+}
+
+/* TOP HEADER */
+.top-header {
+  height: 66px;
+  background: var(--color-white);
+  border-bottom: 1px solid var(--slate-200);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  box-shadow: var(--shadow-sm);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  max-width: 720px;
+}
+.header-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-navy);
+  letter-spacing: -0.02em;
+}
+
+/* BUTTONS (.btn compone con la base de base.css: cursor/tipografía/
+   sin-decoración/sin-borde/sin-fondo por defecto) */
+.btn {
+  appearance: none;
+  border: 1px solid var(--slate-300);
+  background: var(--color-white);
+  color: var(--color-navy);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.btn:hover {
+  background: var(--slate-50);
+  border-color: var(--slate-400);
+}
+.btn-primary {
+  background: var(--color-primary-blue);
+  border-color: var(--color-primary-blue);
+  color: var(--color-white);
+}
+.btn-primary:hover {
+  background: var(--color-primary-blue-hover);
+}
+
+/* PATIENT SUMMARY HERO BAR */
+.patient-strip {
+  background: var(--color-white);
+  border-bottom: 1px solid var(--slate-200);
+  padding: 12px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.patient-profile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.avatar-circle {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary-blue) 0%, var(--color-navy) 100%);
+  color: var(--color-white);
+  font-weight: 800;
+  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(58, 160, 255, 0.25);
+}
+.patient-meta-name {
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: var(--color-navy);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.badge-age {
+  background: var(--color-ice-blue);
+  color: var(--color-link-hover);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+.badge-estamento {
+  background: var(--slate-50);
+  color: var(--color-text-muted);
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.patient-meta-details {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-top: 3px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.strip-vitals {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mini-vital {
+  background: var(--slate-50);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 76px;
+}
+.mini-vital-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+.mini-vital-val {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-navy);
+  font-family: var(--font-mono);
+}
+
+/* MAIN UNIFIED MODULE TABS (.contenedor aporta width:100%; el max-width
+   y el padding son propios de esta página) */
+.content-area {
+  padding: 20px 28px 60px 28px;
+  max-width: 1180px;
+}
+
+/* Las tarjetas de módulo usan el componente compartido .card-visual de
+   base.css (el mismo que los paneles de gráficos del dashboard); aquí
+   solo el margen extra entre tarjetas apiladas verticalmente. */
+.card-visual {
+  margin-bottom: 24px;
+}
+
+/* El título de cada tarjeta es clicable: funciona como acordeón (mismo
+   mecanismo "clic para desplegar" que los paneles de fórmula del
+   dashboard, pero aplicado a secciones completas del formulario). Sin
+   .expanded en la tarjeta, .card-body permanece oculto. */
+.unified-card-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--color-navy);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--slate-200);
+  padding-bottom: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.card.expanded .unified-card-title {
+  margin-bottom: 20px;
+}
+.card-title-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.card-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-ice-blue);
+  color: var(--color-link-hover);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.card-toggle-icon::before {
+  content: '+';
+}
+.card.expanded .card-toggle-icon::before {
+  content: '\2212';
+}
+.card-body {
+  display: none;
+}
+.card.expanded .card-body {
+  display: block;
+  animation: fadeIn 0.15s ease-in;
+}
+.origin-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--slate-50);
+  color: var(--color-text-muted);
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+}
+
+.sub-section-header {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-navy);
+  background: var(--slate-50);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin: 20px 0 14px 0;
+  border-left: 3.5px solid var(--color-primary-blue);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* FORM CONTROLS & SELECTION (.grid aporta display:grid; columnas y gap
+   son propios de cada variante) */
+.form-grid-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px 20px;
+}
+.form-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px 16px;
+}
+
+/* El recuadro de .form-input/.form-select (borde, radio, foco) es el
+   componente compartido de base.css, igual que en el dashboard; aquí
+   solo el tamaño más alto que necesitan los campos de esta ficha clínica
+   (.form-grid-2, .form-field, .field-label y .form-input.calc están en
+   assets/css/pacientes.css, porque también los usa el modal compartido). */
+.form-input, .form-select {
+  height: 38px;
+  padding: 0 10px;
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+.form-select {
+  padding-right: 1.75rem;
+}
+
+/* CONDITIONAL TOGGLE ROW (SI/NO con campo que SOLO aparece si Sí) */
+.condition-row {
+  background: var(--color-white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+.condition-row.active-yes {
+  border-color: var(--color-primary-blue);
+  background: var(--color-ice-blue);
+}
+
+.condition-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.condition-title {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--color-navy);
+}
+
+/* TOGGLE PILLS NO / SI */
+.toggle-pills {
+  display: inline-flex;
+  background: var(--slate-200);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+.toggle-pills label {
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.12s ease;
+}
+.toggle-pills input {
+  display: none;
+}
+.toggle-pills label:has(input:checked) {
+  background: var(--color-white);
+  color: var(--color-primary-blue);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.toggle-pills label.yes:has(input:checked) {
+  color: var(--color-primary-blue-hover);
+  background: var(--color-white);
+}
+
+/* CONDITIONAL DETAILS BOX (se muestra ÚNICAMENTE si Sí) */
+.condition-details {
+  display: none;
+  padding: 10px 12px;
+  background: var(--color-white);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-ice-blue);
+  margin-top: 4px;
+  animation: fadeIn 0.15s ease-in;
+}
+.condition-row.active-yes .condition-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+#row_tabaco .condition-details {
+  display: flex !important;
+  transition: opacity 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .main-wrapper { margin-left: 0; }
+  .form-grid-3, .form-grid-4 { grid-template-columns: 1fr; }
+}
+
+/* ==========================================================================
+   IMPRESIÓN
+   Las tarjetas son acordeones y en pantalla arrancan plegadas: al imprimir
+   hay que desplegarlas todas, porque si no la hoja sale con solo los títulos.
+   También se quitan los elementos de navegación, que no aportan en papel.
+   ========================================================================== */
+@media print {
+  .sidebar,
+  .top-header,
+  .card-toggle-icon,
+  .origin-badge,
+  .btn {
+    display: none !important;
+  }
+
+  .main-wrapper,
+  .content-area {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  /* Desplegar todo el contenido, esté o no marcado como expandido */
+  .card-body {
+    display: block !important;
+  }
+
+  .card {
+    border: 1px solid var(--slate-400);
+    box-shadow: none !important;
+    margin-bottom: 10px;
+  }
+
+  /* Evitar cortes solo en bloques cortos: una tarjeta entera no cabe en una
+     hoja y, si se le prohíbe partirse, empuja todo y deja páginas en blanco. */
+  .condition-row,
+  .form-field,
+  .sub-section-header {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .sub-section-header {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .unified-card-title {
+    margin-bottom: 12px;
+    cursor: default;
+  }
+
+  /* Salto solo ENTRE módulos, nunca antes del primero: si no, la hoja 1 sale
+     con la cabecera del paciente y nada más. */
+  .module-section + .module-section {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  body {
+    background: var(--color-white) !important;
+  }
+}
