@@ -344,4 +344,21 @@ REGLAS GENERALES
   avísame: puede ser necesario recrearla (esquemas security, catalog,
   clinical, audit, ai).
 
+CONTRATO ENTRE RAMAS
+1. Nombres canónicos de URL:
+   - security:login, security:logout
+   - clinical:form, clinical:list
+   - dashboard:index
+   - chatbot:chat
+   Cada app define obligatoriamente app_name con su propio nombre (ej. app_name = "clinical").
+2. Widget del Chatbot (chatbot/widget.html):
+   Debe ser autosuficiente: con {% load static %}, carga su propio CSS (chat-widget.css),
+   marked, katex y el JS del widget. Las demás apps solo hacen {% include "chatbot/widget.html" %}.
+3. Pendientes para la integración final en develop:
+   - Absorber en static/css/global/ las variables de color locales de list.css.
+   - Migrar los helpers calcIMC / calcASC de pacientes.js y form.js a static/js/global/utils.js.
+   - Configurar LOGIN_URL = 'security:login', LOGIN_REDIRECT_URL = 'dashboard:index' en settings.py.
+   - Probar las columnas generadas en PostgreSQL con makemigrations, sqlmigrate y migrate sobre BD vacía.
+   - Fuente de verdad única: bd_final/gemini-code-1792555117056.sql. El SQL de bd/ queda totalmente descartado.
+
 Al iniciar cualquier sesión, lee también PROGRESS.md y continúa desde el primer pendiente.

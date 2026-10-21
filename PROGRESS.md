@@ -91,6 +91,19 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
   11. **Pendiente de integración - Carga inicial de datos**: NO generar fixtures en ramas aisladas. La carga de datos iniciales (sexo, etnias, provincias, cantones, preguntas y opciones de respuesta de catalog) se realizará tras integrar en develop mediante un script/fixture ordenado.
   12. **REGLA SQL CRUDO Y PALABRAS RESERVADAS**: En consultas SQL crudas o comandos generados a mano, citar siempre `"security"."user"` con comillas dobles. Asimismo, se evitó la palabra reservada de PostgreSQL `order` en todos los modelos renombrándola a `display_order` (en `EducationLevel`, `IncomeRange`, `QuestionnaireSection`, `Question`, `AnswerOption`).
   13. **PENDIENTE DE CONEXIÓN FRONTEND-BACKEND**: En `apps/clinical/`, conectar `form.js` y `pacientes.js` con los endpoints y ORM de Django en `views.py`, ya que actualmente interactúan con datos de prueba/mock locales.
+  14. **CONTRATO ENTRE RAMAS (Nombres de URL)**:
+      - `security:login`, `security:logout`
+      - `clinical:form`, `clinical:list`
+      - `dashboard:index`
+      - `chatbot:chat`
+      Cada aplicación define obligatoriamente `app_name` con el nombre de su app.
+  15. **WIDGET DE CHATBOT AUTOSUFICIENTE**: `apps/chatbot/templates/chatbot/widget.html` cargará su propio CSS (`chat-widget.css`), librerías vendor (`marked.min.js`, `katex`) y script del motor JS (`chat.js`). Las demás aplicaciones únicamente incluyen `{% include "chatbot/widget.html" %}`.
+  16. **PENDIENTES PARA LA INTEGRACIÓN FINAL EN DEVELOP**:
+      - Absorber en la capa global `static/css/global/` las variables de color locales definidas en el `:root` de `list.css`.
+      - Migrar las funciones auxiliares `calcIMC` y `calcASC` de `pacientes.js` y `form.js` a `static/js/global/utils.js`.
+      - Configurar en `config/settings.py`: `LOGIN_URL = 'security:login'`, `LOGIN_REDIRECT_URL = 'dashboard:index'`.
+      - Probar exhaustivamente las columnas generadas en PostgreSQL (`makemigrations`, `sqlmigrate clinical 0001`, `migrate` sobre BD limpia).
+      - **Fuente de verdad única**: `bd_final/gemini-code-1792555117056.sql`. El script de `bd/` queda permanentemente descartado.
 
 ## Ramas procesadas
 
