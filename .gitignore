@@ -37,3 +37,7 @@ $RECYCLE.BIN/
 # Logs y Temporales
 *.log
 scratch/
+
+# Documentación interna de asistencia
+GEMINI.md
+PROGRESS.md
