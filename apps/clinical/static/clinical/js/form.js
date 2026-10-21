@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const idHistorial = urlParams.get('historial');
   const paciente = pacientes.find(p => p.id === idPaciente);
   if (!paciente) {
-    location.replace('formularios-listado.html');
+    location.replace('/clinical/listado/');
     return;
   }
   pacienteActual = paciente;
@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Actualizar enlace "Volver al Expediente" para volver directamente a la vista de este paciente
   const btnVolver = document.getElementById('btnVolverListado');
   if (btnVolver) {
-    btnVolver.href = `formularios-listado.html?paciente=${encodeURIComponent(paciente.id)}`;
+    btnVolver.href = `/clinical/listado/?paciente=${encodeURIComponent(paciente.id)}`;
   }
 
   // Actualizar badge de historial activo en el header
