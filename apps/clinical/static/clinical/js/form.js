@@ -382,29 +382,7 @@ function onBirthDateChange(dateStr) {
   document.getElementById('heroFechaNac').textContent = dateStr;
 }
 
-// Cálculo automático de IMC y ASC
-function calcIMC() {
-  const peso = parseFloat(document.getElementById('f_peso').value) || 0;
-  const talla = parseFloat(document.getElementById('f_talla').value) || 0;
-
-  document.getElementById('heroPeso').textContent = peso ? `${peso} kg` : '--';
-  document.getElementById('heroTalla').textContent = talla ? `${talla} cm` : '--';
-
-  if (peso > 20 && talla > 50) {
-    const tallaM = talla / 100;
-    const imc = (peso / (tallaM * tallaM)).toFixed(2);
-    const asc = Math.sqrt((peso * talla) / 3600).toFixed(2);
-    document.getElementById('f_imc').value = imc;
-    document.getElementById('f_asc').value = asc;
-    document.getElementById('heroImc').textContent = imc;
-    document.getElementById('heroAsc').textContent = asc;
-  } else {
-    document.getElementById('f_imc').value = '--';
-    document.getElementById('f_asc').value = '--';
-    document.getElementById('heroImc').textContent = '--';
-    document.getElementById('heroAsc').textContent = '--';
-  }
-}
+// Cálculo automático de IMC y ASC (provisto globalmente en static/js/global/utils.js)
 
 // SELECCIÓN Y CARGA DE DATOS DEL PACIENTE E HISTORIAL
 function seleccionarPaciente(p, h) {

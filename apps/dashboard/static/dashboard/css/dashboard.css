@@ -1,19 +1,4 @@
-/* Variables de color de alcance local para el Dashboard */
-:root {
-  --dashboard-nav-item-bg: #53647B;
-  --dashboard-nav-item-hover: #647792;
-  --dashboard-card-kpi-border-hover: #829AB1;
-  --dashboard-formula-bg: #F4F8FC;
-  --dashboard-formula-header-border: #DCE6F0;
-  --dashboard-katex-accent: #93C5FD;
-  --dashboard-code-text: #90CDF4;
-  --dashboard-meta-label: #334E68;
-  --dashboard-pill-green-border: #A7F3D0;
-  --dashboard-pill-yellow-bg: #FEF3C7;
-  --dashboard-pill-yellow-text: #92400E;
-  --dashboard-pill-yellow-border: #FDE68A;
-  --dashboard-pill-red-bg: #FEE2E2;
-}
+/* Variables de color de alcance local absorbidas en static/css/global/variables.css */
 
 /* ==========================================================================
    DASHBOARD.CSS
