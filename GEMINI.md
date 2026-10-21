@@ -262,7 +262,9 @@ REGLAS DE LOS HTML
 - Las rutas url(...) dentro de los CSS deben apuntar a los assets con
   la ruta relativa correcta.
 
-ESQUEMAS POSTGRESQL (db_table = '"esquema"."tabla"')
+ESQUEMAS POSTGRESQL (db_table = 'esquema"."tabla', sin comillas externas)
+Regla: en TODOS los modelos, db_table usa la forma 'esquema"."tabla' (sin comillas externas)
+para evitar problemas de citado en tablas intermedias M2M de Django:
 security, catalog, clinical, audit, ai
 (dashboard no crea tablas)
 

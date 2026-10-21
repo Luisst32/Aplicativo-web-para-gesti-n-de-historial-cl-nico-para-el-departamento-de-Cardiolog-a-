@@ -79,6 +79,15 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
   6. **Paso final en develop**: Se realizará un commit de limpieza en `develop` que elimina los archivos originales obsoletos de la raíz (`css/`, `js/`, `assets/`, `templates/*.html`), tras integrar todas las ramas y verificar el funcionamiento completo.
   7. **Pendiente en base.html / ui-templates**: `base.html` actual no tiene sidebar estático forzado (envuelve directamente `{% block content %}`), permitiendo que login se renderice centrado sin sidebar. Como mejora opcional se anotó añadir un bloque `{% block sidebar %}`.
   8. **Pendiente en django-setup**: En la integración final, configurar en `config/settings.py`: `LOGIN_URL = 'security:login'`, `LOGIN_REDIRECT_URL = 'dashboard:index'`, `LOGOUT_REDIRECT_URL = 'security:login'`.
+  9. **REGLA OBLIGATORIA `db_table`**: En TODOS los modelos de todas las apps, `db_table` usa la sintaxis `'esquema"."tabla'` (sin comillas externas) para que las tablas intermedias M2M de Django (como `groups` y `user_permissions` de `PermissionsMixin`) queden correctamente nombradas en su esquema (`security"."user_groups`, `security"."user_user_permissions`) y no en `public`.
+  10. **Paso previo a la integración y migración en develop**: Django no crea esquemas PostgreSQL automáticamente. Antes del primer `makemigrations`/`migrate` en `develop`, se debe ejecutar una sola vez en PostgreSQL:
+      ```sql
+      CREATE SCHEMA IF NOT EXISTS security;
+      CREATE SCHEMA IF NOT EXISTS catalog;
+      CREATE SCHEMA IF NOT EXISTS clinical;
+      CREATE SCHEMA IF NOT EXISTS audit;
+      CREATE SCHEMA IF NOT EXISTS ai;
+      ```
 
 ## Ramas procesadas
 
