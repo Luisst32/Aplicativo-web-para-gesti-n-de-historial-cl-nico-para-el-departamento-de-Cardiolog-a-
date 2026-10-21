@@ -265,7 +265,7 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
 - Archivos incluidos (37 archivos, 100% en `apps/chatbot/`):
   - `apps/chatbot/__init__.py`
   - `apps/chatbot/apps.py` (`name = "chatbot"`, `verbose_name = "Asistente Clínico Inteligente"`)
-  - `apps/chatbot/models.py` (`BotQuery` mapeado fielmente a `ia.ConsultaBot` de `bd_final`, `db_table = 'ai"."bot_query'`, PK `BigAutoField`, FK `security.User` con `RESTRICT`, CHECKs de `tokens_used >= 0` y `execution_time_ms >= 0`, e índice `IX_ConsultaBot_UsuarioFecha` en `['user', '-created_at']`)
+  - `apps/chatbot/models.py` (`BotQuery` mapeado fielmente a `ia.ConsultaBot` de `bd_final`, `db_table = 'ai"."bot_query'`, PK `BigAutoField`, FK `security.User` con `RESTRICT` y columna generada `user_id`, CHECKs con `condition=` compatibles con Django 6.x de `tokens_used >= 0` y `execution_time_ms >= 0`, e índice `ix_bot_query_user_created` en `['user', '-created_at']`)
   - `apps/chatbot/admin.py` (registro de `BotQueryAdmin` en modo estricto de solo lectura: `has_add_permission=False`, `has_change_permission=False`, `has_delete_permission=False`, con filtros por fecha y usuario)
   - `apps/chatbot/views.py` (`chat_view` con `@login_required` que renderiza `chatbot/chat.html`)
   - `apps/chatbot/urls.py` (`app_name = "chatbot"`, ruta `""` con `name = "chat"`)
@@ -274,31 +274,32 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
   - `apps/chatbot/templates/chatbot/widget.html` (componente autónomo y autosuficiente con `{% load static %}`, incluye su CSS `chat-widget.css`, librerías vendor `katex/katex.min.css`, `marked.min.js`, `katex.min.js`, `auto-render.min.js`, controlador `chat.js` y el HTML íntegro de botón flotante y ventana de chat)
   - `apps/chatbot/static/chatbot/css/chat.css` (0 colores hexadecimales fuera de `:root`, 0 variables faltantes, 0 patrones dañados)
   - `apps/chatbot/static/chatbot/css/chat-widget.css` (0 colores hexadecimales fuera de `:root`, 0 variables faltantes, 0 patrones dañados)
-  - `apps/chatbot/static/chatbot/js/chat.js` (motor universal de chat para página y widget, sin mocks duros ni dependencias de `pacientes.js` o `menu-usuario.js`)
+  - `apps/chatbot/static/chatbot/js/chat.js` (motor universal de chat para página y widget, 100% idéntico byte-a-byte al chat-engine original, sin dependencias de `pacientes.js` o `menu-usuario.js`)
   - `apps/chatbot/static/chatbot/vendor/marked.min.js`
   - `apps/chatbot/static/chatbot/vendor/katex/` (`katex.min.css`, `katex.min.js`, `auto-render.min.js`, y 20 fuentes `.woff2` en `fonts/` para resolución local de tipografías matemáticas)
   - `apps/chatbot/migrations/__init__.py` (sin migraciones locales hasta integración en develop)
 - Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v "^apps/chatbot/"` es vacío).
-- Subida a remoto: `origin/feature/chatbot-clean` (commit `8eb43c5`).
+- Subida a remoto: `origin/feature/chatbot-clean` (commit `229ba42`).
 
-## Siguiente paso: Fase de Integración en develop
-Las **8 ramas limpias** (`feature/*-clean`) se encuentran 100% completadas, aisladas y publicadas en el repositorio remoto de GitHub:
-1. `feature/django-setup-clean`
-2. `feature/ui-templates-clean`
-3. `feature/security-clean`
-4. `feature/catalog-clean`
-5. `feature/clinical-clean`
-6. `feature/audit-clean`
-7. `feature/dashboard-clean`
-8. `feature/chatbot-clean`
+## Siguiente paso: Fase de Integración en integration/clean
+Las **8 ramas limpias** (`feature/*-clean`) se encuentran 100% completadas, corregidas en Paso 0, aisladas y publicadas en el remoto de GitHub:
+1. `feature/django-setup-clean` (`5b2d9d5`)
+2. `feature/ui-templates-clean` (`e96e3f4`)
+3. `feature/security-clean` (`774a5be`)
+4. `feature/catalog-clean` (`637b240`)
+5. `feature/clinical-clean` (`dfe2676`)
+6. `feature/audit-clean` (`03a6fe1`)
+7. `feature/dashboard-clean` (`4fbe24b`)
+8. `feature/chatbot-clean` (`229ba42`)
 
-**Próximo flujo a ejecutar en develop:**
-1. Crear los 5 esquemas en PostgreSQL: `security`, `catalog`, `clinical`, `audit`, `ai`.
-2. Realizar el merge ordenado o rebase de las 8 ramas limpias sobre `develop`.
-3. Ejecutar `makemigrations` en orden estricto de dependencias: `catalog -> security -> clinical -> audit -> dashboard -> chatbot`.
-4. Validar el SQL generado mediante `sqlmigrate` (especialmente columnas generadas de `clinical` y restricciones CHECK e índices de todas las apps).
-5. Ejecutar `migrate` sobre una base de datos PostgreSQL vacía.
-6. Realizar el commit final de limpieza en `develop` eliminando los archivos obsoletos de la raíz (`css/`, `js/`, `assets/`, `templates/*.html`).
+**Próximo flujo a ejecutar en rama nueva `integration/clean` (sin tocar develop):**
+1. Crear `integration/clean` desde `main` (`git checkout -b integration/clean main`).
+2. Configurar base de datos limpia de pruebas `cardiounemi_integration` con los 5 esquemas (`security`, `catalog`, `clinical`, `audit`, `ai`).
+3. Merge `--no-ff` ordenado de las 8 ramas limpias.
+4. `manage.py check`, `makemigrations` ordenado y validación de CREATE TABLE / columnas generadas con `sqlmigrate`.
+5. Ejecutar `migrate` y pruebas en shell (rollback con paciente/antropometría/CHECKs).
+6. Pruebas de cliente HTTP con `django.test.Client` para URLs, archivos estáticos, changelists del admin y comportamiento del logout.
+7. Correcciones acotadas en `integration/clean`, limpieza de archivos originales de la raíz y reporte final previo a develop.
 
 
 
