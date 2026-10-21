@@ -3,10 +3,11 @@
 ## Checklist de Ramas
 - [x] Respaldo `backup-antes-estructura` creado
 - [x] Respaldo `backup-antes-correccion` creado
+- [x] Respaldos `backup/feature-*` creados y subidos a GitHub (`audit`, `catalog`, `clinical`, `chatbot`, `security`, `dashboard`, `django-setup`, `ui-templates`)
 - [x] feature/django-setup (Recreada limpia como `feature/django-setup-clean`, original preservada como `feature/django-setup-old`)
 - [x] feature/ui-templates (Recreada limpia como `feature/ui-templates-clean`, original preservada como `feature/ui-templates-old`)
-- [ ] feature/security (Estado: Mezclada - Pendiente recreación -clean en `apps/security/`)
-- [ ] feature/catalog (Estado: Mezclada - Pendiente recreación -clean en `apps/catalog/`)
+- [x] feature/security (Recreada limpia como `feature/security-clean`, original preservada como `feature/security-old`)
+- [ ] feature/catalog (Estado: Mezclada - Siguiente en procesar: recreación `-clean` en `apps/catalog/`)
 - [ ] feature/clinical (Estado: Mezclada - Pendiente recreación -clean en `apps/clinical/`)
 - [ ] feature/audit (Estado: Mezclada - Pendiente recreación -clean en `apps/audit/`)
 - [ ] feature/dashboard (Estado: Mezclada - Pendiente recreación -clean en `apps/dashboard/`)
@@ -19,7 +20,7 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
 | :--- | :--- | :--- | :--- |
 | `assets/css/base.css` | `feature/ui-templates` | `static/css/global/{variables,reset,typography,utilities}.css` | Dividido por ui-templates en capa global |
 | `assets/css/layout.css` | `feature/ui-templates` | `static/css/global/layout.css` | Capa global layout (navbar, sidebar, contenedor) |
-| `assets/css/pacientes.css` | `feature/clinical` | `apps/clinical/static/clinical/css/pacientes.css` | Exclusivo de clinical (componentes comunes van a `global/components.css`) |
+| `assets/css/pacientes.css` | `feature/clinical` | `apps/clinical/static/clinical/css/pacientes.css` | Exclusivo de clinical (lo común ya fue cubierto en `global/components.css`) |
 | `css/formulario.css` | `feature/clinical` | `apps/clinical/static/clinical/css/form.css` | Estilos específicos del formulario clínico |
 | `css/formularios-listado.css` | `feature/clinical` | `apps/clinical/static/clinical/css/list.css` | Estilos específicos del listado clínico |
 | `css/login.css` | `feature/security` | `apps/security/static/security/css/login.css` | Estilos exclusivos de login |
@@ -52,15 +53,15 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
 | :--- | :--- | :---: | :---: | :---: |
 | `feature/django-setup-clean` | `config/`, `apps/__init__.py`, `manage.py`, `requirements.txt`, `.env.example`, `.gitignore`, `README.md` | 10 | 0 | **Completada y 100% Aislada** |
 | `feature/ui-templates-clean` | `templates/`, `static/` | 14 | 0 | **Completada y 100% Aislada** |
-| `feature/security` | `apps/security/` | 0 (`security/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
-| `feature/catalog` | `apps/catalog/` | 0 (`catalog/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
+| `feature/security-clean` | `apps/security/` | 10 | 0 | **Completada y 100% Aislada** |
+| `feature/catalog` | `apps/catalog/` | 0 (`catalog/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Siguiente) |
 | `feature/clinical` | `apps/clinical/` | 0 (`clinical/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
 | `feature/audit` | `apps/audit/` | 0 (`audit/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
 | `feature/dashboard` | `apps/dashboard/` | 0 (rama recién creada de develop) | 62 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
 | `feature/chatbot` | `apps/chatbot/` | 0 (`chatbot/` está en la raíz) | 67 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
 
 ## Decisiones tomadas y Respuestas del Usuario
-- Creadas ramas de respaldo `backup-antes-estructura` y `backup-antes-correccion` para proteger el historial completo (subidas a GitHub con push normal).
+- Creadas ramas de respaldo `backup-antes-estructura`, `backup-antes-correccion` y `backup/feature-*` para proteger el historial completo (subidas a GitHub con push normal).
 - Reglas de aislamiento estricto activas:
   1. NUNCA `push --force`.
   2. NO `git merge develop` en ramas feature.
@@ -68,12 +69,16 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
   4. NO hacer merge a `develop` hasta indicación explícita al final.
   5. Verificación obligatoria con `git diff --name-only main...HEAD | grep -v "^<permitidos>"` que debe resultar vacío.
   6. Subir ramas `-clean` como ramas nuevas con `git push origin <rama>-clean` normal.
+  7. Migraciones: no se corren `makemigrations` en ramas feature aisladas por dependencias cruzadas (`catalog.Institution`). Se generarán en `develop` en la integración final en el orden estricto: `catalog -> security -> clinical -> audit -> dashboard -> chatbot`.
 - Respuestas confirmadas por el usuario:
   1. `chat-widget.css` y su JS van a `apps/chatbot/static/chatbot/` e inclusión en otras páginas mediante partial `{% include "chatbot/widget.html" %}`. No duplicar CSS en otras apps.
   2. `assets/data/dashboard-cardiounemi-data.js` -> `apps/dashboard/static/dashboard/js/dashboard-data.js` (**TEMPORAL**, mock mientras se conecta al ORM/services).
   3. Librerías vendor: `chart.umd.min.js` y `apexcharts.min.js` a `apps/dashboard/static/dashboard/vendor/`. `marked.min.js` y `katex/` a `apps/chatbot/static/chatbot/vendor/`. Logos a `static/assets/images/`.
-  4. De `pacientes.css`: solo pasa a `static/css/global/components.css` lo que se use en 2 o más páginas; lo exclusivo de pacientes permanece en `clinical`.
-  5. La rama local `static-templates` es el commit inicial original (commit `9a6b1a8` / merge `6121e64`) creado por Luis antes de iniciar la integración Django; se mantendrá intacta sin tocarla.
+  4. De `pacientes.css`: solo pasa a `static/css/global/components.css` lo que se use en 2 o más páginas; la rama `clinical` NO modificará `static/css/global/`, únicamente limpiará de su `pacientes.css` lo ya existente en global.
+  5. La rama local `static-templates` es el commit inicial original (commit `9a6b1a8` / merge `6121e64`) creado por Luis antes de iniciar la integración Django; se mantiene intacta sin tocarla.
+  6. **Paso final en develop**: Se realizará un commit de limpieza en `develop` que elimina los archivos originales obsoletos de la raíz (`css/`, `js/`, `assets/`, `templates/*.html`), tras integrar todas las ramas y verificar el funcionamiento completo.
+  7. **Pendiente en base.html / ui-templates**: `base.html` actual no tiene sidebar estático forzado (envuelve directamente `{% block content %}`), permitiendo que login se renderice centrado sin sidebar. Como mejora opcional se anotó añadir un bloque `{% block sidebar %}`.
+  8. **Pendiente en django-setup**: En la integración final, configurar en `config/settings.py`: `LOGIN_URL = 'security:login'`, `LOGIN_REDIRECT_URL = 'dashboard:index'`, `LOGOUT_REDIRECT_URL = 'security:login'`.
 
 ## Ramas procesadas
 
@@ -93,15 +98,32 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
   - `static/css/global/reset.css` (reset y box-sizing unificado)
   - `static/css/global/typography.css` (jerarquía tipográfica, encabezados, párrafos, enlaces)
   - `static/css/global/layout.css` (sidebar shell, brand-header, user-menu dropdown y navegación compartida)
-  - `static/css/global/components.css` (botones, inputs, selects, field-labels, modales, badges, alertas, tablas, paginación)
+  - `static/css/global/components.css` (botones, inputs, selects, field-labels, modales, badges, alertas, tablas, paginación; 0 colores hexadecimales fuera de variables)
   - `static/css/global/utilities.css` (utilidades de layout, flex, grid, texto)
   - `static/js/global/utils.js` (helpers DOM, formateo de fechas y números, cookies CSRF)
   - `static/js/global/api.js` (wrapper fetch con token CSRF de Django y manejo unificado de errores)
   - `static/js/global/ui.js` (inicialización de user menu con avatar, modales, toasts)
   - `static/assets/images/logo-cardiounemi.png` y `logo-cardiounemi-transparent.png`
   - `static/assets/icons/.gitkeep`, `static/assets/fonts/.gitkeep`
-- Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v -E "^(templates/|static/)"` es vacío).
+- Aislamiento: 100% verificado (0 archivos fuera de `templates/` o `static/`).
 - Subida a remoto: `origin/feature/ui-templates-clean`.
 
+### 3. `feature/security-clean`
+- Rama original preservada: `feature/security-old`.
+- Base: Creada desde `main`.
+- Archivos incluidos (10 archivos, 100% en `apps/security/`):
+  - `apps/security/__init__.py`
+  - `apps/security/apps.py` (`name = "security"`)
+  - `apps/security/models.py` (`Role`, `UserManager`, `User` con `AbstractBaseUser` y `PermissionsMixin`, `UserRole`)
+  - `apps/security/admin.py` (registro de `UserAdmin` con inlines de `UserRole`, `RoleAdmin`)
+  - `apps/security/views.py` (`login_view`, `logout_view`)
+  - `apps/security/urls.py` (`security:login`, `security:logout`)
+  - `apps/security/templates/security/login.html` (extiende `base.html`, bloque extra_css/extra_js, form CSRF)
+  - `apps/security/static/security/css/login.css` (estilos específicos de tarjeta de login)
+  - `apps/security/static/security/js/login.js` (toggle de password, validación y feedback)
+  - `apps/security/migrations/__init__.py` (sin migraciones locales hasta integración en develop)
+- Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v "^apps/security/"` es vacío).
+- Subida a remoto: `origin/feature/security-clean`.
+
 ## Siguiente paso (requiere confirmación del usuario)
-- Procesar `feature/security`: Recrear `feature/security-clean` desde `main`, conservando `feature/security-old`, ubicando la app en `apps/security/` (models, views, urls, templates/security/login.html, static/security/{css/login.css, js/login.js}).
+- Procesar `feature/catalog`: Recrear `feature/catalog-clean` desde `main`, conservando `feature/catalog-old`, ubicando la app en `apps/catalog/` (18 modelos de catálogo geográfico, sociodemográfico y motor de cuestionarios).
