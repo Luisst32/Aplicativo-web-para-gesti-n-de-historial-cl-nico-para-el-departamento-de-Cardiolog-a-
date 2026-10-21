@@ -9,7 +9,7 @@
 - [x] feature/security (Recreada limpia como `feature/security-clean`, original preservada como `feature/security-old`)
 - [x] feature/catalog (Recreada limpia como `feature/catalog-clean`, original preservada como `feature/catalog-old`)
 - [x] feature/clinical (Recreada limpia como `feature/clinical-clean`, original preservada como `feature/clinical-old`)
-- [ ] feature/audit (Estado: Mezclada - Siguiente en procesar: recreación `-clean` en `apps/audit/`)
+- [x] feature/audit (Recreada limpia como `feature/audit-clean`, original preservada como `feature/audit-old`)
 - [ ] feature/dashboard (Estado: Mezclada - Pendiente recreación -clean en `apps/dashboard/`)
 - [ ] feature/chatbot (Estado: Mezclada - Pendiente recreación -clean en `apps/chatbot/`)
 
@@ -56,8 +56,8 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
 | `feature/security-clean` | `apps/security/` | 10 | 0 | **Completada y 100% Aislada** |
 | `feature/catalog-clean` | `apps/catalog/` | 8 | 0 | **Completada y 100% Aislada** |
 | `feature/clinical-clean` | `apps/clinical/` | 19 | 0 | **Completada y 100% Aislada** |
-| `feature/audit` | `apps/audit/` | 0 (`audit/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Siguiente) |
-| `feature/dashboard` | `apps/dashboard/` | 0 (rama recién creada de develop) | 62 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
+| `feature/audit-clean` | `apps/audit/` | 5 | 0 | **Completada y 100% Aislada** |
+| `feature/dashboard` | `apps/dashboard/` | 0 (rama recién creada de develop) | 62 (raíz con templates, css, js, config) | **Mezclada** (Siguiente) |
 | `feature/chatbot` | `apps/chatbot/` | 0 (`chatbot/` está en la raíz) | 67 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
 
 ## Decisiones tomadas y Respuestas del Usuario
@@ -96,7 +96,6 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
       - `clinical:form`, `clinical:list`
       - `dashboard:index`
       - `chatbot:chat`
-      Cada aplicación define obligatoriamente `app_name` con el nombre de su app.
   15. **WIDGET DE CHATBOT AUTOSUFICIENTE**: `apps/chatbot/templates/chatbot/widget.html` cargará su propio CSS (`chat-widget.css`), librerías vendor (`marked.min.js`, `katex`) y script del motor JS (`chat.js`). Las demás aplicaciones únicamente incluyen `{% include "chatbot/widget.html" %}`.
   16. **PENDIENTES PARA LA INTEGRACIÓN FINAL EN DEVELOP**:
       - Absorber en la capa global `static/css/global/` las variables de color locales definidas en el `:root` de `list.css`.
@@ -104,6 +103,14 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
       - Configurar en `config/settings.py`: `LOGIN_URL = 'security:login'`, `LOGIN_REDIRECT_URL = 'dashboard:index'`.
       - Probar exhaustivamente las columnas generadas en PostgreSQL (`makemigrations`, `sqlmigrate clinical 0001`, `migrate` sobre BD limpia).
       - **Fuente de verdad única**: `bd_final/gemini-code-1792555117056.sql`. El script de `bd/` queda permanentemente descartado.
+  17. **DECISIÓN PENDIENTE: ALIMENTACIÓN DE LA TABLA DE AUDITORÍA (`audit.change_log`)**:
+       El esquema original `bd_final` contemplaba triggers PL/pgSQL que alimentaban `RegistroCambio` de forma automática ante cada INSERT/UPDATE/DELETE. Al generarse el esquema mediante modelos de Django, la tabla `ChangeLog` no tiene triggers activos. Existen dos alternativas arquitectónicas para que el usuario elija (no se implementa ninguna en la rama aislada):
+       - **Opción A (Triggers en PostgreSQL mediante migración `RunSQL`)**:
+         - *Ventajas*: Registra absolutamente cualquier mutación en la base de datos (sea por Django ORM, consultas SQL directas, scripts externos o psql). Imposible de eludir o ignorar por descuido en el código.
+         - *Desventajas*: Para asociar el usuario autenticado de la aplicación Django (`user_id`), requiere configurar variables de sesión en cada transacción (`SET LOCAL app.current_user_id = ...`) mediante un middleware de Django; de lo contrario el campo `user` queda NULL y solo registra `db_login` (el rol de conexión de PostgreSQL). Mayor acoplamiento a PostgreSQL.
+       - **Opción B (Señales de Django `post_save` y `post_delete` / Librería tipo SimpleHistory / Django-Auditlog)**:
+         - *Ventajas*: Implementación 100% Python/Django nativa, conoce de forma directa el usuario autenticado de la sesión (`request.user`), fácil de inspeccionar y testear con tests unitarios.
+         - *Desventajas*: No captura operaciones masivas del ORM (`QuerySet.update()`, `QuerySet.delete()`, `bulk_create`) a menos que se invoquen señales explícitas, ni registra cambios realizados fuera de Django (pgAdmin, psql, scripts de mantenimiento directo de BD).
 
 ## Ramas procesadas
 
@@ -164,13 +171,14 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
   - `apps/catalog/migrations/__init__.py`
 - Reglas aplicadas y correcciones:
   - `db_table = 'catalog"."...'` en todos los modelos.
-  - Corrección de palabra reservada PostgreSQL: todos los campos `order` renombrados a `display_order` (en `EducationLevel`, `IncomeRange`, `QuestionnaireSection`, `Question`, `AnswerOption`, constraints, `ordering` y `admin.py`).
-  - `Sex.sex_id`: SmallIntegerField manual sin autoincremento (0 a 9) con `CheckConstraint(condition=...)`.
-  - `Question.response_type`: Choices `OPTION`, `NUMERIC`, `TEXT`, `BOOLEAN` con `CheckConstraint(condition=...)`.
-  - `AnswerOption.scores_predimed`: booleano para puntuación PREDIMED.
-  - Relaciones foráneas con `on_delete=models.PROTECT`, salvo `AnswerOption.question` con `CASCADE`.
+  - Corrección estricta contra `bd_final`: eliminados `Sex.iso_code`, `StaffCategory.code`, `EducationLevel.display_order`, `IncomeRange.lower_limit_usd/upper_limit_usd/display_order`, `EcgRhythm.code`.
+  - `Province.iso_code` y `Canton.dpa_code` pasaron a `NOT NULL` con sus respectivas `UniqueConstraint`.
+  - `Institution.acronym` ajustado a `max_length=20`.
+  - Nombres ampliados a `max_length=80` o `100` según `bd_final`.
+  - `Question.response_type`: Choices `'OPCION'`, `'NUMERICO'`, `'TEXTO'`, `'BOOLEANO'` alineados con `bd_final`.
+  - `display_order` conservado únicamente en `QuestionnaireSection`, `Question` y `AnswerOption`.
 - Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v "^apps/catalog/"` es vacío).
-- Subida a remoto: `origin/feature/catalog-clean` (commit `87ae384`).
+- Subida a remoto: `origin/feature/catalog-clean` (commit inicial `87ae384`, fix alineación `860d681`).
 
 ### 5. `feature/clinical-clean`
 - Rama original preservada: `feature/clinical-old`.
@@ -180,17 +188,17 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
   - `apps/clinical/apps.py` (`name = "clinical"`, `verbose_name = "Gestión Clínica"`)
   - `apps/clinical/models/__init__.py` (importa y expone los 8 modelos clínicos)
   - `apps/clinical/models/patient.py` (`Patient`, `db_table = 'clinical"."patient'`, jerarquía de nacimiento `ck_patient_birth_hierarchy`, FKs por string a `catalog.Institution`, `catalog.Sex`, `catalog.Ethnicity`, `catalog.Canton`, `catalog.Country`, `security.User`)
-  - `apps/clinical/models/visit.py` (`Visit`, `db_table = 'clinical"."visit'`, relación 1:1 con `Patient`, `study_year` como `GeneratedField(ExtractYear('visit_date'), db_persist=True)`, FKs a catálogos sociodemográficos y `security.User`)
+  - `apps/clinical/models/visit.py` (`Visit`, `db_table = 'clinical"."visit'`, relación 1:1 con `Patient`, `study_year` como `GeneratedField(ExtractYear('visit_date'), db_persist=True)`, FKs a catálogos sociodemográficos y `security.User`, checks de hijos [0-30] y convivientes [0-50] según `bd_final`)
   - `apps/clinical/models/exams.py` (5 satélites 1:1 con `Visit` usando `OneToOneField(primary_key=True)`):
     - `Anthropometry`: `weight_kg`, `height_cm`, `waist_circumference_cm`, `bmi` (GeneratedField `Round(F('weight_kg') / Power(F('height_cm') / 100.0, 2), 2)`), `body_surface_area` (GeneratedField Mosteller formula), checks de peso, talla y perímetro.
-    - `VitalSigns`: `systolic_bp`, `diastolic_bp`, `oxygen_saturation`, `heart_rate`, soplos, auscultación, checks de rango y orden sistólica/diastólica.
+    - `VitalSigns`: `systolic_bp`, `diastolic_bp`, `oxygen_saturation`, `heart_rate`, soplos, auscultación, checks de rango según `bd_final`.
     - `Electrocardiogram`: `rhythm` (FK catalog), FC, intervalos PR/QRS/QT/QTc, eje, hipertrofia ventricular izquierda, bloqueo de rama, alteraciones repolarización.
     - `Echocardiogram`: dimensiones VI/VD, hipertrofia, `lvef_percentage` con check 10-90%, disfunción diastólica, gradientes aórticos.
     - `Laboratory`: perfil hemático, renal, lipídico, glucémico y hepático completo según `bd_final`.
   - `apps/clinical/models/answers.py` (`VisitAnswer`, `db_table = 'clinical"."visit_answer'`, `UniqueConstraint(fields=['visit', 'question'])`, `CheckConstraint` que obliga exactamente un valor: opción, numérico o texto).
   - `apps/clinical/admin.py` (registro de los 8 modelos con inlines apilados/tabulares en `VisitAdmin`).
   - `apps/clinical/views.py` (`form_view` y `list_view` protegidos con `@login_required`).
-  - `apps/clinical/urls.py` (`clinical:form`, `clinical:list`).
+  - `apps/clinical/urls.py` (`clinical:form`, `clinical:list`, `app_name = "clinical"`).
   - `apps/clinical/templates/clinical/form.html` (extiende `base.html`, bloques `extra_css`, `content`, `extra_js`, widget chatbot incluido mediante `{% include "chatbot/widget.html" %}`).
   - `apps/clinical/templates/clinical/list.html` (extiende `base.html`, bloques `extra_css`, `content`, `extra_js`, widget chatbot incluido mediante `{% include "chatbot/widget.html" %}`).
   - `apps/clinical/static/clinical/css/form.css` (0 colores hexadecimales, uso de variables CSS).
@@ -200,9 +208,34 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
   - `apps/clinical/static/clinical/js/list.js` (lógica de filtros y tabla de listado).
   - `apps/clinical/static/clinical/js/pacientes.js` (modal de paciente y lógica de expediente clínico).
   - `apps/clinical/migrations/__init__.py` (sin migraciones locales hasta integración en develop).
+- Auditoría y depuración:
+  - Eliminados constraints no presentes en `bd_final`: `ck_vital_signs_bp_order` y `ck_visit_number`.
+  - Comprobados 81 usos de `var(--...)` en static de clinical: 0 variables faltantes.
+  - Verificados colores con transparencia dañados: 0 encontrados (`\)[0-9a-fA-F]{2}\b` da 0 coincidencias).
+  - Scripts de templates originales contrastados: 0 scripts inline perdidos; dependencias externas de chat y vendor desacopladas a sus apps correspondientes.
 - Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v "^apps/clinical/"` es vacío).
-- Subida a remoto: `origin/feature/clinical-clean` (commit `787979c`).
+- Subida a remoto: `origin/feature/clinical-clean` (commit inicial `787979c`, fix de constraints `d6b328b`).
+
+### 6. `feature/audit-clean`
+- Rama original preservada: `feature/audit-old`.
+- Base: Creada limpia desde `main`.
+- Archivos incluidos (5 archivos, 100% en `apps/audit/`):
+  - `apps/audit/__init__.py`
+  - `apps/audit/apps.py` (`name = "audit"`, `verbose_name = "Auditoría"`)
+  - `apps/audit/models.py`:
+    - Modelo `ChangeLog` (`db_table = 'audit"."change_log'`).
+    - PK `BigAutoField` (`log_id`).
+    - Fecha y hora `timestamp` con `auto_now_add=True`.
+    - Campos en inglés: `schema_name`, `table_name`, `record_key`, `action`, `column_name`, `old_value`, `new_value`, `user` (FK a `"security.User"` con `SET_NULL`, `null=True`, `blank=True`), `db_login`, `machine_name`.
+    - `CheckConstraint(name="ck_change_log_action")` validando `action IN ('INSERT', 'UPDATE', 'DELETE', 'I', 'U', 'D')`.
+  - `apps/audit/admin.py`:
+    - Registro de `ChangeLogAdmin` en modo estricto de solo lectura: `has_add_permission`, `has_change_permission`, `has_delete_permission` retornan `False`.
+    - Filtros por fecha, acción, esquema y tabla; búsqueda por tabla, clave y usuario.
+  - `apps/audit/migrations/__init__.py` (sin migraciones locales hasta integración en develop).
+- Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v "^apps/audit/"` es vacío).
+- Subida a remoto: `origin/feature/audit-clean` (commit `03a6fe1`).
 
 ## Siguiente paso (requiere confirmación del usuario)
-- Procesar `feature/audit`: Recrear `feature/audit-clean` desde `main`, conservando `feature/audit-old`, ubicando la app en `apps/audit/` (model ChangeLog en esquema `"audit"`, admin de solo lectura, sin templates ni static).
+- Procesar `feature/dashboard`: Recrear `feature/dashboard-clean` desde `main`, conservando `feature/dashboard-old`, ubicando la app en `apps/dashboard/` (views, urls `dashboard:index`, templates, static y vendor `chart.umd.min.js`, `apexcharts.min.js`).
+
 
