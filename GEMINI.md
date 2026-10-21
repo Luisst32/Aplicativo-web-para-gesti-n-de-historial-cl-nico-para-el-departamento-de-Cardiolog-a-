@@ -266,46 +266,72 @@ ESQUEMAS POSTGRESQL (db_table = '"esquema"."tabla"')
 security, catalog, clinical, audit, ai
 (dashboard no crea tablas)
 
-REGLA PRINCIPAL
-Cada rama toca SOLO su carpeta apps/<app>/ (incluidos sus templates y
-static). Las únicas ramas que tocan templates/ y static/ de la raíz
-son django-setup y ui-templates. Si una rama necesita cambiar algo
-fuera de sus carpetas (por ejemplo config/settings.py o
-config/urls.py), hazlo en un commit aparte y pequeño.
+REGLAS DE AISLAMIENTO (PREVALECEN SOBRE CUALQUIER OTRA INSTRUCCIÓN)
+1. NO hagas git merge develop dentro de ninguna rama feature.
+2. Cada rama feature contiene SOLO su carpeta permitida, más los
+   archivos base de main. No traigas ni dejes archivos de otras apps.
+3. NUNCA uses git rm para quitar apps ajenas de una rama que ya las
+   contiene: propagaría borrados a develop. Si una rama está
+   mezclada, recréala limpia:
+     git checkout main
+     git checkout -b feature/<app>-clean
+     git checkout feature/<app> -- <carpeta de la app>
+   Deja la original como feature/<app>-old y avísame antes de
+   reemplazarla.
+4. NO hagas merge a develop ni toques develop, salvo para guardar
+   GEMINI.md y PROGRESS.md. La integración se hará al final, cuando
+   yo lo indique.
+5. Carpetas permitidas por rama:
+   - feature/django-setup : config/, apps/__init__.py, manage.py,
+     requirements.txt, .env.example, .gitignore, README.md
+   - feature/ui-templates : templates/, static/
+   - feature/security     : apps/security/
+   - feature/catalog      : apps/catalog/
+   - feature/clinical     : apps/clinical/
+   - feature/audit        : apps/audit/
+   - feature/dashboard    : apps/dashboard/
+   - feature/chatbot      : apps/chatbot/
+   Excepción: al mover un template o static desde la raíz a su app,
+   se acepta que la rama muestre ese archivo eliminado de la raíz.
+6. Verificación obligatoria antes de cada commit y antes de pedirme
+   confirmación:
+     git diff --name-only main...HEAD | grep -v "^<carpeta permitida>"
+   Si imprime algo, corrígelo antes de seguir.
+7. No edites archivos de otra app aunque veas un error ahí. Anótalo
+   en "Pendientes y dudas" de PROGRESS.md.
+8. PROGRESS.md y GEMINI.md viven solo en develop (o fuera del repo).
+   No los traigas a las ramas feature.
 
-PROCESO
-1. Muestra el estado actual: git status, git branch -a y el árbol de
-   carpetas de cada rama. Lista el contenido de css/, js/ y assets/
-   y dime cómo piensas clasificar cada archivo y qué código repetido
-   moverías a global/, ANTES de tocar nada. Avísame si hay cambios
-   sin guardar. Crea el respaldo
-   `git branch backup-antes-estructura` antes de empezar.
-2. Crea la rama feature/dashboard desde develop (si no existe).
-3. Procesa las ramas EN ESTE ORDEN (por dependencias):
-   django-setup -> ui-templates -> security -> catalog -> clinical
-   -> audit -> dashboard -> chatbot.
+PROCESO DE REESTRUCTURACIÓN
+1. Diagnóstico y auditoría inicial (sin mover nada):
+   - git status, git branch -a, árbol de carpetas por rama.
+   - git diff --name-only main...<rama> para cada rama.
+   - Clasificación de css/, js/ y assets/ y propuesta de unificación en global/.
+   - Respaldo previo: git branch backup-antes-estructura y git branch backup-antes-correccion.
+2. Esperar confirmación del plan de limpieza antes de tocar ramas.
+3. Al recibir confirmación, procesar UNA rama a la vez en este orden:
+   django-setup -> ui-templates -> security -> catalog -> clinical -> audit -> dashboard -> chatbot.
 4. Para cada rama:
-   a. git checkout <rama> && git merge develop (traer lo último).
-   b. Dejar su estructura idéntica al árbol de arriba, usando
-      `git mv` para conservar el historial. Crear los archivos que
-      falten (vacíos o con lo mínimo necesario).
-   c. Actualizar imports, ForeignKeys ("security.User", etc.), urls,
+   a. Si está mezclada, recréala con el método -clean desde main.
+   b. Dejar su estructura idéntica al árbol de GEMINI.md, usando
+      git mv para conservar historial. Mover a su app los templates
+      y static según la equivalencia de templates.
+   c. Actualizar imports, ForeignKeys como cadenas ("security.User"),
       rutas de templates, rutas {% static %} y apps.py.
-   d. Verificar: python manage.py check y
-      python manage.py makemigrations --check. Verifica además que
-      no queden rutas rotas a CSS/JS/imágenes
-      (grep "href=\|src=" en los templates) y que no haya estilos o
-      funciones duplicadas entre global/ y los archivos de las apps.
+   d. Verificar el aislamiento con el comando de la regla 6:
+      git diff --name-only main...HEAD | grep -v "^<carpeta permitida>"
+      En ramas aisladas NO corras manage.py check: faltan las apps
+      de las que dependen. Verifica solo la estructura.
    e. Commits pequeños con prefijos (feat, refactor, fix, chore).
-   f. Hacer merge a develop y verificar que develop sigue sin
-      errores antes de pasar a la siguiente rama.
+   f. Actualizar PROGRESS.md, mostrar resumen (qué se movió, qué se
+      renombró, qué dudas quedaron) y ESPERAR confirmación antes de
+      pasar a la siguiente rama. NO hacer merge a develop.
 5. Migraciones: cada app genera las suyas en su propia rama. Si hay
    conflictos de migraciones, avísame antes de borrar nada.
-6. Al terminar, confirma que cada rama quedó sincronizada con develop
-   y dame un resumen: qué se movió, qué se renombró, qué código se
-   unificó en global/ y qué falta.
+6. Al terminar todas las ramas y con autorización explícita, se
+   planificará la integración final hacia develop.
 
-REGLAS
+REGLAS GENERALES
 - No uses git push --force.
 - No borres ramas, migraciones ni archivos sin preguntarme.
 - No modifiques la lógica de negocio ni el diseño visual, solo
