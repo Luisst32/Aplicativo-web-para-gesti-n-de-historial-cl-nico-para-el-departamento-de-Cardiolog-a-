@@ -149,10 +149,6 @@ class VitalSigns(models.Model):
                 name='ck_vital_signs_heart_rate'
             ),
             models.CheckConstraint(
-                condition=models.Q(systolic_bp__gte=models.F('diastolic_bp')),
-                name='ck_vital_signs_bp_order'
-            ),
-            models.CheckConstraint(
                 condition=models.Q(murmur_grade__isnull=True) |
                           models.Q(murmur_grade__gte=1, murmur_grade__lte=6),
                 name='ck_vital_signs_murmur_grade'

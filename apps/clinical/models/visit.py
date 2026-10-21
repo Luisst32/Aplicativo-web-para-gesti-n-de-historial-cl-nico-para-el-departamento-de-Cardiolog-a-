@@ -117,8 +117,14 @@ class Visit(models.Model):
             models.UniqueConstraint(fields=['patient'], name='uq_visit_patient'),
             models.UniqueConstraint(fields=['study_code'], name='uq_visit_study_code'),
             models.CheckConstraint(
-                condition=models.Q(visit_number__gte=1, visit_number__lte=20),
-                name='ck_visit_number'
+                condition=models.Q(num_children__isnull=True) |
+                          models.Q(num_children__gte=0, num_children__lte=30),
+                name='ck_visit_num_children'
+            ),
+            models.CheckConstraint(
+                condition=models.Q(num_cohabitants__isnull=True) |
+                          models.Q(num_cohabitants__gte=0, num_cohabitants__lte=50),
+                name='ck_visit_num_cohabitants'
             )
         ]
         verbose_name = "Visit"
