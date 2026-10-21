@@ -1,0 +1,67 @@
+/* ==========================================================================
+   VARIABLES.CSS
+   Custom properties (:root): colores, tipografías, tamaños, espaciados,
+   radios y sombras globales de CARDIOUNEMI.
+   ========================================================================== */
+
+:root {
+  /* ---------- Núcleo neutro ---------- */
+  --color-white: #FFFFFF;
+  --slate-50:  #F8FAFC;
+  --slate-100: #F1F5F9;
+  --slate-200: #E2E8F0;
+  --slate-300: #CBD5E1;
+  --slate-400: #94A3B8;
+  --slate-500: #64748B;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1E293B;
+  --slate-900: #0F172A;
+  --rose-200:  #FECACA;
+  --rose-800:  #991B1B;
+  --emerald-100: #D1FAE5;
+  --emerald-800: #065F46;
+
+  /* ---------- Tipografías ---------- */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Consolas', 'Courier New', monospace;
+
+  /* ---------- Marca CARDIOUNEMI (Paleta Oficial del Sistema) ---------- */
+  --color-primary-blue: #3AA0FF;
+  --color-primary-blue-hover: #268EF0;
+  --color-emergency-red: #FF5A5F;
+  --color-emergency-red-hover: #E0484D;
+  --color-navy: #121D2D;
+  --color-navy-dark: #121D2D;
+  --color-ice-blue: #CFE9FF;
+  --color-bg-light: #F4FAFF;
+  --color-success-green: #10B981;
+  --color-warning-amber: #F59E0B;
+  --color-warning-amber-dark: #D97706;
+  --color-card-gray: #E5EDF5;
+  --color-card-border: #CBD8E6;
+  --color-text-muted: #486581;
+  --color-text-muted-light: #B5C9E0;
+  --color-link-hover: #0B3C75;
+
+  /* ---------- Escala de radios ---------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+  --radius-pill: 20px;
+
+  /* ---------- Sombras ---------- */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 1px 3px rgba(27, 42, 65, 0.05);
+  --shadow-card-hover: 0 6px 16px rgba(27, 42, 65, 0.10);
+
+  /* ---------- Transiciones ---------- */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+}
