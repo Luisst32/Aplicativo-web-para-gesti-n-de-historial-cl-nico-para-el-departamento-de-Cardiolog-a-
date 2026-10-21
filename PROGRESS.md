@@ -8,8 +8,8 @@
 - [x] feature/ui-templates (Recreada limpia como `feature/ui-templates-clean`, original preservada como `feature/ui-templates-old`)
 - [x] feature/security (Recreada limpia como `feature/security-clean`, original preservada como `feature/security-old`)
 - [x] feature/catalog (Recreada limpia como `feature/catalog-clean`, original preservada como `feature/catalog-old`)
-- [ ] feature/clinical (Estado: Mezclada - Siguiente en procesar: recreación `-clean` en `apps/clinical/`)
-- [ ] feature/audit (Estado: Mezclada - Pendiente recreación -clean en `apps/audit/`)
+- [x] feature/clinical (Recreada limpia como `feature/clinical-clean`, original preservada como `feature/clinical-old`)
+- [ ] feature/audit (Estado: Mezclada - Siguiente en procesar: recreación `-clean` en `apps/audit/`)
 - [ ] feature/dashboard (Estado: Mezclada - Pendiente recreación -clean en `apps/dashboard/`)
 - [ ] feature/chatbot (Estado: Mezclada - Pendiente recreación -clean en `apps/chatbot/`)
 
@@ -55,8 +55,8 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
 | `feature/ui-templates-clean` | `templates/`, `static/` | 14 | 0 | **Completada y 100% Aislada** |
 | `feature/security-clean` | `apps/security/` | 10 | 0 | **Completada y 100% Aislada** |
 | `feature/catalog-clean` | `apps/catalog/` | 8 | 0 | **Completada y 100% Aislada** |
-| `feature/clinical` | `apps/clinical/` | 0 (`clinical/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Siguiente) |
-| `feature/audit` | `apps/audit/` | 0 (`audit/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
+| `feature/clinical-clean` | `apps/clinical/` | 19 | 0 | **Completada y 100% Aislada** |
+| `feature/audit` | `apps/audit/` | 0 (`audit/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Siguiente) |
 | `feature/dashboard` | `apps/dashboard/` | 0 (rama recién creada de develop) | 62 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
 | `feature/chatbot` | `apps/chatbot/` | 0 (`chatbot/` está en la raíz) | 67 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
 
@@ -89,6 +89,8 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
       CREATE SCHEMA IF NOT EXISTS ai;
       ```
   11. **Pendiente de integración - Carga inicial de datos**: NO generar fixtures en ramas aisladas. La carga de datos iniciales (sexo, etnias, provincias, cantones, preguntas y opciones de respuesta de catalog) se realizará tras integrar en develop mediante un script/fixture ordenado.
+  12. **REGLA SQL CRUDO Y PALABRAS RESERVADAS**: En consultas SQL crudas o comandos generados a mano, citar siempre `"security"."user"` con comillas dobles. Asimismo, se evitó la palabra reservada de PostgreSQL `order` en todos los modelos renombrándola a `display_order` (en `EducationLevel`, `IncomeRange`, `QuestionnaireSection`, `Question`, `AnswerOption`).
+  13. **PENDIENTE DE CONEXIÓN FRONTEND-BACKEND**: En `apps/clinical/`, conectar `form.js` y `pacientes.js` con los endpoints y ORM de Django en `views.py`, ya que actualmente interactúan con datos de prueba/mock locales.
 
 ## Ramas procesadas
 
@@ -147,14 +149,47 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
   - `apps/catalog/models/questionnaire.py` (`QuestionnaireSection`, `Question`, `AnswerOption`)
   - `apps/catalog/admin.py` (registro de los 18 modelos con inlines de `Question` y `AnswerOption`)
   - `apps/catalog/migrations/__init__.py`
-- Reglas aplicadas:
+- Reglas aplicadas y correcciones:
   - `db_table = 'catalog"."...'` en todos los modelos.
-  - `Sex.sex_id`: SmallIntegerField manual sin autoincremento (0 a 9) con `CheckConstraint`.
-  - `Question.response_type`: Choices `OPTION`, `NUMERIC`, `TEXT`, `BOOLEAN` con `CheckConstraint`.
+  - Corrección de palabra reservada PostgreSQL: todos los campos `order` renombrados a `display_order` (en `EducationLevel`, `IncomeRange`, `QuestionnaireSection`, `Question`, `AnswerOption`, constraints, `ordering` y `admin.py`).
+  - `Sex.sex_id`: SmallIntegerField manual sin autoincremento (0 a 9) con `CheckConstraint(condition=...)`.
+  - `Question.response_type`: Choices `OPTION`, `NUMERIC`, `TEXT`, `BOOLEAN` con `CheckConstraint(condition=...)`.
   - `AnswerOption.scores_predimed`: booleano para puntuación PREDIMED.
   - Relaciones foráneas con `on_delete=models.PROTECT`, salvo `AnswerOption.question` con `CASCADE`.
 - Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v "^apps/catalog/"` es vacío).
-- Subida a remoto: `origin/feature/catalog-clean`.
+- Subida a remoto: `origin/feature/catalog-clean` (commit `87ae384`).
+
+### 5. `feature/clinical-clean`
+- Rama original preservada: `feature/clinical-old`.
+- Base: Creada limpia desde `main`, recursos extraídos de `backup-antes-estructura`.
+- Archivos incluidos (19 archivos, 100% en `apps/clinical/`):
+  - `apps/clinical/__init__.py`
+  - `apps/clinical/apps.py` (`name = "clinical"`, `verbose_name = "Gestión Clínica"`)
+  - `apps/clinical/models/__init__.py` (importa y expone los 8 modelos clínicos)
+  - `apps/clinical/models/patient.py` (`Patient`, `db_table = 'clinical"."patient'`, jerarquía de nacimiento `ck_patient_birth_hierarchy`, FKs por string a `catalog.Institution`, `catalog.Sex`, `catalog.Ethnicity`, `catalog.Canton`, `catalog.Country`, `security.User`)
+  - `apps/clinical/models/visit.py` (`Visit`, `db_table = 'clinical"."visit'`, relación 1:1 con `Patient`, `study_year` como `GeneratedField(ExtractYear('visit_date'), db_persist=True)`, FKs a catálogos sociodemográficos y `security.User`)
+  - `apps/clinical/models/exams.py` (5 satélites 1:1 con `Visit` usando `OneToOneField(primary_key=True)`):
+    - `Anthropometry`: `weight_kg`, `height_cm`, `waist_circumference_cm`, `bmi` (GeneratedField `Round(F('weight_kg') / Power(F('height_cm') / 100.0, 2), 2)`), `body_surface_area` (GeneratedField Mosteller formula), checks de peso, talla y perímetro.
+    - `VitalSigns`: `systolic_bp`, `diastolic_bp`, `oxygen_saturation`, `heart_rate`, soplos, auscultación, checks de rango y orden sistólica/diastólica.
+    - `Electrocardiogram`: `rhythm` (FK catalog), FC, intervalos PR/QRS/QT/QTc, eje, hipertrofia ventricular izquierda, bloqueo de rama, alteraciones repolarización.
+    - `Echocardiogram`: dimensiones VI/VD, hipertrofia, `lvef_percentage` con check 10-90%, disfunción diastólica, gradientes aórticos.
+    - `Laboratory`: perfil hemático, renal, lipídico, glucémico y hepático completo según `bd_final`.
+  - `apps/clinical/models/answers.py` (`VisitAnswer`, `db_table = 'clinical"."visit_answer'`, `UniqueConstraint(fields=['visit', 'question'])`, `CheckConstraint` que obliga exactamente un valor: opción, numérico o texto).
+  - `apps/clinical/admin.py` (registro de los 8 modelos con inlines apilados/tabulares en `VisitAdmin`).
+  - `apps/clinical/views.py` (`form_view` y `list_view` protegidos con `@login_required`).
+  - `apps/clinical/urls.py` (`clinical:form`, `clinical:list`).
+  - `apps/clinical/templates/clinical/form.html` (extiende `base.html`, bloques `extra_css`, `content`, `extra_js`, widget chatbot incluido mediante `{% include "chatbot/widget.html" %}`).
+  - `apps/clinical/templates/clinical/list.html` (extiende `base.html`, bloques `extra_css`, `content`, `extra_js`, widget chatbot incluido mediante `{% include "chatbot/widget.html" %}`).
+  - `apps/clinical/static/clinical/css/form.css` (0 colores hexadecimales, uso de variables CSS).
+  - `apps/clinical/static/clinical/css/list.css` (0 colores hexadecimales en reglas de estilo, variables CSS locales scoped para badges y estados).
+  - `apps/clinical/static/clinical/css/pacientes.css` (depurado de redundancias con `components.css`, 0 colores hexadecimales).
+  - `apps/clinical/static/clinical/js/form.js` (lógica de pasos y validación del formulario).
+  - `apps/clinical/static/clinical/js/list.js` (lógica de filtros y tabla de listado).
+  - `apps/clinical/static/clinical/js/pacientes.js` (modal de paciente y lógica de expediente clínico).
+  - `apps/clinical/migrations/__init__.py` (sin migraciones locales hasta integración en develop).
+- Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v "^apps/clinical/"` es vacío).
+- Subida a remoto: `origin/feature/clinical-clean` (commit `787979c`).
 
 ## Siguiente paso (requiere confirmación del usuario)
-- Procesar `feature/clinical`: Recrear `feature/clinical-clean` desde `main`, conservando `feature/clinical-old`, ubicando la app en `apps/clinical/` (models Patient, Visit, Anthropometry, VitalSigns, Electrocardiogram, Echocardiogram, Laboratory, VisitAnswer; views, urls, templates/clinical/{form.html, list.html}, static/clinical/{css/{form.css, list.css, pacientes.css}, js/{form.js, list.js, pacientes.js}}).
+- Procesar `feature/audit`: Recrear `feature/audit-clean` desde `main`, conservando `feature/audit-old`, ubicando la app en `apps/audit/` (model ChangeLog en esquema `"audit"`, admin de solo lectura, sin templates ni static).
+

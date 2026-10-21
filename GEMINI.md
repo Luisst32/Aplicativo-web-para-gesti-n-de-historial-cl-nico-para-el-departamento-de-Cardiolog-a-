@@ -267,6 +267,7 @@ Regla: en TODOS los modelos, db_table usa la forma 'esquema"."tabla' (sin comill
 para evitar problemas de citado en tablas intermedias M2M de Django:
 security, catalog, clinical, audit, ai
 (dashboard no crea tablas)
+Nota: en SQL crudo hay que citar "security"."user" y evitar nombres reservados; display_order reemplaza a order.
 
 REGLAS DE AISLAMIENTO (PREVALECEN SOBRE CUALQUIER OTRA INSTRUCCIÓN)
 1. NO hagas git merge develop dentro de ninguna rama feature.
