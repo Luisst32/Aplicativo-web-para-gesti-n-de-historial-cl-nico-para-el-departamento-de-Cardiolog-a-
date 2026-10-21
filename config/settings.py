@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'seguridad',
     'catalogo',
     'auditoria',
+    'chatbot',
 ]
 
 AUTH_USER_MODEL = 'seguridad.Usuario'
