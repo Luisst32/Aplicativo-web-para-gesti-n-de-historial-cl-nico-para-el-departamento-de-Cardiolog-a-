@@ -11,7 +11,7 @@
 - [x] feature/clinical (Recreada limpia como `feature/clinical-clean`, original preservada como `feature/clinical-old`)
 - [x] feature/audit (Recreada limpia como `feature/audit-clean`, original preservada como `feature/audit-old`)
 - [x] feature/dashboard (Recreada limpia como `feature/dashboard-clean`, original preservada como `feature/dashboard-old`)
-- [ ] feature/chatbot (Estado: Mezclada - Pendiente recreación -clean en `apps/chatbot/`)
+- [x] feature/chatbot (Recreada limpia como `feature/chatbot-clean`, original preservada como `feature/chatbot-old`)
 
 ## Tabla de Propiedad Exclusiva de Archivos Originales (css/, js/, assets/, templates/)
 Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola** rama destino para evitar conflictos de renombrado en la integración final:
@@ -281,8 +281,8 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
 - Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v "^apps/chatbot/"` es vacío).
 - Subida a remoto: `origin/feature/chatbot-clean` (commit `229ba42`).
 
-## Siguiente paso: Fase de Integración en integration/clean
-Las **8 ramas limpias** (`feature/*-clean`) se encuentran 100% completadas, corregidas en Paso 0, aisladas y publicadas en el remoto de GitHub:
+## Fase de Integración en integration/clean (Completada y Verificada)
+Las **8 ramas limpias** (`feature/*-clean`) se integraron con `--no-ff` en la rama `integration/clean` (creada a partir de `main` `5a608ab`) sin ningún conflicto:
 1. `feature/django-setup-clean` (`5b2d9d5`)
 2. `feature/ui-templates-clean` (`e96e3f4`)
 3. `feature/security-clean` (`774a5be`)
@@ -292,14 +292,42 @@ Las **8 ramas limpias** (`feature/*-clean`) se encuentran 100% completadas, corr
 7. `feature/dashboard-clean` (`4fbe24b`)
 8. `feature/chatbot-clean` (`229ba42`)
 
-**Próximo flujo a ejecutar en rama nueva `integration/clean` (sin tocar develop):**
-1. Crear `integration/clean` desde `main` (`git checkout -b integration/clean main`).
-2. Configurar base de datos limpia de pruebas `cardiounemi_integration` con los 5 esquemas (`security`, `catalog`, `clinical`, `audit`, `ai`).
-3. Merge `--no-ff` ordenado de las 8 ramas limpias.
-4. `manage.py check`, `makemigrations` ordenado y validación de CREATE TABLE / columnas generadas con `sqlmigrate`.
-5. Ejecutar `migrate` y pruebas en shell (rollback con paciente/antropometría/CHECKs).
-6. Pruebas de cliente HTTP con `django.test.Client` para URLs, archivos estáticos, changelists del admin y comportamiento del logout.
-7. Correcciones acotadas en `integration/clean`, limpieza de archivos originales de la raíz y reporte final previo a develop.
+### Verificaciones Técnicas Realizadas en Ambiente de Integración (`cardiounemi_integration`):
+1. **Base de Datos y Esquemas**: Creada base de datos `cardiounemi_integration` en PostgreSQL con los 5 esquemas: `security`, `catalog`, `clinical`, `audit`, `ai`.
+2. **System Check de Django**: `python manage.py check` reportó `System check identified no issues (0 silenced)`.
+3. **Columnas Generadas y Migraciones**:
+   - Ajuste de compatibilidad Django 6.x en `apps/clinical/models/exams.py` para expresiones matemáticas (`Cast` y `ExpressionWrapper` en `Anthropometry.bmi` y `body_surface_area`).
+   - Migraciones iniciales generadas en orden para todos los esquemas (`audit`, `catalog`, `clinical`, `security`, `chatbot`).
+   - SQL de columnas generadas validado con `sqlmigrate`:
+     - `study_year`: `EXTRACT(YEAR FROM "visit_date") STORED`
+     - `bmi`: `ROUND((("weight_kg" / POWER(("height_cm" / 100.0), 2)))::numeric(5, 2), 2) STORED`
+     - `body_surface_area`: `ROUND((((0.007184 * POWER("weight_kg", 0.425)) * POWER("height_cm", 0.725)))::numeric(4, 2), 2) STORED`
+   - Migración ejecutada con éxito: 31 tablas distribuidas en los 5 esquemas designados (0 tablas en `public`).
+4. **Prueba de Inserción Atómica y Rollback en Shell**:
+   - Paciente, visita y antropometría creados: `study_year=2026`, `bmi=22.86`, `body_surface_area=1.85`.
+   - Restricción CHECK probada con inserción de peso inválido (`10 kg`): rechazada exitosamente por PostgreSQL con `IntegrityError` (`ck_anthropometry_weight`).
+   - Rollback atómico verificado: la base de datos retornó a estado limpio (0 pacientes, 0 usuarios).
+5. **Pruebas de Cliente HTTP con `django.test.Client`**:
+   - Autenticación institucional (`client.login` con superusuario): EXITOSO.
+   - Vistas canónicas probadas (HTTP 200 OK):
+     - `security:login` (`/security/login/`) -> 200 OK
+     - `clinical:form` (`/clinical/formulario/`) -> 200 OK
+     - `clinical:list` (`/clinical/listado/`) -> 200 OK
+     - `dashboard:index` (`/`) -> 200 OK
+     - `chatbot:chat` (`/chatbot/`) -> 200 OK
+   - Archivos estáticos verificados con `finders.find`: 30 referencias únicas en HTML, 30 encontradas (0 archivos faltantes, 100% resueltos).
+   - Vistas de administración (`admin.site._registry`): 31 modelos registrados, 31 changelists devuelven HTTP 200 OK sin errores.
+   - Logout probado: GET y POST devuelven redirección 302 hacia `/security/login/` (compatible con enlaces HTML de interfaz).
+6. **Correcciones de Integración Aplicadas**:
+   - `apps/chatbot/templates/chatbot/widget.html`: eliminada sintaxis accidental `{% include %}` dentro de comentario HTML que provocaba recursividad infinita.
+   - `apps/security/views.py`: redirección ajustada de `/dashboard/` a `dashboard:index`.
+   - `config/settings.py`: añadido `testserver` a `ALLOWED_HOSTS` y definidas variables `LOGIN_URL`, `LOGIN_REDIRECT_URL`, `LOGOUT_REDIRECT_URL`.
+7. **Publicación Remota**:
+   - Rama `integration/clean` subida a GitHub (`origin/integration/clean`).
+
+## Próximo Paso (Pendiente de Aprobación del Usuario):
+- **Fase 5 (Limpieza de Archivos Originales de la Raíz)**: Eliminar en commit específico los archivos originales ya migrados que permanecen en la raíz (`css/`, `js/`, `assets/`, `templates/*.html`).
+- **Fase 6 (Integración a `develop`)**: Merge de `integration/clean` a `develop` y validación final.
 
 
 
