@@ -1,15 +1,38 @@
-# Sistemas Operativos
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-.DS_Store
+# Entorno Virtual Python
+venv/
+.venv/
+env/
+ENV/
+
+# Byte-compiled / cache de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Base de datos local
+db.sqlite3
+db.sqlite3-journal
+
+# Archivos estáticos / media generados
+media/
+staticfiles/
+
+# Variables de entorno
+.env
+local_settings.py
 
 # Editores y Entornos
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Sistemas Operativos
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
 
 # Logs y Temporales
 *.log
