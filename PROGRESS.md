@@ -10,7 +10,7 @@
 - [x] feature/catalog (Recreada limpia como `feature/catalog-clean`, original preservada como `feature/catalog-old`)
 - [x] feature/clinical (Recreada limpia como `feature/clinical-clean`, original preservada como `feature/clinical-old`)
 - [x] feature/audit (Recreada limpia como `feature/audit-clean`, original preservada como `feature/audit-old`)
-- [ ] feature/dashboard (Estado: Mezclada - Pendiente recreación -clean en `apps/dashboard/`)
+- [x] feature/dashboard (Recreada limpia como `feature/dashboard-clean`, original preservada como `feature/dashboard-old`)
 - [ ] feature/chatbot (Estado: Mezclada - Pendiente recreación -clean en `apps/chatbot/`)
 
 ## Tabla de Propiedad Exclusiva de Archivos Originales (css/, js/, assets/, templates/)
@@ -57,8 +57,8 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
 | `feature/catalog-clean` | `apps/catalog/` | 8 | 0 | **Completada y 100% Aislada** |
 | `feature/clinical-clean` | `apps/clinical/` | 19 | 0 | **Completada y 100% Aislada** |
 | `feature/audit-clean` | `apps/audit/` | 5 | 0 | **Completada y 100% Aislada** |
-| `feature/dashboard` | `apps/dashboard/` | 0 (rama recién creada de develop) | 62 (raíz con templates, css, js, config) | **Mezclada** (Siguiente) |
-| `feature/chatbot` | `apps/chatbot/` | 0 (`chatbot/` está en la raíz) | 67 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
+| `feature/dashboard-clean` | `apps/dashboard/` | 12 | 0 | **Completada y 100% Aislada** |
+| `feature/chatbot` | `apps/chatbot/` | 0 (`chatbot/` está en la raíz) | 67 (raíz con templates, css, js, config) | **Mezclada** (Siguiente) |
 
 ## Decisiones tomadas y Respuestas del Usuario
 - Creadas ramas de respaldo `backup-antes-estructura`, `backup-antes-correccion` y `backup/feature-*` para proteger el historial completo (subidas a GitHub con push normal).
@@ -103,16 +103,12 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
       - Configurar en `config/settings.py`: `LOGIN_URL = 'security:login'`, `LOGIN_REDIRECT_URL = 'dashboard:index'`.
       - Probar exhaustivamente las columnas generadas en PostgreSQL (`makemigrations`, `sqlmigrate clinical 0001`, `migrate` sobre BD limpia).
       - **Fuente de verdad única**: `bd_final/gemini-code-1792555117056.sql`. El script de `bd/` queda permanentemente descartado.
-  17. **DECISIÓN PENDIENTE: ALIMENTACIÓN DE LA TABLA DE AUDITORÍA (`audit.change_log`)**:
-       El esquema original `bd_final` contemplaba triggers PL/pgSQL que alimentaban `RegistroCambio` de forma automática ante cada INSERT/UPDATE/DELETE. Al generarse el esquema mediante modelos de Django, la tabla `ChangeLog` no tiene triggers activos. Existen dos alternativas arquitectónicas para que el usuario elija (no se implementa ninguna en la rama aislada):
-       - **Opción A (Triggers en PostgreSQL mediante migración `RunSQL`)**:
-         - *Ventajas*: Registra absolutamente cualquier mutación en la base de datos (sea por Django ORM, consultas SQL directas, scripts externos o psql). Imposible de eludir o ignorar por descuido en el código.
-         - *Desventajas*: Para asociar el usuario autenticado de la aplicación Django (`user_id`), requiere configurar variables de sesión en cada transacción (`SET LOCAL app.current_user_id = ...`) mediante un middleware de Django; de lo contrario el campo `user` queda NULL y solo registra `db_login` (el rol de conexión de PostgreSQL). Mayor acoplamiento a PostgreSQL.
-       - **Opción B (Señales de Django `post_save` y `post_delete` / Librería tipo SimpleHistory / Django-Auditlog)**:
-         - *Ventajas*: Implementación 100% Python/Django nativa, conoce de forma directa el usuario autenticado de la sesión (`request.user`), fácil de inspeccionar y testear con tests unitarios.
-         - *Desventajas*: No captura operaciones masivas del ORM (`QuerySet.update()`, `QuerySet.delete()`, `bulk_create`) a menos que se invoquen señales explícitas, ni registra cambios realizados fuera de Django (pgAdmin, psql, scripts de mantenimiento directo de BD).
+  17. **DECISIÓN DE ARQUITECTURA: ALIMENTACIÓN DE LA TABLA DE AUDITORÍA (`audit.change_log`)**:
+      - **Decisión acordada:** Se utilizarán **Triggers en PostgreSQL** (adaptados de los triggers originales de `bd_final`). Esta solución garantiza auditoría completa e ineludible campo por campo, registrando valores anteriores, nuevos y login de BD para cualquier mutación (ORM, SQL crudo o mantenimiento directo).
+      - **Momento de implementación:** Se ejecutará **después de la integración final en `develop`** como un paso técnico desacoplado, mediante una migración `migrations.RunSQL` y un middleware en Django que establezca la variable de sesión (`SET LOCAL app.current_user_id = ...`) para propagar el ID del usuario web al trigger.
 
 ## Ramas procesadas
+
 
 ### 1. `feature/django-setup-clean`
 - Rama original preservada: `feature/django-setup-old`.
@@ -235,7 +231,27 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
 - Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v "^apps/audit/"` es vacío).
 - Subida a remoto: `origin/feature/audit-clean` (commit `03a6fe1`).
 
+### 7. `feature/dashboard-clean`
+- Rama original preservada: `feature/dashboard-old`.
+- Base: Creada limpia desde `main` (`5a608ab`).
+- Archivos incluidos (12 archivos, 100% en `apps/dashboard/`):
+  - `apps/dashboard/__init__.py`
+  - `apps/dashboard/apps.py` (`name = "dashboard"`, `verbose_name = "Dashboard Analítico"`)
+  - `apps/dashboard/views.py` (`index_view` con `@login_required` que renderiza `dashboard/index.html`)
+  - `apps/dashboard/services.py` (capa de servicios analíticos documentada; pendiente de conexión al ORM)
+  - `apps/dashboard/urls.py` (`app_name = "dashboard"`, ruta `""` con `name = "index"`)
+  - `apps/dashboard/templates/dashboard/index.html` (extiende `base.html`, bloques `extra_css`, `content`, `extra_js`, widget chatbot incluido mediante `{% include "chatbot/widget.html" %}`, enlaces canónicos a `clinical:list`, `clinical:form`, `chatbot:chat`, `dashboard:index` y `security:logout`)
+  - `apps/dashboard/static/dashboard/css/dashboard.css` (0 colores hexadecimales fuera del bloque `:root` local, 0 variables faltantes, 0 patrones de transparencia dañados)
+  - `apps/dashboard/static/dashboard/js/dashboard.js` (controlador e inicialización de gráficos interactivos Chart.js y ApexCharts)
+  - `apps/dashboard/static/dashboard/js/dashboard-data.js` (TEMPORAL, mock de datos de 280 evaluados de la cohorte)
+  - `apps/dashboard/static/dashboard/vendor/chart.umd.min.js` (librería vendor exclusiva de gráficos)
+  - `apps/dashboard/static/dashboard/vendor/apexcharts.min.js` (librería vendor exclusiva de gráficos)
+  - `apps/dashboard/migrations/__init__.py` (sin migraciones locales hasta integración en develop)
+- Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v "^apps/dashboard/"` es vacío).
+- Subida a remoto: `origin/feature/dashboard-clean` (commit `4fbe24b`).
+
 ## Siguiente paso (requiere confirmación del usuario)
-- Procesar `feature/dashboard`: Recrear `feature/dashboard-clean` desde `main`, conservando `feature/dashboard-old`, ubicando la app en `apps/dashboard/` (views, urls `dashboard:index`, templates, static y vendor `chart.umd.min.js`, `apexcharts.min.js`).
+- Procesar `feature/chatbot`: Recrear `feature/chatbot-clean` desde `main`, conservando `feature/chatbot-old`, ubicando la app en `apps/chatbot/` (modelos `BotQuery` y `BotFeedback` en esquema `"ai"`, vistas, urls `chatbot:chat`, templates `chat.html` y `widget.html` autosuficiente con marcado/KaTeX, static `chat.css`, `chat-widget.css`, `chat.js`, vendor `marked.min.js` y `katex/`).
+
 
 
