@@ -1,0 +1,47 @@
+/* ==========================================================================
+   RESET.CSS
+   Reset, normalización de estilos y box-sizing unificado para todo el sitio.
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  background-color: var(--color-bg-light);
+  color: var(--color-navy);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Los controles de formulario deben heredar explícitamente la fuente */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+img,
+svg {
+  max-width: 100%;
+  display: block;
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
