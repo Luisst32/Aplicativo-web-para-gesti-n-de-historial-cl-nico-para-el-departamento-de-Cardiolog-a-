@@ -41,8 +41,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'chatbot',
 ]
+
+# --- Chatbot App Configuration ---
+# [chatbot_app_config]
 
 # --- Security App Configuration ---
 # [security_app_config]
