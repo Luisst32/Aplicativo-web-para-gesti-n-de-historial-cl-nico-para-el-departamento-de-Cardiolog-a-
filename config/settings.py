@@ -44,6 +44,18 @@ INSTALLED_APPS = [
     'chatbot',
 ]
 
+# --- Security App Configuration ---
+# [security_app_config]
+
+# --- Catalog App Configuration ---
+# [catalog_app_config]
+
+# --- Clinical App Configuration ---
+# [clinical_app_config]
+
+# --- Audit App Configuration ---
+# [audit_app_config]
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
