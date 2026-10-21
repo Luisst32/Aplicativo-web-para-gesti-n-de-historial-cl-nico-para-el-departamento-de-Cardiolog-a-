@@ -11,7 +11,7 @@ class Role(models.Model):
     description = models.CharField(max_length=200, blank=True, null=True, db_column='description')
 
     class Meta:
-        db_table = '"security"."role"'
+        db_table = 'security"."role'
         verbose_name = "Role"
         verbose_name_plural = "Roles"
 
@@ -70,7 +70,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         on_delete=models.RESTRICT,
         db_column='institution_id',
         related_name='users',
-        help_text="Institution the user belongs to"
+        null=True,
+        blank=True,
+        help_text="Institution the user belongs to (nullable for superadmin)"
     )
     username = models.CharField(max_length=60, unique=True, db_column='username')
     email = models.EmailField(max_length=150, unique=True, db_column='email')
@@ -93,7 +95,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     EMAIL_FIELD = 'email'
 
     class Meta:
-        db_table = '"security"."user"'
+        db_table = 'security"."user'
         verbose_name = "User"
         verbose_name_plural = "Users"
 
@@ -115,8 +117,10 @@ class UserRole(models.Model):
     assigned_at_utc = models.DateTimeField(auto_now_add=True, db_column='assigned_at_utc')
 
     class Meta:
-        db_table = '"security"."user_role"'
-        unique_together = (('user', 'role'),)
+        db_table = 'security"."user_role'
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'role'], name='unique_user_role')
+        ]
         verbose_name = "User Role"
         verbose_name_plural = "User Roles"
 
