@@ -41,14 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'seguridad',
-    'catalogo',
-    'auditoria',
     'chatbot',
-    'clinico',
 ]
-
-AUTH_USER_MODEL = 'seguridad.Usuario'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
