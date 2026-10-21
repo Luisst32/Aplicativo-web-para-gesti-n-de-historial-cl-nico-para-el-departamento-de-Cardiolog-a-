@@ -58,7 +58,7 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
 | `feature/clinical-clean` | `apps/clinical/` | 19 | 0 | **Completada y 100% Aislada** |
 | `feature/audit-clean` | `apps/audit/` | 5 | 0 | **Completada y 100% Aislada** |
 | `feature/dashboard-clean` | `apps/dashboard/` | 12 | 0 | **Completada y 100% Aislada** |
-| `feature/chatbot` | `apps/chatbot/` | 0 (`chatbot/` está en la raíz) | 67 (raíz con templates, css, js, config) | **Mezclada** (Siguiente) |
+| `feature/chatbot-clean` | `apps/chatbot/` | 37 | 0 | **Completada y 100% Aislada** |
 
 ## Decisiones tomadas y Respuestas del Usuario
 - Creadas ramas de respaldo `backup-antes-estructura`, `backup-antes-correccion` y `backup/feature-*` para proteger el historial completo (subidas a GitHub con push normal).
@@ -107,7 +107,14 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
   17. **PROPUESTA: triggers en PostgreSQL, pendiente de confirmación de Luis**:
       - **Enfoque propuesto:** Utilizar Triggers en PostgreSQL (adaptados de los triggers originales de `bd_final`). Esta solución garantiza auditoría completa e ineludible campo por campo, registrando valores anteriores, nuevos y login de BD para cualquier mutación (ORM, SQL crudo o mantenimiento directo).
       - **Alternativa:** Señales de Django (`post_save`/`post_delete`), que son 100% Python y conocen de inmediato a `request.user`, pero omiten operaciones masivas y cambios directos en BD.
-      - **Estado:** Pendiente de confirmación final. De confirmarse la opción de triggers, se implementará **después de la integración final en `develop`** como un paso técnico desacoplado (vía migración `RunSQL` y middleware de sesión `SET LOCAL app.current_user_id`).
+  18. **DECISIÓN PENDIENTE: MECANISMO DE ACCESO A DATOS PARA EL CHATBOT (`apps/chatbot`)**:
+      - **Opción A: Funciones fijas con el ORM de Django** (la IA elige qué función predefinida invocar).
+        - *Ventajas*: Máxima seguridad, tipado fuerte, control exhaustivo de datos accesibles, sin posibilidad de inyecciones SQL arbitrarias.
+        - *Desventajas*: Menor flexibilidad analítica; solo responde agregaciones o cruces para los cuales se haya programado una función explícita.
+      - **Opción B: Generación dinámica de SQL contra usuario de base de datos de solo lectura** (la IA genera consultas `SELECT` directas ejecutadas con un rol PostgreSQL restringido).
+        - *Ventajas*: Flexibilidad analítica total para responder consultas epidemiológicas o estadísticas ad-hoc complejas.
+        - *Desventajas*: Mayor complejidad de validación sintáctica/semántica, riesgo potencial de consultas lentas que degraden el rendimiento de PostgreSQL.
+      - **Estado:** Pendiente de definir antes de conectar el bot con datos reales. Por el momento, el frontend mantiene respuestas simuladas/maqueta sin lógica real ni endpoints activos.
 
 ## Ramas procesadas
 
@@ -252,8 +259,46 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
 - Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v "^apps/dashboard/"` es vacío).
 - Subida a remoto: `origin/feature/dashboard-clean` (commit `4fbe24b`).
 
-## Siguiente paso (requiere confirmación del usuario)
-- Procesar `feature/chatbot`: Recrear `feature/chatbot-clean` desde `main`, conservando `feature/chatbot-old`, ubicando la app en `apps/chatbot/` (modelos `BotQuery` y `BotFeedback` en esquema `"ai"`, vistas, urls `chatbot:chat`, templates `chat.html` y `widget.html` autosuficiente con marcado/KaTeX, static `chat.css`, `chat-widget.css`, `chat.js`, vendor `marked.min.js` y `katex/`).
+### 8. `feature/chatbot-clean`
+- Rama original preservada: `feature/chatbot-old`.
+- Base: Creada limpia desde `main` (`5a608ab`).
+- Archivos incluidos (37 archivos, 100% en `apps/chatbot/`):
+  - `apps/chatbot/__init__.py`
+  - `apps/chatbot/apps.py` (`name = "chatbot"`, `verbose_name = "Asistente Clínico Inteligente"`)
+  - `apps/chatbot/models.py` (`BotQuery` mapeado fielmente a `ia.ConsultaBot` de `bd_final`, `db_table = 'ai"."bot_query'`, PK `BigAutoField`, FK `security.User` con `RESTRICT`, CHECKs de `tokens_used >= 0` y `execution_time_ms >= 0`, e índice `IX_ConsultaBot_UsuarioFecha` en `['user', '-created_at']`)
+  - `apps/chatbot/admin.py` (registro de `BotQueryAdmin` en modo estricto de solo lectura: `has_add_permission=False`, `has_change_permission=False`, `has_delete_permission=False`, con filtros por fecha y usuario)
+  - `apps/chatbot/views.py` (`chat_view` con `@login_required` que renderiza `chatbot/chat.html`)
+  - `apps/chatbot/urls.py` (`app_name = "chatbot"`, ruta `""` con `name = "chat"`)
+  - `apps/chatbot/services.py` (capa de servicios documentada con alternativas de arquitectura y sanitización XSS; sin lógica ni consultas activas)
+  - `apps/chatbot/templates/chatbot/chat.html` (extiende `base.html`, bloques `extra_css`, `content`, `extra_js`, dependencias vendor `marked` y `katex` cargadas antes de `chat.js`, NO incluye `widget.html`, enlaces canónicos a `dashboard:index`, `clinical:list`, `clinical:form` y `security:logout`)
+  - `apps/chatbot/templates/chatbot/widget.html` (componente autónomo y autosuficiente con `{% load static %}`, incluye su CSS `chat-widget.css`, librerías vendor `katex/katex.min.css`, `marked.min.js`, `katex.min.js`, `auto-render.min.js`, controlador `chat.js` y el HTML íntegro de botón flotante y ventana de chat)
+  - `apps/chatbot/static/chatbot/css/chat.css` (0 colores hexadecimales fuera de `:root`, 0 variables faltantes, 0 patrones dañados)
+  - `apps/chatbot/static/chatbot/css/chat-widget.css` (0 colores hexadecimales fuera de `:root`, 0 variables faltantes, 0 patrones dañados)
+  - `apps/chatbot/static/chatbot/js/chat.js` (motor universal de chat para página y widget, sin mocks duros ni dependencias de `pacientes.js` o `menu-usuario.js`)
+  - `apps/chatbot/static/chatbot/vendor/marked.min.js`
+  - `apps/chatbot/static/chatbot/vendor/katex/` (`katex.min.css`, `katex.min.js`, `auto-render.min.js`, y 20 fuentes `.woff2` en `fonts/` para resolución local de tipografías matemáticas)
+  - `apps/chatbot/migrations/__init__.py` (sin migraciones locales hasta integración en develop)
+- Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v "^apps/chatbot/"` es vacío).
+- Subida a remoto: `origin/feature/chatbot-clean` (commit `8eb43c5`).
+
+## Siguiente paso: Fase de Integración en develop
+Las **8 ramas limpias** (`feature/*-clean`) se encuentran 100% completadas, aisladas y publicadas en el repositorio remoto de GitHub:
+1. `feature/django-setup-clean`
+2. `feature/ui-templates-clean`
+3. `feature/security-clean`
+4. `feature/catalog-clean`
+5. `feature/clinical-clean`
+6. `feature/audit-clean`
+7. `feature/dashboard-clean`
+8. `feature/chatbot-clean`
+
+**Próximo flujo a ejecutar en develop:**
+1. Crear los 5 esquemas en PostgreSQL: `security`, `catalog`, `clinical`, `audit`, `ai`.
+2. Realizar el merge ordenado o rebase de las 8 ramas limpias sobre `develop`.
+3. Ejecutar `makemigrations` en orden estricto de dependencias: `catalog -> security -> clinical -> audit -> dashboard -> chatbot`.
+4. Validar el SQL generado mediante `sqlmigrate` (especialmente columnas generadas de `clinical` y restricciones CHECK e índices de todas las apps).
+5. Ejecutar `migrate` sobre una base de datos PostgreSQL vacía.
+6. Realizar el commit final de limpieza en `develop` eliminando los archivos obsoletos de la raíz (`css/`, `js/`, `assets/`, `templates/*.html`).
 
 
 
