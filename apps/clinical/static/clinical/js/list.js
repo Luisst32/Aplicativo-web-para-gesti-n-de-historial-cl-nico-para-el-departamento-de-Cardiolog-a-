@@ -266,14 +266,8 @@ function cambiarPagina(nuevaPagina) {
 
 function actualizarStatsCards() {
   const totalPacientes = pacientes.length;
-  // Cada paciente tiene un único historial clínico consolidado
-  const totalHistoriales = totalPacientes;
-
   const elTotalP = document.getElementById('statTotalPacientes');
-  const elTotalH = document.getElementById('statTotalHistoriales');
-
   if (elTotalP) elTotalP.textContent = totalPacientes;
-  if (elTotalH) elTotalH.textContent = totalHistoriales;
 }
 
 function formatearFechaLegible(fechaStr) {
