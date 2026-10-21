@@ -7,8 +7,8 @@
 - [x] feature/django-setup (Recreada limpia como `feature/django-setup-clean`, original preservada como `feature/django-setup-old`)
 - [x] feature/ui-templates (Recreada limpia como `feature/ui-templates-clean`, original preservada como `feature/ui-templates-old`)
 - [x] feature/security (Recreada limpia como `feature/security-clean`, original preservada como `feature/security-old`)
-- [ ] feature/catalog (Estado: Mezclada - Siguiente en procesar: recreación `-clean` en `apps/catalog/`)
-- [ ] feature/clinical (Estado: Mezclada - Pendiente recreación -clean en `apps/clinical/`)
+- [x] feature/catalog (Recreada limpia como `feature/catalog-clean`, original preservada como `feature/catalog-old`)
+- [ ] feature/clinical (Estado: Mezclada - Siguiente en procesar: recreación `-clean` en `apps/clinical/`)
 - [ ] feature/audit (Estado: Mezclada - Pendiente recreación -clean en `apps/audit/`)
 - [ ] feature/dashboard (Estado: Mezclada - Pendiente recreación -clean en `apps/dashboard/`)
 - [ ] feature/chatbot (Estado: Mezclada - Pendiente recreación -clean en `apps/chatbot/`)
@@ -54,8 +54,8 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
 | `feature/django-setup-clean` | `config/`, `apps/__init__.py`, `manage.py`, `requirements.txt`, `.env.example`, `.gitignore`, `README.md` | 10 | 0 | **Completada y 100% Aislada** |
 | `feature/ui-templates-clean` | `templates/`, `static/` | 14 | 0 | **Completada y 100% Aislada** |
 | `feature/security-clean` | `apps/security/` | 10 | 0 | **Completada y 100% Aislada** |
-| `feature/catalog` | `apps/catalog/` | 0 (`catalog/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Siguiente) |
-| `feature/clinical` | `apps/clinical/` | 0 (`clinical/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
+| `feature/catalog-clean` | `apps/catalog/` | 8 | 0 | **Completada y 100% Aislada** |
+| `feature/clinical` | `apps/clinical/` | 0 (`clinical/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Siguiente) |
 | `feature/audit` | `apps/audit/` | 0 (`audit/` está en la raíz) | 68 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
 | `feature/dashboard` | `apps/dashboard/` | 0 (rama recién creada de develop) | 62 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
 | `feature/chatbot` | `apps/chatbot/` | 0 (`chatbot/` está en la raíz) | 67 (raíz con templates, css, js, config) | **Mezclada** (Pendiente) |
@@ -88,6 +88,7 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
       CREATE SCHEMA IF NOT EXISTS audit;
       CREATE SCHEMA IF NOT EXISTS ai;
       ```
+  11. **Pendiente de integración - Carga inicial de datos**: NO generar fixtures en ramas aisladas. La carga de datos iniciales (sexo, etnias, provincias, cantones, preguntas y opciones de respuesta de catalog) se realizará tras integrar en develop mediante un script/fixture ordenado.
 
 ## Ramas procesadas
 
@@ -123,16 +124,37 @@ Cada archivo original de `backup-antes-estructura` está asignado a **UNA sola**
 - Archivos incluidos (10 archivos, 100% en `apps/security/`):
   - `apps/security/__init__.py`
   - `apps/security/apps.py` (`name = "security"`)
-  - `apps/security/models.py` (`Role`, `UserManager`, `User` con `AbstractBaseUser` y `PermissionsMixin`, `UserRole`)
+  - `apps/security/models.py` (`Role`, `UserManager`, `User` con `AbstractBaseUser` y `PermissionsMixin`, `UserRole` con `UniqueConstraint`, `institution` nullable, `db_table = 'security"."...'`)
   - `apps/security/admin.py` (registro de `UserAdmin` con inlines de `UserRole`, `RoleAdmin`)
-  - `apps/security/views.py` (`login_view`, `logout_view`)
+  - `apps/security/views.py` (`login_view`, `logout_view` con Django Auth auténtico)
   - `apps/security/urls.py` (`security:login`, `security:logout`)
-  - `apps/security/templates/security/login.html` (extiende `base.html`, bloque extra_css/extra_js, form CSRF)
-  - `apps/security/static/security/css/login.css` (estilos específicos de tarjeta de login)
-  - `apps/security/static/security/js/login.js` (toggle de password, validación y feedback)
+  - `apps/security/templates/security/login.html` (extiende `base.html`, bloque extra_css/extra_js, form con `{% csrf_token %}`)
+  - `apps/security/static/security/css/login.css` (estilos de tarjeta de login con variables CSS)
+  - `apps/security/static/security/js/login.js` (toggle de password, validación sin mocks ni credenciales)
   - `apps/security/migrations/__init__.py` (sin migraciones locales hasta integración en develop)
 - Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v "^apps/security/"` es vacío).
 - Subida a remoto: `origin/feature/security-clean`.
 
+### 4. `feature/catalog-clean`
+- Rama original preservada: `feature/catalog-old`.
+- Base: Creada desde `main`.
+- Archivos incluidos (8 archivos, 100% en `apps/catalog/`):
+  - `apps/catalog/__init__.py`
+  - `apps/catalog/apps.py` (`name = "catalog"`)
+  - `apps/catalog/models/__init__.py` (importa y expone los 18 modelos)
+  - `apps/catalog/models/geography.py` (`Country`, `Province`, `Canton`, `Institution`)
+  - `apps/catalog/models/demographics.py` (`Sex`, `Ethnicity`, `StaffCategory`, `ProfessionalCategory`, `EducationLevel`, `IncomeRange`, `MaritalStatus`, `LivingSituation`, `HousingType`, `WorkSchedule`, `EcgRhythm`)
+  - `apps/catalog/models/questionnaire.py` (`QuestionnaireSection`, `Question`, `AnswerOption`)
+  - `apps/catalog/admin.py` (registro de los 18 modelos con inlines de `Question` y `AnswerOption`)
+  - `apps/catalog/migrations/__init__.py`
+- Reglas aplicadas:
+  - `db_table = 'catalog"."...'` en todos los modelos.
+  - `Sex.sex_id`: SmallIntegerField manual sin autoincremento (0 a 9) con `CheckConstraint`.
+  - `Question.response_type`: Choices `OPTION`, `NUMERIC`, `TEXT`, `BOOLEAN` con `CheckConstraint`.
+  - `AnswerOption.scores_predimed`: booleano para puntuación PREDIMED.
+  - Relaciones foráneas con `on_delete=models.PROTECT`, salvo `AnswerOption.question` con `CASCADE`.
+- Aislamiento: 100% verificado (`git diff --name-only main...HEAD | grep -v "^apps/catalog/"` es vacío).
+- Subida a remoto: `origin/feature/catalog-clean`.
+
 ## Siguiente paso (requiere confirmación del usuario)
-- Procesar `feature/catalog`: Recrear `feature/catalog-clean` desde `main`, conservando `feature/catalog-old`, ubicando la app en `apps/catalog/` (18 modelos de catálogo geográfico, sociodemográfico y motor de cuestionarios).
+- Procesar `feature/clinical`: Recrear `feature/clinical-clean` desde `main`, conservando `feature/clinical-old`, ubicando la app en `apps/clinical/` (models Patient, Visit, Anthropometry, VitalSigns, Electrocardiogram, Echocardiogram, Laboratory, VisitAnswer; views, urls, templates/clinical/{form.html, list.html}, static/clinical/{css/{form.css, list.css, pacientes.css}, js/{form.js, list.js, pacientes.js}}).
