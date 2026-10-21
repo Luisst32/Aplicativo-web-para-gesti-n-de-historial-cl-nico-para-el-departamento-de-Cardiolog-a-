@@ -30,14 +30,14 @@ class CountryAdmin(admin.ModelAdmin):
 @admin.register(Province)
 class ProvinceAdmin(admin.ModelAdmin):
     list_display = ('province_id', 'country', 'iso_code', 'name')
-    search_fields = ('name', 'iso_code')
+    search_fields = ('iso_code', 'name')
     list_filter = ('country',)
 
 
 @admin.register(Canton)
 class CantonAdmin(admin.ModelAdmin):
     list_display = ('canton_id', 'province', 'dpa_code', 'name')
-    search_fields = ('name', 'dpa_code')
+    search_fields = ('dpa_code', 'name')
     list_filter = ('province',)
 
 
@@ -49,7 +49,7 @@ class InstitutionAdmin(admin.ModelAdmin):
 
 @admin.register(Sex)
 class SexAdmin(admin.ModelAdmin):
-    list_display = ('sex_id', 'iso_code', 'name')
+    list_display = ('sex_id', 'name')
     search_fields = ('name',)
 
 
@@ -61,8 +61,8 @@ class EthnicityAdmin(admin.ModelAdmin):
 
 @admin.register(StaffCategory)
 class StaffCategoryAdmin(admin.ModelAdmin):
-    list_display = ('staff_category_id', 'code', 'name')
-    search_fields = ('code', 'name')
+    list_display = ('staff_category_id', 'name')
+    search_fields = ('name',)
 
 
 @admin.register(ProfessionalCategory)
@@ -73,16 +73,14 @@ class ProfessionalCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(EducationLevel)
 class EducationLevelAdmin(admin.ModelAdmin):
-    list_display = ('education_level_id', 'name', 'display_order')
+    list_display = ('education_level_id', 'name')
     search_fields = ('name',)
-    ordering = ('display_order',)
 
 
 @admin.register(IncomeRange)
 class IncomeRangeAdmin(admin.ModelAdmin):
-    list_display = ('income_range_id', 'name', 'lower_limit_usd', 'upper_limit_usd', 'display_order')
+    list_display = ('income_range_id', 'name')
     search_fields = ('name',)
-    ordering = ('display_order',)
 
 
 @admin.register(MaritalStatus)
@@ -111,8 +109,8 @@ class WorkScheduleAdmin(admin.ModelAdmin):
 
 @admin.register(EcgRhythm)
 class EcgRhythmAdmin(admin.ModelAdmin):
-    list_display = ('ecg_rhythm_id', 'code', 'name')
-    search_fields = ('code', 'name')
+    list_display = ('ecg_rhythm_id', 'name')
+    search_fields = ('name',)
 
 
 class QuestionInline(admin.TabularInline):

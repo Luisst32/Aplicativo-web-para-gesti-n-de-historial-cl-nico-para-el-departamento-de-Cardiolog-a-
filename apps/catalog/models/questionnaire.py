@@ -3,11 +3,11 @@ from django.db import models
 
 class QuestionnaireSection(models.Model):
     """
-    Survey / Questionnaire Module or Section (Mapped to catalog.questionnaire_section).
+    Survey / Questionnaire Module or Section (catalogo.SeccionCuestionario).
     """
     section_id = models.AutoField(primary_key=True, db_column='section_id')
     code = models.CharField(max_length=30, db_column='code')
-    name = models.CharField(max_length=120, db_column='name')
+    name = models.CharField(max_length=100, db_column='name')
     display_order = models.SmallIntegerField(db_column='display_order')
 
     class Meta:
@@ -25,13 +25,13 @@ class QuestionnaireSection(models.Model):
 
 class Question(models.Model):
     """
-    Parametric Survey Question (Mapped to catalog.question).
+    Parametric Survey Question (catalogo.Pregunta).
     """
     class ResponseType(models.TextChoices):
-        OPTION = 'OPTION', 'Opción / Opción múltiple'
-        NUMERIC = 'NUMERIC', 'Numérico'
-        TEXT = 'TEXT', 'Texto libre'
-        BOOLEAN = 'BOOLEAN', 'Lógico / Booleano'
+        OPCION = 'OPCION', 'Opción / Opción múltiple'
+        NUMERICO = 'NUMERICO', 'Numérico'
+        TEXTO = 'TEXTO', 'Texto libre'
+        BOOLEANO = 'BOOLEANO', 'Lógico / Booleano'
 
     question_id = models.AutoField(primary_key=True, db_column='question_id')
     section = models.ForeignKey(
@@ -40,10 +40,10 @@ class Question(models.Model):
         db_column='section_id',
         related_name='questions'
     )
-    code = models.CharField(max_length=60, db_column='code')
-    text = models.CharField(max_length=400, db_column='text')
+    code = models.CharField(max_length=30, db_column='code')
+    text = models.CharField(max_length=300, db_column='text')
     response_type = models.CharField(
-        max_length=12,
+        max_length=20,
         choices=ResponseType.choices,
         db_column='response_type'
     )
@@ -54,7 +54,7 @@ class Question(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['code'], name='uq_question_code'),
             models.CheckConstraint(
-                condition=models.Q(response_type__in=['OPTION', 'NUMERIC', 'TEXT', 'BOOLEAN']),
+                condition=models.Q(response_type__in=['OPCION', 'NUMERICO', 'TEXTO', 'BOOLEANO']),
                 name='ck_question_response_type'
             )
         ]
@@ -68,7 +68,7 @@ class Question(models.Model):
 
 class AnswerOption(models.Model):
     """
-    Answer Option for Choice-based Questions (Mapped to catalog.answer_option).
+    Answer Option for Choice-based Questions (catalogo.OpcionRespuesta).
     """
     option_id = models.AutoField(primary_key=True, db_column='option_id')
     question = models.ForeignKey(
@@ -77,7 +77,7 @@ class AnswerOption(models.Model):
         db_column='question_id',
         related_name='options'
     )
-    label = models.CharField(max_length=200, db_column='label')
+    label = models.CharField(max_length=150, db_column='label')
     display_order = models.SmallIntegerField(db_column='display_order')
     scores_predimed = models.BooleanField(
         default=False,
@@ -88,7 +88,6 @@ class AnswerOption(models.Model):
     class Meta:
         db_table = 'catalog"."answer_option'
         constraints = [
-            models.UniqueConstraint(fields=['question', 'label'], name='uq_answer_option_label'),
             models.UniqueConstraint(fields=['question', 'display_order'], name='uq_answer_option_display_order')
         ]
         ordering = ['question', 'display_order']
