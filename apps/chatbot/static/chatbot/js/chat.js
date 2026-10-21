@@ -47,6 +47,9 @@
     if (contMensajesPagina) contMensajesPagina.innerHTML = '';
     if (contMensajesWidget) contMensajesWidget.innerHTML = '';
 
+    // Mensaje de prueba inicial
+    mostrarMensajeBot('Hola');
+
     // Manejador en página completa
     if (formPagina && inputPagina) {
       formPagina.addEventListener('submit', (e) => {
@@ -120,13 +123,27 @@
       btn.addEventListener('click', () => {
         if (contMensajesPagina) contMensajesPagina.innerHTML = '';
         if (contMensajesWidget) contMensajesWidget.innerHTML = '';
+        mostrarMensajeBot('Hola');
       });
     });
   }
 
-  /**
-   * Solo agrega el mensaje del usuario a la maqueta (sin responder nada).
-   */
+  function mostrarMensajeBot(texto) {
+    const conts = [
+      document.getElementById('chat-page-messages'),
+      document.getElementById('chat-messages')
+    ].filter(Boolean);
+
+    conts.forEach(cont => {
+      const div = document.createElement('div');
+      div.className = 'mensaje mensaje-bot';
+      div.innerText = texto;
+      cont.appendChild(div);
+    });
+
+    hacerScrollAlFinal();
+  }
+
   function agregarMensajeUsuario(texto) {
     const conts = [
       document.getElementById('chat-page-messages'),
@@ -141,6 +158,11 @@
     });
 
     hacerScrollAlFinal();
+
+    // Respuesta de prueba
+    setTimeout(() => {
+      mostrarMensajeBot('Hola');
+    }, 400);
   }
 
   function hacerScrollAlFinal() {
