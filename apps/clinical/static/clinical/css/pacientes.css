@@ -1,0 +1,50 @@
+/* ==========================================================================
+   PACIENTES.CSS
+   Estilos específicos del módulo de pacientes y modal de expediente clínico.
+   (Los estilos comunes de modales, inputs y field-labels están en components.css)
+   ========================================================================== */
+
+/* Grid exclusivo de 2 columnas para campos de paciente */
+.form-grid-2 {
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 22px;
+}
+
+/* Ajustes de tamaño para controles dentro del cuerpo del modal de pacientes */
+.modal-body .form-input,
+.modal-body .form-select {
+  height: 38px;
+  padding: 0 10px;
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.modal-body .form-select {
+  padding-right: 1.75rem;
+}
+
+.form-input.calc {
+  background: var(--slate-50);
+  font-weight: 700;
+  color: var(--color-primary-blue);
+  font-family: var(--font-mono);
+}
+
+/* Aviso "este paciente ya tiene ficha": oculto hasta que el modal detecta un duplicado */
+.modal-aviso {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--color-ice-blue);
+  border: 1px solid var(--color-primary-blue);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-navy);
+}
+
+.modal-aviso.visible {
+  display: flex;
+}

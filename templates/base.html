@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CARDIOUNEMI - Gestión Clínica{% endblock %}</title>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Estilos Globales (orden estricto de GEMINI.md) -->
+  <link rel="stylesheet" href="{% static 'css/global/variables.css' %}">
+  <link rel="stylesheet" href="{% static 'css/global/reset.css' %}">
+  <link rel="stylesheet" href="{% static 'css/global/typography.css' %}">
+  <link rel="stylesheet" href="{% static 'css/global/layout.css' %}">
+  <link rel="stylesheet" href="{% static 'css/global/components.css' %}">
+  <link rel="stylesheet" href="{% static 'css/global/utilities.css' %}">
+
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  {% block content %}{% endblock %}
+
+  <!-- Scripts Globales -->
+  <script src="{% static 'js/global/utils.js' %}"></script>
+  <script src="{% static 'js/global/api.js' %}"></script>
+  <script src="{% static 'js/global/ui.js' %}"></script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
