@@ -4,6 +4,7 @@ from django.db import models
 class Country(models.Model):
     """
     Country catalog based on ISO 3166-1 alpha-3 (catalogo.Pais).
+    Fiel a bd_final: CodigoIso3166Alfa3 CHAR(3), Nombre VARCHAR(100).
     """
     country_id = models.AutoField(primary_key=True, db_column='country_id')
     iso_alpha3 = models.CharField(max_length=3, db_column='iso_alpha3', help_text="ISO 3166-1 alpha-3 code")
