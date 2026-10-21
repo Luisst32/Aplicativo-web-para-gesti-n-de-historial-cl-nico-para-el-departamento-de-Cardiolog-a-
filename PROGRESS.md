@@ -325,9 +325,19 @@ Las **8 ramas limpias** (`feature/*-clean`) se integraron con `--no-ff` en la ra
 7. **Publicación Remota**:
    - Rama `integration/clean` subida a GitHub (`origin/integration/clean`).
 
-## Próximo Paso (Pendiente de Aprobación del Usuario):
-- **Fase 5 (Limpieza de Archivos Originales de la Raíz)**: Eliminar en commit específico los archivos originales ya migrados que permanecen en la raíz (`css/`, `js/`, `assets/`, `templates/*.html`).
-- **Fase 6 (Integración a `develop`)**: Merge de `integration/clean` a `develop` y validación final.
+## Cierre de Integración en develop (Fases 5 y 6 Completadas)
+- **Fase 5 (Unificación en Capa Global y Limpieza de Originales)**:
+  - Variables de color locales de `:root` en `list.css` y `dashboard.css` absorbidas en `static/css/global/variables.css`.
+  - Funciones auxiliares de cálculo antropométrico `calcIMC` y `calcASC` (y sus alias `calcIMCValor`/`calcASCValor`) unificadas en `static/js/global/utils.js`.
+  - Archivos y carpetas antiguos eliminados de la raíz (`assets/`, `css/`, `js/`, `templates/*.html` obsoletos).
+  - Conservado intacto `templates/base.html`.
+- **Fase 6 (Integración Final en develop)**:
+  - Sincronizadas las 8 ramas limpias `feature/*-clean` con sus ajustes puntuales.
+  - Fusión `--no-ff` de `integration/clean` en `develop` concluida exitosamente.
+  - Verificación del sistema: `manage.py check` con 0 issues y cliente HTTP con 200 OK en las 5 vistas y 30/30 archivos estáticos resueltos.
+- **Fase 7 (Limpieza Definitiva de Ramas en Local y GitHub)**:
+  - Eliminación de ramas temporales `backup/*`, `backup-antes-*`, `feature/*-old` e `integration/clean`.
+  - Renombrado de las 8 ramas `feature/*-clean` a su nombre oficial `feature/*` sin sufijo temporal.
 
 
 
