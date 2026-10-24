@@ -8,11 +8,10 @@ class Visit(models.Model):
     Mapped to PostgreSQL schema: clinical.visit (clinico.Visita).
     1:1 relationship with Patient per PostgreSQL schema (UQ_Visita_Paciente).
     """
-    class VisitStatus(models.TextChoices):
-        COMPLETED = 'COMPLETADA', 'Completada / Finalizada'
-        IN_PROGRESS = 'EN_PROCESO', 'En proceso / Borrador'
-        CANCELLED = 'CANCELADA', 'Cancelada'
-        ARCHIVED = 'ARCHIVADA', 'Archivada'
+    class Status(models.TextChoices):
+        COMPLETED = 'COMPLETED', 'Completed'
+        PENDING = 'PENDING', 'Pending'
+        CANCELLED = 'CANCELLED', 'Cancelled'
 
     visit_id = models.AutoField(primary_key=True, db_column='visit_id')
     patient = models.OneToOneField(
@@ -42,28 +41,12 @@ class Visit(models.Model):
         output_field=models.IntegerField(),
         db_persist=True
     )
-
-    # Estado de la ficha/visita médica
     status = models.CharField(
         max_length=20,
-        choices=VisitStatus.choices,
-        default=VisitStatus.COMPLETED,
-        db_column='status',
-        help_text="Estado de la ficha médica (Completada, En proceso, Cancelada, Archivada)"
+        choices=Status.choices,
+        default=Status.COMPLETED,
+        db_column='status'
     )
-    is_active = models.BooleanField(
-        default=True,
-        db_column='is_active',
-        help_text="Indica si la visita es válida y activa dentro del historial"
-    )
-    cancellation_reason = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        db_column='cancellation_reason',
-        help_text="Motivo de cancelación o anulación si aplica"
-    )
-
     staff_category = models.ForeignKey(
         'catalog.StaffCategory',
         on_delete=models.PROTECT,
