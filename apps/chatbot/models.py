@@ -5,13 +5,12 @@ class BotQuery(models.Model):
     """
     AI Clinical Assistant Queries and Interactions Log (ia.ConsultaBot).
     Records user clinical questions, optional generated SQL analytical queries,
-    assistant responses, token consumption, response latency, and execution status.
+    assistant responses, token consumption, response latency, and status.
     """
-    class QueryStatus(models.TextChoices):
-        SUCCESS = 'EXITOSO', 'Exitoso'
+    class Status(models.TextChoices):
+        SUCCESS = 'SUCCESS', 'Success'
         ERROR = 'ERROR', 'Error'
-        PENDING = 'PENDIENTE', 'En proceso'
-        FLAGGED = 'REVISION', 'Marcado para revisión'
+        PENDING = 'PENDING', 'Pending'
 
     bot_query_id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(
@@ -43,16 +42,9 @@ class BotQuery(models.Model):
     )
     status = models.CharField(
         max_length=20,
-        choices=QueryStatus.choices,
-        default=QueryStatus.SUCCESS,
-        db_column='status',
-        help_text="Estado de procesamiento de la consulta (Exitoso, Error, En proceso, Revisión)"
-    )
-    error_message = models.TextField(
-        blank=True,
-        null=True,
-        db_column='error_message',
-        help_text="Mensaje o detalle del error en caso de fallo durante la inferencia o SQL"
+        choices=Status.choices,
+        default=Status.SUCCESS,
+        db_column='status'
     )
     created_at = models.DateTimeField(
         auto_now_add=True,

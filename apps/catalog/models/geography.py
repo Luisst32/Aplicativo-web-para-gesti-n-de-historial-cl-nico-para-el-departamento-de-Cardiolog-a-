@@ -79,13 +79,18 @@ class Institution(models.Model):
     """
     Academic or Healthcare Institution catalog (catalogo.Institucion).
     """
+    class Status(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Active'
+        INACTIVE = 'INACTIVE', 'Inactive'
+
     institution_id = models.AutoField(primary_key=True, db_column='institution_id')
     acronym = models.CharField(max_length=20, db_column='acronym')
     name = models.CharField(max_length=150, db_column='name')
-    is_active = models.BooleanField(
-        default=True,
-        db_column='is_active',
-        help_text="Indica si la institución médica/académica está activa en el sistema"
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        db_column='status'
     )
 
     class Meta:
