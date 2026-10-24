@@ -5,26 +5,30 @@ from .models import Role, User, UserRole
 
 @admin.register(Role)
 class RoleAdmin(admin.ModelAdmin):
-    list_display = ('role_id', 'name', 'description')
+    list_display = ('role_id', 'name', 'is_active', 'description')
+    list_filter = ('is_active',)
     search_fields = ('name',)
 
 
 class UserRoleInline(admin.TabularInline):
     model = UserRole
     extra = 1
+    fields = ('role', 'is_active', 'assigned_at_utc')
+    readonly_fields = ('assigned_at_utc',)
 
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ('username', 'email', 'first_name', 'last_name', 'institution', 'is_staff', 'is_active')
+    list_display = ('username', 'email', 'first_name', 'last_name', 'institution', 'status', 'is_active', 'is_staff')
     search_fields = ('username', 'email', 'first_name', 'last_name')
-    list_filter = ('is_staff', 'is_active')
+    list_filter = ('status', 'is_active', 'is_staff', 'institution')
     inlines = [UserRoleInline]
 
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         ('Información Personal', {'fields': ('first_name', 'last_name', 'second_last_name', 'email', 'institution')}),
+        ('Estado de Cuenta', {'fields': ('status', 'status_reason', 'deactivated_at')}),
         ('Permisos', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         ('Fechas Importantes', {'fields': ('last_login', 'created_at_utc')}),
     )
-    readonly_fields = ('created_at_utc', 'last_login')
+    readonly_fields = ('created_at_utc', 'last_login', 'deactivated_at')
