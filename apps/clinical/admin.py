@@ -19,8 +19,11 @@ class PatientAdmin(admin.ModelAdmin):
         'first_names',
         'last_name1',
         'last_name2',
+        'status',
+        'is_active',
         'sex',
         'birth_date',
+        'status_date',
         'institution',
         'created_at',
     )
@@ -31,8 +34,9 @@ class PatientAdmin(admin.ModelAdmin):
         'last_name2',
         'email',
         'phone',
+        'status_reason',
     )
-    list_filter = ('institution', 'sex', 'ethnicity')
+    list_filter = ('status', 'is_active', 'institution', 'sex', 'ethnicity')
     ordering = ('last_name1', 'first_names')
 
 
@@ -80,6 +84,8 @@ class VisitAdmin(admin.ModelAdmin):
         'patient',
         'evaluator',
         'visit_date',
+        'status',
+        'is_active',
         'study_year',
         'visit_number',
     )
@@ -88,8 +94,9 @@ class VisitAdmin(admin.ModelAdmin):
         'patient__id_card',
         'patient__first_names',
         'patient__last_name1',
+        'cancellation_reason',
     )
-    list_filter = ('visit_date', 'study_year', 'staff_category')
+    list_filter = ('status', 'is_active', 'visit_date', 'study_year', 'staff_category')
     ordering = ('-visit_date', 'study_code')
     inlines = [
         AnthropometryInline,

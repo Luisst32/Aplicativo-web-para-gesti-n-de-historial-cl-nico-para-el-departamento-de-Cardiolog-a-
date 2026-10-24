@@ -6,6 +6,13 @@ class Patient(models.Model):
     Clinical Patient Demographic and Identification Record.
     Mapped to PostgreSQL schema: clinical.patient (clinico.Paciente).
     """
+    class PatientStatus(models.TextChoices):
+        ACTIVE = 'ACTIVO', 'Activo / En seguimiento'
+        INACTIVE = 'INACTIVO', 'Inactivo / Sin seguimiento'
+        DECEASED = 'FALLECIDO', 'Fallecido'
+        TRANSFERRED = 'TRASLADADO', 'Trasladado a otro centro'
+        DISCHARGED = 'ALTA', 'Alta médica definitiva'
+
     patient_id = models.AutoField(primary_key=True, db_column='patient_id')
     institution = models.ForeignKey(
         'catalog.Institution',
@@ -63,6 +70,34 @@ class Patient(models.Model):
     )
     email = models.EmailField(max_length=100, blank=True, null=True, db_column='email')
     phone = models.CharField(max_length=20, blank=True, null=True, db_column='phone')
+
+    # Estado clínico del paciente en el programa de cardiología
+    status = models.CharField(
+        max_length=20,
+        choices=PatientStatus.choices,
+        default=PatientStatus.ACTIVE,
+        db_column='status',
+        help_text="Estado del paciente (Activo, Inactivo, Fallecido si ya no está en el programa, Trasladado o Alta)"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si el paciente se encuentra activo en el seguimiento clínico"
+    )
+    status_date = models.DateField(
+        blank=True,
+        null=True,
+        db_column='status_date',
+        help_text="Fecha de registro del estado (ej. fecha de defunción, traslado o inactividad)"
+    )
+    status_reason = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        db_column='status_reason',
+        help_text="Detalle o justificación del estado (ej. causa clínica de defunción, hospital receptor de traslado)"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_by = models.ForeignKey(
         'security.User',
@@ -94,3 +129,28 @@ class Patient(models.Model):
         if self.last_name2:
             return f"{self.first_names} {self.last_name1} {self.last_name2}"
         return f"{self.first_names} {self.last_name1}"
+
+    @property
+    def is_deceased(self):
+        """Retorna True si el paciente ha fallecido."""
+        return self.status == self.PatientStatus.DECEASED
+
+    def mark_as_deceased(self, date=None, reason=None):
+        """Registra al paciente como fallecido (ya no asiste ni se encuentra en el programa)."""
+        from django.utils import timezone
+        self.status = self.PatientStatus.DECEASED
+        self.is_active = False
+        self.status_date = date or timezone.now().date()
+        if reason:
+            self.status_reason = reason
+        self.save(update_fields=['status', 'is_active', 'status_date', 'status_reason'])
+
+    def mark_as_transferred(self, destination=None, date=None):
+        """Registra al paciente como trasladado o derivado a otra institución."""
+        from django.utils import timezone
+        self.status = self.PatientStatus.TRANSFERRED
+        self.is_active = False
+        self.status_date = date or timezone.now().date()
+        if destination:
+            self.status_reason = f"Derivado a: {destination}"
+        self.save(update_fields=['status', 'is_active', 'status_date', 'status_reason'])
