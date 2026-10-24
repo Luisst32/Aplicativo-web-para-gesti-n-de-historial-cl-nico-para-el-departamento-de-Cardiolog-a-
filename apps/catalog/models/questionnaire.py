@@ -9,6 +9,11 @@ class QuestionnaireSection(models.Model):
     code = models.CharField(max_length=30, db_column='code')
     name = models.CharField(max_length=100, db_column='name')
     display_order = models.SmallIntegerField(db_column='display_order')
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si la sección del cuestionario está activa y visible en el formulario"
+    )
 
     class Meta:
         db_table = 'catalog"."questionnaire_section'
@@ -48,6 +53,11 @@ class Question(models.Model):
         db_column='response_type'
     )
     display_order = models.SmallIntegerField(db_column='display_order')
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si la pregunta está activa y habilitada para evaluación clínica"
+    )
 
     class Meta:
         db_table = 'catalog"."question'
@@ -83,6 +93,11 @@ class AnswerOption(models.Model):
         default=False,
         db_column='scores_predimed',
         help_text="Indicates whether this answer option contributes points to the PREDIMED Mediterranean diet adherence score"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si la opción de respuesta está disponible para selección"
     )
 
     class Meta:
