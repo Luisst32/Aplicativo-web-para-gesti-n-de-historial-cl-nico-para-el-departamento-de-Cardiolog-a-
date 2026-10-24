@@ -9,6 +9,11 @@ class Role(models.Model):
     role_id = models.AutoField(primary_key=True, db_column='role_id')
     name = models.CharField(max_length=50, unique=True, db_column='name')
     description = models.CharField(max_length=200, blank=True, null=True, db_column='description')
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si el rol se encuentra activo y disponible para asignación"
+    )
 
     class Meta:
         db_table = 'security"."role'
@@ -30,6 +35,7 @@ class UserManager(BaseUserManager):
             raise ValueError('The Email field is required.')
 
         email = self.normalize_email(email)
+        extra_fields.setdefault('status', 'ACTIVE')
         extra_fields.setdefault('is_active', True)
         extra_fields.setdefault('is_staff', False)
         extra_fields.setdefault('is_superuser', False)
@@ -47,6 +53,7 @@ class UserManager(BaseUserManager):
         return user
 
     def create_superuser(self, username, email, password=None, **extra_fields):
+        extra_fields.setdefault('status', 'ACTIVE')
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
@@ -64,6 +71,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     Institutional User model integrated with Django authentication system.
     Mapped to security.user table.
     """
+    class AccountStatus(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Activo'
+        INACTIVE = 'INACTIVE', 'Inactivo (En desuso)'
+        SUSPENDED = 'SUSPENDED', 'Suspendido'
+        PENDING = 'PENDING', 'Pendiente de activación'
+
     user_id = models.AutoField(primary_key=True, db_column='user_id')
     institution = models.ForeignKey(
         'catalog.Institution',
@@ -82,6 +95,28 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     last_login = models.DateTimeField(blank=True, null=True, db_column='last_login_utc')
     created_at_utc = models.DateTimeField(auto_now_add=True, db_column='created_at_utc')
+
+    # Estados y vigencia de la cuenta de usuario
+    status = models.CharField(
+        max_length=20,
+        choices=AccountStatus.choices,
+        default=AccountStatus.ACTIVE,
+        db_column='status',
+        help_text="Estado de la cuenta (Activo, Inactivo si la persona ya no usa la cuenta, Suspendido, etc.)"
+    )
+    status_reason = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        db_column='status_reason',
+        help_text="Motivo del estado de la cuenta (ej. desvinculación institucional, retiro, inactividad prolongada)"
+    )
+    deactivated_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        db_column='deactivated_at',
+        help_text="Fecha y hora en que la cuenta dejó de utilizarse o fue dada de baja"
+    )
 
     is_active = models.BooleanField(default=True, db_column='is_active')
     is_staff = models.BooleanField(default=False, db_column='is_staff')
@@ -107,6 +142,24 @@ class User(AbstractBaseUser, PermissionsMixin):
         last_names = f"{self.last_name} {self.second_last_name or ''}".strip()
         return f"{self.first_name} {last_names}"
 
+    def deactivate(self, reason=None):
+        """Desactiva la cuenta del usuario cuando deja de utilizar el sistema."""
+        from django.utils import timezone
+        self.is_active = False
+        self.status = self.AccountStatus.INACTIVE
+        if reason:
+            self.status_reason = reason
+        self.deactivated_at = timezone.now()
+        self.save(update_fields=['is_active', 'status', 'status_reason', 'deactivated_at'])
+
+    def reactivate(self):
+        """Reactiva una cuenta previamente en desuso o suspendida."""
+        self.is_active = True
+        self.status = self.AccountStatus.ACTIVE
+        self.status_reason = None
+        self.deactivated_at = None
+        self.save(update_fields=['is_active', 'status', 'status_reason', 'deactivated_at'])
+
 
 class UserRole(models.Model):
     """
@@ -115,6 +168,11 @@ class UserRole(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_column='user_id')
     role = models.ForeignKey(Role, on_delete=models.RESTRICT, db_column='role_id')
     assigned_at_utc = models.DateTimeField(auto_now_add=True, db_column='assigned_at_utc')
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si la asignación del rol al usuario está activa"
+    )
 
     class Meta:
         db_table = 'security"."user_role'
