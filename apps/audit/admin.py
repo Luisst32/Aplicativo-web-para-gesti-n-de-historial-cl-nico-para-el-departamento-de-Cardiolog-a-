@@ -12,12 +12,11 @@ class ChangeLogAdmin(admin.ModelAdmin):
         'record_key',
         'action',
         'status',
-        'is_flagged',
         'column_name',
         'user',
         'db_login',
     )
-    list_filter = ('status', 'is_flagged', 'action', 'schema_name', 'table_name', 'timestamp')
+    list_filter = ('status', 'action', 'schema_name', 'table_name', 'timestamp')
     search_fields = (
         'record_key',
         'table_name',

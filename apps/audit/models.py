@@ -6,11 +6,10 @@ class ChangeLog(models.Model):
     Transversal Audit Change Log (auditoria.RegistroCambio).
     Records row/column level mutations across system schemas.
     """
-    class AuditStatus(models.TextChoices):
-        RECORDED = 'REGISTRADO', 'Registrado'
-        VERIFIED = 'VERIFICADO', 'Verificado'
-        FLAGGED = 'SOSPECHOSO', 'Sospechoso / Requiere revisión'
-        REVERTED = 'REVERTIDO', 'Revertido'
+    class Status(models.TextChoices):
+        RECORDED = 'RECORDED', 'Recorded'
+        VERIFIED = 'VERIFIED', 'Verified'
+        FLAGGED = 'FLAGGED', 'Flagged'
 
     change_log_id = models.BigAutoField(primary_key=True, db_column='change_log_id')
     timestamp = models.DateTimeField(auto_now_add=True, db_column='timestamp')
@@ -23,15 +22,9 @@ class ChangeLog(models.Model):
     new_value = models.TextField(blank=True, null=True, db_column='new_value')
     status = models.CharField(
         max_length=20,
-        choices=AuditStatus.choices,
-        default=AuditStatus.RECORDED,
-        db_column='status',
-        help_text="Estado del registro de auditoría (Registrado, Verificado, Sospechoso, Revertido)"
-    )
-    is_flagged = models.BooleanField(
-        default=False,
-        db_column='is_flagged',
-        help_text="Indica si la mutación fue marcada como anómala o sospechosa"
+        choices=Status.choices,
+        default=Status.RECORDED,
+        db_column='status'
     )
     user = models.ForeignKey(
         'security.User',
