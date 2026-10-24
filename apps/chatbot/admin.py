@@ -14,7 +14,7 @@ class BotQueryAdmin(admin.ModelAdmin):
         'created_at',
     )
     list_filter = ('status', 'created_at', 'user')
-    search_fields = ('user_question', 'bot_response', 'generated_sql', 'error_message', 'user__username')
+    search_fields = ('user_question', 'bot_response', 'generated_sql', 'user__username')
     readonly_fields = (
         'bot_query_id',
         'user',
@@ -22,7 +22,6 @@ class BotQueryAdmin(admin.ModelAdmin):
         'generated_sql',
         'bot_response',
         'status',
-        'error_message',
         'tokens_used',
         'execution_time_ms',
         'created_at',
@@ -30,7 +29,7 @@ class BotQueryAdmin(admin.ModelAdmin):
 
     def user_question_snippet(self, obj):
         return obj.user_question[:60] + '...' if len(obj.user_question) > 60 else obj.user_question
-    user_question_snippet.short_description = "Pregunta del Usuario"
+    user_question_snippet.short_description = "User Question"
 
     def has_add_permission(self, request):
         return False
