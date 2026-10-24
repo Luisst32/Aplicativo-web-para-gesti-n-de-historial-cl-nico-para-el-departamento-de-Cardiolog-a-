@@ -8,18 +8,21 @@ class BotQueryAdmin(admin.ModelAdmin):
         'bot_query_id',
         'user',
         'user_question_snippet',
+        'status',
         'tokens_used',
         'execution_time_ms',
         'created_at',
     )
-    list_filter = ('created_at', 'user')
-    search_fields = ('user_question', 'bot_response', 'generated_sql', 'user__username')
+    list_filter = ('status', 'created_at', 'user')
+    search_fields = ('user_question', 'bot_response', 'generated_sql', 'error_message', 'user__username')
     readonly_fields = (
         'bot_query_id',
         'user',
         'user_question',
         'generated_sql',
         'bot_response',
+        'status',
+        'error_message',
         'tokens_used',
         'execution_time_ms',
         'created_at',
