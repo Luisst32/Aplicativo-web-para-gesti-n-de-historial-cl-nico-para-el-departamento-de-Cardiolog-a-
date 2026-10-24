@@ -6,12 +6,17 @@ class Sex(models.Model):
     Biological Sex catalog (catalogo.Sexo).
     Keys are assigned manually (0 to 9).
     """
+    class Status(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Active'
+        INACTIVE = 'INACTIVE', 'Inactive'
+
     sex_id = models.SmallIntegerField(primary_key=True, db_column='sex_id')
     name = models.CharField(max_length=20, db_column='name')
-    is_active = models.BooleanField(
-        default=True,
-        db_column='is_active',
-        help_text="Indica si la opción está activa"
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        db_column='status'
     )
 
     class Meta:
@@ -34,12 +39,17 @@ class Ethnicity(models.Model):
     """
     Self-identified Ethnicity catalog (catalogo.Etnia).
     """
+    class Status(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Active'
+        INACTIVE = 'INACTIVE', 'Inactive'
+
     ethnicity_id = models.AutoField(primary_key=True, db_column='ethnicity_id')
     name = models.CharField(max_length=50, db_column='name')
-    is_active = models.BooleanField(
-        default=True,
-        db_column='is_active',
-        help_text="Indica si la etnia está activa"
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        db_column='status'
     )
 
     class Meta:
@@ -58,12 +68,17 @@ class StaffCategory(models.Model):
     """
     Institutional Staff Category: PDI, PAS, ESTUDIANTE, etc. (catalogo.CategoriaPersonal).
     """
+    class Status(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Active'
+        INACTIVE = 'INACTIVE', 'Inactive'
+
     staff_category_id = models.AutoField(primary_key=True, db_column='staff_category_id')
     name = models.CharField(max_length=50, db_column='name')
-    is_active = models.BooleanField(
-        default=True,
-        db_column='is_active',
-        help_text="Indica si la categoría de personal está activa"
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        db_column='status'
     )
 
     class Meta:
@@ -82,12 +97,17 @@ class ProfessionalCategory(models.Model):
     """
     Professional Rank or Academic Level (catalogo.CategoriaProfesional).
     """
+    class Status(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Active'
+        INACTIVE = 'INACTIVE', 'Inactive'
+
     professional_category_id = models.AutoField(primary_key=True, db_column='professional_category_id')
     name = models.CharField(max_length=80, db_column='name')
-    is_active = models.BooleanField(
-        default=True,
-        db_column='is_active',
-        help_text="Indica si la categoría profesional está activa"
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        db_column='status'
     )
 
     class Meta:
@@ -106,12 +126,17 @@ class EducationLevel(models.Model):
     """
     Educational Attainment Level (catalogo.NivelEstudios).
     """
+    class Status(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Active'
+        INACTIVE = 'INACTIVE', 'Inactive'
+
     education_level_id = models.AutoField(primary_key=True, db_column='education_level_id')
     name = models.CharField(max_length=80, db_column='name')
-    is_active = models.BooleanField(
-        default=True,
-        db_column='is_active',
-        help_text="Indica si el nivel de estudios está activo"
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        db_column='status'
     )
 
     class Meta:
@@ -130,12 +155,17 @@ class IncomeRange(models.Model):
     """
     Monthly Income Bracket (catalogo.RangoIngresos).
     """
+    class Status(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Active'
+        INACTIVE = 'INACTIVE', 'Inactive'
+
     income_range_id = models.AutoField(primary_key=True, db_column='income_range_id')
     name = models.CharField(max_length=80, db_column='name')
-    is_active = models.BooleanField(
-        default=True,
-        db_column='is_active',
-        help_text="Indica si el rango de ingresos está activo"
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        db_column='status'
     )
 
     class Meta:
@@ -154,12 +184,17 @@ class MaritalStatus(models.Model):
     """
     Marital Status catalog (catalogo.EstadoCivil).
     """
+    class Status(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Active'
+        INACTIVE = 'INACTIVE', 'Inactive'
+
     marital_status_id = models.AutoField(primary_key=True, db_column='marital_status_id')
     name = models.CharField(max_length=40, db_column='name')
-    is_active = models.BooleanField(
-        default=True,
-        db_column='is_active',
-        help_text="Indica si el estado civil está activo"
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        db_column='status'
     )
 
     class Meta:
@@ -178,12 +213,17 @@ class LivingSituation(models.Model):
     """
     Living / Cohabitation arrangement (catalogo.SituacionConvivencia).
     """
+    class Status(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Active'
+        INACTIVE = 'INACTIVE', 'Inactive'
+
     living_situation_id = models.AutoField(primary_key=True, db_column='living_situation_id')
     name = models.CharField(max_length=80, db_column='name')
-    is_active = models.BooleanField(
-        default=True,
-        db_column='is_active',
-        help_text="Indica si la situación de convivencia está activa"
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        db_column='status'
     )
 
     class Meta:
@@ -202,12 +242,17 @@ class HousingType(models.Model):
     """
     Housing / Residence dwelling type (catalogo.TipoVivienda).
     """
+    class Status(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Active'
+        INACTIVE = 'INACTIVE', 'Inactive'
+
     housing_type_id = models.AutoField(primary_key=True, db_column='housing_type_id')
     name = models.CharField(max_length=80, db_column='name')
-    is_active = models.BooleanField(
-        default=True,
-        db_column='is_active',
-        help_text="Indica si el tipo de vivienda está activo"
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        db_column='status'
     )
 
     class Meta:
@@ -226,12 +271,17 @@ class WorkSchedule(models.Model):
     """
     Work Shift and Schedule (catalogo.HorarioTrabajo).
     """
+    class Status(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Active'
+        INACTIVE = 'INACTIVE', 'Inactive'
+
     work_schedule_id = models.AutoField(primary_key=True, db_column='work_schedule_id')
     name = models.CharField(max_length=60, db_column='name')
-    is_active = models.BooleanField(
-        default=True,
-        db_column='is_active',
-        help_text="Indica si el horario de trabajo está activo"
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        db_column='status'
     )
 
     class Meta:
@@ -250,12 +300,17 @@ class EcgRhythm(models.Model):
     """
     Electrocardiogram Baseline Rhythm pattern (catalogo.RitmoElectrocardiograma).
     """
+    class Status(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Active'
+        INACTIVE = 'INACTIVE', 'Inactive'
+
     ecg_rhythm_id = models.AutoField(primary_key=True, db_column='ecg_rhythm_id')
     name = models.CharField(max_length=80, db_column='name')
-    is_active = models.BooleanField(
-        default=True,
-        db_column='is_active',
-        help_text="Indica si el ritmo ECG está activo"
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        db_column='status'
     )
 
     class Meta:
