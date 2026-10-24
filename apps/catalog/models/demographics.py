@@ -8,6 +8,11 @@ class Sex(models.Model):
     """
     sex_id = models.SmallIntegerField(primary_key=True, db_column='sex_id')
     name = models.CharField(max_length=20, db_column='name')
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si la opción está activa"
+    )
 
     class Meta:
         db_table = 'catalog"."sex'
@@ -31,6 +36,11 @@ class Ethnicity(models.Model):
     """
     ethnicity_id = models.AutoField(primary_key=True, db_column='ethnicity_id')
     name = models.CharField(max_length=50, db_column='name')
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si la etnia está activa"
+    )
 
     class Meta:
         db_table = 'catalog"."ethnicity'
@@ -50,6 +60,11 @@ class StaffCategory(models.Model):
     """
     staff_category_id = models.AutoField(primary_key=True, db_column='staff_category_id')
     name = models.CharField(max_length=50, db_column='name')
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si la categoría de personal está activa"
+    )
 
     class Meta:
         db_table = 'catalog"."staff_category'
@@ -69,6 +84,11 @@ class ProfessionalCategory(models.Model):
     """
     professional_category_id = models.AutoField(primary_key=True, db_column='professional_category_id')
     name = models.CharField(max_length=80, db_column='name')
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si la categoría profesional está activa"
+    )
 
     class Meta:
         db_table = 'catalog"."professional_category'
@@ -88,6 +108,11 @@ class EducationLevel(models.Model):
     """
     education_level_id = models.AutoField(primary_key=True, db_column='education_level_id')
     name = models.CharField(max_length=80, db_column='name')
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si el nivel de estudios está activo"
+    )
 
     class Meta:
         db_table = 'catalog"."education_level'
@@ -107,6 +132,11 @@ class IncomeRange(models.Model):
     """
     income_range_id = models.AutoField(primary_key=True, db_column='income_range_id')
     name = models.CharField(max_length=80, db_column='name')
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si el rango de ingresos está activo"
+    )
 
     class Meta:
         db_table = 'catalog"."income_range'
@@ -126,6 +156,11 @@ class MaritalStatus(models.Model):
     """
     marital_status_id = models.AutoField(primary_key=True, db_column='marital_status_id')
     name = models.CharField(max_length=40, db_column='name')
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si el estado civil está activo"
+    )
 
     class Meta:
         db_table = 'catalog"."marital_status'
@@ -145,6 +180,11 @@ class LivingSituation(models.Model):
     """
     living_situation_id = models.AutoField(primary_key=True, db_column='living_situation_id')
     name = models.CharField(max_length=80, db_column='name')
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si la situación de convivencia está activa"
+    )
 
     class Meta:
         db_table = 'catalog"."living_situation'
@@ -164,6 +204,11 @@ class HousingType(models.Model):
     """
     housing_type_id = models.AutoField(primary_key=True, db_column='housing_type_id')
     name = models.CharField(max_length=80, db_column='name')
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si el tipo de vivienda está activo"
+    )
 
     class Meta:
         db_table = 'catalog"."housing_type'
@@ -183,6 +228,11 @@ class WorkSchedule(models.Model):
     """
     work_schedule_id = models.AutoField(primary_key=True, db_column='work_schedule_id')
     name = models.CharField(max_length=60, db_column='name')
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si el horario de trabajo está activo"
+    )
 
     class Meta:
         db_table = 'catalog"."work_schedule'
@@ -202,6 +252,11 @@ class EcgRhythm(models.Model):
     """
     ecg_rhythm_id = models.AutoField(primary_key=True, db_column='ecg_rhythm_id')
     name = models.CharField(max_length=80, db_column='name')
+    is_active = models.BooleanField(
+        default=True,
+        db_column='is_active',
+        help_text="Indica si el ritmo ECG está activo"
+    )
 
     class Meta:
         db_table = 'catalog"."ecg_rhythm'
