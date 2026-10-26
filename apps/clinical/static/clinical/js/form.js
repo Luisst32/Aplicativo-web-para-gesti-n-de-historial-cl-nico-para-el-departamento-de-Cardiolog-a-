@@ -510,17 +510,23 @@ async function guardarFichaCompleta() {
   const form = document.getElementById('ehrCleanForm');
   if (!form) return;
 
+  const urlParams = new URLSearchParams(location.search);
+  const idPacienteUrl = urlParams.get('paciente');
   const codigo = document.getElementById('f_codigo') ? document.getElementById('f_codigo').value.trim() : '';
-  if (!codigo) {
-    alert('No hay un código de paciente válido seleccionado.');
+
+  if (!codigo && !pacienteActual && !idPacienteUrl) {
+    alert('No hay un paciente o código válido seleccionado.');
     return;
   }
 
-  const btnGuardar = document.getElementById('btnGuardarFicha');
-  if (btnGuardar) {
-    btnGuardar.disabled = true;
-    btnGuardar.textContent = 'Guardando en BD...';
-  }
+  const btnTop = document.getElementById('btnGuardarFicha');
+  const btnBottom = document.getElementById('btnGuardarFichaBottom');
+  const btns = [btnTop, btnBottom].filter(Boolean);
+
+  btns.forEach(b => {
+    b.disabled = true;
+    b.textContent = 'Guardando cambios en BD...';
+  });
 
   // Recopilar todos los elementos del formulario mediante FormData
   const formData = new FormData(form);
@@ -532,8 +538,10 @@ async function guardarFichaCompleta() {
     if (el) formData.append(id, el.value);
   });
 
-  if (pacienteActual) {
+  if (pacienteActual && pacienteActual.id) {
     formData.append('idPaciente', pacienteActual.id);
+  } else if (idPacienteUrl) {
+    formData.append('idPaciente', idPacienteUrl);
   }
 
   try {
@@ -560,15 +568,16 @@ async function guardarFichaCompleta() {
       seleccionarPaciente(pacienteActual, historialActual);
     }
 
-    mostrarNotificacionToast(`✓ Historial Clínico de ${pacienteActual ? pacienteActual.nombre : codigo} guardado exitosamente en PostgreSQL.`);
+    const codMostrar = (pacienteActual && pacienteActual.codigo) ? pacienteActual.codigo : codigo;
+    mostrarNotificacionToast(`✓ Ficha Clínica #${codMostrar} (${pacienteActual ? pacienteActual.nombre : ''}) guardada exitosamente en la base de datos.`);
   } catch (err) {
     console.error('Error al guardar la ficha en la base de datos:', err);
     alert('Error al conectar con la base de datos: ' + err.message);
   } finally {
-    if (btnGuardar) {
-      btnGuardar.disabled = false;
-      btnGuardar.textContent = 'Guardar Ficha';
-    }
+    btns.forEach(b => {
+      b.disabled = false;
+      b.textContent = 'Guardar Cambios';
+    });
   }
 }
 

@@ -60,7 +60,7 @@ def _patient_to_dict(patient, visit=None):
 
     return {
         "id": str(patient.patient_id),
-        "codigo": visit.study_code if visit else f"{patient.patient_id:04d}/2026",
+        "codigo": visit.study_code if (visit and visit.study_code) else str(patient.patient_id),
         "cedula": patient.id_card,
         "nombre": patient.full_name,
         "fechaNac": patient.birth_date.isoformat() if patient.birth_date else "",
@@ -163,7 +163,7 @@ def patient_list_api(request):
             qs = qs.filter(sex__name__istartswith='M')
 
     # Sorting
-    ordenar_por = request.GET.get('ordenar_por', 'nombre').strip().lower()
+    ordenar_por = request.GET.get('ordenar_por', 'codigo').strip().lower()
     direccion = request.GET.get('direccion', 'asc').strip().lower()
     prefix = '' if direccion == 'asc' else '-'
 
@@ -171,8 +171,10 @@ def patient_list_api(request):
         qs = qs.order_by(f"{prefix}first_names", f"{prefix}last_name1")
     elif ordenar_por == 'fecha':
         qs = qs.order_by(f"{prefix}visit__visit_date")
+    elif ordenar_por == 'codigo':
+        qs = qs.order_by(f"{prefix}patient_id")
     else:
-        qs = qs.order_by(f"{prefix}first_names")
+        qs = qs.order_by(f"{prefix}patient_id")
 
     pacientes_list = [_patient_to_dict(p) for p in qs]
 
@@ -301,10 +303,11 @@ def patient_create_api(request):
                 created_by=request.user
             )
 
-            # Generar siguiente código de estudio
-            anio_actual = datetime.date.today().year
-            total_visitas_anio = Visit.objects.filter(study_year=anio_actual).count()
-            nuevo_codigo = f"{total_visitas_anio + 1:04d}/{anio_actual}"
+            # Generar siguiente código de estudio en orden ascendente (1, 2, 3, 4, 5...)
+            existing_codes = Visit.objects.values_list('study_code', flat=True)
+            numeric_codes = [int(c) for c in existing_codes if c and c.isdigit()]
+            siguiente_numero = (max(numeric_codes) + 1) if numeric_codes else 1
+            nuevo_codigo = str(siguiente_numero)
 
             visita = Visit.objects.create(
                 patient=paciente,
@@ -551,8 +554,9 @@ def form_save_api(request):
             if not visit:
                 # Generar código si hace falta
                 if not codigo:
-                    anio_actual = datetime.date.today().year
-                    codigo = f"{Visit.objects.count() + 1:04d}/{anio_actual}"
+                    existing_codes = Visit.objects.values_list('study_code', flat=True)
+                    numeric_codes = [int(c) for c in existing_codes if c and c.isdigit()]
+                    codigo = str((max(numeric_codes) + 1) if numeric_codes else 1)
 
                 visit = Visit.objects.create(
                     patient=patient,

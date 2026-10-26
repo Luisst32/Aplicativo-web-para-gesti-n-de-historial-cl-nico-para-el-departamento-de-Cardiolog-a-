@@ -8,8 +8,8 @@
 // IDs de pacientes marcados con checkbox para exportación masiva
 const seleccionados = new Set();
 
-// Estado de ordenamiento
-let columnaOrdenActual = 'nombre';
+// Estado de ordenamiento (Código 1, 2, 3, 4, 5... por defecto)
+let columnaOrdenActual = 'codigo';
 let direccionOrdenActual = 'asc';
 
 // Paginación: 10 pacientes por página
@@ -107,6 +107,12 @@ function obtenerPacientesFiltrados() {
     let factor = direccionOrdenActual === 'asc' ? 1 : -1;
 
     switch (columnaOrdenActual) {
+      case 'codigo': {
+        const cA = parseInt(a.codigo, 10) || 0;
+        const cB = parseInt(b.codigo, 10) || 0;
+        return factor * (cA - cB);
+      }
+
       case 'nombre':
         return factor * a.nombre.localeCompare(b.nombre);
 
@@ -304,7 +310,7 @@ function crearFilaPaciente(p) {
       <div class="celda-paciente">
         <div class="avatar-paciente">${inits}</div>
         <div class="info-paciente">
-          <span class="nombre-paciente" title="Haga clic para ver el expediente y ficha médica de este paciente">${p.nombre}</span>
+          <span class="nombre-paciente" title="Haga clic para ver el expediente y ficha médica de este paciente"><span style="display:inline-block; min-width:24px; padding:2px 8px; margin-right:8px; border-radius:6px; background:#eff6ff; color:#1d4ed8; font-size:0.82rem; font-weight:800; border:1px solid #bfdbfe;">#${p.codigo}</span>${p.nombre}</span>
           <div class="meta-secundaria">
             <span>C.I: ${p.cedula || '0900000000'}</span>
             <span>·</span>
