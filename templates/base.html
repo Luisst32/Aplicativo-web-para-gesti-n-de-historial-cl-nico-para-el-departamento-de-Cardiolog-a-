@@ -25,6 +25,15 @@
   {% block content %}{% endblock %}
 
   <!-- Scripts Globales -->
+  <script>
+    {% if request.user.is_authenticated %}
+    window.CURRENT_USER = {
+      nombre: "{{ request.user.full_name|default:request.user.username|escapejs }}",
+      rol: "{% if request.user.is_superuser %}Administrador{% elif request.user.roles.exists %}{{ request.user.roles.first.name|escapejs }}{% elif request.user.is_staff %}Médico Evaluador{% else %}Usuario{% endif %}",
+      correo: "{{ request.user.email|default:''|escapejs }}"
+    };
+    {% endif %}
+  </script>
   <script src="{% static 'js/global/utils.js' %}"></script>
   <script src="{% static 'js/global/api.js' %}"></script>
   <script src="{% static 'js/global/ui.js' %}"></script>
