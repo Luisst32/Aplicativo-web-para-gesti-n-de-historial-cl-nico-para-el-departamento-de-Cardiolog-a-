@@ -11,6 +11,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunSQL("CREATE SCHEMA IF NOT EXISTS ai;", reverse_sql="DROP SCHEMA IF EXISTS ai CASCADE;"),
         migrations.CreateModel(
             name='BotQuery',
             fields=[

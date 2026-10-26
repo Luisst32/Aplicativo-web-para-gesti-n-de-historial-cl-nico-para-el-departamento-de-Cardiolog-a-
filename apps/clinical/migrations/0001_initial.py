@@ -17,6 +17,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunSQL("CREATE SCHEMA IF NOT EXISTS clinical;", reverse_sql="DROP SCHEMA IF EXISTS clinical CASCADE;"),
         migrations.CreateModel(
             name='Visit',
             fields=[

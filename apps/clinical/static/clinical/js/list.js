@@ -19,7 +19,7 @@ let paginaActual = 1;
 // Paciente activo mostrado en el expediente
 let pacienteActivoExpediente = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // Listeners de búsqueda y filtros (resetean a la página 1)
   document.getElementById('filtroBusqueda').addEventListener('input', () => {
     paginaActual = 1;
@@ -47,6 +47,9 @@ document.addEventListener('DOMContentLoaded', () => {
     renderPacientesTabla();
     abrirHistorialesPaciente(nuevoPaciente.id);
   });
+
+  // Cargar cohorte real desde base de datos PostgreSQL (HU-15)
+  await cargarPacientesDesdeServidor();
 
   // Si la URL contiene ?paciente=<id>, abrir directamente la vista de su expediente (sin modal)
   const params = new URLSearchParams(window.location.search);
@@ -988,12 +991,11 @@ function exportSAV() {
   descargarBlob(blob, 'directorio_pacientes_cardiounemi.sav');
 }
 
-// Impresión PDF de un Historial Clínico específico
+// Impresión y descarga oficial en PDF de la Ficha Clínica (HU-17)
 function exportarPDFHistorial(pacienteId, historialId) {
-  const p = pacientes.find(item => item.id === pacienteId);
-  if (!p) return;
-  const h = obtenerHistorialPorId(pacienteId, historialId);
-  if (!h) return;
+  // Descarga directa del PDF oficial generado por el backend
+  window.open(`/clinical/ficha/pdf/?paciente=${encodeURIComponent(pacienteId)}`, '_blank');
+}
 
   const printContainer = document.getElementById('printFormsContainer');
   const imcVal = h.imc || calcIMCValor(h.peso, h.talla);

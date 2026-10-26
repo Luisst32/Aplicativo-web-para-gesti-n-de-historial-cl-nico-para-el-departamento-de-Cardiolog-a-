@@ -11,8 +11,62 @@ from .models import (
 )
 
 
+from django import forms
+from django.core.exceptions import ValidationError
+from audit.services import register_audit_log
+from .validators import validate_ecuadorian_id, validate_clinical_ranges
+
+
+class PatientAdminForm(forms.ModelForm):
+    class Meta:
+        model = Patient
+        fields = '__all__'
+
+    def clean_id_card(self):
+        id_card = self.cleaned_data.get('id_card')
+        if id_card and not validate_ecuadorian_id(id_card):
+            raise ValidationError("La cédula ingresada no es válida según el algoritmo oficial ecuatoriano.")
+        return id_card
+
+
+class AnthropometryAdminForm(forms.ModelForm):
+    class Meta:
+        model = Anthropometry
+        fields = '__all__'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        errores = validate_clinical_ranges({
+            'weight_kg': cleaned_data.get('weight_kg'),
+            'height_cm': cleaned_data.get('height_cm'),
+            'waist_circumference_cm': cleaned_data.get('waist_circumference_cm'),
+        })
+        if errores:
+            raise ValidationError(errores)
+        return cleaned_data
+
+
+class VitalSignsAdminForm(forms.ModelForm):
+    class Meta:
+        model = VitalSigns
+        fields = '__all__'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        errores = validate_clinical_ranges({
+            'systolic_bp': cleaned_data.get('systolic_bp'),
+            'diastolic_bp': cleaned_data.get('diastolic_bp'),
+            'oxygen_saturation': cleaned_data.get('oxygen_saturation'),
+            'heart_rate': cleaned_data.get('heart_rate'),
+        })
+        if errores:
+            raise ValidationError(errores)
+        return cleaned_data
+
+
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
+    form = PatientAdminForm
     list_display = (
         'patient_id',
         'id_card',
@@ -35,6 +89,18 @@ class PatientAdmin(admin.ModelAdmin):
     )
     list_filter = ('status', 'institution', 'sex', 'ethnicity')
     ordering = ('last_name1', 'first_names')
+
+    def save_model(self, request, obj, form, change):
+        action = 'UPDATE' if change else 'INSERT'
+        super().save_model(request, obj, form, change)
+        register_audit_log(
+            user=request.user,
+            table_name='patient',
+            record_key=obj.patient_id,
+            action=action,
+            new_value={'id_card': obj.id_card, 'name': obj.full_name},
+            machine_name=getattr(request, 'client_ip', '127.0.0.1')
+        )
 
 
 class AnthropometryInline(admin.StackedInline):
@@ -105,12 +171,14 @@ class VisitAdmin(admin.ModelAdmin):
 
 @admin.register(Anthropometry)
 class AnthropometryAdmin(admin.ModelAdmin):
+    form = AnthropometryAdminForm
     list_display = ('visit', 'weight_kg', 'height_cm', 'waist_circumference_cm', 'bmi', 'body_surface_area')
     search_fields = ('visit__study_code', 'visit__patient__id_card')
 
 
 @admin.register(VitalSigns)
 class VitalSignsAdmin(admin.ModelAdmin):
+    form = VitalSignsAdminForm
     list_display = ('visit', 'systolic_bp', 'diastolic_bp', 'heart_rate', 'oxygen_saturation')
     search_fields = ('visit__study_code', 'visit__patient__id_card')
 

@@ -12,6 +12,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunSQL("CREATE SCHEMA IF NOT EXISTS catalog;"),
         migrations.CreateModel(
             name='Question',
             fields=[

@@ -1,599 +1,29 @@
 // =========================================================================
 // PACIENTES Y GESTIÓN DE HISTORIALES CLÍNICOS - CARDIOUNEMI
 // Estructura: 1 Paciente tiene un ÚNICO Historial Clínico (Ficha Médica).
-// Norma clínica: Cuando se atiende nuevamente a un paciente se lo analiza con el antecedente de su ficha médica existente.
+// Persistencia: Base de datos relacional PostgreSQL / Django ORM (Sprint 4)
 // =========================================================================
 
-let pacientesBase = [
-  {
-    "id": "p1",
-    "codigo": "0482/2026",
-    "cedula": "0923485712",
-    "nombre": "Alejandro Reyes",
-    "fechaNac": "1985-02-09",
-    "sexo": "H",
-    "estamento": "PDI",
-    "facultad": "Salud y Servicios Sociales",
-    "ciudad": "Milagro",
-    "provincia": "Guayas",
-    "telefono": "0987654321",
-    "correo": "areyes@unemi.edu.ec",
-    "municipio": "Milagro",
-    "raza": "Mestizo",
-    "convivientes": "4",
-    "peso": 74,
-    "talla": 172,
-    "tas": 120,
-    "tsi": 80,
-    "satO2": 98,
-    "perimetro": 88,
-    "historiales": [
-      {
-        "id": "h_p1",
-        "numeroVisita": 1,
-        "codigoEstudio": "0482/2026",
-        "fechaVisita": "2026-02-10",
-        "tipo": "Historial Clínico",
-        "motivo": "Control Anual Cardiovascular & Dieta Mediterránea",
-        "medico": "Dra. María Pérez - Cardiología UNEMI",
-        "estado": "Completada",
-        "peso": 74,
-        "talla": 172,
-        "imc": 25,
-        "asc": 1.88,
-        "tas": 120,
-        "tsi": 80,
-        "satO2": 98,
-        "perimetro": 88,
-        "riesgoGlobal": "Bajo"
-      }
-    ]
-  },
-  {
-    "id": "p2",
-    "codigo": "0483/2025",
-    "cedula": "0918745236",
-    "nombre": "Carlos Mendoza Paredes",
-    "fechaNac": "1984-06-15",
-    "sexo": "H",
-    "estamento": "PDI",
-    "facultad": "Ciencias e Ingeniería",
-    "ciudad": "Guayaquil",
-    "provincia": "Guayas",
-    "telefono": "0991234567",
-    "correo": "cmendoza@unemi.edu.ec",
-    "municipio": "Guayaquil",
-    "raza": "Mestizo",
-    "convivientes": "5",
-    "peso": 82,
-    "talla": 175,
-    "tas": 130,
-    "tsi": 85,
-    "satO2": 97,
-    "perimetro": 94,
-    "historiales": [
-      {
-        "id": "h_p2",
-        "numeroVisita": 1,
-        "codigoEstudio": "0483/2025",
-        "fechaVisita": "2025-05-18",
-        "tipo": "Historial Clínico",
-        "motivo": "Reevaluación de Factores de Riesgo Cardiovascular",
-        "medico": "Dra. María Pérez - Cardiología UNEMI",
-        "estado": "Completada",
-        "peso": 82,
-        "talla": 175,
-        "imc": 26.8,
-        "asc": 2,
-        "tas": 130,
-        "tsi": 85,
-        "satO2": 97,
-        "perimetro": 94,
-        "riesgoGlobal": "Moderado"
-      }
-    ]
-  },
-  {
-    "id": "p3",
-    "codigo": "0484/2026",
-    "cedula": "0934125890",
-    "nombre": "Ana Lucía Torres Moreira",
-    "fechaNac": "1992-11-20",
-    "sexo": "M",
-    "estamento": "AD",
-    "facultad": "Educación",
-    "ciudad": "Milagro",
-    "provincia": "Guayas",
-    "telefono": "0988776655",
-    "correo": "atorres@unemi.edu.ec",
-    "municipio": "Milagro",
-    "raza": "Mestizo",
-    "convivientes": "1",
-    "peso": 58,
-    "talla": 162,
-    "tas": 110,
-    "tsi": 70,
-    "satO2": 99,
-    "perimetro": 72,
-    "historiales": [
-      {
-        "id": "h_p3",
-        "numeroVisita": 1,
-        "codigoEstudio": "0484/2026",
-        "fechaVisita": "2026-01-22",
-        "tipo": "Historial Clínico",
-        "motivo": "Vigilancia de Salud Ocupacional Administrativa",
-        "medico": "Dra. María Pérez - Cardiología UNEMI",
-        "estado": "Completada",
-        "peso": 58,
-        "talla": 162,
-        "imc": 22.1,
-        "asc": 1.62,
-        "tas": 110,
-        "tsi": 70,
-        "satO2": 99,
-        "perimetro": 72,
-        "riesgoGlobal": "Bajo"
-      }
-    ]
-  },
-  {
-    "id": "p4",
-    "codigo": "0485/2024",
-    "cedula": "0915623489",
-    "nombre": "Beatriz Elena Gómez Castro",
-    "fechaNac": "1978-04-12",
-    "sexo": "M",
-    "estamento": "PDI",
-    "facultad": "Ciencias Sociales",
-    "ciudad": "Milagro",
-    "provincia": "Guayas",
-    "telefono": "0976543210",
-    "correo": "bgomez@unemi.edu.ec",
-    "municipio": "Milagro",
-    "raza": "Mestizo",
-    "convivientes": "3",
-    "peso": 68,
-    "talla": 165,
-    "tas": 125,
-    "tsi": 82,
-    "satO2": 98,
-    "perimetro": 82,
-    "historiales": [
-      {
-        "id": "h_p4",
-        "numeroVisita": 1,
-        "codigoEstudio": "0485/2024",
-        "fechaVisita": "2024-06-11",
-        "tipo": "Historial Clínico",
-        "motivo": "Tamizaje Cardiovascular en Personal Docente",
-        "medico": "Dr. Roberto Cedeño - Cardiología UNEMI",
-        "estado": "Completada",
-        "peso": 68,
-        "talla": 165,
-        "imc": 25,
-        "asc": 1.76,
-        "tas": 125,
-        "tsi": 82,
-        "satO2": 98,
-        "perimetro": 82,
-        "riesgoGlobal": "Moderado"
-      }
-    ]
-  },
-  {
-    "id": "p5",
-    "codigo": "0486/2025",
-    "cedula": "0927891234",
-    "nombre": "David Fernando Zambrano",
-    "fechaNac": "1990-08-30",
-    "sexo": "H",
-    "estamento": "SERVICIO",
-    "facultad": "Mantenimiento General",
-    "ciudad": "Yaguachi",
-    "provincia": "Guayas",
-    "telefono": "0965432109",
-    "correo": "dzambrano@unemi.edu.ec",
-    "municipio": "Yaguachi",
-    "raza": "Mestizo",
-    "convivientes": "4",
-    "peso": 79,
-    "talla": 170,
-    "tas": 135,
-    "tsi": 88,
-    "satO2": 96,
-    "perimetro": 90,
-    "historiales": [
-      {
-        "id": "h_p5",
-        "numeroVisita": 1,
-        "codigoEstudio": "0486/2025",
-        "fechaVisita": "2025-09-04",
-        "tipo": "Historial Clínico",
-        "motivo": "Monitoreo Tensional y Esfuerzo Físico Laboral",
-        "medico": "Dra. María Pérez - Cardiología UNEMI",
-        "estado": "Completada",
-        "peso": 79,
-        "talla": 170,
-        "imc": 27.3,
-        "asc": 1.93,
-        "tas": 135,
-        "tsi": 88,
-        "satO2": 96,
-        "perimetro": 90,
-        "riesgoGlobal": "Moderado"
-      }
-    ]
-  },
-  {
-    "id": "p6",
-    "codigo": "0487/2026",
-    "cedula": "0945612378",
-    "nombre": "Gabriela Sofía Andrade Solís",
-    "fechaNac": "2001-03-25",
-    "sexo": "M",
-    "estamento": "ESTUDIANTES",
-    "facultad": "Salud y Servicios Sociales",
-    "ciudad": "Milagro",
-    "provincia": "Guayas",
-    "telefono": "0954321098",
-    "correo": "gandrade@unemi.edu.ec",
-    "municipio": "Milagro",
-    "raza": "Mestizo",
-    "convivientes": "3",
-    "peso": 54,
-    "talla": 160,
-    "tas": 115,
-    "tsi": 75,
-    "satO2": 99,
-    "perimetro": 68,
-    "historiales": [
-      {
-        "id": "h_p6",
-        "numeroVisita": 1,
-        "codigoEstudio": "0487/2026",
-        "fechaVisita": "2026-03-01",
-        "tipo": "Historial Clínico",
-        "motivo": "Estudio Cardiovascular en Comunidad Estudiantil",
-        "medico": "Dra. María Pérez - Cardiología UNEMI",
-        "estado": "Completada",
-        "peso": 54,
-        "talla": 160,
-        "imc": 21.1,
-        "asc": 1.55,
-        "tas": 115,
-        "tsi": 75,
-        "satO2": 99,
-        "perimetro": 68,
-        "riesgoGlobal": "Bajo"
-      }
-    ]
-  },
-  {
-    "id": "p7",
-    "codigo": "0488/2023",
-    "cedula": "0908123456",
-    "nombre": "Jorge Luis Cárdenas Vega",
-    "fechaNac": "1969-12-05",
-    "sexo": "H",
-    "estamento": "PDI",
-    "facultad": "Ciencias e Ingeniería",
-    "ciudad": "Durán",
-    "provincia": "Guayas",
-    "telefono": "0943210987",
-    "correo": "jcardenas@unemi.edu.ec",
-    "municipio": "Durán",
-    "raza": "Mestizo",
-    "convivientes": "2",
-    "peso": 86,
-    "talla": 174,
-    "tas": 140,
-    "tsi": 90,
-    "satO2": 96,
-    "perimetro": 98,
-    "historiales": [
-      {
-        "id": "h_p7",
-        "numeroVisita": 1,
-        "codigoEstudio": "0488/2023",
-        "fechaVisita": "2025-10-14",
-        "tipo": "Historial Clínico",
-        "motivo": "Ajuste de Tratamiento Antihipertensivo",
-        "medico": "Dra. María Pérez - Cardiología UNEMI",
-        "estado": "Completada",
-        "peso": 86,
-        "talla": 174,
-        "imc": 27.7,
-        "asc": 2.01,
-        "tas": 140,
-        "tsi": 90,
-        "satO2": 96,
-        "perimetro": 98,
-        "riesgoGlobal": "Moderado"
-      }
-    ]
-  },
-  {
-    "id": "p8",
-    "codigo": "0489/2024",
-    "cedula": "0921478563",
-    "nombre": "Mariana Isabel Palacios Romero",
-    "fechaNac": "1982-07-19",
-    "sexo": "M",
-    "estamento": "AD",
-    "facultad": "Talento Humano",
-    "ciudad": "Milagro",
-    "provincia": "Guayas",
-    "telefono": "0932109876",
-    "correo": "mpalacios@unemi.edu.ec",
-    "municipio": "Milagro",
-    "raza": "Mestizo",
-    "convivientes": "4",
-    "peso": 65,
-    "talla": 163,
-    "tas": 120,
-    "tsi": 78,
-    "satO2": 98,
-    "perimetro": 80,
-    "historiales": [
-      {
-        "id": "h_p8",
-        "numeroVisita": 1,
-        "codigoEstudio": "0489/2024",
-        "fechaVisita": "2024-11-05",
-        "tipo": "Historial Clínico",
-        "motivo": "Control de Salud Preventiva en Talento Humano",
-        "medico": "Dr. Roberto Cedeño - Cardiología UNEMI",
-        "estado": "Completada",
-        "peso": 65,
-        "talla": 163,
-        "imc": 24.5,
-        "asc": 1.71,
-        "tas": 120,
-        "tsi": 78,
-        "satO2": 98,
-        "perimetro": 80,
-        "riesgoGlobal": "Bajo"
-      }
-    ]
-  },
-  {
-    "id": "p9",
-    "codigo": "0493/2026",
-    "cedula": "0914872391",
-    "nombre": "Elena Villacrés Saldaña",
-    "fechaNac": "1988-06-18",
-    "sexo": "M",
-    "estamento": "PDI",
-    "facultad": "Educación",
-    "ciudad": "Milagro",
-    "provincia": "Guayas",
-    "telefono": "0991234567",
-    "correo": "evillacres@unemi.edu.ec",
-    "municipio": "Milagro",
-    "raza": "Mestizo",
-    "convivientes": "3",
-    "peso": 62,
-    "talla": 165,
-    "tas": 118,
-    "tsi": 75,
-    "satO2": 99,
-    "perimetro": 76,
-    "historiales": [
-      {
-        "id": "h_p9",
-        "numeroVisita": 1,
-        "codigoEstudio": "0493/2026",
-        "fechaVisita": "2026-02-05",
-        "tipo": "Historial Clínico",
-        "motivo": "Chequeo Cardiovascular de Rutina",
-        "medico": "Dra. María Pérez - Cardiología UNEMI",
-        "estado": "Completada",
-        "peso": 62,
-        "talla": 165,
-        "imc": 22.8,
-        "asc": 1.68,
-        "tas": 118,
-        "tsi": 75,
-        "satO2": 99,
-        "perimetro": 76,
-        "riesgoGlobal": "Bajo"
-      }
-    ]
-  },
-  {
-    "id": "p10",
-    "codigo": "0494/2026",
-    "cedula": "0925781932",
-    "nombre": "Jorge Washington Caicedo",
-    "fechaNac": "1974-09-30",
-    "sexo": "H",
-    "estamento": "SERVICIO",
-    "facultad": "Servicios Generales",
-    "ciudad": "Milagro",
-    "provincia": "Guayas",
-    "telefono": "0982345678",
-    "correo": "jcaicedo@unemi.edu.ec",
-    "municipio": "Milagro",
-    "raza": "Afroecuatoriano",
-    "convivientes": "2",
-    "peso": 82,
-    "talla": 175,
-    "tas": 125,
-    "tsi": 82,
-    "satO2": 98,
-    "perimetro": 92,
-    "historiales": [
-      {
-        "id": "h_p10",
-        "numeroVisita": 1,
-        "codigoEstudio": "0494/2026",
-        "fechaVisita": "2026-01-18",
-        "tipo": "Historial Clínico",
-        "motivo": "Control de Salud Ocupacional",
-        "medico": "Dr. Roberto Cedeño - Cardiología UNEMI",
-        "estado": "Completada",
-        "peso": 82,
-        "talla": 175,
-        "imc": 26.8,
-        "asc": 1.99,
-        "tas": 125,
-        "tsi": 82,
-        "satO2": 98,
-        "perimetro": 92,
-        "riesgoGlobal": "Bajo"
-      }
-    ]
-  },
-  {
-    "id": "p11",
-    "codigo": "0495/2025",
-    "cedula": "0941982734",
-    "nombre": "Diana Marcela Zambrano",
-    "fechaNac": "1994-12-04",
-    "sexo": "M",
-    "estamento": "AD",
-    "facultad": "Vinculación",
-    "ciudad": "Milagro",
-    "provincia": "Guayas",
-    "telefono": "0973456789",
-    "correo": "dzambrano@unemi.edu.ec",
-    "municipio": "Milagro",
-    "raza": "Mestizo",
-    "convivientes": "1",
-    "peso": 56,
-    "talla": 160,
-    "tas": 110,
-    "tsi": 70,
-    "satO2": 99,
-    "perimetro": 70,
-    "historiales": [
-      {
-        "id": "h_p11",
-        "numeroVisita": 1,
-        "codigoEstudio": "0495/2025",
-        "fechaVisita": "2025-11-20",
-        "tipo": "Historial Clínico",
-        "motivo": "Revisión Preventiva de Ingreso",
-        "medico": "Dra. María Pérez - Cardiología UNEMI",
-        "estado": "Completada",
-        "peso": 56,
-        "talla": 160,
-        "imc": 21.9,
-        "asc": 1.57,
-        "tas": 110,
-        "tsi": 70,
-        "satO2": 99,
-        "perimetro": 70,
-        "riesgoGlobal": "Bajo"
-      }
-    ]
-  },
-  {
-    "id": "p12",
-    "codigo": "0496/2025",
-    "cedula": "0938219485",
-    "nombre": "Fernando Javier Morales",
-    "fechaNac": "1980-04-12",
-    "sexo": "H",
-    "estamento": "PDI",
-    "facultad": "Salud y Servicios Sociales",
-    "ciudad": "Milagro",
-    "provincia": "Guayas",
-    "telefono": "0964567890",
-    "correo": "fmorales@unemi.edu.ec",
-    "municipio": "Milagro",
-    "raza": "Mestizo",
-    "convivientes": "4",
-    "peso": 76,
-    "talla": 170,
-    "tas": 122,
-    "tsi": 80,
-    "satO2": 98,
-    "perimetro": 86,
-    "historiales": [
-      {
-        "id": "h_p12",
-        "numeroVisita": 1,
-        "codigoEstudio": "0496/2025",
-        "fechaVisita": "2025-09-14",
-        "tipo": "Historial Clínico",
-        "motivo": "Control de Presión Arterial y Factores de Riesgo",
-        "medico": "Dr. Roberto Cedeño - Cardiología UNEMI",
-        "estado": "Completada",
-        "peso": 76,
-        "talla": 170,
-        "imc": 26.3,
-        "asc": 1.89,
-        "tas": 122,
-        "tsi": 80,
-        "satO2": 98,
-        "perimetro": 86,
-        "riesgoGlobal": "Bajo"
-      }
-    ]
-  }
-];
+let pacientes = [];
 
-// Claves de persistencia en localStorage
-const CLAVE_PACIENTES_NUEVOS = 'cardiounemi_pacientes_nuevos';
-const CLAVE_HISTORIALES_MODIFICADOS = 'cardiounemi_historiales_pacientes';
-
-function leerPacientesNuevos() {
+/**
+ * Carga la cohorte activa de pacientes desde la base de datos PostgreSQL
+ * a través de la API REST /clinical/api/pacientes/
+ */
+async function cargarPacientesDesdeServidor(filtros = {}) {
   try {
-    return JSON.parse(localStorage.getItem(CLAVE_PACIENTES_NUEVOS)) || [];
-  } catch (err) {
+    const params = new URLSearchParams(filtros);
+    const resp = await fetch(`/clinical/api/pacientes/?${params.toString()}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (data.success && Array.isArray(data.pacientes)) {
+      pacientes = data.pacientes;
+      return pacientes;
+    }
     return [];
-  }
-}
-
-function leerHistorialesModificados() {
-  try {
-    return JSON.parse(localStorage.getItem(CLAVE_HISTORIALES_MODIFICADOS)) || {};
   } catch (err) {
-    return {};
-  }
-}
-
-// Inicialización de la lista de pacientes con clonación profunda
-let pacientes = leerPacientesNuevos().concat(JSON.parse(JSON.stringify(pacientesBase)));
-
-// Aplicar historiales personalizados/modificados guardados en localStorage
-(function aplicarHistorialesGuardados() {
-  const modifs = leerHistorialesModificados();
-  pacientes.forEach(p => {
-    if (modifs[p.id]) {
-      p.historiales = modifs[p.id];
-      // Sincronizar signos vitales raíz con el último historial
-      const ult = p.historiales[0];
-      if (ult) {
-        if (ult.peso) p.peso = ult.peso;
-        if (ult.talla) p.talla = ult.talla;
-        if (ult.tas) p.tas = ult.tas;
-        if (ult.tsi) p.tsi = ult.tsi;
-        if (ult.satO2) p.satO2 = ult.satO2;
-        if (ult.perimetro) p.perimetro = ult.perimetro;
-      }
-    }
-  });
-})();
-
-// Guardar los historiales modificados para un paciente
-function persistirHistorialesPaciente(pacienteId, listaHistoriales) {
-  try {
-    const modifs = leerHistorialesModificados();
-    modifs[pacienteId] = listaHistoriales;
-    localStorage.setItem(CLAVE_HISTORIALES_MODIFICADOS, JSON.stringify(modifs));
-
-    // Si es un paciente nuevo agregado por modal, actualizarlo en su lista
-    const nuevos = leerPacientesNuevos();
-    const idx = nuevos.findIndex(p => p.id === pacienteId);
-    if (idx !== -1) {
-      nuevos[idx].historiales = listaHistoriales;
-      localStorage.setItem(CLAVE_PACIENTES_NUEVOS, JSON.stringify(nuevos));
-    }
-  } catch (err) {
-    console.error('Error al persistir historiales:', err);
+    console.error('Error al cargar pacientes desde el servidor:', err);
+    return [];
   }
 }
 
@@ -605,15 +35,13 @@ function persistirHistorialesPaciente(pacienteId, listaHistoriales) {
 function obtenerHistorialesPaciente(p) {
   if (!p) return [];
   if (!p.historiales || !Array.isArray(p.historiales) || p.historiales.length === 0) {
-    // Si no tiene historiales (por ejemplo, paciente creado antes de este formato),
-    // creamos uno inicial por defecto con sus datos actuales
     const primerH = {
-      id: `h_${p.id}_1`,
+      id: `h_${p.id}`,
       numeroVisita: 1,
-      codigoEstudio: p.codigo || siguienteCodigoPaciente(),
+      codigoEstudio: p.codigo || '0001/2026',
       fechaVisita: `${anioDePaciente(p)}-01-15`,
-      tipo: "Evaluación Inicial",
-      motivo: "Chequeo Cardiovascular de Ingreso",
+      tipo: "Historial Clínico",
+      motivo: "Control Anual Cardiovascular & Dieta Mediterránea",
       medico: "Dra. María Pérez - Cardiología UNEMI",
       estado: "Completada",
       peso: p.peso || 70,
@@ -628,8 +56,6 @@ function obtenerHistorialesPaciente(p) {
     };
     p.historiales = [primerH];
   }
-
-  // Ordenar: más reciente primero (por fecha o numeroVisita descendente)
   return [...p.historiales].sort((a, b) => new Date(b.fechaVisita) - new Date(a.fechaVisita));
 }
 
@@ -646,55 +72,6 @@ function obtenerHistorialPorId(pacienteId, historialId) {
   const historiales = obtenerHistorialesPaciente(p);
   return historiales.find(h => h.id === historialId) || null;
 }
-
-// Crea y registra un nuevo historial clínico para un paciente
-function crearNuevoHistorial(pacienteId, datosHistorial) {
-  const p = pacientes.find(item => item.id === pacienteId);
-  if (!p) return null;
-
-  if (!p.historiales) p.historiales = [];
-
-  const nuevoNumero = p.historiales.length + 1;
-  const hoyStr = new Date().toISOString().split('T')[0];
-  const anioActual = new Date().getFullYear();
-
-  const nuevoHistorial = {
-    id: `h_${pacienteId}_${Date.now()}`,
-    numeroVisita: nuevoNumero,
-    codigoEstudio: `${p.codigo.split('/')[0]}/${anioActual}`,
-    fechaVisita: datosHistorial.fechaVisita || hoyStr,
-    tipo: datosHistorial.tipo || (nuevoNumero === 1 ? "Evaluación Inicial" : "Control de Seguimiento"),
-    motivo: datosHistorial.motivo || "Consulta Cardiológica y Control de Factores de Riesgo",
-    medico: datosHistorial.medico || "Dra. María Pérez - Cardiología UNEMI",
-    estado: "En proceso",
-    peso: parseFloat(datosHistorial.peso) || p.peso || 70,
-    talla: parseFloat(datosHistorial.talla) || p.talla || 170,
-    tas: parseInt(datosHistorial.tas, 10) || p.tas || 120,
-    tsi: parseInt(datosHistorial.tsi, 10) || p.tsi || 80,
-    satO2: parseInt(datosHistorial.satO2, 10) || p.satO2 || 98,
-    perimetro: parseFloat(datosHistorial.perimetro) || p.perimetro || 85,
-    riesgoGlobal: datosHistorial.riesgoGlobal || "Bajo"
-  };
-
-  nuevoHistorial.imc = calcIMCValor(nuevoHistorial.peso, nuevoHistorial.talla);
-  nuevoHistorial.asc = calcASCValor(nuevoHistorial.peso, nuevoHistorial.talla);
-
-  // Colocar como el más reciente al inicio
-  p.historiales.unshift(nuevoHistorial);
-
-  // Sincronizar signos vitales raíz del paciente
-  p.peso = nuevoHistorial.peso;
-  p.talla = nuevoHistorial.talla;
-  p.tas = nuevoHistorial.tas;
-  p.tsi = nuevoHistorial.tsi;
-  p.satO2 = nuevoHistorial.satO2;
-  p.perimetro = nuevoHistorial.perimetro;
-
-  persistirHistorialesPaciente(pacienteId, p.historiales);
-  return nuevoHistorial;
-}
-
-// Cálculos matemáticos (calcIMCValor y calcASCValor provistos globalmente en static/js/global/utils.js)
 
 // Año de la ficha: sale del código (0482/2026 -> 2026) o del último historial
 function anioDePaciente(p) {
@@ -767,7 +144,7 @@ function montarModalAgregarPaciente(onListo) {
         </div>
         <div class="grid form-grid-2">
           <div class="form-field">
-            <label class="field-label">Número de Cédula</label>
+            <label class="field-label">Número de Cédula (10 dígitos ecuatoriana)</label>
             <input type="text" class="form-input" id="m_cedula" placeholder="Ej: 0928475612" maxlength="10" name="m_cedula">
           </div>
           <div class="form-field">
@@ -830,7 +207,7 @@ function montarModalAgregarPaciente(onListo) {
   document.getElementById('btnCancelModal').addEventListener('click', cerrarModalAgregarPaciente);
   document.getElementById('btnSaveModal').addEventListener('click', guardarPacienteDelModal);
 
-  ['m_nombre', 'm_fecha_nac'].forEach(id => {
+  ['m_nombre', 'm_fecha_nac', 'm_cedula'].forEach(id => {
     document.getElementById(id).addEventListener('input', () => {
       document.getElementById('m_duplicado').classList.remove('visible');
     });
@@ -860,89 +237,83 @@ function cerrarModalAgregarPaciente() {
   }
 }
 
-function siguienteCodigoPaciente() {
-  const anio = new Date().getFullYear();
-  const mayor = pacientes.reduce((max, p) => Math.max(max, parseInt(p.codigo, 10) || 0), 0);
-  return `${String(mayor + 1).padStart(4, '0')}/${anio}`;
-}
-
-function guardarPacienteDelModal() {
+/**
+ * Registra un nuevo paciente directamente en la base de datos PostgreSQL
+ * enviando una petición POST a /clinical/api/pacientes/crear/ (Sprint 4 / HU-15).
+ */
+async function guardarPacienteDelModal() {
   const nombre = document.getElementById('m_nombre').value.trim();
   const fn = document.getElementById('m_fecha_nac').value;
+  const cedula = document.getElementById('m_cedula').value.trim();
+  const sexo = document.getElementById('m_sexo').value;
+  const estamento = document.getElementById('m_estamento').value;
+  const facultad = document.getElementById('m_facultad').value.trim();
+  const telefono = document.getElementById('m_telefono').value.trim();
+  const correo = document.getElementById('m_correo').value.trim();
+
   if (!nombre || !fn) {
     alert('Por favor ingrese al menos el nombre y la fecha de nacimiento.');
     return;
   }
 
-  const existente = buscarPacienteExistente(nombre, fn);
-  if (existente) {
-    document.getElementById('m_duplicado_texto').textContent =
-      `${existente.nombre} ya tiene expediente registrado (${existente.codigo}).`;
-    document.getElementById('btnAbrirExistente').onclick = () => {
-      cerrarModalAgregarPaciente();
-      if (typeof alTerminarModalPaciente === 'function') {
-        alTerminarModalPaciente(existente);
-      }
-    };
-    document.getElementById('m_duplicado').classList.add('visible');
-    return;
-  }
-
-  const hoyStr = new Date().toISOString().split('T')[0];
-  const nuevoCodigo = siguienteCodigoPaciente();
-  const nuevoId = 'p' + Date.now();
-
-  const nuevo = {
-    id: nuevoId,
-    codigo: nuevoCodigo,
-    cedula: document.getElementById('m_cedula').value.trim() || '0900000000',
+  const payload = {
     nombre: nombre,
-    fechaNac: fn,
-    sexo: document.getElementById('m_sexo').value,
-    estamento: document.getElementById('m_estamento').value,
-    facultad: document.getElementById('m_facultad').value.trim() || 'UNEMI',
-    telefono: document.getElementById('m_telefono').value.trim() || '',
-    correo: document.getElementById('m_correo').value.trim() || '',
-    ciudad: 'Milagro',
-    provincia: 'Guayas',
-    peso: 70,
-    talla: 170,
-    tas: 120,
-    tsi: 80,
-    satO2: 98,
-    perimetro: 85,
-    historiales: [
-      {
-        id: `h_${nuevoId}_1`,
-        numeroVisita: 1,
-        codigoEstudio: nuevoCodigo,
-        fechaVisita: hoyStr,
-        tipo: "Evaluación Inicial",
-        motivo: "Chequeo Cardiovascular de Ingreso",
-        medico: "Dra. María Pérez - Cardiología UNEMI",
-        estado: "En proceso",
-        peso: 70,
-        talla: 170,
-        imc: 24.2,
-        asc: 1.82,
-        tas: 120,
-        tsi: 80,
-        satO2: 98,
-        perimetro: 85,
-        riesgoGlobal: "Bajo"
-      }
-    ]
+    cedula: cedula,
+    fecha_nac: fn,
+    sexo: sexo,
+    estamento: estamento,
+    facultad: facultad,
+    telefono: telefono,
+    correo: correo
   };
 
-  pacientes.unshift(nuevo);
-  try {
-    localStorage.setItem(CLAVE_PACIENTES_NUEVOS, JSON.stringify([nuevo].concat(leerPacientesNuevos())));
-  } catch (err) {
-    console.error('Error al guardar el paciente en localStorage:', err);
-  }
+  const btnSave = document.getElementById('btnSaveModal');
+  btnSave.disabled = true;
+  btnSave.textContent = 'Guardando en BD...';
 
-  cerrarModalAgregarPaciente();
-  if (typeof alTerminarModalPaciente === 'function') {
-    alTerminarModalPaciente(nuevo);
+  try {
+    const csrfToken = (typeof getCookie === 'function' ? getCookie('csrftoken') : '') || '';
+    const resp = await fetch('/clinical/api/pacientes/crear/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      if (data.duplicado && data.existente) {
+        document.getElementById('m_duplicado_texto').textContent = data.error;
+        document.getElementById('btnAbrirExistente').onclick = () => {
+          cerrarModalAgregarPaciente();
+          if (typeof alTerminarModalPaciente === 'function') {
+            alTerminarModalPaciente(data.existente);
+          }
+        };
+        document.getElementById('m_duplicado').classList.add('visible');
+        return;
+      }
+      alert('Error: ' + (data.error || 'No se pudo guardar el paciente.'));
+      return;
+    }
+
+    if (data.success && data.paciente) {
+      const nuevo = data.paciente;
+      pacientes.unshift(nuevo);
+      cerrarModalAgregarPaciente();
+      if (typeof alTerminarModalPaciente === 'function') {
+        alTerminarModalPaciente(nuevo);
+      }
+    }
+  } catch (err) {
+    console.error('Error al registrar paciente:', err);
+    alert('Error al conectar con la base de datos.');
+  } finally {
+    btnSave.disabled = false;
+    btnSave.textContent = 'Crear y Abrir Expediente';
   }
 }

@@ -11,6 +11,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunSQL("CREATE SCHEMA IF NOT EXISTS audit;", reverse_sql="DROP SCHEMA IF EXISTS audit CASCADE;"),
         migrations.CreateModel(
             name='ChangeLog',
             fields=[

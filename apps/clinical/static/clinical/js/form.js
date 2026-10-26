@@ -1,41 +1,60 @@
 let pacienteActual = null;
 let historialActual = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const urlParams = new URLSearchParams(location.search);
   const idPaciente = urlParams.get('paciente');
-  const idHistorial = urlParams.get('historial');
-  const paciente = pacientes.find(p => p.id === idPaciente);
-  if (!paciente) {
+
+  if (!idPaciente) {
     location.replace('/clinical/listado/');
     return;
   }
-  pacienteActual = paciente;
 
-  // Cada paciente tiene un único historial clínico (ficha médica)
-  historialActual = obtenerUltimoHistorial(paciente);
+  try {
+    const resp = await fetch(`/clinical/api/ficha/${encodeURIComponent(idPaciente)}/`);
+    if (!resp.ok) {
+      location.replace('/clinical/listado/');
+      return;
+    }
+    const resData = await resp.json();
+    if (!resData.success || !resData.paciente) {
+      location.replace('/clinical/listado/');
+      return;
+    }
 
-  // Actualizar enlace "Volver al Expediente" para volver directamente a la vista de este paciente
-  const btnVolver = document.getElementById('btnVolverListado');
-  if (btnVolver) {
-    btnVolver.href = `/clinical/listado/?paciente=${encodeURIComponent(paciente.id)}`;
+    pacienteActual = resData.paciente;
+    historialActual = obtenerUltimoHistorial(pacienteActual);
+
+    // Actualizar enlace "Volver al Expediente" para volver directamente a la vista de este paciente
+    const btnVolver = document.getElementById('btnVolverListado');
+    if (btnVolver) {
+      btnVolver.href = `/clinical/listado/?paciente=${encodeURIComponent(pacienteActual.id)}`;
+    }
+
+    // Actualizar badge de historial activo en el header
+    const badgeTxt = document.getElementById('textoHistorialActivo');
+    if (badgeTxt && historialActual) {
+      badgeTxt.textContent = `Historial Clínico Único · ${historialActual.fechaVisita || ''}`;
+    }
+
+    // Fecha visita por defecto del historial o de hoy
+    const fVis = document.getElementById('f_fecha_visita');
+    if (fVis) {
+      fVis.value = (historialActual && historialActual.fechaVisita) ? historialActual.fechaVisita : new Date().toISOString().split('T')[0];
+    }
+
+    // Formulario limpio y luego los datos del paciente e historial
+    limpiarFormularioCompleto();
+    seleccionarPaciente(pacienteActual, historialActual);
+
+    // Restaurar datos completos de todos los módulos desde la base de datos PostgreSQL (Sprint 4)
+    if (resData.datos) {
+      restaurarFichaDesdeObjeto(resData.datos);
+    }
+  } catch (err) {
+    console.error('Error al cargar la ficha del paciente:', err);
+    alert('No se pudo cargar la información del paciente desde la base de datos.');
   }
-
-  // Actualizar badge de historial activo en el header
-  const badgeTxt = document.getElementById('textoHistorialActivo');
-  if (badgeTxt && historialActual) {
-    badgeTxt.textContent = `Historial Clínico Único · ${historialActual.fechaVisita || ''}`;
-  }
-
-  // Fecha visita por defecto del historial o de hoy
-  const fVis = document.getElementById('f_fecha_visita');
-  if (fVis) {
-    fVis.value = (historialActual && historialActual.fechaVisita) ? historialActual.fechaVisita : new Date().toISOString().split('T')[0];
-  }
-
-  // Formulario limpio y luego los datos del paciente e historial
-  limpiarFormularioCompleto();
-  seleccionarPaciente(paciente, historialActual);
 
   restringirCamposNumericos();
 });
@@ -438,8 +457,7 @@ function seleccionarPaciente(p, h) {
 
   calcIMC();
 
-  // Restaurar ficha si el paciente y este historial ya fueron guardados
-  restaurarFichaPaciente(p.codigo, h ? h.id : null);
+  // Ficha y módulos sincronizados directamente desde PostgreSQL
 }
 
 // NAVEGACIÓN Y SCROLL SUAVE ENTRE MÓDULOS UNIFICADOS
@@ -487,8 +505,8 @@ function actualizarHeroPresion() {
   }
 }
 
-// PERSISTENCIA COMPLETA: GUARDADO DE LA FICHA CLÍNICA
-function guardarFichaCompleta() {
+// PERSISTENCIA COMPLETA: GUARDADO DE LA FICHA CLÍNICA EN POSTGRESQL (Sprint 4 / HU-11, HU-12, HU-13)
+async function guardarFichaCompleta() {
   const form = document.getElementById('ehrCleanForm');
   if (!form) return;
 
@@ -498,126 +516,99 @@ function guardarFichaCompleta() {
     return;
   }
 
+  const btnGuardar = document.getElementById('btnGuardarFicha');
+  if (btnGuardar) {
+    btnGuardar.disabled = true;
+    btnGuardar.textContent = 'Guardando en BD...';
+  }
+
   // Recopilar todos los elementos del formulario mediante FormData
   const formData = new FormData(form);
-  const data = {};
-  for (let [key, val] of formData.entries()) {
-    if (data[key] !== undefined) {
-      if (!Array.isArray(data[key])) {
-        data[key] = [data[key]];
-      }
-      data[key].push(val);
-    } else {
-      data[key] = val;
-    }
-  }
 
   // Guardar también campos de cálculo o sólo lectura
   const calculatedIds = ['f_imc', 'f_asc', 'pred_puntuacion_total'];
   calculatedIds.forEach(id => {
     const el = document.getElementById(id);
-    if (el) data[id] = el.value;
+    if (el) formData.append(id, el.value);
   });
 
-  const fichaGuardada = {
-    codigo: codigo,
-    idHistorial: historialActual ? historialActual.id : null,
-    fechaGuardado: new Date().toISOString(),
-    datos: data
-  };
+  if (pacienteActual) {
+    formData.append('idPaciente', pacienteActual.id);
+  }
 
   try {
-    // Persistencia centralizada: 1 historial clínico único por paciente
-    localStorage.setItem('cardiounemi_ficha_' + codigo, JSON.stringify(fichaGuardada));
+    const csrfToken = (typeof getCookie === 'function' ? getCookie('csrftoken') : '') || '';
+    const resp = await fetch('/clinical/api/ficha/guardar/', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: formData
+    });
 
-    // Sincronizar en el objeto en memoria del paciente y en su historial activo
-    const p = pacienteActual || pacientes.find(item => item.codigo === codigo);
-    if (p) {
-      const pPeso = parseFloat(document.getElementById('f_peso')?.value) || p.peso;
-      const pTalla = parseFloat(document.getElementById('f_talla')?.value) || p.talla;
-      const pPerim = parseFloat(document.getElementById('f_perimetro')?.value) || p.perimetro;
-      const pTas = parseInt(document.getElementById('f_tas')?.value, 10) || p.tas;
-      const pTsi = parseInt(document.getElementById('f_tsi')?.value, 10) || p.tsi;
-      const pSat = parseInt(document.getElementById('f_sat_o2')?.value, 10) || p.satO2;
-      const fVis = document.getElementById('f_fecha_visita')?.value;
-
-      p.peso = pPeso;
-      p.talla = pTalla;
-      p.perimetro = pPerim;
-      p.tas = pTas;
-      p.tsi = pTsi;
-      p.satO2 = pSat;
-
-      if (historialActual) {
-        historialActual.peso = pPeso;
-        historialActual.talla = pTalla;
-        historialActual.perimetro = pPerim;
-        historialActual.tas = pTas;
-        historialActual.tsi = pTsi;
-        historialActual.satO2 = pSat;
-        historialActual.imc = calcIMCValor(pPeso, pTalla);
-        historialActual.asc = calcASCValor(pPeso, pTalla);
-        historialActual.estado = 'Completada';
-        if (fVis) historialActual.fechaVisita = fVis;
-        p.historiales = [historialActual];
-        persistirHistorialesPaciente(p.id, p.historiales);
-      }
+    const resJson = await resp.json();
+    if (!resp.ok || !resJson.success) {
+      alert('Error al guardar la ficha: ' + (resJson.error || 'Verifique los rangos clínicos y los campos obligatorios.'));
+      return;
     }
 
-    mostrarNotificacionToast(`✓ Historial Clínico de ${p ? p.nombre : codigo} guardado exitosamente en el expediente.`);
+    // Sincronizar en memoria con los datos persistidos en PostgreSQL
+    if (resJson.paciente) {
+      pacienteActual = resJson.paciente;
+      historialActual = obtenerUltimoHistorial(pacienteActual);
+      seleccionarPaciente(pacienteActual, historialActual);
+    }
+
+    mostrarNotificacionToast(`✓ Historial Clínico de ${pacienteActual ? pacienteActual.nombre : codigo} guardado exitosamente en PostgreSQL.`);
   } catch (err) {
-    console.error('Error al guardar en localStorage:', err);
-    alert('Ficha guardada en la sesión actual.');
+    console.error('Error al guardar la ficha en la base de datos:', err);
+    alert('Error al conectar con la base de datos: ' + err.message);
+  } finally {
+    if (btnGuardar) {
+      btnGuardar.disabled = false;
+      btnGuardar.textContent = 'Guardar Ficha';
+    }
   }
 }
 
-// RESTAURAR FICHA CLÍNICA PREVIAMENTE GUARDADA
-function restaurarFichaPaciente(codigo, idHistorial) {
-  try {
-    let raw = localStorage.getItem('cardiounemi_ficha_' + codigo);
-    if (!raw && idHistorial) {
-      raw = localStorage.getItem('cardiounemi_ficha_' + codigo + '_' + idHistorial);
+// RESTAURAR FICHA CLÍNICA DESDE OBJETO OBTENIDO DE LA BASE DE DATOS
+function restaurarFichaDesdeObjeto(datos) {
+  if (!datos) return;
+  const form = document.getElementById('ehrCleanForm');
+  if (!form) return;
+
+  Object.keys(datos).forEach(key => {
+    const val = datos[key];
+    if (val === null || val === undefined || val === '') return;
+
+    const elements = form.elements[key];
+    if (!elements) {
+      const elById = document.getElementById(key);
+      if (elById) elById.value = val;
+      return;
     }
-    if (!raw) return;
-    const ficha = JSON.parse(raw);
-    if (!ficha || !ficha.datos) return;
 
-    const datos = ficha.datos;
-    const form = document.getElementById('ehrCleanForm');
-    if (!form) return;
-
-    Object.keys(datos).forEach(key => {
-      const val = datos[key];
-      const elements = form.elements[key];
-      if (!elements) {
-        const elById = document.getElementById(key);
-        if (elById) elById.value = val;
-        return;
-      }
-
-      if (elements instanceof RadioNodeList || (elements.length && elements[0].type === 'radio')) {
-        for (let i = 0; i < elements.length; i++) {
-          elements[i].checked = (elements[i].value === val);
-          if (elements[i].checked && elements[i].onchange) {
-            elements[i].onchange();
-          }
+    if (elements instanceof RadioNodeList || (elements.length && elements[0].type === 'radio')) {
+      for (let i = 0; i < elements.length; i++) {
+        if (elements[i].value.toLowerCase() === String(val).toLowerCase()) {
+          elements[i].checked = true;
+          if (elements[i].onchange) elements[i].onchange();
         }
-      } else if (elements.type === 'checkbox') {
-        elements.checked = (val === '1' || val === 'Si' || val === true || val === elements.value);
-        if (elements.onchange) elements.onchange();
-      } else if (elements.type === 'select-one' || elements.type === 'text' || elements.type === 'number' || elements.type === 'date') {
-        elements.value = val;
-        if (elements.oninput) elements.oninput();
-        if (elements.onchange) elements.onchange();
       }
-    });
+    } else if (elements.type === 'checkbox') {
+      elements.checked = (val === '1' || val === 'Si' || val === true || val === elements.value);
+      if (elements.onchange) elements.onchange();
+    } else if (elements.type === 'select-one' || elements.type === 'text' || elements.type === 'number' || elements.type === 'date') {
+      elements.value = val;
+      if (elements.oninput) elements.oninput();
+      if (elements.onchange) elements.onchange();
+    }
+  });
 
-    calcIMC();
-    calcPredimed();
-    actualizarHeroPresion();
-  } catch (err) {
-    console.warn('No se pudo restaurar la ficha guardada:', err);
-  }
+  calcIMC();
+  calcPredimed();
+  actualizarHeroPresion();
 }
 
 // NOTIFICACIÓN FLOTANTE VISUAL (TOAST)
