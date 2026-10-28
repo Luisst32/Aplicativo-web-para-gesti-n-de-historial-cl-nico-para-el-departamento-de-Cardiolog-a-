@@ -356,6 +356,157 @@ function obtenerPayloadTabaquismo() {
 //   // await db.pacientes.update(pacienteId, data.columna_w_tabaquismo);
 // }
 
+// =============================================================================
+// CATÁLOGOS DINÁMICOS EN CASCADA: UNIVERSIDAD-FACULTAD Y PROVINCIA-CANTÓN
+// =============================================================================
+const FACULTADES_POR_UNIVERSIDAD = {
+  'UNEMI': [
+    { value: 'FACI', label: 'FACI - Facultad de Ciencias e Ingeniería' },
+    { value: 'FACS', label: 'FACS - Facultad de Salud' },
+    { value: 'FACSO', label: 'FACSO - Ciencias Sociales, Educación Comercial y Derecho' },
+    { value: 'FACE', label: 'FACE - Facultad de Educación' },
+    { value: 'POSGRADO', label: 'Posgrado / Dirección de Posgrado' }
+  ],
+  'ESPOL': [
+    { value: 'FIEC', label: 'FIEC - Fac. de Ing. en Electricidad y Computación' },
+    { value: 'FCNM', label: 'FCNM - Fac. de Ciencias Naturales y Matemáticas' },
+    { value: 'FIMCP', label: 'FIMCP - Fac. de Ing. Mecánica y Ciencias de la Producción' },
+    { value: 'FCSH', label: 'FCSH - Fac. de Ciencias Sociales y Humanísticas' },
+    { value: 'FCV', label: 'FCV - Facultad de Ciencias de la Vida' },
+    { value: 'FIMCM', label: 'FIMCM - Fac. de Ing. Marítima y Ciencias del Mar' },
+    { value: 'EDCOM', label: 'EDCOM - Escuela de Diseño y Comunicación Visual' }
+  ]
+};
+
+const CANTONES_POR_PROVINCIA = {
+  'AZUAY': ['Cuenca', 'Camilo Ponce Enríquez', 'Chordeleg', 'El Pan', 'Girón', 'Guachapala', 'Gualaceo', 'Nabón', 'Oña', 'Paute', 'Pucará', 'San Fernando', 'Santa Isabel', 'Sevilla de Oro', 'Sígsig'],
+  'BOLIVAR': ['Guaranda', 'Caluma', 'Chillanes', 'Chimbo', 'Echeandía', 'Las Naves', 'San Miguel'],
+  'CANAR': ['Azogues', 'Biblián', 'Cañar', 'Déleg', 'El Tambo', 'La Troncal', 'Suscal'],
+  'CARCHI': ['Tulcán', 'Bolívar', 'Espejo', 'Mira', 'Montúfar', 'San Pedro de Huaca'],
+  'CHIMBORAZO': ['Riobamba', 'Alausí', 'Chambo', 'Chunchi', 'Colta', 'Cumandá', 'Guamote', 'Guano', 'Pallatanga', 'Penipe'],
+  'COTOPAXI': ['Latacunga', 'La Maná', 'Pangua', 'Pujilí', 'Salcedo', 'Saquisilí', 'Sigchos'],
+  'EL ORO': ['Machala', 'Arenillas', 'Atahualpa', 'Balsas', 'Chilla', 'El Guabo', 'Huaquillas', 'Las Lajas', 'Marcabelí', 'Pasaje', 'Piñas', 'Portovelo', 'Santa Rosa', 'Zaruma'],
+  'ESMERALDAS': ['Esmeraldas', 'Atacames', 'Eloy Alfaro', 'Muisne', 'Quinindé', 'Rioverde', 'San Lorenzo'],
+  'GALAPAGOS': ['San Cristóbal', 'Isabela', 'Santa Cruz'],
+  'GUAYAS': ['Milagro', 'Guayaquil', 'Alfredo Baquerizo Moreno (Juján)', 'Balao', 'Balzar', 'Colimes', 'Daule', 'Durán', 'El Empalme', 'El Triunfo', 'General Antonio Elizalde (Bucay)', 'Isidro Ayora', 'Lomas de Sargentillo', 'Marcelino Maridueña', 'Naranjal', 'Naranjito', 'Nobol', 'Palestina', 'Pedro Carbo', 'Playas (General Villamil)', 'Salitre (Urbina Jado)', 'Samborondón', 'Santa Lucía', 'Simón Bolívar', 'Yaguachi'],
+  'IMBABURA': ['Ibarra', 'Antonio Ante', 'Cotacachi', 'Otavalo', 'Pimampiro', 'San Miguel de Urcuquí'],
+  'LOJA': ['Loja', 'Calvas', 'Catamayo', 'Celica', 'Chaguarpamba', 'Espíndola', 'Gonzanamá', 'Macará', 'Olmedo', 'Paltas', 'Pindal', 'Puyango', 'Quilanga', 'Saraguro', 'Sozoranga', 'Zapotillo'],
+  'LOS RIOS': ['Babahoyo', 'Baba', 'Buena Fe', 'Mocache', 'Montalvo', 'Palenque', 'Puebloviejo', 'Quevedo', 'Quinsaloma', 'Urdaneta', 'Valencia', 'Ventanas', 'Vinces'],
+  'MANABI': ['Portoviejo', 'Bolívar (Calceta)', 'Chone', 'El Carmen', 'Flavio Alfaro', 'Jama', 'Jaramijó', 'Jipijapa', 'Junín', 'Manta', 'Montecristi', 'Olmedo', 'Paján', 'Pedernales', 'Pichincha', 'Puerto López', 'Rocafuerte', 'San Vicente', 'Santa Ana', 'Sucre (Bahía de Caráquez)', 'Tosagua', '24 de Mayo'],
+  'MORONA SANTIAGO': ['Morona (Macas)', 'Gualaquiza', 'Huamboya', 'Limón Indanza', 'Logroño', 'Pablo Sexto', 'Palora', 'San Juan Bosco', 'Santiago de Méndez', 'Sucúa', 'Taisha', 'Tiwintza'],
+  'NAPO': ['Tena', 'Archidona', 'Carlos Julio Arosemena Tola', 'El Chaco', 'Quijos (Baeza)'],
+  'ORELLANA': ['Francisco de Orellana (Coca)', 'Aguarico', 'La Joya de los Sachas', 'Loreto'],
+  'PASTAZA': ['Pastaza (Puyo)', 'Arajuno', 'Mera', 'Santa Clara'],
+  'PICHINCHA': ['Quito', 'Cayambe', 'Mejía', 'Pedro Moncayo', 'Pedro Vicente Maldonado', 'Puerto Quito', 'Rumiñahui', 'San Miguel de Los Bancos'],
+  'SANTA ELENA': ['Santa Elena', 'La Libertad', 'Salinas'],
+  'SANTO DOMINGO DE LOS TSACHILAS': ['Santo Domingo', 'La Concordia'],
+  'SUCUMBIOS': ['Lago Agrio (Nueva Loja)', 'Cascales', 'Cuyabeno', 'Gonzalo Pizarro', 'Putumayo', 'Shushufindi', 'Sucumbíos'],
+  'TUNGURAHUA': ['Ambato', 'Baños de Agua Santa', 'Cevallos', 'Mocha', 'Patate', 'Quero', 'San Pedro de Pelileo', 'Santiago de Píllaro', 'Tisaleo'],
+  'ZAMORA CHINCHIPE': ['Zamora', 'Centinela del Cóndor', 'Chinchipe', 'El Pangui', 'Nangaritza', 'Palanda', 'Paquisha', 'Yacuambi', 'Yantzaza'],
+  'EXTRANJERO': ['Otro país / Exterior']
+};
+
+function onUniversidadChange(uni, selectedFacultad) {
+  const selFac = document.getElementById('f_facultad');
+  if (!selFac) return;
+
+  const cleanUni = (uni || 'UNEMI').toUpperCase().trim();
+  const facList = FACULTADES_POR_UNIVERSIDAD[cleanUni] || FACULTADES_POR_UNIVERSIDAD['UNEMI'];
+
+  selFac.innerHTML = '<option value="">-- Seleccionar Facultad --</option>';
+  let matched = false;
+
+  facList.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.value;
+    opt.textContent = f.label;
+    if (selectedFacultad && (f.value.toLowerCase() === String(selectedFacultad).toLowerCase() || f.label.toLowerCase().includes(String(selectedFacultad).toLowerCase()))) {
+      opt.selected = true;
+      matched = true;
+    }
+    selFac.appendChild(opt);
+  });
+
+  if (!matched && selectedFacultad) {
+    const customOpt = document.createElement('option');
+    customOpt.value = selectedFacultad;
+    customOpt.textContent = selectedFacultad;
+    customOpt.selected = true;
+    selFac.appendChild(customOpt);
+  } else if (!matched && facList.length > 0 && !selectedFacultad) {
+    selFac.value = facList[0].value;
+  }
+
+  const heroFac = document.getElementById('heroFacultad');
+  if (heroFac) {
+    heroFac.textContent = selFac.value || cleanUni;
+  }
+}
+
+function onProvinciaNacChange(prov, selectedMunicipio) {
+  const selMun = document.getElementById('f_municipio');
+  if (!selMun) return;
+
+  const provKey = (prov || 'GUAYAS').toUpperCase().trim();
+  const cantones = CANTONES_POR_PROVINCIA[provKey] || ['Milagro', 'Guayaquil', 'Durán', 'Daule'];
+
+  selMun.innerHTML = '<option value="">-- Seleccionar Cantón / Municipio --</option>';
+  let matched = false;
+
+  cantones.forEach(cant => {
+    const opt = document.createElement('option');
+    opt.value = cant;
+    opt.textContent = cant;
+    if (selectedMunicipio && (cant.toLowerCase() === String(selectedMunicipio).toLowerCase())) {
+      opt.selected = true;
+      matched = true;
+    }
+    selMun.appendChild(opt);
+  });
+
+  if (!matched && selectedMunicipio) {
+    const customOpt = document.createElement('option');
+    customOpt.value = selectedMunicipio;
+    customOpt.textContent = selectedMunicipio;
+    customOpt.selected = true;
+    selMun.appendChild(customOpt);
+  } else if (!matched && cantones.length > 0 && !selectedMunicipio) {
+    selMun.value = cantones[0];
+  }
+}
+
+function onProvinciaResidenciaChange(prov, selectedCiudad) {
+  const selCiu = document.getElementById('f_ciudad');
+  if (!selCiu) return;
+
+  const provKey = (prov || 'GUAYAS').toUpperCase().trim();
+  const cantones = CANTONES_POR_PROVINCIA[provKey] || ['Milagro', 'Guayaquil', 'Durán', 'Daule'];
+
+  selCiu.innerHTML = '<option value="">-- Seleccionar Cantón / Ciudad --</option>';
+  let matched = false;
+
+  cantones.forEach(cant => {
+    const opt = document.createElement('option');
+    opt.value = cant;
+    opt.textContent = cant;
+    if (selectedCiudad && (cant.toLowerCase() === String(selectedCiudad).toLowerCase())) {
+      opt.selected = true;
+      matched = true;
+    }
+    selCiu.appendChild(opt);
+  });
+
+  if (!matched && selectedCiudad) {
+    const customOpt = document.createElement('option');
+    customOpt.value = selectedCiudad;
+    customOpt.textContent = selectedCiudad;
+    customOpt.selected = true;
+    selCiu.appendChild(customOpt);
+  } else if (!matched && cantones.length > 0 && !selectedCiudad) {
+    selCiu.value = cantones[0];
+  }
+}
+
 // Acordeón de tarjetas: clic en el título expande/colapsa el contenido
 // de esa sección (mismo mecanismo de "clic para desplegar" que ya usan
 // los paneles de fórmula del dashboard).
@@ -425,14 +576,45 @@ function seleccionarPaciente(p, h) {
   document.getElementById('f_apellido2').value = trozos.slice(2).join(' ');
   document.getElementById('f_fecha_nac').value = p.fechaNac;
   document.getElementById('f_edad').value = edadStr;
-  document.getElementById('f_ciudad').value = p.ciudad || '';
-  document.getElementById('f_provincia').value = p.provincia || '';
+
+  // Universidad y Facultad
+  const uniVal = p.universidad || 'UNEMI';
+  if (document.getElementById('f_universidad')) {
+    document.getElementById('f_universidad').value = uniVal;
+  }
+  onUniversidadChange(uniVal, p.facultad);
+
+  // Provincia y Cantón de Nacimiento
+  const provNacVal = p.provincia_nac || p.provincia || 'GUAYAS';
+  if (document.getElementById('f_provincia_nac')) {
+    document.getElementById('f_provincia_nac').value = provNacVal;
+  }
+  onProvinciaNacChange(provNacVal, p.municipio || 'Milagro');
+
+  // Provincia y Cantón de Residencia
+  const provResVal = p.provincia || 'GUAYAS';
+  if (document.getElementById('f_provincia')) {
+    document.getElementById('f_provincia').value = provResVal;
+  }
+  onProvinciaResidenciaChange(provResVal, p.ciudad || 'Milagro');
+
+  // N.º de Visita
+  if (document.getElementById('f_visita')) {
+    document.getElementById('f_visita').value = (h && h.numeroVisita) ? h.numeroVisita : (p.numeroVisita || 1);
+  }
+
   document.getElementById('f_telefono').value = p.telefono || '';
   document.getElementById('f_correo').value = p.correo || '';
-  document.getElementById('f_facultad').value = p.facultad || '';
-  document.getElementById('f_municipio').value = p.municipio || '';
-  document.getElementById('f_raza').value = (p.raza ? p.raza.toUpperCase() : '');
-  document.getElementById('f_convivientes').value = p.convivientes || '';
+  if (document.getElementById('f_raza')) document.getElementById('f_raza').value = (p.raza ? p.raza.toUpperCase() : '');
+  if (document.getElementById('f_convivientes')) document.getElementById('f_convivientes').value = (p.convivientes !== undefined ? p.convivientes : '');
+  if (document.getElementById('f_hijos')) document.getElementById('f_hijos').value = (p.hijos !== undefined ? p.hijos : '');
+  if (p.estado_civil && document.getElementById('f_estado_civil')) document.getElementById('f_estado_civil').value = p.estado_civil;
+  if (p.convive_con && document.getElementById('f_convive_con')) document.getElementById('f_convive_con').value = p.convive_con;
+  if (p.estudios && document.getElementById('f_estudios')) document.getElementById('f_estudios').value = p.estudios;
+  if (p.horario && document.getElementById('f_horario')) document.getElementById('f_horario').value = p.horario;
+  if (p.profesion && document.getElementById('f_profesion')) document.getElementById('f_profesion').value = p.profesion;
+  if (p.vivienda && document.getElementById('f_vivienda')) document.getElementById('f_vivienda').value = p.vivienda;
+  if (p.ingresos && document.getElementById('f_ingresos')) document.getElementById('f_ingresos').value = p.ingresos;
 
   document.getElementById('f_sexo').value = p.sexo;
   document.getElementById('f_estamento').value = p.estamento;
@@ -520,16 +702,20 @@ async function guardarFichaCompleta() {
   }
 
   const btnTop = document.getElementById('btnGuardarFicha');
-  const btnBottom = document.getElementById('btnGuardarFichaBottom');
-  const btns = [btnTop, btnBottom].filter(Boolean);
-
-  btns.forEach(b => {
-    b.disabled = true;
-    b.textContent = 'Guardando cambios en BD...';
-  });
+  if (btnTop) {
+    btnTop.disabled = true;
+    btnTop.textContent = 'Guardando cambios en BD...';
+  }
 
   // Recopilar todos los elementos del formulario mediante FormData
   const formData = new FormData(form);
+
+  // Asegurar que checkboxes desmarcados se envíen como '0' para persistir el cambio
+  form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    if (cb.name && !cb.checked && !formData.has(cb.name)) {
+      formData.append(cb.name, '0');
+    }
+  });
 
   // Guardar también campos de cálculo o sólo lectura
   const calculatedIds = ['f_imc', 'f_asc', 'pred_puntuacion_total'];
@@ -567,6 +753,9 @@ async function guardarFichaCompleta() {
       historialActual = obtenerUltimoHistorial(pacienteActual);
       seleccionarPaciente(pacienteActual, historialActual);
     }
+    if (resJson.datos) {
+      restaurarFichaDesdeObjeto(resJson.datos);
+    }
 
     const codMostrar = (pacienteActual && pacienteActual.codigo) ? pacienteActual.codigo : codigo;
     mostrarNotificacionToast(`✓ Ficha Clínica #${codMostrar} (${pacienteActual ? pacienteActual.nombre : ''}) guardada exitosamente en la base de datos.`);
@@ -574,10 +763,13 @@ async function guardarFichaCompleta() {
     console.error('Error al guardar la ficha en la base de datos:', err);
     alert('Error al conectar con la base de datos: ' + err.message);
   } finally {
-    btns.forEach(b => {
-      b.disabled = false;
-      b.textContent = 'Guardar Cambios';
-    });
+    if (btnTop) {
+      btnTop.disabled = false;
+      btnTop.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        <span>Guardar Cambios</span>
+      `;
+    }
   }
 }
 
@@ -586,6 +778,23 @@ function restaurarFichaDesdeObjeto(datos) {
   if (!datos) return;
   const form = document.getElementById('ehrCleanForm');
   if (!form) return;
+
+  // Inicializar selectores en cascada antes de iterar campos
+  if (datos.f_universidad) {
+    if (document.getElementById('f_universidad')) document.getElementById('f_universidad').value = datos.f_universidad;
+    onUniversidadChange(datos.f_universidad, datos.f_facultad);
+  }
+  if (datos.f_provincia_nac) {
+    if (document.getElementById('f_provincia_nac')) document.getElementById('f_provincia_nac').value = datos.f_provincia_nac;
+    onProvinciaNacChange(datos.f_provincia_nac, datos.f_municipio);
+  }
+  if (datos.f_provincia) {
+    if (document.getElementById('f_provincia')) document.getElementById('f_provincia').value = datos.f_provincia;
+    onProvinciaResidenciaChange(datos.f_provincia, datos.f_ciudad);
+  }
+  if (datos.f_visita && document.getElementById('f_visita')) {
+    document.getElementById('f_visita').value = datos.f_visita;
+  }
 
   Object.keys(datos).forEach(key => {
     const val = datos[key];

@@ -13,7 +13,7 @@ from catalog.models import (
     Sex, Ethnicity, StaffCategory, ProfessionalCategory,
     EducationLevel, IncomeRange, MaritalStatus,
     LivingSituation, HousingType, WorkSchedule,
-    EcgRhythm, Question, AnswerOption
+    EcgRhythm, Question, AnswerOption, QuestionnaireSection
 )
 from clinical.models import (
     Patient, Visit, Anthropometry, VitalSigns,
@@ -22,6 +22,52 @@ from clinical.models import (
 from clinical.validators import validate_ecuadorian_id, validate_clinical_ranges
 from clinical.pdf import generate_clinical_sheet_pdf
 from audit.services import register_audit_log
+
+
+QUESTION_ALIASES = {
+    'r_hta': 'hta',
+    'r_hta_trat': 'hta_tto',
+    'r_dm': 'dm',
+    'r_dislip': 'dlp',
+    'r_dislip_trat': 'dlp_tto',
+    'r_tabaco': 'tabaco',
+    'r_alcohol': 'alcohol',
+    'r_drogas': 'drogas',
+    'r_sobrepeso': 'sobrepeso',
+    'r_irc': 'irc',
+    'r_higado': 'higado_graso',
+    'r_apnea': 'apnea',
+    'em_toxicos': 'toxicos_laboral',
+    'em_estres_trab': 'estres_laboral',
+    'em_estres_fam': 'estres_familiar',
+    'em_pers_a': 'personalidad_tipo_a',
+    'nm_cardiopatia': 'af_cardiopatia_prematura',
+    'nm_fallecido': 'af_muerte_subita',
+    'ant_padre_hta': 'af_padre_hta',
+    'ant_madre_hta': 'af_madre_hta',
+    'ant_padre_dm': 'af_padre_dm',
+    'ant_madre_dm': 'af_madre_dm',
+    'ant_padre_dislip': 'af_padre_dlp',
+    'ant_madre_dislip': 'af_madre_dlp',
+    'nc_cancer': 'ant_cancer',
+    'nc_epoc': 'ant_epoc',
+    'nc_asma': 'ant_asma',
+    'nc_reuma': 'ant_reuma',
+    'nc_depresion': 'ant_depresion',
+    'nc_ansiedad': 'ant_ansiedad',
+    'nc_alergia': 'ant_alergias',
+    'covid_paso': 'covid_infeccion',
+    'covid_ingreso': 'covid_hosp',
+    'covid_cv': 'covid_secuelas_cardio',
+    'covid_pulm': 'covid_secuelas_resp',
+    'rose_1': 'rose_dolor_pecho',
+    'rose_3': 'rose_detenerse',
+    'rose_4': 'rose_alivio',
+    'rose_5': 'rose_claudicacion',
+    'f_num_hijos': 'f_hijos',
+    'f_num_convivientes': 'f_convivientes',
+}
+REVERSE_ALIASES = {v: k for k, v in QUESTION_ALIASES.items()}
 
 
 def _patient_to_dict(patient, visit=None):
@@ -58,6 +104,41 @@ def _patient_to_dict(patient, visit=None):
             "riesgoGlobal": "Bajo"
         })
 
+    ms_val = ""
+    if visit and visit.marital_status:
+        ms_val_map = {'Soltero/a': '1_soltero', 'Casado/a': '2_casado', 'Divorciado/a': '3_divorciado', 'Viudo/a': '4_viudo', 'Unión de hecho': '5_union_libre'}
+        ms_val = ms_val_map.get(visit.marital_status.name, "")
+
+    ls_val = ""
+    if visit and visit.living_situation:
+        ls_val_map = {'Solo': '1', 'Con pareja': '2', 'Con familia': '4', 'Con amigos/compañeros': '7'}
+        ls_val = ls_val_map.get(visit.living_situation.name, "")
+
+    ed_val = ""
+    if visit and visit.education_level:
+        ed_val_map = {'Primaria': '3', 'Secundaria': '4', 'Tercer Nivel (Grado)': '6', 'Cuarto Nivel (Postgrado)': '7', 'Doctorado (PhD)': '7'}
+        ed_val = ed_val_map.get(visit.education_level.name, "")
+
+    ws_val = ""
+    if visit and visit.work_schedule:
+        ws_val_map = {'Tiempo Completo (40h)': '1', 'Medio Tiempo (20h)': '2', 'Parcial': '3', 'Turnos / Rotativo': '4'}
+        ws_val = ws_val_map.get(visit.work_schedule.name, "")
+
+    pc_val = ""
+    if visit and visit.professional_category:
+        pc_val_map = {'Docente Titular': '1', 'Docente Ocasional': '2', 'Servidor Público': '3', 'Auxiliar de Servicios': '4', 'Estudiante': '6', 'Otro': '5'}
+        pc_val = pc_val_map.get(visit.professional_category.name, "")
+
+    ht_val = ""
+    if visit and visit.housing_type:
+        ht_val_map = {'Propia': '1', 'Arrendada': '2', 'Familiar': '3', 'Prestada': '4'}
+        ht_val = ht_val_map.get(visit.housing_type.name, "")
+
+    ir_val = ""
+    if visit and visit.income_range:
+        ir_val_map = {'Menos de $500': '1', '$500 - $1000': '2', '$1001 - $2000': '3', 'Más de $2000': '5'}
+        ir_val = ir_val_map.get(visit.income_range.name, "")
+
     return {
         "id": str(patient.patient_id),
         "codigo": visit.study_code if (visit and visit.study_code) else str(patient.patient_id),
@@ -66,14 +147,25 @@ def _patient_to_dict(patient, visit=None):
         "fechaNac": patient.birth_date.isoformat() if patient.birth_date else "",
         "sexo": "H" if (patient.sex and patient.sex.name.lower().startswith('h')) else "M",
         "estamento": visit.staff_category.name if (visit and visit.staff_category) else "PDI",
-        "facultad": visit.faculty if visit and visit.faculty else "UNEMI",
-        "ciudad": visit.residence_canton.name if visit and visit.residence_canton else (patient.birth_canton.name if patient.birth_canton else "Milagro"),
-        "provincia": "Guayas",
+        "universidad": patient.institution.acronym if (patient.institution and patient.institution.acronym) else "UNEMI",
+        "facultad": visit.faculty if visit and visit.faculty else "FACI",
+        "ciudad": visit.residence_canton.name if (visit and visit.residence_canton) else (patient.birth_canton.name if patient.birth_canton else "Milagro"),
+        "provincia": visit.residence_canton.province.name.upper() if (visit and visit.residence_canton and visit.residence_canton.province) else "GUAYAS",
         "telefono": patient.phone or "",
         "correo": patient.email or "",
-        "municipio": "Milagro",
-        "raza": patient.ethnicity.name if patient.ethnicity else "Mestizo",
-        "convivientes": str(visit.num_cohabitants or 4) if visit else "4",
+        "municipio": patient.birth_canton.name if patient.birth_canton else "Milagro",
+        "provincia_nac": patient.birth_canton.province.name.upper() if (patient.birth_canton and patient.birth_canton.province) else "GUAYAS",
+        "numeroVisita": visit.visit_number if (visit and visit.visit_number) else 1,
+        "raza": patient.ethnicity.name.upper() if patient.ethnicity else "MESTIZO",
+        "estado_civil": ms_val,
+        "hijos": str(visit.num_children if (visit and visit.num_children is not None) else 0),
+        "convivientes": str(visit.num_cohabitants if (visit and visit.num_cohabitants is not None) else 4),
+        "convive_con": ls_val,
+        "estudios": ed_val,
+        "horario": ws_val,
+        "profesion": pc_val,
+        "vivienda": ht_val,
+        "ingresos": ir_val,
         "peso": float(ant.weight_kg) if (ant and ant.weight_kg) else 70,
         "talla": float(ant.height_cm) if (ant and ant.height_cm) else 170,
         "tas": vs.systolic_bp if (vs and vs.systolic_bp) else 120,
@@ -362,33 +454,17 @@ def patient_create_api(request):
 # JSON APIS: FORM POPULATION AND COMPLETE SAVING (HU-11, HU-12, HU-13)
 # =============================================================================
 
-@login_required
-@require_GET
-def form_get_api(request, patient_id):
+def _build_form_datos(patient, visit):
     """
-    Fetches the full database record for a patient to populate form.html fields.
+    Constructs a dictionary of all field values matching HTML input/select/radio/checkbox
+    names across all 6 clinical modules.
     """
-    clean_id = patient_id.replace('p', '') if patient_id.startswith('p') else patient_id
-
-    patient = None
-    if clean_id.isdigit():
-        patient = Patient.objects.filter(patient_id=int(clean_id)).first()
-    if not patient:
-        patient = Patient.objects.filter(visit__study_code=patient_id).first()
-    if not patient:
-        patient = Patient.objects.filter(id_card=patient_id).first()
-
-    if not patient:
-        return JsonResponse({"success": False, "error": "Paciente no encontrado"}, status=404)
-
-    visit = getattr(patient, 'visit', None)
     ant = getattr(visit, 'anthropometry', None) if visit else None
     vs = getattr(visit, 'vital_signs', None) if visit else None
     ecg = getattr(visit, 'electrocardiogram', None) if visit else None
     echo = getattr(visit, 'echocardiogram', None) if visit else None
     lab = getattr(visit, 'laboratory', None) if visit else None
 
-    # Mapeo plano directo hacia los IDs y nombres del formulario HTML
     datos = {
         # Modulo 1: Ficha
         "f_nombre": patient.first_names,
@@ -397,15 +473,21 @@ def form_get_api(request, patient_id):
         "f_cedula": patient.id_card,
         "f_fecha_nac": patient.birth_date.isoformat() if patient.birth_date else "",
         "f_sexo": "H" if (patient.sex and patient.sex.name.lower().startswith('h')) else "M",
-        "f_raza": patient.ethnicity.name if patient.ethnicity else "Mestizo",
+        "f_raza": patient.ethnicity.name.upper() if patient.ethnicity else "MESTIZO",
         "f_telefono": patient.phone or "",
         "f_correo": patient.email or "",
         "f_codigo": visit.study_code if visit else "",
         "f_fecha_visita": visit.visit_date.isoformat() if (visit and visit.visit_date) else "",
-        "f_facultad": visit.faculty if visit and visit.faculty else "UNEMI",
+        "f_universidad": patient.institution.acronym if (patient.institution and patient.institution.acronym) else "UNEMI",
+        "f_facultad": visit.faculty if visit and visit.faculty else "FACI",
+        "f_visita": str(visit.visit_number) if (visit and visit.visit_number) else "1",
         "f_estamento": visit.staff_category.name if (visit and visit.staff_category) else "PDI",
-        "f_num_hijos": visit.num_children if (visit and visit.num_children is not None) else "",
-        "f_num_convivientes": visit.num_cohabitants if (visit and visit.num_cohabitants is not None) else "",
+        "f_hijos": str(visit.num_children) if (visit and visit.num_children is not None) else "",
+        "f_convivientes": str(visit.num_cohabitants) if (visit and visit.num_cohabitants is not None) else "",
+        "f_ciudad": visit.residence_canton.name if (visit and visit.residence_canton) else "Milagro",
+        "f_provincia": visit.residence_canton.province.name.upper() if (visit and visit.residence_canton and visit.residence_canton.province) else "GUAYAS",
+        "f_municipio": patient.birth_canton.name if patient.birth_canton else "Milagro",
+        "f_provincia_nac": patient.birth_canton.province.name.upper() if (patient.birth_canton and patient.birth_canton.province) else "GUAYAS",
 
         # Modulo 2: Exploración física
         "f_peso": str(ant.weight_kg) if (ant and ant.weight_kg) else "",
@@ -456,16 +538,67 @@ def form_get_api(request, patient_id):
         "tiroidea_tsh": str(lab.tsh_u_iu_ml) if (lab and lab.tsh_u_iu_ml) else "",
     }
 
-    # Cargar respuestas dinámicas guardadas
     if visit:
-        for ans in visit.answers.select_related('question', 'selected_option').all():
+        if visit.marital_status:
+            ms_val_map = {'Soltero/a': '1_soltero', 'Casado/a': '2_casado', 'Divorciado/a': '3_divorciado', 'Viudo/a': '4_viudo', 'Unión de hecho': '5_union_libre'}
+            datos['f_estado_civil'] = ms_val_map.get(visit.marital_status.name, '')
+        if visit.living_situation:
+            ls_val_map = {'Solo': '1', 'Con pareja': '2', 'Con familia': '4', 'Con amigos/compañeros': '7'}
+            datos['f_convive_con'] = ls_val_map.get(visit.living_situation.name, '')
+        if visit.education_level:
+            ed_val_map = {'Primaria': '3', 'Secundaria': '4', 'Tercer Nivel (Grado)': '6', 'Cuarto Nivel (Postgrado)': '7', 'Doctorado (PhD)': '7'}
+            datos['f_estudios'] = ed_val_map.get(visit.education_level.name, '')
+        if visit.work_schedule:
+            ws_val_map = {'Tiempo Completo (40h)': '1', 'Medio Tiempo (20h)': '2', 'Parcial': '3', 'Turnos / Rotativo': '4'}
+            datos['f_horario'] = ws_val_map.get(visit.work_schedule.name, '')
+        if visit.professional_category:
+            pc_val_map = {'Docente Titular': '1', 'Docente Ocasional': '2', 'Servidor Público': '3', 'Auxiliar de Servicios': '4', 'Estudiante': '6', 'Otro': '5'}
+            datos['f_profesion'] = pc_val_map.get(visit.professional_category.name, '')
+        if visit.housing_type:
+            ht_val_map = {'Propia': '1', 'Arrendada': '2', 'Familiar': '3', 'Prestada': '4'}
+            datos['f_vivienda'] = ht_val_map.get(visit.housing_type.name, '')
+        if visit.income_range:
+            ir_val_map = {'Menos de $500': '1', '$500 - $1000': '2', '$1001 - $2000': '3', 'Más de $2000': '5'}
+            datos['f_ingresos'] = ir_val_map.get(visit.income_range.name, '')
+
+        # Cargar todas las respuestas guardadas en VisitAnswer
+        for ans in visit.answers.select_related('question').all():
             q_code = ans.question.code
-            if ans.selected_option:
-                datos[q_code] = ans.selected_option.label
-            elif ans.text_value:
-                datos[q_code] = ans.text_value
-            elif ans.numeric_value is not None:
-                datos[q_code] = str(ans.numeric_value)
+            val = ans.text_value or (str(ans.numeric_value) if ans.numeric_value is not None else (ans.selected_option.label if ans.selected_option else ""))
+            if val is not None and str(val).strip() != '':
+                datos[q_code] = val
+                # Sincronizar alias si no está presente
+                alias_code = QUESTION_ALIASES.get(q_code)
+                if alias_code and alias_code not in datos:
+                    datos[alias_code] = val
+                rev_code = REVERSE_ALIASES.get(q_code)
+                if rev_code and rev_code not in datos:
+                    datos[rev_code] = val
+
+    return datos
+
+
+@login_required
+@require_GET
+def form_get_api(request, patient_id):
+    """
+    Fetches the full database record for a patient to populate form.html fields.
+    """
+    clean_id = patient_id.replace('p', '') if patient_id.startswith('p') else patient_id
+
+    patient = None
+    if clean_id.isdigit():
+        patient = Patient.objects.filter(patient_id=int(clean_id)).first()
+    if not patient:
+        patient = Patient.objects.filter(visit__study_code=patient_id).first()
+    if not patient:
+        patient = Patient.objects.filter(id_card=patient_id).first()
+
+    if not patient:
+        return JsonResponse({"success": False, "error": "Paciente no encontrado"}, status=404)
+
+    visit = getattr(patient, 'visit', None)
+    datos = _build_form_datos(patient, visit)
 
     return JsonResponse({
         "success": True,
@@ -538,57 +671,157 @@ def form_save_api(request):
             f_tel = raw_data.get('f_telefono')
             f_cor = raw_data.get('f_correo')
             f_sex = raw_data.get('f_sexo')
+            f_fecha_nac = raw_data.get('f_fecha_nac')
+            f_raza = raw_data.get('f_raza')
+            f_municipio = raw_data.get('f_municipio')
 
-            if f_nom: patient.first_names = f_nom
-            if f_ap1: patient.last_name1 = f_ap1
-            if f_ap2 is not None: patient.last_name2 = f_ap2
-            if f_tel is not None: patient.phone = f_tel
-            if f_cor is not None: patient.email = f_cor
+            if f_nom: patient.first_names = f_nom.strip()
+            if f_ap1: patient.last_name1 = f_ap1.strip()
+            if f_ap2 is not None: patient.last_name2 = f_ap2.strip()
+            if f_tel is not None: patient.phone = f_tel.strip()
+            if f_cor is not None: patient.email = f_cor.strip()
+            if f_fecha_nac:
+                try: patient.birth_date = datetime.date.fromisoformat(f_fecha_nac.strip())
+                except ValueError: pass
             if f_sex:
-                s_obj = Sex.objects.filter(name__istartswith=f_sex[0]).first()
+                s_obj = Sex.objects.filter(name__istartswith=f_sex.strip()[0]).first()
                 if s_obj: patient.sex = s_obj
+            if f_raza:
+                eth_map = {'MESTIZO': 'Mestizo', 'BLANCA': 'Blanco', 'AFRICANA': 'Afroecuatoriano', 'INDÍGENA': 'Indígena', 'MONTUBIA': 'Montuvio', 'OTRA': 'Otro'}
+                eth_name = eth_map.get(f_raza.upper().strip(), f_raza.strip())
+                eth_obj = Ethnicity.objects.filter(name__icontains=eth_name).first()
+                if eth_obj: patient.ethnicity = eth_obj
+
+            f_uni = raw_data.get('f_universidad')
+            if f_uni:
+                inst_obj = Institution.objects.filter(acronym__iexact=f_uni.strip()).first()
+                if not inst_obj:
+                    inst_obj = Institution.objects.filter(name__icontains=f_uni.strip()).first()
+                if inst_obj:
+                    patient.institution = inst_obj
+
+            f_prov_nac = raw_data.get('f_provincia_nac')
+            if f_municipio:
+                cant_obj = Canton.objects.filter(name__iexact=f_municipio.strip()).first()
+                if not cant_obj:
+                    cant_obj = Canton.objects.filter(name__icontains=f_municipio.strip()).first()
+                if not cant_obj:
+                    prov_obj = None
+                    if f_prov_nac:
+                        prov_obj = Province.objects.filter(name__icontains=f_prov_nac.strip()).first()
+                    if not prov_obj:
+                        prov_obj = Province.objects.first()
+                    cant_obj = Canton.objects.create(name=f_municipio.strip(), province=prov_obj)
+                patient.birth_canton = cant_obj
+
             patient.save()
 
             # 2. Actualizar / Crear Visita (Módulo 1)
             visit = getattr(patient, 'visit', None)
             if not visit:
-                # Generar código si hace falta
-                if not codigo:
-                    existing_codes = Visit.objects.values_list('study_code', flat=True)
-                    numeric_codes = [int(c) for c in existing_codes if c and c.isdigit()]
-                    codigo = str((max(numeric_codes) + 1) if numeric_codes else 1)
+                existing_codes = Visit.objects.values_list('study_code', flat=True)
+                numeric_codes = [int(c) for c in existing_codes if c and c.isdigit()]
+                auto_codigo = str((max(numeric_codes) + 1) if numeric_codes else 1)
 
                 visit = Visit.objects.create(
                     patient=patient,
                     evaluator=request.user,
-                    study_code=codigo,
+                    study_code=auto_codigo,
                     visit_date=datetime.date.today(),
                     residence_canton=patient.birth_canton or Canton.objects.first(),
                     status=Visit.Status.COMPLETED
                 )
 
+            f_visita = raw_data.get('f_visita')
+            if f_visita and str(f_visita).strip().isdigit():
+                visit.visit_number = int(str(f_visita).strip())
+
             f_fecha_vis = raw_data.get('f_fecha_visita')
             if f_fecha_vis:
                 try:
-                    visit.visit_date = datetime.date.fromisoformat(f_fecha_vis)
+                    visit.visit_date = datetime.date.fromisoformat(f_fecha_vis.strip())
                 except ValueError:
                     pass
 
             f_fac = raw_data.get('f_facultad')
-            if f_fac: visit.faculty = f_fac
+            if f_fac: visit.faculty = f_fac.strip()
 
             f_estam = raw_data.get('f_estamento')
             if f_estam:
-                sc_obj = StaffCategory.objects.filter(name__icontains=f_estam).first()
+                sc_obj = StaffCategory.objects.filter(name__icontains=f_estam.strip()).first()
                 if sc_obj: visit.staff_category = sc_obj
 
-            f_hijos = raw_data.get('f_num_hijos')
-            if f_hijos and f_hijos.isdigit():
+            f_ciudad = raw_data.get('f_ciudad')
+            f_prov_res = raw_data.get('f_provincia')
+            if f_ciudad:
+                res_cant = Canton.objects.filter(name__iexact=f_ciudad.strip()).first()
+                if not res_cant:
+                    res_cant = Canton.objects.filter(name__icontains=f_ciudad.strip()).first()
+                if not res_cant:
+                    prov_res = None
+                    if f_prov_res:
+                        prov_res = Province.objects.filter(name__icontains=f_prov_res.strip()).first()
+                    if not prov_res:
+                        prov_res = Province.objects.first()
+                    res_cant = Canton.objects.create(name=f_ciudad.strip(), province=prov_res)
+                visit.residence_canton = res_cant
+
+            f_hijos = raw_data.get('f_hijos') or raw_data.get('f_num_hijos')
+            if f_hijos and str(f_hijos).isdigit():
                 visit.num_children = int(f_hijos)
 
-            f_conviv = raw_data.get('f_num_convivientes')
-            if f_conviv and f_conviv.isdigit():
+            f_conviv = raw_data.get('f_convivientes') or raw_data.get('f_num_convivientes')
+            if f_conviv and str(f_conviv).isdigit():
                 visit.num_cohabitants = int(f_conviv)
+
+            f_estado_civil = raw_data.get('f_estado_civil')
+            if f_estado_civil:
+                ms_map = {'1_soltero': 'Soltero', '2_casado': 'Casado', '3_divorciado': 'Divorciado', '4_viudo': 'Viudo', '5_union_libre': 'Unión de hecho'}
+                ms_name = ms_map.get(f_estado_civil.strip(), f_estado_civil.strip())
+                ms_obj = MaritalStatus.objects.filter(name__icontains=ms_name).first()
+                if ms_obj: visit.marital_status = ms_obj
+
+            f_convive_con = raw_data.get('f_convive_con')
+            if f_convive_con:
+                ls_map = {'1': 'Solo', '2': 'Con pareja', '3': 'Con pareja', '4': 'Con familia', '5': 'Con familia', '6': 'Con familia', '7': 'Con amigos'}
+                ls_name = ls_map.get(f_convive_con.strip(), f_convive_con.strip())
+                ls_obj = LivingSituation.objects.filter(name__icontains=ls_name).first()
+                if ls_obj: visit.living_situation = ls_obj
+
+            f_estudios = raw_data.get('f_estudios')
+            if f_estudios:
+                ed_map = {'1': 'Primaria', '2': 'Primaria', '3': 'Primaria', '4': 'Secundaria', '5': 'Secundaria', '6': 'Tercer Nivel', '7': 'Cuarto Nivel'}
+                ed_name = ed_map.get(f_estudios.strip(), f_estudios.strip())
+                ed_obj = EducationLevel.objects.filter(name__icontains=ed_name).first()
+                if ed_obj: visit.education_level = ed_obj
+
+            f_horario = raw_data.get('f_horario')
+            if f_horario:
+                ws_map = {'1': 'Tiempo Completo', '2': 'Tiempo Completo', '3': 'Parcial', '4': 'Turnos'}
+                ws_name = ws_map.get(f_horario.strip(), f_horario.strip())
+                ws_obj = WorkSchedule.objects.filter(name__icontains=ws_name).first()
+                if ws_obj: visit.work_schedule = ws_obj
+
+            f_profesion = raw_data.get('f_profesion')
+            if f_profesion:
+                pc_map = {'1': 'Docente Titular', '2': 'Docente Ocasional', '3': 'Servidor Público', '4': 'Auxiliar', '5': 'Otro', '6': 'Estudiante', '7': 'Otro'}
+                pc_name = pc_map.get(f_profesion.strip(), f_profesion.strip())
+                pc_obj = ProfessionalCategory.objects.filter(name__icontains=pc_name).first()
+                if pc_obj: visit.professional_category = pc_obj
+
+            f_vivienda = raw_data.get('f_vivienda')
+            if f_vivienda:
+                ht_map = {'1': 'Propia', '2': 'Arrendada', '3': 'Familiar', '4': 'Prestada'}
+                ht_name = ht_map.get(f_vivienda.strip(), f_vivienda.strip())
+                ht_obj = HousingType.objects.filter(name__icontains=ht_name).first()
+                if ht_obj: visit.housing_type = ht_obj
+
+            f_ingresos = raw_data.get('f_ingresos')
+            if f_ingresos:
+                ir_map = {'1': 'Menos de $500', '2': '$500 - $1000', '3': '$1001 - $2000', '4': '$1001 - $2000', '5': 'Más de $2000', '6': 'Más de $2000', '7': 'Más de $2000', '8': 'Más de $2000'}
+                ir_name = ir_map.get(f_ingresos.strip(), f_ingresos.strip())
+                ir_obj = IncomeRange.objects.filter(name__icontains=ir_name).first()
+                if ir_obj: visit.income_range = ir_obj
 
             visit.status = Visit.Status.COMPLETED
             visit.save()
@@ -624,12 +857,14 @@ def form_save_api(request):
             vs.diastolic_bp = tsi_int
             vs.oxygen_saturation = sat_int
             vs.heart_rate = fc_int
-            vs.systolic_murmur = (raw_data.get('f_soplo_sistolico') == 'Si')
-            vs.diastolic_murmur = (raw_data.get('f_soplo_diastolico') == 'Si')
-            if raw_data.get('f_grado_soplo') and raw_data.get('f_grado_soplo').isdigit():
-                vs.murmur_grade = int(raw_data.get('f_grado_soplo'))
-            vs.pulmonary_auscultation_normal = (raw_data.get('f_auscultacion_pulmonar') != 'Alterada')
-            vs.abdominal_auscultation_normal = (raw_data.get('f_auscultacion_abdominal') != 'Alterada')
+            vs.systolic_murmur = (raw_data.get('f_soplo_sistolico') == 'Si' or raw_data.get('soplos') in ['1', 'Si', 'sistolico'])
+            vs.diastolic_murmur = (raw_data.get('f_soplo_diastolico') == 'Si' or raw_data.get('soplos') in ['2', 'diastolico'])
+            grado_raw = raw_data.get('f_grado_soplo') or raw_data.get('soplo_grado')
+            if grado_raw and str(grado_raw).strip().isdigit():
+                vs.murmur_grade = int(grado_raw.strip())
+            vs.pulmonary_auscultation_normal = (raw_data.get('f_auscultacion_pulmonar') != 'Alterada' and raw_data.get('resp_norm') != 'No')
+            vs.abdominal_auscultation_normal = (raw_data.get('f_auscultacion_abdominal') != 'Alterada' and raw_data.get('abdom_norm') != 'No')
+            vs.pedal_pulses_symmetric = (raw_data.get('f_pulsos_pedios') != 'No' and raw_data.get('pulsos_sim') != 'No')
             vs.save()
 
             # 5. Electrocardiograma (Módulo 5 - HU-13)
@@ -657,15 +892,18 @@ def form_save_api(request):
 
             # 6. Ecocardiograma (Módulo 5 - HU-13)
             echo, _ = Echocardiogram.objects.get_or_create(visit=visit)
-            if raw_data.get('eco_ddvi'):
-                try: echo.lv_dimension_mm = Decimal(str(raw_data['eco_ddvi']))
+            eco_val = raw_data.get('eco_ddvi') or raw_data.get('ip_medida_chorro')
+            if eco_val:
+                try: echo.lv_dimension_mm = Decimal(str(eco_val))
                 except Exception: pass
             if raw_data.get('eco_fey'):
                 try: echo.lvef_percentage = Decimal(str(raw_data['eco_fey']))
                 except Exception: pass
             echo.ventricular_hypertrophy = (raw_data.get('res_vi_hipertrofico') == 'Si')
-            echo.diastolic_dysfunction = (raw_data.get('eco_disfuncion_diastolica') == 'Si')
+            echo.diastolic_dysfunction = (raw_data.get('eco_disfuncion_diastolica') == 'Si' or raw_data.get('res_fdvi') == 'Si')
             echo.aortic_valve_calcification = (raw_data.get('eco_calcificacion_aortica') == 'Si')
+            if raw_data.get('valvulopatia_tipo_detalle'):
+                echo.valvular_regurgitation_detail = raw_data.get('valvulopatia_tipo_detalle')[:200]
             echo.save()
 
             # 7. Laboratorio (Módulo 5 - HU-13)
@@ -699,47 +937,57 @@ def form_save_api(request):
                         pass
             lab.save()
 
-            # 8. Guardado dinámico de respuestas en VisitaRespuesta (HU-12, HU-13)
-            # Cargar preguntas del catálogo
-            preguntas = Question.objects.prefetch_related('options').all()
-            for q in preguntas:
-                val = raw_data.get(q.code)
-                if val is not None and str(val).strip() != '':
-                    val_str = str(val).strip()
-                    selected_opt = None
-                    num_val = None
-                    txt_val = None
+            # 8. Persistencia Universal de Todos los Campos del Formulario (VisitAnswer)
+            ignore_keys = {'csrfmiddlewaretoken', 'idPaciente', 'paciente_id', 'f_codigo'}
+            default_section = QuestionnaireSection.objects.first()
 
-                    # Buscar si coincide con alguna opción
-                    for opt in q.options.all():
-                        if opt.label.lower() == val_str.lower():
-                            selected_opt = opt
-                            break
+            for k, v in raw_data.items():
+                if k in ignore_keys or not k.strip():
+                    continue
+                val_str = str(v).strip()
+                k_clean = k.strip()
 
-                    if not selected_opt:
-                        if q.response_type == Question.ResponseType.NUMERICO:
-                            try:
-                                num_val = Decimal(val_str)
-                            except Exception:
-                                txt_val = val_str
-                        else:
-                            txt_val = val_str
-
-                    # Upsert VisitAnswer
-                    ans, created = VisitAnswer.objects.get_or_create(
-                        visit=visit,
-                        question=q,
-                        defaults={
-                            "selected_option": selected_opt,
-                            "numeric_value": num_val,
-                            "text_value": txt_val
-                        }
+                q = Question.objects.filter(code=k_clean).first()
+                if not q and len(k_clean) <= 30:
+                    q = Question.objects.create(
+                        section=default_section,
+                        code=k_clean,
+                        text=f"Campo {k_clean}",
+                        response_type=Question.ResponseType.TEXTO,
+                        display_order=999
                     )
-                    if not created:
-                        ans.selected_option = selected_opt
-                        ans.numeric_value = num_val
-                        ans.text_value = txt_val
-                        ans.save()
+
+                if q:
+                    if val_str != '':
+                        VisitAnswer.objects.update_or_create(
+                            visit=visit,
+                            question=q,
+                            defaults={
+                                "text_value": val_str[:250],
+                                "numeric_value": None,
+                                "selected_option": None
+                            }
+                        )
+                    else:
+                        VisitAnswer.objects.filter(visit=visit, question=q).delete()
+
+                # Sincronizar alias si existe
+                alias_code = QUESTION_ALIASES.get(k_clean)
+                if alias_code:
+                    q_alias = Question.objects.filter(code=alias_code).first()
+                    if q_alias:
+                        if val_str != '':
+                            VisitAnswer.objects.update_or_create(
+                                visit=visit,
+                                question=q_alias,
+                                defaults={
+                                    "text_value": val_str[:250],
+                                    "numeric_value": None,
+                                    "selected_option": None
+                                }
+                            )
+                        else:
+                            VisitAnswer.objects.filter(visit=visit, question=q_alias).delete()
 
             # 9. Auditoría Automática (HU-14)
             register_audit_log(
@@ -756,10 +1004,14 @@ def form_save_api(request):
                 machine_name=getattr(request, 'client_ip', '127.0.0.1')
             )
 
+        # Generar snapshot completo de todos los datos actualizados
+        datos = _build_form_datos(patient, visit)
+
         return JsonResponse({
             "success": True,
             "message": f"Historial Clínico de {patient.full_name} guardado exitosamente en la base de datos.",
-            "paciente": _patient_to_dict(patient, visit)
+            "paciente": _patient_to_dict(patient, visit),
+            "datos": datos
         })
 
     except Exception as e:
