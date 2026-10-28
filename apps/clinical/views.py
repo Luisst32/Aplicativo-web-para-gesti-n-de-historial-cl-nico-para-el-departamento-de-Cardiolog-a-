@@ -609,6 +609,79 @@ def form_get_api(request, patient_id):
     })
 
 
+def _resolve_canton(canton_name, province_name):
+    """
+    Busca o crea de forma segura un cantón asociado a su provincia
+    garantizando un dpa_code único para evitar colisiones con uq_canton_province_dpa_code.
+    Soporta insensibilidad a mayúsculas y acentos (Pujili == Pujilí).
+    """
+    if not canton_name or not str(canton_name).strip():
+        return None
+    import unicodedata
+    def _fold(s):
+        return ''.join(ch for ch in unicodedata.normalize('NFD', str(s)) if unicodedata.category(ch) != 'Mn').lower()
+
+    c_clean = str(canton_name).strip()
+    p_clean = str(province_name or '').strip()
+    c_fold = _fold(c_clean)
+    p_fold = _fold(p_clean)
+
+    # 1. Buscar provincia por coincidencia exacta o con tildes normalizadas
+    prov_obj = None
+    if p_clean:
+        prov_obj = Province.objects.filter(name__iexact=p_clean).first()
+        if not prov_obj:
+            prov_obj = Province.objects.filter(name__icontains=p_clean).first()
+        if not prov_obj:
+            for p in Province.objects.all():
+                if _fold(p.name) == p_fold or p_fold in _fold(p.name):
+                    prov_obj = p
+                    break
+    if not prov_obj:
+        prov_obj = Province.objects.first()
+
+    # 2. Buscar cantón en la provincia identificada (con tildes normalizadas)
+    cant_obj = None
+    if prov_obj:
+        cant_obj = Canton.objects.filter(province=prov_obj, name__iexact=c_clean).first()
+        if not cant_obj:
+            cant_obj = Canton.objects.filter(province=prov_obj, name__icontains=c_clean).first()
+        if not cant_obj:
+            for cand in Canton.objects.filter(province=prov_obj):
+                if _fold(cand.name) == c_fold or c_fold in _fold(cand.name):
+                    cant_obj = cand
+                    break
+
+    # 3. Buscar cantón a nivel nacional si no se encontró en la provincia
+    if not cant_obj:
+        cant_obj = Canton.objects.filter(name__iexact=c_clean).first()
+    if not cant_obj:
+        cant_obj = Canton.objects.filter(name__icontains=c_clean).first()
+    if not cant_obj:
+        for cand in Canton.objects.all():
+            if _fold(cand.name) == c_fold:
+                cant_obj = cand
+                break
+
+    # 4. Si aún no existe, crearlo asignándole un dpa_code único dentro de la provincia
+    if not cant_obj and prov_obj:
+        existing_dpas = set(Canton.objects.filter(province=prov_obj).values_list('dpa_code', flat=True))
+        pref = (prov_obj.iso_code or 'EC-99')[-2:].replace('-', '0')
+        new_dpa = None
+        for i in range(1, 100):
+            cand = f"{pref}{i:02d}"[:4]
+            if cand not in existing_dpas:
+                new_dpa = cand
+                break
+        cant_obj = Canton.objects.create(
+            name=c_clean,
+            province=prov_obj,
+            dpa_code=new_dpa or f"{pref}99"[:4]
+        )
+
+    return cant_obj
+
+
 @login_required
 @require_POST
 def form_save_api(request):
@@ -704,17 +777,9 @@ def form_save_api(request):
 
             f_prov_nac = raw_data.get('f_provincia_nac')
             if f_municipio:
-                cant_obj = Canton.objects.filter(name__iexact=f_municipio.strip()).first()
-                if not cant_obj:
-                    cant_obj = Canton.objects.filter(name__icontains=f_municipio.strip()).first()
-                if not cant_obj:
-                    prov_obj = None
-                    if f_prov_nac:
-                        prov_obj = Province.objects.filter(name__icontains=f_prov_nac.strip()).first()
-                    if not prov_obj:
-                        prov_obj = Province.objects.first()
-                    cant_obj = Canton.objects.create(name=f_municipio.strip(), province=prov_obj)
-                patient.birth_canton = cant_obj
+                cant_obj = _resolve_canton(f_municipio, f_prov_nac)
+                if cant_obj:
+                    patient.birth_canton = cant_obj
 
             patient.save()
 
@@ -756,17 +821,9 @@ def form_save_api(request):
             f_ciudad = raw_data.get('f_ciudad')
             f_prov_res = raw_data.get('f_provincia')
             if f_ciudad:
-                res_cant = Canton.objects.filter(name__iexact=f_ciudad.strip()).first()
-                if not res_cant:
-                    res_cant = Canton.objects.filter(name__icontains=f_ciudad.strip()).first()
-                if not res_cant:
-                    prov_res = None
-                    if f_prov_res:
-                        prov_res = Province.objects.filter(name__icontains=f_prov_res.strip()).first()
-                    if not prov_res:
-                        prov_res = Province.objects.first()
-                    res_cant = Canton.objects.create(name=f_ciudad.strip(), province=prov_res)
-                visit.residence_canton = res_cant
+                res_cant = _resolve_canton(f_ciudad, f_prov_res)
+                if res_cant:
+                    visit.residence_canton = res_cant
 
             f_hijos = raw_data.get('f_hijos') or raw_data.get('f_num_hijos')
             if f_hijos and str(f_hijos).isdigit():
