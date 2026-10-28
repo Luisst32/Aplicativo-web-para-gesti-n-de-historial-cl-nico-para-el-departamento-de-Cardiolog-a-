@@ -63,13 +63,13 @@ class ClinicalCRUDAndIntegrationTests(TestCase):
             first_name='María',
             last_name='Pérez'
         )
-        self.country = Country.objects.create(iso_alpha3='ECU', name='Ecuador')
-        self.province = Province.objects.create(country=self.country, iso_code='EC-G', name='Guayas')
-        self.canton = Canton.objects.create(province=self.province, dpa_code='0910', name='Milagro')
-        self.institution = Institution.objects.create(acronym='UNEMI', name='Universidad Estatal de Milagro')
-        self.sex = Sex.objects.create(sex_id=1, name='Hombre')
-        self.ethnicity = Ethnicity.objects.create(name='Mestizo')
-        self.staff_cat = StaffCategory.objects.create(name='PDI')
+        self.country, _ = Country.objects.get_or_create(iso_alpha3='ECU', defaults={'name': 'Ecuador'})
+        self.province, _ = Province.objects.get_or_create(country=self.country, iso_code='EC-G', defaults={'name': 'Guayas'})
+        self.canton, _ = Canton.objects.get_or_create(province=self.province, dpa_code='0910', defaults={'name': 'Milagro'})
+        self.institution, _ = Institution.objects.get_or_create(acronym='UNEMI', defaults={'name': 'Universidad Estatal de Milagro'})
+        self.sex, _ = Sex.objects.get_or_create(sex_id=1, defaults={'name': 'Hombre'})
+        self.ethnicity, _ = Ethnicity.objects.get_or_create(name='Mestizo')
+        self.staff_cat, _ = StaffCategory.objects.get_or_create(name='PDI')
 
     def test_patient_visit_and_pdf_generation(self):
         # 1. Crear Paciente

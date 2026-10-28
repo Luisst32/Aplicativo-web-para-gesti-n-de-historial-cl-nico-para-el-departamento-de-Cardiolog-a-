@@ -74,6 +74,25 @@ class Canton(models.Model):
     def __str__(self):
         return f"{self.name} ({self.province.name})"
 
+    def save(self, *args, **kwargs):
+        if not self.dpa_code and self.province_id:
+            # Asignar automáticamente un dpa_code secuencial único para esta provincia
+            # asegurando que uq_canton_province_dpa_code nunca colisione al migrar o crear registros.
+            existing_dpas = set(
+                Canton.objects.filter(province_id=self.province_id)
+                .exclude(canton_id=self.canton_id)
+                .values_list('dpa_code', flat=True)
+            )
+            pref = (getattr(self.province, 'iso_code', '') or 'EC-99')[-2:].replace('-', '0')
+            for i in range(1, 100):
+                cand = f"{pref}{i:02d}"[:4]
+                if cand not in existing_dpas:
+                    self.dpa_code = cand
+                    break
+            if not self.dpa_code:
+                self.dpa_code = f"{pref}99"[:4]
+        super().save(*args, **kwargs)
+
 
 class Institution(models.Model):
     """
