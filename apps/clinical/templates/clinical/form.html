@@ -176,8 +176,8 @@
                 </select>
               </div>
               <div class="form-field">
-                <label class="field-label">&bull; Código <small>(Autoincremental)</small></label>
-                <input type="text" class="form-input" id="f_codigo" name="f_codigo" placeholder="1" readonly style="background-color: #f1f5f9; color: #334155; font-weight: 700; cursor: not-allowed; border-color: #cbd5e1;" title="Código autoincremental único del paciente, no modificable">
+                <label class="field-label">&bull; Código</label>
+                <input type="text" class="form-input" id="f_codigo" name="f_codigo" placeholder="1" readonly style="background-color: #f1f5f9; color: #334155; font-weight: 700; cursor: not-allowed; border-color: #cbd5e1;" >
               </div>
               <div class="form-field">
                 <label class="field-label">Fecha visita <small>(Calendario editable)</small></label>
@@ -348,16 +348,7 @@
 
               <div class="form-field">
                 <label class="field-label">7.- ¿Cuántos hijos tiene?</label>
-                <select class="form-select" id="f_hijos" name="f_hijos">
-                  <option value="">-- Seleccionar --</option>
-                  <option value="0">0</option>
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                  <option value="4">4</option>
-                  <option value="5">5</option>
-                  <option value="mas">más.........</option>
-                </select>
+                <input type="number" class="form-input" id="f_hijos" name="f_hijos" min="0" max="30" step="1" placeholder="0">
               </div>
 
               <div class="form-field">
