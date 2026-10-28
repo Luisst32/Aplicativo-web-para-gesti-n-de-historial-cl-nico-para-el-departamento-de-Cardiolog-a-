@@ -120,3 +120,4 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(seed_geography_and_institutions, reverse_code=migrations.RunPython.noop),
     ]
+

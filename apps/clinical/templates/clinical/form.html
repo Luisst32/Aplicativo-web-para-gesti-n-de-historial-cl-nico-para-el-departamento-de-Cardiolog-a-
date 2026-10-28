@@ -185,6 +185,7 @@
               </div>
             </div>
 
+            <!-- Nombres y apellidos -->
             <div class="grid form-grid-3" style="margin-bottom: 16px;">
               <div class="form-field">
                 <label class="field-label">1.- Nombres del paciente</label>
@@ -198,14 +199,10 @@
                 <label class="field-label">- Segundo apellido</label>
                 <input type="text" class="form-input" id="f_apellido2" placeholder="Segundo apellido" oninput="actualizarNombreCompleto();" name="f_apellido2">
               </div>
-              <div class="form-field">
-                <label class="field-label">- C.I. / Cédula</label>
-                <input type="text" class="form-input" id="f_cedula" placeholder="0912345678" name="f_cedula" inputmode="numeric" pattern="[0-9]*" maxlength="10">
-              </div>
-              <div class="form-field">
-                <label class="field-label">4.- Correo electrónico</label>
-                <input type="email" class="form-input" id="f_correo" placeholder="correo@unemi.edu.ec" name="f_correo">
-              </div>
+            </div>
+
+            <!-- Residencia: Provincia y Cantón lado a lado (form-grid-2) -->
+            <div class="grid form-grid-2" style="margin-bottom: 16px;">
               <div class="form-field">
                 <label class="field-label">- Provincia de residencia</label>
                 <select class="form-select" id="f_provincia" name="f_provincia" onchange="onProvinciaResidenciaChange(this.value)">
@@ -242,9 +239,21 @@
                   <option value="">-- Seleccione provincia primero --</option>
                 </select>
               </div>
+            </div>
+
+            <!-- Identificación y contacto del paciente -->
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">- C.I. / Cédula</label>
+                <input type="text" class="form-input" id="f_cedula" placeholder="0912345678" name="f_cedula" inputmode="numeric" pattern="[0-9]*" maxlength="10">
+              </div>
               <div class="form-field">
                 <label class="field-label">3.- Teléfono (con prefijo)</label>
                 <input type="text" class="form-input" id="f_telefono" placeholder="0987654321" name="f_telefono" inputmode="numeric" pattern="[0-9]*" maxlength="13">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- Correo electrónico</label>
+                <input type="email" class="form-input" id="f_correo" placeholder="correo@unemi.edu.ec" name="f_correo">
               </div>
             </div>
 
@@ -257,7 +266,8 @@
             </div>
             <div class="card-body">
 
-            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+            <!-- 1. Lugar de nacimiento: Provincia y Cantón lado a lado (form-grid-2) -->
+            <div class="grid form-grid-2" style="margin-bottom: 16px;">
               <div class="form-field">
                 <label class="field-label">Provincia de nacimiento</label>
                 <select class="form-select" id="f_provincia_nac" name="f_provincia_nac" onchange="onProvinciaNacChange(this.value); toggleProvinciaExtranjera();">
@@ -295,25 +305,14 @@
                   <option value="">-- Seleccione provincia primero --</option>
                 </select>
               </div>
-              <div class="form-field" id="campo_pais_nac" style="display: none;">
+              <div class="form-field" id="campo_pais_nac" style="display: none; grid-column: 1 / -1;">
                 <label class="field-label">- País de nacimiento</label>
                 <input type="text" class="form-input" id="f_pais_nac" name="f_pais_nac" placeholder="Ej: CUBA, VENEZUELA">
               </div>
-              <div class="form-field">
-                <label class="field-label">5.- Raza</label>
-                <select class="form-select" id="f_raza" name="f_raza">
-                  <option value="">-- Seleccionar raza/etnia --</option>
-                  <option value="MESTIZO">Mestizo/a</option>
-                  <option value="AFRICANA">Afroecuatoriano/a / Africana</option>
-                  <option value="BLANCA">Blanco/a</option>
-                  <option value="INDÍGENA">Indígena</option>
-                  <option value="MONTUBIA">Montubio/a</option>
-                  <option value="OTRA">Otra</option>
-                </select>
-              </div>
             </div>
 
-            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+            <!-- 2 a 5: Datos Personales (form-grid-4) -->
+            <div class="grid form-grid-4" style="margin-bottom: 16px;">
               <div class="form-field">
                 <label class="field-label">2.- Fecha de nacimiento <small>(Calendario)</small></label>
                 <input type="date" class="form-input" id="f_fecha_nac" oninput="onBirthDateChange(this.value)" name="f_fecha_nac">
@@ -330,10 +329,22 @@
                   <option value="M">M (Mujer)</option>
                 </select>
               </div>
+              <div class="form-field">
+                <label class="field-label">5.- Raza</label>
+                <select class="form-select" id="f_raza" name="f_raza">
+                  <option value="">-- Seleccionar raza/etnia --</option>
+                  <option value="MESTIZO">Mestizo/a</option>
+                  <option value="AFRICANA">Afroecuatoriano/a / Africana</option>
+                  <option value="BLANCA">Blanco/a</option>
+                  <option value="INDÍGENA">Indígena</option>
+                  <option value="MONTUBIA">Montubio/a</option>
+                  <option value="OTRA">Otra</option>
+                </select>
+              </div>
             </div>
 
-            <!-- Seleccionables para preguntas 6 a 14 (evitando saturación visual) -->
-            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+            <!-- 6 a 9: Estado Civil y Familia (form-grid-4) -->
+            <div class="grid form-grid-4" style="margin-bottom: 16px;">
               <div class="form-field">
                 <label class="field-label">6.- Estado Civil</label>
                 <select class="form-select" id="f_estado_civil" name="f_estado_civil">
@@ -352,13 +363,6 @@
               </div>
 
               <div class="form-field">
-                <label class="field-label">9.- Personas convivientes</label>
-                <input type="number" class="form-input" id="f_convivientes" placeholder="0" name="f_convivientes">
-              </div>
-            </div>
-
-            <div class="grid form-grid-2" style="margin-bottom: 16px;">
-              <div class="form-field">
                 <label class="field-label">8.- ¿Con quién vive usted ahora?</label>
                 <select class="form-select" id="f_convive_con" name="f_convive_con">
                   <option value="">-- Seleccionar --</option>
@@ -373,6 +377,14 @@
               </div>
 
               <div class="form-field">
+                <label class="field-label">9.- Personas convivientes</label>
+                <input type="number" class="form-input" id="f_convivientes" min="0" max="30" step="1" placeholder="0" name="f_convivientes">
+              </div>
+            </div>
+
+            <!-- 10 a 12: Educación y Trabajo (form-grid-3) -->
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
                 <label class="field-label">10.- Mayor nivel de estudios</label>
                 <select class="form-select" id="f_estudios" name="f_estudios">
                   <option value="">-- Seleccionar --</option>
@@ -385,9 +397,7 @@
                   <option value="7">7 Postgrado</option>
                 </select>
               </div>
-            </div>
 
-            <div class="grid form-grid-4">
               <div class="form-field">
                 <label class="field-label">11.- Horario laboral</label>
                 <select class="form-select" id="f_horario" name="f_horario">
@@ -398,6 +408,7 @@
                   <option value="4">4 Turnos rotativos</option>
                 </select>
               </div>
+
               <div class="form-field">
                 <label class="field-label">12.- Categoría profesión</label>
                 <select class="form-select" id="f_profesion" name="f_profesion">
@@ -411,6 +422,10 @@
                   <option value="7">7 Jubilado</option>
                 </select>
               </div>
+            </div>
+
+            <!-- 13 y 14: Vivienda e Ingresos (form-grid-2) -->
+            <div class="grid form-grid-2">
               <div class="form-field">
                 <label class="field-label">13.- Su vivienda es:</label>
                 <select class="form-select" id="f_vivienda" name="f_vivienda">
@@ -421,6 +436,7 @@
                   <option value="4">4 Otro</option>
                 </select>
               </div>
+
               <div class="form-field">
                 <label class="field-label">14.- Ingresos totales familia</label>
                 <select class="form-select" id="f_ingresos" name="f_ingresos">
