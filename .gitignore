@@ -42,3 +42,8 @@ scratch/
 # Documentación interna de asistencia
 GEMINI.md
 PROGRESS.md
+
+# Archivos SPSS / Datos sensibles
+*.sav
+*.zsav
+*.sav.*
