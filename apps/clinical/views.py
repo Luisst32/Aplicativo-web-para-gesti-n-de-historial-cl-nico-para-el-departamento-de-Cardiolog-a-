@@ -447,6 +447,8 @@ def patient_create_api(request):
         })
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
@@ -998,8 +1000,8 @@ def form_save_api(request):
                 new_value={
                     'study_code': visit.study_code,
                     'patient': patient.full_name,
-                    'peso': float(ant.weight_kg),
-                    'tas': vs.systolic_bp
+                    'peso': float(ant.weight_kg) if (ant and ant.weight_kg) else None,
+                    'tas': vs.systolic_bp if (vs and vs.systolic_bp) else None
                 },
                 machine_name=getattr(request, 'client_ip', '127.0.0.1')
             )
@@ -1015,6 +1017,8 @@ def form_save_api(request):
         })
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
