@@ -280,3 +280,34 @@ class FichaEliminarSecurityTests(TestCase):
         self.assertFalse(Patient.objects.filter(patient_id=p2.patient_id).exists())
         self.assertFalse(Visit.objects.filter(study_code="999").exists())
         self.assertFalse(Visit.objects.filter(study_code="998").exists())
+
+
+class SavImporterColumnMappingTests(SimpleTestCase):
+    def test_detect_column_typos_maps_destination(self):
+        from apps.clinical.services.sav_importer import detect_column_typos
+        cols = [
+            'PATRON_LLENQADO_MITRAL_RESTRICTIVO',
+            'ANTECEDENTRS_ICTUS',
+            'CUANTAS_PERSONAS_CONVIVE_CON_USTES_EN_EL_HOGAR',
+            'TRONTO_ARTERIA_PULMUNAR'
+        ]
+        typos = detect_column_typos(cols)
+        self.assertEqual(len(typos), 4)
+
+        dest_map = {t['original']: (t['corrected'], t['destination']) for t in typos}
+        self.assertIn('PATRON_LLENADO_MITRAL_RESTRICTIVO', dest_map['PATRON_LLENQADO_MITRAL_RESTRICTIVO'][0])
+        self.assertIn('Ecocardiograma', dest_map['PATRON_LLENQADO_MITRAL_RESTRICTIVO'][1])
+
+        self.assertIn('ANTECEDENTES_ICTUS', dest_map['ANTECEDENTRS_ICTUS'][0])
+        self.assertIn('Cuestionario Clínico', dest_map['ANTECEDENTRS_ICTUS'][1])
+
+        self.assertIn('TRONCO_ARTERIA_PULMONAR', dest_map['TRONTO_ARTERIA_PULMUNAR'][0])
+        self.assertIn('Ecocardiograma', dest_map['TRONTO_ARTERIA_PULMUNAR'][1])
+
+    def test_get_column_destination(self):
+        from apps.clinical.services.sav_importer import get_column_destination
+        mod, fld = get_column_destination('TAS_TS')
+        self.assertEqual(mod, 'Signos Vitales')
+
+        mod_medas, _ = get_column_destination('ACEITE_DE_OLIVA_CONSUMO')
+        self.assertEqual(mod_medas, 'Cuestionario Dieta MEDAS')

@@ -1,10 +1,14 @@
 /**
  * SAV_IMPORTER.JS
- * Lógica interactiva para la importación inteligente de archivos SPSS (.sav / .zsav).
- * Gestiona el análisis previo, advertencias, previsualización y confirmación transaccional.
+ * Lógica interactiva para la comprobación y mapeo de columnas SPSS (.sav / .zsav).
+ * Comprueba los nombres de cada variable, indica qué datos van en dónde
+ * y ejecuta la importación respetando los datos exactos del usuario sin alteraciones.
  */
 
 let currentSavToken = null;
+let currentMappings = [];
+let currentFilter = 'typos';
+let currentSearchTerm = '';
 
 function getCsrfToken() {
   const cookieVal = document.cookie
@@ -26,8 +30,15 @@ function abrirModalImportarSav() {
 
   // Resetear estados y vistas
   currentSavToken = null;
+  currentMappings = [];
+  currentFilter = 'typos';
+  currentSearchTerm = '';
+
   const fileInput = document.getElementById('savFileInput');
   if (fileInput) fileInput.value = '';
+
+  const searchInput = document.getElementById('savSearchColumnInput');
+  if (searchInput) searchInput.value = '';
 
   document.getElementById('savPhaseUpload').style.display = 'block';
   document.getElementById('savPhaseLoading').style.display = 'none';
@@ -68,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dropZone.addEventListener(eventName, (e) => {
       e.preventDefault();
       e.stopPropagation();
-      dropZone.style.borderColor = '#94a3b8';
+      dropZone.style.borderColor = '#cbd5e1';
       dropZone.style.background = '#f8fafc';
     }, false);
   });
@@ -94,8 +105,8 @@ async function onSavFileSelected(file) {
   // Pasar a fase de carga / análisis
   document.getElementById('savPhaseUpload').style.display = 'none';
   document.getElementById('savPhaseLoading').style.display = 'block';
-  document.getElementById('savLoadingTitle').textContent = `Analizando ${file.name}...`;
-  document.getElementById('savLoadingSubtitle').textContent = 'Extrayendo etiquetas de valores, mapeando variables clínicas y verificando consistencia...';
+  document.getElementById('savLoadingTitle').textContent = `Comprobando ${file.name}...`;
+  document.getElementById('savLoadingSubtitle').textContent = 'Comprobando nombres de columnas y correspondencia con la base de datos...';
 
   const formData = new FormData();
   formData.append('file', file);
@@ -115,8 +126,9 @@ async function onSavFileSelected(file) {
     }
 
     currentSavToken = data.temp_token;
+    currentMappings = data.column_mappings || [];
 
-    // Actualizar métricas
+    // Actualizar métricas principales
     document.getElementById('savMetricRows').textContent = data.total_rows || '0';
     document.getElementById('savMetricNew').textContent = data.duplicates?.new_patients_count ?? (data.total_rows || '0');
     document.getElementById('savMetricDups').textContent = data.duplicates?.db_duplicates_count ?? '0';
@@ -135,55 +147,24 @@ async function onSavFileSelected(file) {
       dupsSection.style.display = 'none';
     }
 
-    // 2. Sección Errores Gramaticales y Tipográficos en Columnas
-    const typosSection = document.getElementById('savTyposSection');
+    // 2. Sección Comprobación y Mapeo de Columnas (Qué datos van en dónde)
     const typoCount = data.grammatical_errors_count || 0;
-    if (typoCount > 0) {
-      typosSection.style.display = 'block';
-      document.getElementById('savTypoCountLabel').textContent = typoCount;
-      const typoList = document.getElementById('savTypoListContainer');
-      const typos = data.grammatical_errors || [];
-      typoList.innerHTML = typos.map(t => `
-        <div style="padding: 3px 0; border-bottom: 1px dashed #f0abfc; display: flex; justify-content: space-between; gap: 8px;">
-          <span>Columna SPSS: <code style="color: #be185d; font-weight: 700;">${t.column}</code> &rarr; Corregida a: <code style="color: #047857; font-weight: 700;">${t.corrected_to}</code></span>
-          <span style="color: #64748b; font-size: 0.72rem;">${t.explanation}</span>
-        </div>
-      `).join('');
-    } else {
-      typosSection.style.display = 'none';
-    }
+    const totalCols = data.total_columns || currentMappings.length;
 
-    // Renderizar advertencias y avisos
-    const warnBox = document.getElementById('savWarningsBox');
-    warnBox.innerHTML = '';
+    document.getElementById('savTypoBadgePill').textContent = `${typoCount} correcciones ortográficas`;
+    document.getElementById('savCountTyposTab').textContent = typoCount;
+    document.getElementById('savCountAllTab').textContent = totalCols;
 
-    if (data.warnings && data.warnings.length > 0) {
-      let warnHtml = `
-        <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 14px;">
-          <div style="font-weight: 700; font-size: 0.85rem; color: #b45309; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-            Diagnóstico Asistido y Advertencias
-          </div>
-          <ul style="margin: 0; padding-left: 20px; font-size: 0.8rem; color: #78350f;">
-      `;
-      data.warnings.forEach(w => {
-        warnHtml += `<li style="margin-bottom: 4px;">${w}</li>`;
-      });
-      warnHtml += `
-          </ul>
-        </div>
-      `;
-      warnBox.innerHTML = warnHtml;
-    } else {
-      warnBox.innerHTML = `
-        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #166534; display: flex; align-items: center; gap: 8px;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-          Estructura de variables verificada y consistente con el modelo clínico.
-        </div>
-      `;
-    }
+    // Si hay correcciones ortográficas, mostrar esa pestaña primero; si no, mostrar todas
+    currentFilter = typoCount > 0 ? 'typos' : 'all';
+    currentSearchTerm = '';
+    const searchInput = document.getElementById('savSearchColumnInput');
+    if (searchInput) searchInput.value = '';
 
-    // Renderizar tabla de previsualización
+    actualizarBotonesFiltroMapeo();
+    renderMappingTable();
+
+    // 3. Renderizar tabla de previsualización de datos
     const tbody = document.getElementById('savPreviewTbody');
     tbody.innerHTML = '';
     if (data.preview_rows && data.preview_rows.length > 0) {
@@ -225,11 +206,106 @@ function toggleSavDupDetails() {
   }
 }
 
-function toggleSavTypoDetails() {
-  const container = document.getElementById('savTypoListContainer');
-  if (container) {
-    container.style.display = (container.style.display === 'none' || !container.style.display) ? 'block' : 'none';
+function filtrarMapeo(tipo) {
+  currentFilter = tipo;
+  actualizarBotonesFiltroMapeo();
+  renderMappingTable();
+}
+
+function onBuscarColumna(val) {
+  currentSearchTerm = (val || '').toLowerCase().trim();
+  renderMappingTable();
+}
+
+function actualizarBotonesFiltroMapeo() {
+  const btnTypos = document.getElementById('savFilterBtnTypos');
+  const btnAll = document.getElementById('savFilterBtnAll');
+  if (!btnTypos || !btnAll) return;
+
+  if (currentFilter === 'typos') {
+    btnTypos.style.background = 'var(--color-primary-blue, #3AA0FF)';
+    btnTypos.style.borderColor = 'var(--color-primary-blue, #3AA0FF)';
+    btnTypos.style.color = '#fff';
+
+    btnAll.style.background = '#fff';
+    btnAll.style.borderColor = '#cbd5e1';
+    btnAll.style.color = '#475569';
+  } else {
+    btnAll.style.background = 'var(--color-primary-blue, #3AA0FF)';
+    btnAll.style.borderColor = 'var(--color-primary-blue, #3AA0FF)';
+    btnAll.style.color = '#fff';
+
+    btnTypos.style.background = '#fff';
+    btnTypos.style.borderColor = '#cbd5e1';
+    btnTypos.style.color = '#475569';
   }
+}
+
+function renderMappingTable() {
+  const tbody = document.getElementById('savMappingTbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '';
+
+  let filtrados = currentMappings;
+
+  // Filtro por tipo (solo corregidos o todos)
+  if (currentFilter === 'typos') {
+    filtrados = filtrados.filter(m => m.has_correction);
+  }
+
+  // Filtro por texto de búsqueda
+  if (currentSearchTerm) {
+    filtrados = filtrados.filter(m =>
+      (m.spss_column || '').toLowerCase().includes(currentSearchTerm) ||
+      (m.corrected_name || '').toLowerCase().includes(currentSearchTerm) ||
+      (m.destination_module || '').toLowerCase().includes(currentSearchTerm) ||
+      (m.destination_field || '').toLowerCase().includes(currentSearchTerm)
+    );
+  }
+
+  if (filtrados.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td colspan="3" style="padding: 16px; text-align: center; color: #64748b; font-size: 0.78rem;">
+        No se encontraron columnas que coincidan con el filtro actual.
+      </td>
+    `;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  filtrados.forEach(m => {
+    const tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid #f1f5f9';
+
+    const colOriginalHtml = m.has_correction
+      ? `<code style="color: #be185d; font-weight: 700; background: #fdf2f8; padding: 2px 5px; border-radius: 4px;">${m.spss_column}</code>`
+      : `<code style="color: #334155; font-weight: 600;">${m.spss_column}</code>`;
+
+    const colCorregidaHtml = m.has_correction
+      ? `<div style="display: flex; flex-direction: column; gap: 2px;">
+           <code style="color: #047857; font-weight: 700; background: #ecfdf5; padding: 2px 5px; border-radius: 4px;">${m.corrected_name}</code>
+           <span style="font-size: 0.68rem; color: #64748b;">${m.correction_detail || ''}</span>
+         </div>`
+      : `<span style="color: #94a3b8; font-size: 0.72rem;">Sin errores (Correcto)</span>`;
+
+    const destinoHtml = `
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 0.71rem; font-weight: 700; padding: 1px 6px; border-radius: 4px; white-space: nowrap;">
+          ${m.destination_module}
+        </span>
+        <span style="color: #334155; font-size: 0.74rem;">${m.destination_field}</span>
+      </div>
+    `;
+
+    tr.innerHTML = `
+      <td style="padding: 6px 10px; vertical-align: middle;">${colOriginalHtml}</td>
+      <td style="padding: 6px 10px; vertical-align: middle;">${colCorregidaHtml}</td>
+      <td style="padding: 6px 10px; vertical-align: middle;">${destinoHtml}</td>
+    `;
+    tbody.appendChild(tr);
+  });
 }
 
 async function ejecutarImportacionSav() {
@@ -248,8 +324,8 @@ async function ejecutarImportacionSav() {
   document.getElementById('savBtnCancel').style.display = 'none';
 
   document.getElementById('savPhaseLoading').style.display = 'block';
-  document.getElementById('savLoadingTitle').textContent = 'Guardando en la base de datos...';
-  document.getElementById('savLoadingSubtitle').textContent = 'Creando expedientes de pacientes, visitas médicas, antropometría, signos vitales, ECG, laboratorio y encuestas...';
+  document.getElementById('savLoadingTitle').textContent = 'Guardando datos en PostgreSQL...';
+  document.getElementById('savLoadingSubtitle').textContent = 'Creando expedientes, visitas, exámenes y respuestas con integridad transaccional.';
 
   try {
     const res = await fetch('/clinical/api/import-sav/execute/', {
@@ -266,30 +342,31 @@ async function ejecutarImportacionSav() {
 
     const data = await res.json();
     if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Error al ejecutar la importación.');
+      throw new Error(data.error || 'Ocurrió un error al ejecutar la importación.');
     }
 
-    // Mostrar éxito
+    // Fase Éxito
     document.getElementById('savPhaseLoading').style.display = 'none';
     document.getElementById('savPhaseSuccess').style.display = 'block';
-    document.getElementById('savSuccessMessage').textContent = data.message;
+    document.getElementById('savSuccessMessage').textContent = data.message || 'Se procesaron todos los registros con éxito.';
 
-    const detailsEl = document.getElementById('savSuccessDetails');
-    detailsEl.innerHTML = `
-      <div style="margin-bottom: 4px;"><strong>Nuevos pacientes creados:</strong> ${data.imported_count}</div>
-      <div style="margin-bottom: 4px;"><strong>Visitas actualizadas:</strong> ${data.updated_count}</div>
-      <div style="margin-bottom: 4px;"><strong>Total procesados:</strong> ${data.total_rows}</div>
-      <div style="color: #15803d; font-weight: 600; margin-top: 6px;">✓ Todos los módulos clínicos y respuestas de encuestas persistidos en PostgreSQL.</div>
+    const detailsBox = document.getElementById('savSuccessDetails');
+    detailsBox.innerHTML = `
+      <div>• <strong>Pacientes nuevos creados:</strong> ${data.imported_count || 0}</div>
+      <div>• <strong>Pacientes actualizados:</strong> ${data.updated_count || 0}</div>
+      <div>• <strong>Pacientes omitidos:</strong> ${data.skipped_count || 0}</div>
+      ${data.errors && data.errors.length > 0 ? `<div style="margin-top:6px; color:#b91c1c;">• <em>Advertencias menores:</em> ${data.errors.join('<br>')}</div>` : ''}
     `;
 
+    document.getElementById('savBtnCancel').style.display = 'inline-block';
+    document.getElementById('savBtnCancel').textContent = 'Cerrar';
     document.getElementById('savBtnViewPatients').style.display = 'inline-block';
 
   } catch (err) {
-    alert('Error durante la importación: ' + err.message);
+    alert('Error al importar datos: ' + err.message);
     document.getElementById('savPhaseLoading').style.display = 'none';
     document.getElementById('savPhaseConfirm').style.display = 'block';
     document.getElementById('savBtnConfirm').style.display = 'inline-block';
     document.getElementById('savBtnCancel').style.display = 'inline-block';
   }
 }
-

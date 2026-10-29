@@ -58,46 +58,164 @@ def normalize_var_name(name):
 
 # -----------------------------------------------------------------------------
 # Patrones de errores gramaticales y tipográficos conocidos en columnas SPSS
+# Mapeo directo a su destino en la base de datos
 # -----------------------------------------------------------------------------
 
 COLUMN_TYPO_RULES = [
-    (r'CONVIVE_CON_USTES', 'CONVIVE_CON_USTED', 'Error gramatical: "USTES" corregido a "USTED"', 'gramatical'),
-    (r'ANTECEDENTRS', 'ANTECEDENTES', 'Error tipográfico: "ANTECEDENTRS" corregido a "ANTECEDENTES"', 'tipografico'),
-    (r'FACTORES_TIESGO', 'FACTORES_RIESGO', 'Error tipográfico: "TIESGO" corregido a "RIESGO"', 'tipografico'),
-    (r'TRONTO', 'TRONCO', 'Error tipográfico: "TRONTO" corregido a "TRONCO"', 'tipografico'),
-    (r'PULMUNAR', 'PULMONAR', 'Error tipográfico: "PULMUNAR" corregido a "PULMONAR"', 'tipografico'),
-    (r'CALIFICACION_ANILLO', 'CALCIFICACION_ANILLO', 'Error médico/tipográfico: "CALIFICACION" corregido a "CALCIFICACION"', 'medico'),
-    (r'ESTERNOSIS', 'ESTENOSIS', 'Error tipográfico: "ESTERNOSIS" corregido a "ESTENOSIS"', 'tipografico'),
-    (r'AROTICA', 'AORTICA', 'Error tipográfico: "AROTICA" corregido a "AORTICA"', 'tipografico'),
-    (r'GRADIANTE', 'GRADIENTE', 'Error tipográfico: "GRADIANTE" corregido a "GRADIENTE"', 'tipografico'),
-    (r'TRNASVALVULAR', 'TRANSVALVULAR', 'Error tipográfico: "TRNASVALVULAR" corregido a "TRANSVALVULAR"', 'tipografico'),
-    (r'VENA_CONTRTACTA', 'VENA_CONTRACTA', 'Error tipográfico: "CONTRTACTA" corregido a "CONTRACTA"', 'tipografico'),
-    (r'LLENQADO', 'LLENADO', 'Error tipográfico: "LLENQADO" corregido a "LLENADO"', 'tipografico'),
-    (r'TRICUSPUDE', 'TRICUSPIDE', 'Error tipográfico: "TRICUSPUDE" corregido a "TRICUSPIDE"', 'tipografico'),
-    (r'DISTOLICA', 'DIASTOLICA', 'Error tipográfico: "DISTOLICA" corregido a "DIASTOLICA"', 'tipografico'),
-    (r'ECOCARDIOFRAFIA', 'ECOCARDIOGRAFIA', 'Error tipográfico: "ECOCARDIOFRAFIA" corregido a "ECOCARDIOGRAFIA"', 'tipografico'),
-    (r'CCARDIACO', 'CARDIACO', 'Error tipográfico: "CCARDIACO" corregido a "CARDIACO"', 'tipografico'),
-    (r'ANAEROBICOSS', 'ANAEROBICOS', 'Error tipográfico: doble "S" en "ANAEROBICOSS"', 'tipografico'),
-    (r'DISPLEMIA', 'DISLIPEMIA', 'Error en etiqueta: "DISPLEMIA" corregido a "DISLIPEMIA"', 'etiqueta'),
+    (r'CONVIVE_CON_USTES', 'CONVIVE_CON_USTED', 'Error gramatical: "USTES" corregido a "USTED"', 'Sociodemográfico / Personas Convivientes', 'gramatical'),
+    (r'ANTECEDENTRS', 'ANTECEDENTES', 'Error tipográfico: "ANTECEDENTRS" corregido a "ANTECEDENTES"', 'Cuestionario Clínico / Antecedentes Personales', 'tipografico'),
+    (r'FACTORES_TIESGO', 'FACTORES_RIESGO', 'Error tipográfico: "TIESGO" corregido a "RIESGO"', 'Cuestionario Clínico / Factores de Riesgo', 'tipografico'),
+    (r'TRONTO', 'TRONCO', 'Error tipográfico: "TRONTO" corregido a "TRONCO"', 'Ecocardiograma / Tronco Arteria Pulmonar', 'tipografico'),
+    (r'PULMUNAR', 'PULMONAR', 'Error tipográfico: "PULMUNAR" corregido a "PULMONAR"', 'Ecocardiograma / Válvula / Arteria Pulmonar', 'tipografico'),
+    (r'CALIFICACION_ANILLO', 'CALCIFICACION_ANILLO', 'Error médico/tipográfico: "CALIFICACION" corregido a "CALCIFICACION"', 'Ecocardiograma / Calcificación de Anillo', 'medico'),
+    (r'ESTERNOSIS', 'ESTENOSIS', 'Error tipográfico: "ESTERNOSIS" corregido a "ESTENOSIS"', 'Ecocardiograma / Estenosis Valvular', 'tipografico'),
+    (r'AROTICA', 'AORTICA', 'Error tipográfico: "AROTICA" corregido a "AORTICA"', 'Ecocardiograma / Válvula Aórtica', 'tipografico'),
+    (r'GRADIANTE', 'GRADIENTE', 'Error tipográfico: "GRADIANTE" corregido a "GRADIENTE"', 'Ecocardiograma / Gradiente Transvalvular', 'tipografico'),
+    (r'TRNASVALVULAR', 'TRANSVALVULAR', 'Error tipográfico: "TRNASVALVULAR" corregido a "TRANSVALVULAR"', 'Ecocardiograma / Flujo Transvalvular', 'tipografico'),
+    (r'VENA_CONTRTACTA', 'VENA_CONTRACTA', 'Error tipográfico: "CONTRTACTA" corregido a "CONTRACTA"', 'Ecocardiograma / Vena Contracta', 'tipografico'),
+    (r'LLENQADO', 'LLENADO', 'Error tipográfico: "LLENQADO" corregido a "LLENADO"', 'Ecocardiograma / Patrón de Llenado Ventricular', 'tipografico'),
+    (r'TRICUSPUDE', 'TRICUSPIDE', 'Error tipográfico: "TRICUSPUDE" corregido a "TRICUSPIDE"', 'Ecocardiograma / Válvula Tricúspide', 'tipografico'),
+    (r'DISTOLICA', 'DIASTOLICA', 'Error tipográfico: "DISTOLICA" corregido a "DIASTOLICA"', 'Ecocardiograma / Función Diastólica', 'tipografico'),
+    (r'ECOCARDIOFRAFIA', 'ECOCARDIOGRAFIA', 'Error tipográfico: "ECOCARDIOFRAFIA" corregido a "ECOCARDIOGRAFIA"', 'Cuestionario Clínico / Estudios Previos: Ecocardiograma', 'tipografico'),
+    (r'CCARDIACO', 'CARDIACO', 'Error tipográfico: "CCARDIACO" corregido a "CARDIACO"', 'Cuestionario Clínico / Estudios Previos: RNM Cardíaco', 'tipografico'),
+    (r'ANAEROBICOSS', 'ANAEROBICOS', 'Error tipográfico: doble "S" en "ANAEROBICOSS"', 'Cuestionario / Ejercicios Anaeróbicos', 'tipografico'),
+    (r'DISPLEMIA', 'DISLIPEMIA', 'Error en etiqueta: "DISPLEMIA" corregido a "DISLIPEMIA"', 'Cuestionario Clínico / Antecedente: Dislipemia', 'etiqueta'),
 ]
 
+FIELD_DESTINATIONS = {
+    'codigo': ('Identificación Institucional', 'Código de Estudio (study_code)'),
+    'cedula': ('Identificación del Paciente', 'Cédula de Identidad (id_card)'),
+    'nombres': ('Identificación del Paciente', 'Nombres (first_names)'),
+    'apellido1': ('Identificación del Paciente', 'Primer Apellido (last_name1)'),
+    'apellido2': ('Identificación del Paciente', 'Segundo Apellido (last_name2)'),
+    'universidad': ('Identificación Institucional', 'Institución / Universidad'),
+    'estamento': ('Identificación Institucional', 'Estamento UNEMI / Categoría'),
+    'facultad': ('Identificación Institucional', 'Facultad'),
+    'visita': ('Identificación Institucional', 'N.° de Visita'),
+    'fecha_visita': ('Identificación Institucional', 'Fecha de Visita'),
+    'ciudad_res': ('Sociodemográfico', 'Cantón de Residencia'),
+    'provincia_res': ('Sociodemográfico', 'Provincia de Residencia'),
+    'ciudad_nac': ('Sociodemográfico', 'Cantón de Nacimiento'),
+    'provincia_nac': ('Sociodemográfico', 'Provincia de Nacimiento'),
+    'fecha_nac': ('Sociodemográfico', 'Fecha de Nacimiento'),
+    'edad': ('Sociodemográfico', 'Edad reportada'),
+    'sexo': ('Sociodemográfico', 'Sexo biológico'),
+    'raza': ('Sociodemográfico', 'Raza / Etnia'),
+    'estado_civil': ('Sociodemográfico', 'Estado Civil'),
+    'hijos': ('Sociodemográfico', 'Número de Hijos'),
+    'convive_con': ('Sociodemográfico', 'Con quién vive'),
+    'convivientes': ('Sociodemográfico', 'Personas convivientes'),
+    'estudios': ('Sociodemográfico', 'Nivel de Estudios'),
+    'horario': ('Sociodemográfico', 'Horario Laboral'),
+    'profesion': ('Sociodemográfico', 'Categoría Profesión'),
+    'vivienda': ('Sociodemográfico', 'Tipo de Vivienda'),
+    'ingresos': ('Sociodemográfico', 'Ingresos Familiares'),
+    'peso': ('Antropometría', 'Peso (kg)'),
+    'talla': ('Antropometría', 'Talla (cm)'),
+    'perimetro': ('Antropometría', 'Perímetro Abdominal (cm)'),
+    'imc': ('Antropometría', 'Índice de Masa Corporal (IMC)'),
+    'asc': ('Antropometría', 'Área de Superficie Corporal (ASC)'),
+    'tas': ('Signos Vitales', 'Presión Sistólica TAS (mmHg)'),
+    'tad': ('Signos Vitales', 'Presión Diastólica TAD (mmHg)'),
+    'sat_o2': ('Signos Vitales', 'Saturación O2 (%)'),
+    'fc': ('Signos Vitales', 'Frecuencia Cardíaca (lpm)'),
+    'soplos': ('Signos Vitales', 'Soplos Cardíacos'),
+    'pulsos': ('Signos Vitales', 'Pulsos Pedios'),
+    'resp_normal': ('Signos Vitales', 'Auscultación Pulmonar'),
+    'abdom_normal': ('Signos Vitales', 'Auscultación Abdominal'),
+    'ecg_ritmo': ('Electrocardiograma', 'Ritmo ECG'),
+    'ecg_pr': ('Electrocardiograma', 'Intervalo PR (ms)'),
+    'ecg_qrs': ('Electrocardiograma', 'Duración QRS (ms)'),
+    'ecg_qt': ('Electrocardiograma', 'Intervalo QT (ms)'),
+    'ecg_qtc': ('Electrocardiograma', 'QTc Corregido Bazett (ms)'),
+    'ecg_eje': ('Electrocardiograma', 'Eje QRS (grados)'),
+    'ecg_hvi': ('Electrocardiograma', 'Hipertrofia Ventricular Izq.'),
+    'ecg_bloqueo': ('Electrocardiograma', 'Bloqueo de Rama'),
+    'lab_hematies': ('Laboratorio', 'Hematíes (millones/µL)'),
+    'lab_hemoglobina': ('Laboratorio', 'Hemoglobina (g/dL)'),
+    'lab_hematocrito': ('Laboratorio', 'Hematocrito (%)'),
+    'lab_vcm': ('Laboratorio', 'VCM (fL)'),
+    'lab_leucocitos': ('Laboratorio', 'Leucocitos (miles/µL)'),
+    'lab_plaquetas': ('Laboratorio', 'Plaquetas (miles/µL)'),
+    'lab_tiempo_protombina': ('Laboratorio', 'Tiempo Protrombina (seg)'),
+    'lab_glucosa': ('Laboratorio', 'Glucosa (mg/dL)'),
+    'lab_urea': ('Laboratorio', 'Urea (mg/dL)'),
+    'lab_creatinina': ('Laboratorio', 'Creatinina (mg/dL)'),
+    'lab_colesterol': ('Laboratorio', 'Colesterol Total (mg/dL)'),
+    'lab_hdl': ('Laboratorio', 'Colesterol HDL (mg/dL)'),
+    'lab_ldl': ('Laboratorio', 'Colesterol LDL (mg/dL)'),
+    'lab_trigliceridos': ('Laboratorio', 'Triglicéridos (mg/dL)'),
+    'lab_got': ('Laboratorio', 'Transaminasa GOT/AST (U/L)'),
+    'lab_gpt': ('Laboratorio', 'Transaminasa GPT/ALT (U/L)'),
+    'lab_ggt': ('Laboratorio', 'GGT (U/L)'),
+    'lab_tsh': ('Laboratorio', 'TSH (µUI/mL)'),
+    'eco_ddvi': ('Ecocardiograma', 'Diámetro Diastólico VI (mm)'),
+    'eco_fey': ('Ecocardiograma', 'Fracción de Eyección FEy (%)'),
+    'eco_hvi': ('Ecocardiograma', 'Hipertrofia Ventricular Izq.'),
+    'eco_disfuncion': ('Ecocardiograma', 'Disfunción Diastólica'),
+    'eco_calcificacion': ('Ecocardiograma', 'Calcificación Anillo Aórtico'),
+}
+
+def get_column_destination(col_name):
+    """Identifica con precisión el módulo y campo destino en PostgreSQL para una columna SPSS."""
+    matched_field = _match_column_to_field(col_name)
+    if matched_field and matched_field in FIELD_DESTINATIONS:
+        return FIELD_DESTINATIONS[matched_field]
+
+    u = str(col_name).upper()
+    if any(k in u for k in ['ECO', 'MITRAL', 'AORTIC', 'TRICUSP', 'PULMONAR', 'VENTRICUL', 'AURICUL', 'ONDA_', 'LLENADO', 'REGURGIT', 'VALVUL', 'ESTENOSIS', 'GRADIENTE']):
+        return ('Ecocardiograma', f'Medición / Parámetro ({col_name})')
+    if any(k in u for k in ['ECG', 'RITMO', 'QRS', 'QT', 'BAZETT', 'BLOQUEO']):
+        return ('Electrocardiograma', f'Parámetro ECG ({col_name})')
+    if any(k in u for k in ['LAB', 'HEMOGLOBIN', 'COLESTEROL', 'GLUCOSA', 'UREA', 'CREATIN', 'TRIGLIC', 'TSH', 'GOT', 'GPT', 'GGT']):
+        return ('Laboratorio Clínico', f'Bioquímica / Hematología ({col_name})')
+    if any(k in u for k in ['TAS', 'TAD', 'FRECUENCIA', 'SATURACION', 'SOPLO', 'PULSO', 'AUSCULT']):
+        return ('Signos Vitales', f'Constante Vital ({col_name})')
+    if any(k in u for k in ['PESO', 'TALLA', 'IMC', 'PERIMETRO', 'ASC']):
+        return ('Antropometría', f'Medición Antropométrica ({col_name})')
+    if any(k in u for k in ['ANTECEDENT', 'FAMILIAR', 'FACTOR', 'DIAB', 'HTA', 'INFARTO', 'ICTUS', 'DISLIPEMIA']):
+        return ('Cuestionario Clínico', f'Antecedentes / Factores ({col_name})')
+    if any(k in u for k in ['MEDAS', 'DIETA', 'ACEITE', 'VERDURA', 'FRUTA', 'VINO', 'LEGUMBRES', 'CARNE']):
+        return ('Cuestionario Dieta MEDAS', f'Hábito Nutricional ({col_name})')
+    if any(k in u for k in ['IPAQ', 'ACTIVIDAD', 'CAMINAR', 'SENTADO', 'HORAS', 'EJERCICIO', 'METS', 'PASOS']):
+        return ('Cuestionario IPAQ', f'Actividad Física ({col_name})')
+    if any(k in u for k in ['ESTUDIO', 'RNM', 'CATETERISMO', 'CORONARIOGRAFIA']):
+        return ('Cuestionario Clínico', f'Examen Previo ({col_name})')
+    return ('Cuestionario Clínico', f'Pregunta / Variable ({col_name})')
+
+
 def detect_column_typos(column_names):
-    """Detecta y clasifica errores gramaticales o tipográficos en los nombres de columnas."""
+    """
+    Detecta y clasifica errores gramaticales o tipográficos en los nombres de columnas
+    e identifica exactamente en qué módulo y campo de la base de datos va cada dato.
+    """
     detected = []
     seen = set()
     for col in column_names:
-        for pattern, replacement, explanation, err_type in COLUMN_TYPO_RULES:
-            if re.search(pattern, col, re.IGNORECASE):
-                corr = re.sub(pattern, replacement, col, flags=re.IGNORECASE)
-                key = (col, corr)
-                if key not in seen:
-                    seen.add(key)
-                    detected.append({
-                        "original": col,
-                        "corrected": corr,
-                        "explanation": explanation,
-                        "type": err_type
-                    })
+        current_col = col
+        fixes = []
+        target_destination = None
+        for pattern, replacement, explanation, destination, err_type in COLUMN_TYPO_RULES:
+            if re.search(pattern, current_col, re.IGNORECASE):
+                current_col = re.sub(pattern, replacement, current_col, flags=re.IGNORECASE)
+                fixes.append(explanation)
+                if not target_destination:
+                    target_destination = destination
+
+        if current_col != col:
+            key = (col, current_col)
+            if key not in seen:
+                seen.add(key)
+                if not target_destination:
+                    mod, fld = get_column_destination(current_col)
+                    target_destination = f"{mod} / {fld}"
+                detected.append({
+                    "original": col,
+                    "corrected": current_col,
+                    "explanation": " | ".join(fixes),
+                    "destination": target_destination,
+                    "type": "correccion"
+                })
     return detected
 
 STANDARD_FIELD_ALIASES = {
@@ -276,47 +394,34 @@ def analyze_sav_file(file_obj, filename="archivo.sav"):
             field_to_col[matched_field] = col
             col_to_field[col] = matched_field
 
-    # Diagnóstico y advertencias inteligentes
+    # Diagnóstico de estructura y columnas
     warnings = []
     missing_fields = []
 
-    # 1. ¿Tiene nombres y cédula explícitos?
+    # 1. Identificadores
     has_names = 'nombres' in field_to_col or 'apellido1' in field_to_col
     has_id_card = 'cedula' in field_to_col
-
-    if not has_names and not has_id_card:
-        warnings.append(
-            "Archivo anonimizado detectado (sin columnas de Nombres ni Cédula). "
-            "El sistema derivará automáticamente un identificador único por participante "
-            "basado en su CÓDIGO (ej. 'Participante Código 1', Cédula '0900000001')."
-        )
-        missing_fields.append("Nombres y Apellidos (se derivarán)")
-        missing_fields.append("Cédula de Identidad (se generará)")
-
-    # 2. ¿Tiene código de estudio?
     has_codigo = 'codigo' in field_to_col
-    if not has_codigo:
-        warnings.append(
-            "No se encontró una columna explícita de CÓDIGO de estudio. "
-            "Se enumerarán correlativamente del 1 en adelante."
-        )
 
-    # 3. Detección de fechas anómalas (años históricos < 1920)
-    anomalous_dates_count = 0
-    dob_col = field_to_col.get('fecha_nac')
-    edad_col = field_to_col.get('edad')
-    if dob_col:
-        for val in df_dict[dob_col]:
-            if hasattr(val, 'year') and val.year < 1920:
-                anomalous_dates_count += 1
-    if anomalous_dates_count > 0:
-        warnings.append(
-            f"Se detectaron {anomalous_dates_count} fecha(s) de nacimiento con año histórico anómalo (<1920). "
-            f"El sistema las corregirá inteligentemente calculando el año aproximado a partir de la edad reportada."
-        )
-
-    # 4. Detección de Errores Gramaticales y Tipográficos en Columnas
+    # 2. Comprobación y Mapeo de Columnas (identifica correcciones ortográficas y destino en BD)
     grammatical_errors = detect_column_typos(col_names)
+
+    # Listado estructurado de qué datos van en dónde
+    column_mappings = []
+    typo_map = {t['original']: t for t in grammatical_errors}
+    for col in col_names:
+        mod_name, fld_name = get_column_destination(col)
+        has_typo = col in typo_map
+        column_mappings.append({
+            "spss_column": col,
+            "corrected_name": typo_map[col]['corrected'] if has_typo else col,
+            "has_correction": has_typo,
+            "correction_detail": typo_map[col]['explanation'] if has_typo else "",
+            "destination_module": mod_name,
+            "destination_field": fld_name,
+            "destination_label": f"{mod_name} → {fld_name}",
+            "status": "Corregido y Mapeado" if has_typo else "Mapeado"
+        })
 
     # 5. Detección de Duplicados Internos en el Archivo
     internal_duplicates = []
@@ -421,6 +526,8 @@ def analyze_sav_file(file_obj, filename="archivo.sav"):
         "categories_breakdown": categories_breakdown,
         "grammatical_errors": grammatical_errors,
         "grammatical_errors_count": len(grammatical_errors),
+        "column_mappings": column_mappings,
+        "column_mappings_count": len(column_mappings),
         "duplicates": {
             "internal_duplicates": internal_duplicates,
             "internal_duplicates_count": len(internal_duplicates),
@@ -603,18 +710,12 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                         try: edad_val = int(float(raw_edad))
                         except Exception: pass
 
-                # Fecha de Nacimiento (con corrección de fechas anómalas)
+                # Fecha de Nacimiento: conservar el dato exacto tal como está registrado en SPSS
                 birth_date = None
                 if 'fecha_nac' in field_to_col:
                     raw_dob = df_dict[field_to_col['fecha_nac']][i]
                     if hasattr(raw_dob, 'year'):
-                        if raw_dob.year < 1920 and edad_val:
-                            # Corregir año basándose en edad reportada
-                            corrected_year = current_year - edad_val
-                            try: birth_date = datetime.date(corrected_year, raw_dob.month, raw_dob.day)
-                            except Exception: birth_date = datetime.date(corrected_year, 1, 1)
-                        else:
-                            birth_date = raw_dob
+                        birth_date = raw_dob.date() if hasattr(raw_dob, 'date') else raw_dob
                     elif isinstance(raw_dob, str) and raw_dob.strip():
                         try: birth_date = datetime.date.fromisoformat(raw_dob.strip())
                         except Exception: pass
