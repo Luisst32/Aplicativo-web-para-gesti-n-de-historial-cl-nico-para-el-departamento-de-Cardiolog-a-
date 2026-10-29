@@ -70,12 +70,9 @@
         </div>
         <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
         <div data-user-menu></div>
-          <button id="btn-toggle-all-formulas" type="button" class="btn btn-global-formula" onclick="toggleAllFormulas()" title="Mostrar u ocultar todas las fórmulas matemáticas y campos del dashboard">
-            <span class="fx-symbol">ƒx</span> Ver Fórmulas de la Vista
-          </button>
           <div class="sample-pill">
             <span class="status-dot"></span>
-            <span id="active-sample-count">Cargando 280 evaluados (100%)...</span>
+            <span id="active-sample-count">Cargando evaluaciones...</span>
           </div>
         </div>
       </div>
@@ -87,10 +84,9 @@
           <label for="slicer-ano">Año Cohorte</label>
           <select id="slicer-ano" class="form-select slicer-select" onchange="onSlicerChange()">
             <option value="all">Todos los Años</option>
-            <option value="2023">Año 2023</option>
-            <option value="2024">Año 2024</option>
-            <option value="2025">Año 2025</option>
-            <option value="2026">Año 2026</option>
+            {% for y in available_years %}
+            <option value="{{ y }}">Año {{ y }}</option>
+            {% endfor %}
           </select>
         </div>
 
@@ -99,9 +95,9 @@
           <label for="slicer-cat">Categoría Personal</label>
           <select id="slicer-cat" class="form-select slicer-select" onchange="onSlicerChange()">
             <option value="all">Todas las Categorías</option>
-            <option value="PDI (Docentes)">PDI (Docentes)</option>
-            <option value="PAS (Administrativos)">PAS (Administrativos)</option>
-            <option value="Personal de Servicios">Personal de Servicios</option>
+            {% for c in available_categories %}
+            <option value="{{ c }}">{{ c }}</option>
+            {% endfor %}
           </select>
         </div>
 
@@ -150,36 +146,9 @@
         <div class="card card-kpi" id="card-kpi-total">
           <div class="kpi-header-row">
             <span class="kpi-title">Total Evaluados</span>
-            <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-kpi-total', event)" title="Ver fórmula y campos de cálculo">
-              <span class="fx-symbol">ƒx</span>
-            </button>
           </div>
           <div class="kpi-main-body">
             <div class="kpi-value color-palette-navy" id="kpi-total">280</div>
-          </div>
-          <div class="formula-panel" id="formula-kpi-total">
-            <div class="formula-panel-header">
-              <span class="formula-panel-title">📐 Conteo Muestral Efectivo</span>
-              <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-kpi-total', event)">✕</button>
-            </div>
-            <div class="formula-math-display">
-              $$n = \sum_{i=1}^{N} \mathbf{1}_{\{\text{cumple filtros}\}}(i), \quad N = 280$$
-              <div class="formula-math-sub">$$\text{Representatividad (\%)} = \left( \frac{n}{280} \right) \times 100$$</div>
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Campos BD:</span>
-              <div class="field-pills">
-                <span class="field-pill">id</span>
-                <span class="field-pill">ano</span>
-                <span class="field-pill">categoria</span>
-                <span class="field-pill">sexo</span>
-                <span class="field-pill">grupo_edad</span>
-                <span class="field-pill">riesgo_global</span>
-              </div>
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Metodología:</span> Representatividad muestral activa respecto al universo total de la investigación (N = 280).
-            </div>
           </div>
         </div>
 
@@ -187,42 +156,9 @@
         <div class="card card-kpi" id="card-kpi-hta">
           <div class="kpi-header-row">
             <span class="kpi-title">Prevalencia Hipertensión</span>
-            <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-kpi-hta', event)" title="Ver fórmula y campos de cálculo">
-              <span class="fx-symbol">ƒx</span>
-            </button>
           </div>
           <div class="kpi-main-body">
             <div class="kpi-value color-semaforo-red" id="kpi-hta">27,9 %</div>
-          </div>
-          <div class="formula-panel" id="formula-kpi-hta">
-            <div class="formula-panel-header">
-              <span class="formula-panel-title">📐 Prevalencia HTA</span>
-              <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-kpi-hta', event)">✕</button>
-            </div>
-            <div class="formula-math-display">
-              $$\text{Prevalencia HTA (\%)} = \left( \frac{\sum_{i=1}^{n} \text{HTA}_i}{n} \right) \times 100$$
-              <div class="formula-math-sub">$$\text{donde } \text{HTA}_i = \mathbf{1}_{\{\text{TAS}_i \ge 140 \;\lor\; \text{TAD}_i \ge 90 \;\lor\; \text{Fármacos}_i = 1\}}$$</div>
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Campos BD:</span>
-              <div class="field-pills">
-                <span class="field-pill">hipertension</span>
-                <span class="field-pill">tas</span>
-                <span class="field-pill">tad</span>
-                <span class="field-pill">hta_desc</span>
-              </div>
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Criterio Médico:</span> TAS ≥ 140 mmHg y/o TAD ≥ 90 mmHg, o diagnóstico previo con tratamiento farmacológico (AHA/ACC).
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Semáforo:</span>
-              <div class="semaforo-badge-row">
-                <span class="semaforo-pill semaforo-pill-green">🟢 &lt; 15%</span>
-                <span class="semaforo-pill semaforo-pill-yellow">🟡 15 - 24.9%</span>
-                <span class="semaforo-pill semaforo-pill-red">🔴 ≥ 25%</span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -230,42 +166,9 @@
         <div class="card card-kpi" id="card-kpi-dl">
           <div class="kpi-header-row">
             <span class="kpi-title">Prevalencia Dislipemia</span>
-            <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-kpi-dl', event)" title="Ver fórmula y campos de cálculo">
-              <span class="fx-symbol">ƒx</span>
-            </button>
           </div>
           <div class="kpi-main-body">
             <div class="kpi-value color-semaforo-yellow" id="kpi-dl">36,8 %</div>
-          </div>
-          <div class="formula-panel" id="formula-kpi-dl">
-            <div class="formula-panel-header">
-              <span class="formula-panel-title">📐 Prevalencia Dislipemia</span>
-              <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-kpi-dl', event)">✕</button>
-            </div>
-            <div class="formula-math-display">
-              $$\text{Prevalencia Dislipemia (\%)} = \left( \frac{\sum_{i=1}^{n} \text{Dislipemia}_i}{n} \right) \times 100$$
-              <div class="formula-math-sub">$$\text{donde } \text{Dislipemia}_i = \mathbf{1}_{\{\text{Col.Total} \ge 200 \;\lor\; \text{Triglicéridos} \ge 150 \;\lor\; \text{LDL} \ge 130\}}$$</div>
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Campos BD:</span>
-              <div class="field-pills">
-                <span class="field-pill">dislipemia</span>
-                <span class="field-pill">colesterol_total</span>
-                <span class="field-pill">trigliceridos</span>
-                <span class="field-pill">ldl</span>
-              </div>
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Criterio Médico:</span> Colesterol Total ≥ 200 mg/dL, Triglicéridos ≥ 150 mg/dL, LDL ≥ 130 mg/dL o terapia hipolipemiante activa.
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Semáforo:</span>
-              <div class="semaforo-badge-row">
-                <span class="semaforo-pill semaforo-pill-green">🟢 &lt; 20%</span>
-                <span class="semaforo-pill semaforo-pill-yellow">🟡 20 - 39.9%</span>
-                <span class="semaforo-pill semaforo-pill-red">🔴 ≥ 40%</span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -273,42 +176,9 @@
         <div class="card card-kpi" id="card-kpi-sp-ob">
           <div class="kpi-header-row">
             <span class="kpi-title">Sobrepeso y Obesidad</span>
-            <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-kpi-sp-ob', event)" title="Ver fórmula y campos de cálculo">
-              <span class="fx-symbol">ƒx</span>
-            </button>
           </div>
           <div class="kpi-main-body">
             <div class="kpi-value color-semaforo-yellow" id="kpi-sp-ob">73,6 %</div>
-          </div>
-          <div class="formula-panel" id="formula-kpi-sp-ob">
-            <div class="formula-panel-header">
-              <span class="formula-panel-title">📐 Exceso de Peso (IMC ≥ 25)</span>
-              <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-kpi-sp-ob', event)">✕</button>
-            </div>
-            <div class="formula-math-display">
-              $$\text{Exceso de Peso (\%)} = \left( \frac{\sum_{i=1}^{n} \mathbf{1}_{\{\text{IMC}_i \ge 25.0\}}}{n} \right) \times 100$$
-              <div class="formula-math-sub">$$\text{IMC} = \frac{\text{Peso (kg)}}{[\text{Estatura (m)}]^2} \quad (\text{Sobrepeso: } [25, 30), \;\text{Obesidad: } \ge 30)$$</div>
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Campos BD:</span>
-              <div class="field-pills">
-                <span class="field-pill">imc</span>
-                <span class="field-pill">sobrepeso_u_obesidad</span>
-                <span class="field-pill">peso</span>
-                <span class="field-pill">talla</span>
-              </div>
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Criterio Antropométrico:</span> IMC = Peso (kg) / [Talla (m)]² ≥ 25.0 kg/m² (Clasificación Oficial OMS).
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Semáforo:</span>
-              <div class="semaforo-badge-row">
-                <span class="semaforo-pill semaforo-pill-green">🟢 &lt; 50%</span>
-                <span class="semaforo-pill semaforo-pill-yellow">🟡 50 - 74.9%</span>
-                <span class="semaforo-pill semaforo-pill-red">🔴 ≥ 75%</span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -316,40 +186,9 @@
         <div class="card card-kpi" id="card-kpi-riesgo-alto">
           <div class="kpi-header-row">
             <span class="kpi-title">Riesgo Alto (≥2 F.)</span>
-            <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-kpi-riesgo-alto', event)" title="Ver fórmula y campos de cálculo">
-              <span class="fx-symbol">ƒx</span>
-            </button>
           </div>
           <div class="kpi-main-body">
             <div class="kpi-value color-semaforo-red" id="kpi-riesgo-alto">34,3 %</div>
-          </div>
-          <div class="formula-panel" id="formula-kpi-riesgo-alto">
-            <div class="formula-panel-header">
-              <span class="formula-panel-title">📐 Riesgo Multifactorial (≥2 F.)</span>
-              <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-kpi-riesgo-alto', event)">✕</button>
-            </div>
-            <div class="formula-math-display">
-              $$\text{Riesgo Alto (\%)} = \left( \frac{\sum_{i=1}^{n} \mathbf{1}_{\{\text{Score}_i \ge 2\}}}{n} \right) \times 100$$
-              <div class="formula-math-sub">$$\text{Score}_i = \text{HTA}_i + \text{Dislipemia}_i + \text{Obesidad}_i + \text{Diabetes}_i + \text{Esteatosis}_i + \text{Tabaco}_i$$</div>
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Campos BD:</span>
-              <div class="field-pills">
-                <span class="field-pill">factores_riesgo_count</span>
-                <span class="field-pill">riesgo_global</span>
-              </div>
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Criterio Clínico:</span> Suma de factores mayores acumulados (HTA + Dislipemia + Obesidad + Diabetes + Hígado Graso + Tabaquismo ≥ 2).
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Semáforo:</span>
-              <div class="semaforo-badge-row">
-                <span class="semaforo-pill semaforo-pill-green">🟢 &lt; 15%</span>
-                <span class="semaforo-pill semaforo-pill-yellow">🟡 15 - 24.9%</span>
-                <span class="semaforo-pill semaforo-pill-red">🔴 ≥ 25%</span>
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -365,28 +204,6 @@
               <div class="visual-title">
                 <h3>Tendencia de Tamizaje Cardiovascular por Año</h3>
               </div>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-chart-tendencia', event)" title="Ver fórmula y metodología">
-                <span class="fx-symbol">ƒx</span> Ver Fórmula
-              </button>
-            </div>
-            <div class="formula-panel" id="formula-chart-tendencia">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Metodología: Tendencia Longitudinal</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-chart-tendencia', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$\text{Tasa Anual HTA}_t = \left( \frac{\sum_{j \in \text{Cohorte}_t} \text{HTA}_j}{n_t} \right) \times 100, \quad t \in \{2023, 2024, 2025, 2026\}$$
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">ano</span>
-                  <span class="field-pill">hipertension</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Metodología:</span> Serie temporal que compara el volumen de evaluaciones realizadas frente al número de casos de hipertensión detectados por cohorte (2023: 72 evaluados / 25 HTA [34.7%]; 2024: 92 / 32 [34.8%]; 2025: 84 / 16 [19.0%]; 2026: 32 / 5 [15.6%]).
-              </div>
             </div>
             <div id="chart-tendencia-temporal" class="chart-container"></div>
           </div>
@@ -396,32 +213,6 @@
             <div class="visual-header">
               <div class="visual-title">
                 <h3>Prevalencia de Factores Modificables</h3>
-              </div>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-chart-factores', event)" title="Ver fórmula y metodología">
-                <span class="fx-symbol">ƒx</span> Ver Fórmula
-              </button>
-            </div>
-            <div class="formula-panel" id="formula-chart-factores">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Ranking Epidemiológico de Factores</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-chart-factores', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$\text{Prevalencia}(F_k) = \left( \frac{\sum_{i=1}^{n} F_{k,i}}{n} \right) \times 100, \quad k \in \{1, 2, \dots, 6\}$$
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">dislipemia</span>
-                  <span class="field-pill">hipertension</span>
-                  <span class="field-pill">obesidad</span>
-                  <span class="field-pill">higado_graso</span>
-                  <span class="field-pill">diabetes</span>
-                  <span class="field-pill">fumador_activo</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Metodología:</span> Ranking de mayor a menor frecuencia de los 6 factores modificables prioritarios en la salud ocupacional universitaria.
               </div>
             </div>
             <div id="chart-factores-modificables" class="chart-container"></div>
@@ -435,28 +226,6 @@
               <div class="visual-title">
                 <h3>Distribución por Categoría de Personal</h3>
               </div>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-chart-categoria', event)" title="Ver fórmula y metodología">
-                <span class="fx-symbol">ƒx</span> Ver Fórmula
-              </button>
-            </div>
-            <div class="formula-panel" id="formula-chart-categoria">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Frecuencia Bivariada (Categoría × Sexo)</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-chart-categoria', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$P(\text{Sexo}_s \mid \text{Categoría}_c) = \left( \frac{n(c \cap s)}{n_c} \right) \times 100 \quad (c \in \{\text{PDI, PAS, Serv.}\})$$
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">categoria</span>
-                  <span class="field-pill">sexo</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Metodología:</span> Distribución demográfica laboral: PDI (70 evaluados: 35H / 35M), PAS (179 evaluados: 80H / 99M), Servicios (31 evaluados: 27H / 4M).
-              </div>
             </div>
             <div class="chart-container">
               <canvas id="chart-categoria-personal"></canvas>
@@ -467,29 +236,6 @@
             <div class="visual-header">
               <div class="visual-title">
                 <h3>Distribución por Género y Nivel de Riesgo</h3>
-              </div>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-chart-genero-riesgo', event)" title="Ver fórmula y metodología">
-                <span class="fx-symbol">ƒx</span> Ver Fórmula
-              </button>
-            </div>
-            <div class="formula-panel" id="formula-chart-genero-riesgo">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Estratificación de Riesgo por Sexo</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-chart-genero-riesgo', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$P(\text{Riesgo}_r \mid \text{Sexo}_s) = \left( \frac{n(\text{Riesgo}_r \cap \text{Sexo}_s)}{n(\text{Sexo}_s)} \right) \times 100$$
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">sexo</span>
-                  <span class="field-pill">riesgo_global</span>
-                  <span class="field-pill">factores_riesgo_count</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Metodología:</span> Comparación por estratos de severidad: Bajo (0 factores), Moderado (1 factor), Alto (2-3 factores) y Muy Alto (4+ factores) entre Hombres (n=142) y Mujeres (n=138).
               </div>
             </div>
             <div class="chart-container">
@@ -509,33 +255,6 @@
             <div class="visual-header">
               <div class="visual-title">
                 <h3>Desglose Clínico de Patologías y Alteraciones</h3>
-              </div>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-tabla-clinicos', event)" title="Ver fórmula y metodología">
-                <span class="fx-symbol">ƒx</span> Ver Fórmula
-              </button>
-            </div>
-            <div class="formula-panel" id="formula-tabla-clinicos">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Inventario de Morbilidad Clínica</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-tabla-clinicos', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$\text{Prevalencia}(\text{Condición}_j) = \left( \frac{\sum_{i=1}^{n} P_{j,i}}{n} \right) \times 100$$
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">dislipemia</span>
-                  <span class="field-pill">hipertension</span>
-                  <span class="field-pill">sobrepeso_u_obesidad</span>
-                  <span class="field-pill">obesidad</span>
-                  <span class="field-pill">higado_graso</span>
-                  <span class="field-pill">diabetes</span>
-                  <span class="field-pill">fumador_activo</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Metodología:</span> Registro epidemiológico con clasificación semafórica diagnóstica (Verde = Favorable, Amarillo = Alerta Preventiva, Rojo = Riesgo Clínico Directo).
               </div>
             </div>
             <div class="pbi-table-wrapper">
@@ -569,29 +288,6 @@
               <div class="visual-title">
                 <h3>Correlación: IMC vs. Perímetro Abdominal</h3>
               </div>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-chart-scatter', event)" title="Ver fórmula y metodología">
-                <span class="fx-symbol">ƒx</span> Ver Fórmula
-              </button>
-            </div>
-            <div class="formula-panel" id="formula-chart-scatter">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Correlación de Pearson (IMC vs. Cintura)</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-chart-scatter', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$r_{xy} = \frac{\sum_{i=1}^{n} (x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum_{i=1}^{n} (x_i - \bar{x})^2} \cdot \sqrt{\sum_{i=1}^{n} (y_i - \bar{y})^2}}, \quad x = \text{IMC}, \; y = \text{Cintura}$$
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">imc</span>
-                  <span class="field-pill">perimetro_abdominal</span>
-                  <span class="field-pill">sexo</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Hallazgo Clínico:</span> Correlación positiva fuerte (r > 0.85); demuestra que el incremento del IMC general se traduce en un aumento directo y peligroso del perímetro abdominal aterogénico (grasa visceral central).
-              </div>
             </div>
             <div class="chart-container">
               <canvas id="chart-scatter-imc-cintura"></canvas>
@@ -606,30 +302,6 @@
               <div class="visual-title">
                 <h3>Control de Presión Arterial</h3>
               </div>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-chart-donut-hta', event)" title="Ver fórmula y metodología">
-                <span class="fx-symbol">ƒx</span> Ver Fórmula
-              </button>
-            </div>
-            <div class="formula-panel" id="formula-chart-donut-hta">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Segmentación de Manejo Tensional</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-chart-donut-hta', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$P(\text{Segmento}_k) = \left( \frac{n_k}{n} \right) \times 100, \quad \sum_{k=1}^{3} P(\text{Segmento}_k) = 100\%$$
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">hipertension</span>
-                  <span class="field-pill">hta_desc</span>
-                  <span class="field-pill">tas</span>
-                  <span class="field-pill">tad</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Semáforo:</span> 🟢 Normotensos (72.1%) | 🟡 HTA Tratada (21.4%) | 🔴 HTA No Tratada (6.5% - Alerta de riesgo sin control).
-              </div>
             </div>
             <div id="chart-donut-hta" class="chart-container"></div>
           </div>
@@ -639,29 +311,6 @@
             <div class="visual-header">
               <div class="visual-title">
                 <h3>Riesgo por Grupo de Edad</h3>
-              </div>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-chart-edad', event)" title="Ver fórmula y metodología">
-                <span class="fx-symbol">ƒx</span> Ver Fórmula
-              </button>
-            </div>
-            <div class="formula-panel" id="formula-chart-edad">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Escalada Epidemiológica por Edad</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-chart-edad', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$P(\text{Patología} \mid \text{Edad}_g) = \left( \frac{n(\text{Patología} \cap \text{Edad}_g)}{n(\text{Edad}_g)} \right) \times 100$$
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">grupo_edad</span>
-                  <span class="field-pill">hipertension</span>
-                  <span class="field-pill">dislipemia</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Hallazgo Clínico:</span> La HTA se triplica desde el 16.2% en &lt;40 años hasta el 51.9% en mayores de 60 años.
               </div>
             </div>
             <div class="chart-container">
@@ -674,30 +323,6 @@
             <div class="visual-header">
               <div class="visual-title">
                 <h3>Hígado Graso & Diabetes</h3>
-              </div>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-chart-metabolico', event)" title="Ver fórmula y metodología">
-                <span class="fx-symbol">ƒx</span> Ver Fórmula
-              </button>
-            </div>
-            <div class="formula-panel" id="formula-chart-metabolico">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Eje Metabólico Hepato-Glucémico</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-chart-metabolico', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$\text{Prevalencia}(M_j) = \left( \frac{\sum_{i=1}^{n} M_{j,i}}{n} \right) \times 100, \quad M_j \in \{\text{Esteatosis}, \text{Diabetes T2}\}$$
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">higado_graso</span>
-                  <span class="field-pill">diabetes</span>
-                  <span class="field-pill">glucosa_ayunas</span>
-                  <span class="field-pill">hba1c</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Criterios:</span> Hígado Graso (esteatosis ecográfica): 29.6% | Diabetes Mellitus Tipo 2 (glucosa ≥ 126 mg/dL o HbA1c ≥ 6.5%): 6.4%.
               </div>
             </div>
             <div id="chart-bar-metabolico" class="chart-container"></div>
@@ -715,39 +340,9 @@
           <div class="card card-kpi" id="card-kpi-act-fisica">
             <div class="kpi-header-row">
               <span class="kpi-title">Actividad Física Habitual</span>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-kpi-act-fisica', event)" title="Ver fórmula y campos de cálculo">
-                <span class="fx-symbol">ƒx</span>
-              </button>
             </div>
             <div class="kpi-main-body">
               <div class="kpi-value color-semaforo-yellow" id="kpi-act-fisica">41,4 %</div>
-            </div>
-            <div class="formula-panel" id="formula-kpi-act-fisica">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Actividad Física (Protector)</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-kpi-act-fisica', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$\text{Actividad Física (\%)} = \left( \frac{\sum_{i=1}^{n} \text{ActFísica}_i}{n} \right) \times 100$$
-                <div class="formula-math-sub">$$\text{Criterio OMS: } \ge 150 \text{ min/sem moderado} \;\lor\; \ge 75 \text{ min/sem intenso}$$</div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">actividad_fisica</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Criterio OMS:</span> ≥ 150 min/sem aeróbico moderado o ≥ 75 min intenso.
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Semáforo:</span>
-                <div class="semaforo-badge-row">
-                  <span class="semaforo-pill semaforo-pill-green">🟢 ≥ 50%</span>
-                  <span class="semaforo-pill semaforo-pill-yellow">🟡 30 - 49.9%</span>
-                  <span class="semaforo-pill semaforo-pill-red">🔴 &lt; 30%</span>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -755,40 +350,9 @@
           <div class="card card-kpi" id="card-kpi-frutas">
             <div class="kpi-header-row">
               <span class="kpi-title">Consumo Frutas/Verduras</span>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-kpi-frutas', event)" title="Ver fórmula y campos de cálculo">
-                <span class="fx-symbol">ƒx</span>
-              </button>
             </div>
             <div class="kpi-main-body">
               <div class="kpi-value color-semaforo-green" id="kpi-frutas">52,5 %</div>
-            </div>
-            <div class="formula-panel" id="formula-kpi-frutas">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Dieta Saludable (Protector)</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-kpi-frutas', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$\text{Dieta Saludable (\%)} = \left( \frac{\sum_{i=1}^{n} (\text{Fruta}_i \lor \text{Verdura}_i)}{n} \right) \times 100$$
-                <div class="formula-math-sub">$$\text{Meta: } \ge 2\text{--}3 \text{ porciones diarias frescas}$$</div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">consume_fruta</span>
-                  <span class="field-pill">consume_verdura</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Criterio Médico:</span> Ingesta habitual de al menos 2-3 porciones diarias frescas.
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Semáforo:</span>
-                <div class="semaforo-badge-row">
-                  <span class="semaforo-pill semaforo-pill-green">🟢 ≥ 45%</span>
-                  <span class="semaforo-pill semaforo-pill-yellow">🟡 25 - 44.9%</span>
-                  <span class="semaforo-pill semaforo-pill-red">🔴 &lt; 25%</span>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -796,38 +360,9 @@
           <div class="card card-kpi" id="card-kpi-estres">
             <div class="kpi-header-row">
               <span class="kpi-title">Estrés Laboral Declarado</span>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-kpi-estres', event)" title="Ver fórmula y campos de cálculo">
-                <span class="fx-symbol">ƒx</span>
-              </button>
             </div>
             <div class="kpi-main-body">
               <div class="kpi-value color-semaforo-yellow" id="kpi-estres">23,6 %</div>
-            </div>
-            <div class="formula-panel" id="formula-kpi-estres">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Estrés Psicosocial Ocupacional</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-kpi-estres', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$\text{Estrés Laboral (\%)} = \left( \frac{\sum_{i=1}^{n} \mathbf{1}_{\{\text{Estrés}_i = \text{"Laboral"}\}}}{n} \right) \times 100$$
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">estres</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Criterio Ocupacional:</span> Presencia declarada de tensión psicosocial continua en el entorno de trabajo.
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Semáforo:</span>
-                <div class="semaforo-badge-row">
-                  <span class="semaforo-pill semaforo-pill-green">🟢 &lt; 15%</span>
-                  <span class="semaforo-pill semaforo-pill-yellow">🟡 15 - 29.9%</span>
-                  <span class="semaforo-pill semaforo-pill-red">🔴 ≥ 30%</span>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -835,38 +370,9 @@
           <div class="card card-kpi" id="card-kpi-sueno-malo">
             <div class="kpi-header-row">
               <span class="kpi-title">Mala Calidad de Sueño</span>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-kpi-sueno-malo', event)" title="Ver fórmula y campos de cálculo">
-                <span class="fx-symbol">ƒx</span>
-              </button>
             </div>
             <div class="kpi-main-body">
               <div class="kpi-value color-semaforo-red" id="kpi-sueno-malo">30,4 %</div>
-            </div>
-            <div class="formula-panel" id="formula-kpi-sueno-malo">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Higiene y Calidad del Sueño</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-kpi-sueno-malo', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$\text{Mala Calidad Sueño (\%)} = \left( \frac{\sum_{i=1}^{n} \mathbf{1}_{\{\text{Sueño}_i = \text{"Mala"}\}}}{n} \right) \times 100$$
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">calidad_sueno</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Criterio Clínico:</span> Descanso no reparador, insomnio recurrente o vigilias nocturnas frecuentes.
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Semáforo:</span>
-                <div class="semaforo-badge-row">
-                  <span class="semaforo-pill semaforo-pill-green">🟢 &lt; 15%</span>
-                  <span class="semaforo-pill semaforo-pill-yellow">🟡 15 - 24.9%</span>
-                  <span class="semaforo-pill semaforo-pill-red">🔴 ≥ 25%</span>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -874,38 +380,9 @@
           <div class="card card-kpi" id="card-kpi-tabaco">
             <div class="kpi-header-row">
               <span class="kpi-title">Tabaquismo Activo</span>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-kpi-tabaco', event)" title="Ver fórmula y campos de cálculo">
-                <span class="fx-symbol">ƒx</span>
-              </button>
             </div>
             <div class="kpi-main-body">
               <div class="kpi-value color-semaforo-green" id="kpi-tabaco">4,3 %</div>
-            </div>
-            <div class="formula-panel" id="formula-kpi-tabaco">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Prevalencia de Tabaquismo</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-kpi-tabaco', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$\text{Prevalencia Tabaquismo (\%)} = \left( \frac{\sum_{i=1}^{n} \text{FumadorActivo}_i}{n} \right) \times 100$$
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">fumador_activo</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Criterio Toxicológico:</span> Consumo habitual o diario de cigarrillos en el último año.
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Semáforo:</span>
-                <div class="semaforo-badge-row">
-                  <span class="semaforo-pill semaforo-pill-green">🟢 ≤ 10%</span>
-                  <span class="semaforo-pill semaforo-pill-yellow">🟡 10.1 - 20%</span>
-                  <span class="semaforo-pill semaforo-pill-red">🔴 &gt; 20%</span>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -917,28 +394,6 @@
               <div class="visual-title">
                 <h3>Actividad Física por Categoría Profesional</h3>
               </div>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-chart-act-cat', event)" title="Ver fórmula y metodología">
-                <span class="fx-symbol">ƒx</span> Ver Fórmula
-              </button>
-            </div>
-            <div class="formula-panel" id="formula-chart-act-cat">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Sedentarismo vs. Actividad por Cargo</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-chart-act-cat', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$\% \text{ Activos}_c = \left( \frac{n(\text{Activos} \cap c)}{n_c} \right) \times 100, \quad \% \text{ Sedentarios}_c = 100 - \% \text{ Activos}_c$$
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">categoria</span>
-                  <span class="field-pill">actividad_fisica</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Distribución Base:</span> PDI Docentes (38.5% Activo / 61.5% Sedentario), PAS Administrativos (42.0% Activo / 58.0% Sedentario), Personal de Servicios (56.5% Activo / 43.5% Sedentario).
-              </div>
             </div>
             <div id="chart-actividad-categoria" class="chart-container"></div>
           </div>
@@ -948,27 +403,6 @@
             <div class="visual-header">
               <div class="visual-title">
                 <h3>Patrones de Consumo de Alcohol</h3>
-              </div>
-              <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-chart-alcohol', event)" title="Ver fórmula y metodología">
-                <span class="fx-symbol">ƒx</span> Ver Fórmula
-              </button>
-            </div>
-            <div class="formula-panel" id="formula-chart-alcohol">
-              <div class="formula-panel-header">
-                <span class="formula-panel-title">📐 Periodicidad del Consumo Etílico</span>
-                <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-chart-alcohol', event)">✕</button>
-              </div>
-              <div class="formula-math-display">
-                $$P(\text{Alcohol}_k) = \left( \frac{n_k}{n} \right) \times 100, \quad k \in \{\text{No consume, Ocasional, Semanal, Diario}\}$$
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Campos BD:</span>
-                <div class="field-pills">
-                  <span class="field-pill">consumo_alcohol</span>
-                </div>
-              </div>
-              <div class="formula-meta-row">
-                <span class="formula-meta-label">Semáforo Clínico:</span> 🟢 No consume (66.8%) | 🔵 Ocasional (23.2%) | 🟡 Semanal (9.3%) | 🔴 Diario (0.7% - Alto riesgo tóxico y arritmogénico).
               </div>
             </div>
             <div class="chart-container">
@@ -982,35 +416,6 @@
           <div class="visual-header">
             <div class="visual-title">
               <h3>Desempeño y Estado de Salud por Categoría Profesional</h3>
-            </div>
-            <button type="button" class="btn formula-btn-pill" onclick="toggleFormula('formula-tabla-categorias', event)" title="Ver fórmula y metodología">
-              <span class="fx-symbol">ƒx</span> Ver Fórmula
-            </button>
-          </div>
-          <div class="formula-panel" id="formula-tabla-categorias">
-            <div class="formula-panel-header">
-              <span class="formula-panel-title">📐 Matriz Compuesta de Semáforo Ocupacional</span>
-              <button type="button" class="btn formula-close-btn" onclick="toggleFormula('formula-tabla-categorias', event)">✕</button>
-            </div>
-            <div class="formula-math-display">
-              $$\text{Semáforo}(c) = \begin{cases} 
-              \text{Riesgo Elevado (Rojo)}, & \text{si } \% \text{HTA}_c > 35\% \lor \% \text{Obesidad}_c > 38\% \\ 
-              \text{Alerta Preventiva (Amarillo)}, & \text{si } \% \text{HTA}_c > 25\% \lor \% \text{Obesidad}_c > 30\% \\ 
-              \text{Moderado (Verde)}, & \text{en caso contrario} 
-              \end{cases}$$
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Campos BD:</span>
-              <div class="field-pills">
-                <span class="field-pill">categoria</span>
-                <span class="field-pill">hipertension</span>
-                <span class="field-pill">dislipemia</span>
-                <span class="field-pill">obesidad</span>
-                <span class="field-pill">actividad_fisica</span>
-              </div>
-            </div>
-            <div class="formula-meta-row">
-              <span class="formula-meta-label">Criterio Compuesto:</span> Evaluación multicriterio del perfil ocupacional para la focalización de brigadas médicas institucionales.
             </div>
           </div>
           <div class="pbi-table-wrapper">
@@ -1048,9 +453,9 @@
   <script src="{% static 'dashboard/vendor/chart.umd.min.js' %}"></script>
   <script src="{% static 'dashboard/vendor/apexcharts.min.js' %}"></script>
 
-  <!-- Datos simulados de cohorte (TEMPORAL: mock mientras se conecta al ORM) -->
-  <script src="{% static 'dashboard/js/dashboard-data.js' %}"></script>
 
   <!-- Controlador e inicialización del Dashboard -->
+  
+  <script id="dashboard-records-data" type="application/json">{{ records_json|safe }}</script>
   <script src="{% static 'dashboard/js/dashboard.js' %}"></script>
 {% endblock %}
