@@ -244,3 +244,39 @@ class FichaEliminarSecurityTests(TestCase):
         log = ChangeLog.objects.filter(record_key=str(self.patient.patient_id), action='DELETE').first()
         self.assertIsNotNone(log)
         self.assertEqual(log.user, self.user)
+
+    def test_batch_delete_with_correct_password_deletes_all_selected(self):
+        p2 = Patient.objects.create(
+            id_card="0923485726",
+            first_names="Ana",
+            last_name1="Seleccionada",
+            birth_date=datetime.date(1992, 1, 15),
+            sex=self.sex,
+            ethnicity=self.ethnicity,
+            birth_canton=self.canton,
+            institution=self.institution,
+            created_by=self.user
+        )
+        v2 = Visit.objects.create(
+            patient=p2,
+            evaluator=self.user,
+            study_code="998",
+            visit_number=1,
+            visit_date=datetime.date.today(),
+            residence_canton=self.canton,
+            status=Visit.Status.COMPLETED
+        )
+
+        resp = self.client.post(
+            '/clinical/api/ficha/eliminar/',
+            data={'patient_ids': [self.patient.patient_id, p2.patient_id], 'password': self.password},
+            content_type='application/json'
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json().get('success'))
+        self.assertEqual(resp.json().get('deleted_count'), 2)
+        # Verificar eliminaciones
+        self.assertFalse(Patient.objects.filter(patient_id=self.patient.patient_id).exists())
+        self.assertFalse(Patient.objects.filter(patient_id=p2.patient_id).exists())
+        self.assertFalse(Visit.objects.filter(study_code="999").exists())
+        self.assertFalse(Visit.objects.filter(study_code="998").exists())

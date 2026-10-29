@@ -1,9 +1,10 @@
 /**
  * ELIMINAR_FICHA.JS
- * Lógica transversal para la eliminación protegida por contraseña de Fichas Clínicas.
+ * Lógica transversal para la eliminación protegida por contraseña de Fichas Clínicas
+ * (individual y selección múltiple / por lote).
  */
 
-let _targetPacienteIdEliminar = null;
+let _targetIdsEliminar = [];
 
 function getCsrfTokenEliminar() {
   const cookieVal = document.cookie
@@ -15,15 +16,45 @@ function getCsrfTokenEliminar() {
   return inputEl ? inputEl.value : '';
 }
 
-function solicitarEliminarFicha(pacienteId, pacienteNombre, codigo) {
+/**
+ * Abre el modal para eliminar una ficha individual o un conjunto de fichas.
+ * @param {string|number|Array} target - ID de paciente o arreglo de IDs
+ * @param {string} [pacienteNombre] - Nombre para mostrar en caso individual
+ * @param {string} [codigo] - Código de estudio para mostrar
+ */
+function solicitarEliminarFicha(target, pacienteNombre, codigo) {
   const modal = document.getElementById('modalEliminarFicha');
   if (!modal) return;
 
-  _targetPacienteIdEliminar = pacienteId;
+  const isMultiple = Array.isArray(target) || (target instanceof Set);
+  _targetIdsEliminar = isMultiple ? Array.from(target) : [target];
 
-  const lblNombre = document.getElementById('deleteModalPacienteNombre');
-  if (lblNombre) {
-    lblNombre.textContent = pacienteNombre || (codigo ? `Paciente Código #${codigo}` : 'este paciente');
+  const modalTitulo = document.getElementById('deleteModalTitulo') || modal.querySelector('h3');
+  const msgP = document.getElementById('deleteModalMensaje');
+  const advSpan = document.getElementById('deleteModalAdvertencia');
+
+  if (isMultiple && _targetIdsEliminar.length > 1) {
+    if (modalTitulo) modalTitulo.textContent = `Eliminar ${_targetIdsEliminar.length} Fichas Seleccionadas`;
+    if (msgP) {
+      msgP.innerHTML = `¿Está seguro de que desea eliminar permanentemente las <strong>${_targetIdsEliminar.length} fichas clínicas seleccionadas</strong>?`;
+    }
+    if (advSpan) {
+      advSpan.textContent = `Esta acción es definitiva e irreversible. Se borrarán permanentemente los antecedentes, exámenes y respuestas de las ${_targetIdsEliminar.length} fichas seleccionadas.`;
+    }
+  } else {
+    const singleId = _targetIdsEliminar[0];
+    if (modalTitulo) modalTitulo.textContent = 'Eliminar Ficha Clínica';
+    let nombreMostrar = pacienteNombre;
+    if (!nombreMostrar && typeof pacientes !== 'undefined' && Array.isArray(pacientes)) {
+      const pFound = pacientes.find(p => String(p.id) === String(singleId));
+      if (pFound) nombreMostrar = pFound.nombre;
+    }
+    if (msgP) {
+      msgP.innerHTML = `¿Está seguro de que desea eliminar la ficha clínica de <strong style="color: #0f172a;">${nombreMostrar || 'este paciente'}</strong>${codigo ? ` (Código: #${codigo})` : ''}?`;
+    }
+    if (advSpan) {
+      advSpan.textContent = 'Esta acción es definitiva. Se borrarán permanentemente los antecedentes, exámenes y respuestas de la ficha.';
+    }
   }
 
   const pwdInput = document.getElementById('deleteModalPassword');
@@ -38,21 +69,34 @@ function solicitarEliminarFicha(pacienteId, pacienteNombre, codigo) {
   const btnConfirm = document.getElementById('btnConfirmarEliminarFicha');
   if (btnConfirm) {
     btnConfirm.disabled = false;
-    btnConfirm.textContent = 'Eliminar definitivamente';
+    btnConfirm.textContent = isMultiple && _targetIdsEliminar.length > 1
+      ? `Eliminar (${_targetIdsEliminar.length}) definitivamente`
+      : 'Eliminar definitivamente';
   }
 
   modal.style.display = 'flex';
   setTimeout(() => pwdInput && pwdInput.focus(), 80);
 }
 
+/**
+ * Disparador para la acción de selección múltiple desde la barra de herramientas
+ */
+function solicitarEliminarSeleccionados() {
+  if (typeof seleccionados === 'undefined' || !seleccionados || seleccionados.size === 0) {
+    alert('Por favor seleccione al menos una ficha para eliminar.');
+    return;
+  }
+  solicitarEliminarFicha(Array.from(seleccionados));
+}
+
 function cerrarModalEliminarFicha() {
   const modal = document.getElementById('modalEliminarFicha');
   if (modal) modal.style.display = 'none';
-  _targetPacienteIdEliminar = null;
+  _targetIdsEliminar = [];
 }
 
 async function ejecutarEliminacionFicha() {
-  if (!_targetPacienteIdEliminar) return;
+  if (!_targetIdsEliminar || _targetIdsEliminar.length === 0) return;
 
   const pwdInput = document.getElementById('deleteModalPassword');
   const errDiv = document.getElementById('deleteModalError');
@@ -81,7 +125,7 @@ async function ejecutarEliminacionFicha() {
         'X-CSRFToken': getCsrfTokenEliminar()
       },
       body: JSON.stringify({
-        patient_id: _targetPacienteIdEliminar,
+        patient_ids: _targetIdsEliminar,
         password: password
       })
     });
@@ -101,7 +145,7 @@ async function ejecutarEliminacionFicha() {
     }
 
     // Éxito: cerrar modal
-    const idEliminado = _targetPacienteIdEliminar;
+    const eliminadosSet = new Set((data.deleted_ids || _targetIdsEliminar).map(x => String(x)));
     cerrarModalEliminarFicha();
 
     // Si estamos en la página del formulario / ficha médica, regresar al listado
@@ -113,10 +157,12 @@ async function ejecutarEliminacionFicha() {
 
     // Si estamos en el listado general de pacientes
     if (typeof pacientes !== 'undefined' && Array.isArray(pacientes)) {
-      pacientes = pacientes.filter(p => String(p.id) !== String(idEliminado));
+      pacientes = pacientes.filter(p => !eliminadosSet.has(String(p.id)));
       if (typeof seleccionados !== 'undefined') {
-        seleccionados.delete(String(idEliminado));
-        seleccionados.delete(Number(idEliminado));
+        eliminadosSet.forEach(id => {
+          seleccionados.delete(id);
+          seleccionados.delete(Number(id));
+        });
       }
       if (typeof volverAListadoPacientes === 'function') {
         volverAListadoPacientes();
@@ -127,10 +173,14 @@ async function ejecutarEliminacionFicha() {
       if (typeof actualizarStatsCards === 'function') {
         actualizarStatsCards();
       }
+      const filtrados = typeof obtenerPacientesFiltrados === 'function' ? obtenerPacientesFiltrados() : pacientes;
+      if (typeof actualizarEstadoSeleccion === 'function') {
+        actualizarEstadoSeleccion(filtrados);
+      }
     }
 
     // Notificación flotante
-    mostrarToastEliminacion(data.message || 'Ficha clínica eliminada.');
+    mostrarToastEliminacion(data.message || 'Fichas clínicas eliminadas.');
 
   } catch (err) {
     if (errDiv) {

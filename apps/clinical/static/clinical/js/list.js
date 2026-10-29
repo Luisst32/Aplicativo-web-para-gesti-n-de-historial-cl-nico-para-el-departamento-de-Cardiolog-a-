@@ -512,6 +512,17 @@ function actualizarEstadoSeleccion(filtrados) {
     checkTodosTabla.indeterminate = esIndeterminado;
   }
 
+  const btnEliminarSel = document.getElementById('btnEliminarSeleccionados');
+  const countEliminarSel = document.getElementById('countSeleccionadosEliminar');
+  if (btnEliminarSel) {
+    if (seleccionados.size > 0) {
+      btnEliminarSel.style.display = 'inline-flex';
+      if (countEliminarSel) countEliminarSel.textContent = seleccionados.size;
+    } else {
+      btnEliminarSel.style.display = 'none';
+    }
+  }
+
   const countEl = document.getElementById('formulariosCount');
   if (countEl) {
     let texto = `Mostrando ${filtrados.length} de ${pacientes.length} pacientes`;

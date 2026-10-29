@@ -6,7 +6,7 @@ from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST, require_GET
-from django.db import transaction, connection
+from django.db import models, transaction, connection
 from django.core.paginator import Paginator
 
 from catalog.models import (
@@ -1175,7 +1175,7 @@ def sav_import_execute_api(request):
 @require_POST
 def ficha_eliminar_api(request):
     """
-    Eliminacion segura y transaccional de una Ficha Clinica y su paciente.
+    Eliminacion segura y transaccional de Fichas Clinicas (individual o en lote).
     Exige la confirmacion de la contrasena del usuario autenticado para autorizar el borrado.
     Registra el evento en audit.change_log.
     """
@@ -1186,7 +1186,11 @@ def ficha_eliminar_api(request):
             data = request.POST.dict()
 
         password = (data.get('password') or '').strip()
-        patient_id = data.get('patient_id') or data.get('idPaciente') or data.get('paciente_id')
+        raw_ids = data.get('patient_ids') or data.get('ids')
+        if not raw_ids:
+            single_id = data.get('patient_id') or data.get('idPaciente') or data.get('paciente_id')
+            if single_id:
+                raw_ids = [single_id]
 
         # 1. Validar contrasena obligatoria
         if not password:
@@ -1199,58 +1203,74 @@ def ficha_eliminar_api(request):
         if not request.user.check_password(password):
             return JsonResponse({
                 "success": False,
-                "error": "Contraseña incorrecta. No se autorizó la eliminación."
+                "error": "Contraseña incorrecta. Verificación de seguridad fallida."
             }, status=403)
 
-        # 3. Buscar paciente
-        if not patient_id:
+        # 3. Validar identificadores
+        if not raw_ids:
             return JsonResponse({
                 "success": False,
-                "error": "Identificador de paciente o ficha ausente."
+                "error": "Seleccione al menos una ficha clínica para eliminar."
             }, status=400)
 
-        clean_id = str(patient_id).replace('p', '').strip()
-        patient = None
-        if clean_id.isdigit():
-            patient = Patient.objects.filter(patient_id=int(clean_id)).first()
-        if not patient:
-            patient = Patient.objects.filter(visit__study_code=str(patient_id).strip()).first()
-        if not patient:
-            patient = Patient.objects.filter(id_card=str(patient_id).strip()).first()
+        if isinstance(raw_ids, str):
+            raw_ids = [x.strip() for x in raw_ids.split(',') if x.strip()]
 
-        if not patient:
+        clean_ids = [str(x).replace('p', '').strip() for x in raw_ids if str(x).strip()]
+        numeric_ids = [int(x) for x in clean_ids if x.isdigit()]
+
+        patients_qs = Patient.objects.filter(
+            models.Q(patient_id__in=numeric_ids) |
+            models.Q(visit__study_code__in=clean_ids) |
+            models.Q(id_card__in=clean_ids)
+        ).distinct()
+
+        patients_list = list(patients_qs)
+        if not patients_list:
             return JsonResponse({
                 "success": False,
-                "error": "No se encontró el paciente o ficha clínica a eliminar."
+                "error": "No se encontraron las fichas clínicas a eliminar."
             }, status=404)
 
-        patient_name = patient.full_name
-        p_id = patient.patient_id
-        visit = getattr(patient, 'visit', None)
-        study_code = visit.study_code if visit else str(p_id)
+        deleted_ids = []
+        deleted_names = []
+        ip_addr = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '127.0.0.1')
 
         # 4. Transaccion atomica de eliminacion
         with transaction.atomic():
-            if visit:
-                visit.delete()
-            patient.delete()
+            for pat in patients_list:
+                p_id = pat.patient_id
+                p_name = pat.full_name
+                v = getattr(pat, 'visit', None)
+                s_code = v.study_code if v else str(p_id)
 
-            # Auditoria
-            ip_addr = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '127.0.0.1')
-            register_audit_log(
-                user=request.user,
-                schema_name='clinical',
-                table_name='patient',
-                record_key=str(p_id),
-                action='DELETE',
-                old_value={'patient_name': patient_name, 'study_code': study_code},
-                machine_name=ip_addr
-            )
+                if v:
+                    v.delete()
+                pat.delete()
+
+                deleted_ids.append(p_id)
+                deleted_names.append(p_name)
+
+                register_audit_log(
+                    user=request.user,
+                    schema_name='clinical',
+                    table_name='patient',
+                    record_key=str(p_id),
+                    action='DELETE',
+                    old_value={'patient_name': p_name, 'study_code': s_code, 'batch': len(patients_list) > 1},
+                    machine_name=ip_addr
+                )
+
+        if len(deleted_ids) == 1:
+            msg = f"La ficha clínica de '{deleted_names[0]}' ha sido eliminada permanentemente."
+        else:
+            msg = f"Se eliminaron {len(deleted_ids)} fichas clínicas seleccionadas exitosamente."
 
         return JsonResponse({
             "success": True,
-            "message": f"La ficha clínica de '{patient_name}' ha sido eliminada permanentemente.",
-            "patient_id": p_id
+            "message": msg,
+            "deleted_ids": deleted_ids,
+            "deleted_count": len(deleted_ids)
         })
 
     except Exception as e:
