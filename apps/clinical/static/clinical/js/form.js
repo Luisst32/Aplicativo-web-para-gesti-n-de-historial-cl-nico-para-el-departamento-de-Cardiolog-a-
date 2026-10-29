@@ -795,6 +795,15 @@ function restaurarFichaDesdeObjeto(datos) {
   if (datos.f_visita && document.getElementById('f_visita')) {
     document.getElementById('f_visita').value = datos.f_visita;
   }
+  if (datos.f_fecha_nac && typeof onBirthDateChange === 'function') {
+    onBirthDateChange(datos.f_fecha_nac);
+  }
+  if (datos.f_edad) {
+    const elEdad = document.getElementById('f_edad');
+    if (elEdad) elEdad.value = datos.f_edad;
+    const heroEdad = document.getElementById('heroEdad');
+    if (heroEdad) heroEdad.textContent = datos.f_edad + ' años';
+  }
 
   Object.keys(datos).forEach(key => {
     const val = datos[key];
@@ -821,12 +830,34 @@ function restaurarFichaDesdeObjeto(datos) {
       if (!matched) {
         const isSi = (vNorm === 'si' || vNorm === 'sí' || vNorm.startsWith('si') || vNorm.startsWith('sí') || vNorm === '1' || vNorm === 'true');
         const isNo = (vNorm === 'no' || vNorm.startsWith('no') || vNorm === '0' || vNorm === 'false');
+        const isNormal = (vNorm === 'normal' || vNorm === 'normales' || vNorm.startsWith('normal'));
+        const isAlterada = (vNorm === 'alterada' || vNorm === 'alteradas' || vNorm.startsWith('alterad'));
         for (let i = 0; i < elements.length; i++) {
           const rVal = elements[i].value.toLowerCase().trim();
-          if ((isSi && rVal === 'si') || (isNo && rVal === 'no')) {
+          if ((isSi && (rVal === 'si' || rVal === 'sí')) || 
+              (isNo && rVal === 'no') ||
+              (isNormal && (rVal === 'normal' || rVal === 'normales')) ||
+              (isAlterada && (rVal === 'alterada' || rVal === 'alteradas'))) {
             elements[i].checked = true;
             if (elements[i].onchange) elements[i].onchange();
+            matched = true;
             break;
+          }
+        }
+      }
+      // Sincronizar visibilidad de contenedor condicional si corresponde
+      if (matched) {
+        for (let i = 0; i < elements.length; i++) {
+          if (elements[i].checked) {
+            const row = elements[i].closest('.condition-row');
+            if (row) {
+              const rVal = elements[i].value.toLowerCase().trim();
+              if (rVal === 'si' || rVal === 'sí' || rVal === 'alterada' || rVal === 'alteradas') {
+                row.classList.add('active-yes');
+              } else if (rVal === 'no' || rVal === 'normal' || rVal === 'normales') {
+                row.classList.remove('active-yes');
+              }
+            }
           }
         }
       }
@@ -835,8 +866,11 @@ function restaurarFichaDesdeObjeto(datos) {
       if (!elements.value && val) {
         const vLower = String(val).toLowerCase().trim();
         for (let j = 0; j < elements.options.length; j++) {
-          if (elements.options[j].value.toLowerCase().trim() === vLower ||
-              elements.options[j].text.toLowerCase().trim() === vLower) {
+          const optVal = elements.options[j].value.toLowerCase().trim();
+          const optTxt = elements.options[j].text.toLowerCase().trim();
+          if (optVal === vLower || optTxt === vLower ||
+              (optVal && vLower.startsWith(optVal)) ||
+              (optTxt && (optTxt.includes(vLower) || vLower.includes(optTxt)))) {
             elements.selectedIndex = j;
             break;
           }
@@ -847,7 +881,7 @@ function restaurarFichaDesdeObjeto(datos) {
       const vLower = String(val).toLowerCase().trim();
       elements.checked = (val === '1' || val === 1 || val === true || vLower === 'si' || vLower === 'sí' || vLower === elements.value.toLowerCase());
       if (elements.onchange) elements.onchange();
-    } else if (elements.type === 'text' || elements.type === 'number' || elements.type === 'date') {
+    } else if ('value' in elements) {
       elements.value = val;
       if (elements.oninput) elements.oninput();
       if (elements.onchange) elements.onchange();

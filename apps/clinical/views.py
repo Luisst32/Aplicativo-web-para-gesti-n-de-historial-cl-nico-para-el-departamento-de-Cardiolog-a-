@@ -38,7 +38,16 @@ QUESTION_ALIASES = {
     'r_sobrepeso': 'peso_corporal',
     'r_irc': 'insuf_renal_cronica',
     'r_higado': 'higado_graso',
+    'res_higado_graso': 'higado_graso',
     'r_apnea': 'apnea_sueno',
+    'r_arritmias': 'arritmias',
+    'arritmias_tipo': 'arritmias',
+    'r_sincopes': 'sincopes',
+    'sincopes_tipo': 'sincopes',
+    'r_ictus': 'antecedentrs_ictus',
+    'r_disfunc': 'disfuncion_erectil',
+    'r_vasc_perif': 'vasculopatia',
+    'r_vasc_carot': 'vasculopatia',
 
     # Factores Emergentes (SPSS <-> Formulario)
     'sueno_cantidad': 'cantidad_sueno',
@@ -47,7 +56,6 @@ QUESTION_ALIASES = {
     'em_estrogenos': 'bajos_estrogenos',
     'em_anticonceptivos': 'proteccion_anticonceptivo',
     'em_estres_trab': 'estres',
-    'em_estres_fam': 'estres_familiar',
     'em_mal_amb': 'mal_ambiente_laboral',
     'em_pers_a': 'personalidad_tipo_a',
     'em_personalidad_a': 'personalidad_tipo_a',
@@ -61,19 +69,21 @@ QUESTION_ALIASES = {
     'ant_madre_dm': 'af_madre_dm',
     'ant_padre_dislip': 'af_padre_dlp',
     'ant_madre_dislip': 'af_madre_dlp',
-    'nc_cancer': 'ant_cancer',
+    'nc_cancer': 'historia_cancer',
     'nc_epoc': 'problemas_respiratorios',
     'nc_asma': 'problemas_respiratorios',
-    'nc_reuma': 'ant_reuma',
+    'nc_reuma': 'enfermedad_reumatologicas',
     'nc_depresion': 'salud_mental',
     'nc_ansiedad': 'salud_mental',
     'nc_alergia': 'alergias',
 
     # COVID y Síntomas
     'covid_paso': 'historia_covid',
-    'covid_ingreso': 'covid_hosp',
-    'covid_cv': 'covid_secuelas_cardio',
-    'covid_pulm': 'covid_secuelas_resp',
+    'covid_ingreso': 'historia_covid',
+    'covid_cv': 'afectacion_covid',
+    'covid_pulm': 'afectacion_covid',
+    'longcovid': 'long_covid',
+    'longcovid_sintomas': 'long_covid',
     'rose_1': 'dolor_pecho',
     'rose_3': 'rose_detenerse',
     'rose_4': 'rose_alivio',
@@ -81,6 +91,7 @@ QUESTION_ALIASES = {
 
     # PREDIMED (Dieta Mediterránea)
     'pred_q1': 'usa_usted_aceite_de_oliva',
+    'pred_q2': 'usa_usted_aceite_de_oliva',
     'pred_q3': 'usted_consume_verduras',
     'pred_q4': 'usted_consume_fruta',
     'pred_q5': 'usted_consume_carne_roja_embut',
@@ -100,6 +111,26 @@ QUESTION_ALIASES = {
     'pred_q18': 'usted_consume_pollo_pavo_o_con',
     'pred_q19': 'usted_consume_alimentos_con_so',
 
+    # Exploración física / Hallazgos (SPSS <-> Formulario)
+    'soplos': 'soplos_cardiacos',
+    'extratonos': 'extratono_sino_tipo',
+    'pulsos_palp': 'pulsospedios',
+    'pulsos_sim': 'pulsospedios',
+    'resp_norm': 'exploracion_respiratoria',
+    'abdom_norm': 'exploracion_abdominal',
+
+    # Ecocardiograma (SPSS <-> Formulario)
+    'res_vi_dilatado': 'ventriculo_izquierdo_dilatado',
+    'res_vi_hipertrofico': 'ventriculo_izquierdo_hipertrofico',
+    'res_presiones_vi': 'presiones_llenado_ventriculo_izquierdo',
+    'res_contractilidad': 'alteraciones_contractilidad',
+    'res_vd_dilatado': 'ventriculo_derecho_dilatado',
+    'res_vd_hipertrofico': 'ventriculo_derecho_hipertrofico',
+    'res_raiz_aortica': 'aorta_dilatada',
+    'res_derrame': 'derrame_pericardio',
+    'res_ai_dilatada': 'dilatacion_ai',
+    'res_valvulopatia': 'insuficiencia_cardiaca_valvulopatia',
+
     # Campos generales
     'f_num_hijos': 'f_hijos',
     'f_num_convivientes': 'f_convivientes',
@@ -114,6 +145,9 @@ QUESTION_ALIASES = {
     'apnea': 'apnea_sueno',
     'toxicos_laboral': 'trabaja_con_toxicos',
     'estres_laboral': 'estres',
+    'ant_cancer': 'historia_cancer',
+    'ant_reuma': 'enfermedad_reumatologicas',
+    'antecedentes_ictus': 'antecedentrs_ictus',
 }
 REVERSE_ALIASES = {v: k for k, v in QUESTION_ALIASES.items()}
 
@@ -507,13 +541,32 @@ def patient_create_api(request):
 def _build_form_datos(patient, visit):
     """
     Constructs a dictionary of all field values matching HTML input/select/radio/checkbox
-    names across all 6 clinical modules.
+    names across all 6 clinical modules, with automatic cross-mapping of SPSS and database fields.
     """
     ant = getattr(visit, 'anthropometry', None) if visit else None
     vs = getattr(visit, 'vital_signs', None) if visit else None
     ecg = getattr(visit, 'electrocardiogram', None) if visit else None
     echo = getattr(visit, 'echocardiogram', None) if visit else None
     lab = getattr(visit, 'laboratory', None) if visit else None
+
+    # Cálculo automático de edad si fecha de nacimiento existe
+    edad_val = ""
+    if patient.birth_date:
+        today = datetime.date.today()
+        edad_val = str(today.year - patient.birth_date.year - ((today.month, today.day) < (patient.birth_date.month, patient.birth_date.day)))
+
+    # Ritmo ECG normalizado
+    ecg_ritmo_val = "RS"
+    if ecg and ecg.rhythm:
+        r_name = ecg.rhythm.name.upper()
+        if "SINUSAL" in r_name or "RS" in r_name:
+            ecg_ritmo_val = "RS"
+        elif "RL" in r_name:
+            ecg_ritmo_val = "RL"
+        elif "ACXFA" in r_name or "FA" in r_name or "AURICULAR" in r_name:
+            ecg_ritmo_val = "ACXFA"
+        else:
+            ecg_ritmo_val = ecg.rhythm.name
 
     datos = {
         # Modulo 1: Ficha
@@ -522,6 +575,7 @@ def _build_form_datos(patient, visit):
         "f_apellido2": patient.last_name2 or "",
         "f_cedula": patient.id_card,
         "f_fecha_nac": patient.birth_date.isoformat() if patient.birth_date else "",
+        "f_edad": edad_val,
         "f_sexo": "H" if (patient.sex and patient.sex.name.lower().startswith('h')) else "M",
         "f_raza": patient.ethnicity.name.upper() if patient.ethnicity else "MESTIZO",
         "f_telefono": patient.phone or "",
@@ -538,6 +592,7 @@ def _build_form_datos(patient, visit):
         "f_provincia": visit.residence_canton.province.name.upper() if (visit and visit.residence_canton and visit.residence_canton.province) else "GUAYAS",
         "f_municipio": patient.birth_canton.name if patient.birth_canton else "Milagro",
         "f_provincia_nac": patient.birth_canton.province.name.upper() if (patient.birth_canton and patient.birth_canton.province) else "GUAYAS",
+        "f_pais_nac": "ECUADOR",
 
         # Modulo 2: Exploración física
         "f_peso": str(ant.weight_kg) if (ant and ant.weight_kg) else "",
@@ -549,6 +604,13 @@ def _build_form_datos(patient, visit):
         "f_tsi": str(vs.diastolic_bp) if (vs and vs.diastolic_bp) else "",
         "f_sat_o2": str(vs.oxygen_saturation) if (vs and vs.oxygen_saturation) else "",
         "f_fc": str(vs.heart_rate) if (vs and vs.heart_rate) else "",
+        "soplos": "Si" if (vs and (vs.systolic_murmur or vs.diastolic_murmur)) else "No",
+        "soplo_grado": str(vs.murmur_grade) if (vs and vs.murmur_grade) else "",
+        "soplo_tipo": "Sistólico" if (vs and vs.systolic_murmur) else ("Diastólico" if (vs and vs.diastolic_murmur) else ""),
+        "pulsos_palp": "Si" if (vs and vs.pedal_pulses_symmetric is not None) else "Si",
+        "pulsos_sim": "Si" if (vs and vs.pedal_pulses_symmetric) else ("No" if (vs and vs.pedal_pulses_symmetric is False) else "Si"),
+        "resp_norm": "Si" if (vs and vs.pulmonary_auscultation_normal) else ("No" if (vs and vs.pulmonary_auscultation_normal is False) else "Si"),
+        "abdom_norm": "Si" if (vs and vs.abdominal_auscultation_normal) else ("No" if (vs and vs.abdominal_auscultation_normal is False) else "Si"),
         "f_soplo_sistolico": "Si" if (vs and vs.systolic_murmur) else "No",
         "f_soplo_diastolico": "Si" if (vs and vs.diastolic_murmur) else "No",
         "f_grado_soplo": str(vs.murmur_grade) if (vs and vs.murmur_grade) else "",
@@ -557,7 +619,8 @@ def _build_form_datos(patient, visit):
         "f_auscultacion_abdominal": "Normal" if (vs and vs.abdominal_auscultation_normal) else "Alterada",
 
         # Modulo 5: ECG
-        "ecg_ritmo": ecg.rhythm.name if (ecg and ecg.rhythm) else "Ritmo Sinusal (RS)",
+        "ecg_ritmo": ecg_ritmo_val,
+        "ecg_normal": "No" if (ecg and (ecg.left_ventricular_hypertrophy or ecg.bundle_branch_block or ecg.repolarization_abnormalities)) else "Si",
         "ecg_fc": str(ecg.heart_rate) if (ecg and ecg.heart_rate) else "",
         "ecg_pr": str(ecg.pr_interval_ms) if (ecg and ecg.pr_interval_ms) else "",
         "ecg_qrs": str(ecg.qrs_duration_ms) if (ecg and ecg.qrs_duration_ms) else "",
@@ -566,6 +629,14 @@ def _build_form_datos(patient, visit):
         "ecg_eje": str(ecg.qrs_axis_degrees) if (ecg and ecg.qrs_axis_degrees) else "",
         "ecg_hvi": "Si" if (ecg and ecg.left_ventricular_hypertrophy) else "No",
         "ecg_comentario": ecg.ecg_comments if (ecg and ecg.ecg_comments) else "",
+
+        # Modulo 4: Ecocardiograma
+        "res_eco_normal": "No" if (echo and (echo.ventricular_hypertrophy or echo.diastolic_dysfunction or echo.aortic_valve_calcification)) else "Si",
+        "res_vi_hipertrofico": "Si" if (echo and echo.ventricular_hypertrophy) else "No",
+        "res_fdvi": "Alterada" if (echo and echo.diastolic_dysfunction) else "Normal",
+        "valvulopatia_tipo_detalle": echo.valvular_regurgitation_detail if (echo and echo.valvular_regurgitation_detail) else "",
+        "eco_ddvi": str(echo.lv_dimension_mm) if (echo and echo.lv_dimension_mm) else "",
+        "eco_fey": str(echo.lvef_percentage) if (echo and echo.lvef_percentage) else "",
 
         # Modulo 5: Laboratorio
         "hemo_hematies": str(lab.rbc_millions) if (lab and lab.rbc_millions) else "",
@@ -612,10 +683,12 @@ def _build_form_datos(patient, visit):
             datos['f_ingresos'] = ir_val_map.get(visit.income_range.name, '')
 
         # Cargar todas las respuestas guardadas en VisitAnswer
+        ans_dict = {}
         for ans in visit.answers.select_related('question').all():
             q_code = ans.question.code
             val = ans.text_value or (str(ans.numeric_value) if ans.numeric_value is not None else (ans.selected_option.label if ans.selected_option else ""))
             if val is not None and str(val).strip() != '':
+                ans_dict[q_code] = val
                 datos[q_code] = val
                 # Sincronizar bidireccionalmente con los identificadores del formulario HTML
                 for form_k, spss_k in QUESTION_ALIASES.items():
@@ -623,6 +696,181 @@ def _build_form_datos(patient, visit):
                         datos[form_k] = val
                     elif q_code == form_k and spss_k not in datos:
                         datos[spss_k] = val
+
+        # Inyecciones y deducciones inteligentes para compatibilidad total con SPSS:
+        # 0. Edad real reportada en SPSS/VisitAnswer
+        if ans_dict.get('edad'):
+            try:
+                edad_num = str(ans_dict.get('edad')).split('.')[0].strip()
+                if edad_num.isdigit() and int(edad_num) > 0:
+                    datos['f_edad'] = edad_num
+            except Exception:
+                pass
+
+        # 1. Estrés laboral y familiar (ESTRES de SPSS contiene ambos)
+        estres = ans_dict.get('estres', '')
+        if estres:
+            e_up = estres.upper()
+            if any(k in e_up for k in ['TRABAJO', 'TREBAJO']) and 'NO EN EL TRABAJO' not in e_up:
+                datos['em_estres_trab'] = 'Si'
+            else:
+                datos['em_estres_trab'] = 'No'
+            if 'FAMILIAR' in e_up and 'NO EN LA VIDA FAMILIAR' not in e_up:
+                datos['em_estres_fam'] = 'Si'
+            else:
+                datos['em_estres_fam'] = 'No'
+
+        # 2. Antecedentes familiares (Padre / Madre / Familiares)
+        p_ans = ans_dict.get('antecedentes_padres', '') or ans_dict.get('af_padres', '')
+        if p_ans:
+            p_up = p_ans.upper()
+            if 'HTA' in p_up: datos['ant_padre_hta'] = 'Si'
+            if 'DIABET' in p_up: datos['ant_padre_dm'] = 'Si'
+            if 'DISLIP' in p_up or 'DLP' in p_up: datos['ant_padre_dislip'] = 'Si'
+        m_ans = ans_dict.get('antecedentes_madres', '') or ans_dict.get('af_madres', '')
+        if m_ans:
+            m_up = m_ans.upper()
+            if 'HTA' in m_up: datos['ant_madre_hta'] = 'Si'
+            if 'DIABET' in m_up: datos['ant_madre_dm'] = 'Si'
+            if 'DISLIP' in m_up or 'DLP' in m_up: datos['ant_madre_dislip'] = 'Si'
+        fam_ans = ans_dict.get('antecedentes_familiares', '')
+        if fam_ans:
+            fam_up = fam_ans.upper()
+            if 'PADRE' in fam_up:
+                if 'HTA' in fam_up: datos['ant_padre_hta'] = 'Si'
+                if 'DIABET' in fam_up: datos['ant_padre_dm'] = 'Si'
+                if 'DISLIP' in fam_up: datos['ant_padre_dislip'] = 'Si'
+            if 'MADRE' in fam_up:
+                if 'HTA' in fam_up: datos['ant_madre_hta'] = 'Si'
+                if 'DIABET' in fam_up: datos['ant_madre_dm'] = 'Si'
+                if 'DISLIP' in fam_up: datos['ant_madre_dislip'] = 'Si'
+
+        # 3. Vasculopatía
+        vasc = ans_dict.get('vasculopatia', '')
+        if vasc:
+            v_up = vasc.upper()
+            if 'PERIF' in v_up or 'FEMORAL' in v_up: datos['r_vasc_perif'] = 'Si'
+            elif 'NO TIENE' in v_up or v_up == 'NO': datos['r_vasc_perif'] = 'No'
+            if 'CAROT' in v_up: datos['r_vasc_carot'] = 'Si'
+            elif 'NO TIENE' in v_up or v_up == 'NO': datos['r_vasc_carot'] = 'No'
+
+        # 4. Problemas respiratorios (EPOC / Asma)
+        resp_p = ans_dict.get('problemas_respiratorios', '')
+        if resp_p:
+            r_up = resp_p.upper()
+            if 'EPOC' in r_up and 'NO TIENE' not in r_up: datos['nc_epoc'] = 'Si'
+            elif 'NO' in r_up: datos['nc_epoc'] = 'No'
+            if 'ASMA' in r_up and 'NO TIENE' not in r_up: datos['nc_asma'] = 'Si'
+            elif 'NO' in r_up: datos['nc_asma'] = 'No'
+
+        # 5. Salud mental (Depresión / Ansiedad)
+        sm = ans_dict.get('salud_mental', '')
+        if sm:
+            sm_up = sm.upper()
+            if 'DEPRESI' in sm_up and 'NO TIENE' not in sm_up: datos['nc_depresion'] = 'Si'
+            elif 'NO' in sm_up: datos['nc_depresion'] = 'No'
+            if 'ANSIED' in sm_up and 'NO TIENE' not in sm_up: datos['nc_ansiedad'] = 'Si'
+            elif 'NO' in sm_up: datos['nc_ansiedad'] = 'No'
+
+        # 6. Alcohol y Drogas
+        alc = ans_dict.get('alcohol', '')
+        if alc:
+            a_up = alc.upper()
+            if 'NO CONSUME' in a_up or a_up == 'NO':
+                datos['r_alcohol'] = 'No'
+            elif 'EX CONSUMIDOR' in a_up:
+                datos['r_alcohol'] = 'No'
+                datos['chk_ex_alcohol'] = 'Si'
+            elif any(k in a_up for k in ['CONSUME', 'DIARIA', 'SEMANAL', 'OCASIONAL']):
+                datos['r_alcohol'] = 'Si'
+                datos['alcohol_frecuencia'] = alc
+        drg = ans_dict.get('drogas', '')
+        if drg:
+            d_up = drg.upper()
+            if 'NO CONSUME' in d_up or d_up == 'NO':
+                datos['r_drogas'] = 'No'
+            elif 'EX CONSUMIDOR' in d_up:
+                datos['r_drogas'] = 'No'
+                datos['chk_ex_drogas'] = 'Si'
+            elif 'CONSUME' in d_up:
+                datos['r_drogas'] = 'Si'
+                datos['drogas_frecuencia'] = drg
+
+        # 7. COVID-19 y Secuelas
+        hc = ans_dict.get('historia_covid', '')
+        if hc:
+            h_up = hc.upper()
+            if 'PASÓ' in h_up or 'PASO' in h_up or h_up.startswith('S') or h_up == '1':
+                datos['covid_paso'] = 'Si'
+                datos['covid_ingreso'] = 'Si' if ('INGRESADO' in h_up or 'HOSP' in h_up) else 'No'
+            elif 'NO' in h_up or h_up == '0':
+                datos['covid_paso'] = 'No'
+                datos['covid_ingreso'] = 'No'
+        afc = ans_dict.get('afectacion_covid', '')
+        if afc:
+            af_up = afc.upper()
+            if 'CARDIO' in af_up: datos['covid_cv'] = 'Si'
+            elif 'NO' in af_up: datos['covid_cv'] = 'No'
+            if 'PULMON' in af_up: datos['covid_pulm'] = 'Si'
+            elif 'NO' in af_up: datos['covid_pulm'] = 'No'
+        lc = ans_dict.get('long_covid', '')
+        if lc:
+            l_up = lc.upper()
+            if l_up.startswith('S') or 'SÍ' in l_up or 'SI' in l_up:
+                datos['longcovid'] = 'Si'
+                datos['longcovid_sintomas'] = lc
+            elif 'NO' in l_up:
+                datos['longcovid'] = 'No'
+
+        # 8. Dieta Mediterránea PREDIMED (Aceite, Vino, Lácteos)
+        ao = ans_dict.get('usa_usted_aceite_de_oliva', '')
+        if ao:
+            ao_up = ao.upper()
+            if 'DOS O MÁS' in ao_up or 'DO O M' in ao_up or ao_up in ('2', '2.0'):
+                datos['pred_q1'] = 'Si'
+                datos['pred_q2'] = 'Si'
+            elif 'SI' in ao_up or 'SÍ' in ao_up or ao_up in ('1', '1.0'):
+                datos['pred_q1'] = 'Si'
+                datos['pred_q2'] = 'No'
+            elif 'NO' in ao_up or ao_up in ('0', '0.0'):
+                datos['pred_q1'] = 'No'
+                datos['pred_q2'] = 'No'
+        vt = ans_dict.get('usted_consume_vino_tinto', '')
+        if vt:
+            vt_up = vt.upper()
+            if 'TRES O MAS' in vt_up or 'TRES O MÁS' in vt_up or vt_up in ('2', '2.0'):
+                datos['pred_q8_bebe'] = 'Si'
+                datos['pred_q8'] = 'Si'
+            elif 'SI' in vt_up or 'SÍ' in vt_up or vt_up in ('1', '1.0'):
+                datos['pred_q8_bebe'] = 'Si'
+                datos['pred_q8'] = 'No'
+            elif 'NO' in vt_up or vt_up in ('0', '0.0'):
+                datos['pred_q8_bebe'] = 'No'
+                datos['pred_q8'] = 'No'
+        leche = ans_dict.get('usted_consume_leche_de_vaca', '')
+        if leche:
+            l_up = leche.upper()
+            datos['pred_q13_consume'] = 'No' if ('NO' in l_up or l_up in ('0', '0.0')) else 'Si'
+        queso = ans_dict.get('usted_consume_queso', '')
+        if queso:
+            q_up = queso.upper()
+            datos['pred_q14_consume'] = 'No' if ('NO' in q_up or q_up in ('0', '0.0')) else 'Si'
+        yogurt = ans_dict.get('usted_consume_yogurt', '')
+        if yogurt:
+            y_up = yogurt.upper()
+            datos['pred_q15_consume'] = 'No' if ('NO' in y_up or y_up in ('0', '0.0')) else 'Si'
+
+        # 9. Dolor de pecho / Cuestionario Rose
+        dp = ans_dict.get('dolor_pecho', '')
+        if dp:
+            dp_up = dp.upper()
+            if 'NO' in dp_up or dp_up in ('0', '0.0'):
+                datos['rose_1'] = 'No'
+            elif 'SI' in dp_up or 'SÍ' in dp_up or 'LUGAR' in dp_up or dp_up in [str(i) for i in range(1, 10)]:
+                datos['rose_1'] = 'Si'
+                for num in range(1, 10):
+                    if f"LUGAR {num}" in dp_up or dp_up == str(num):
+                        datos[f"rose_zona_{num}"] = "1"
 
     return datos
 
