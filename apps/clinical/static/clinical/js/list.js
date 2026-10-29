@@ -319,6 +319,11 @@ function crearFilaPaciente(p) {
         </div>
       </div>
     </td>
+    <td class="td-acciones" style="text-align: right; padding-right: 18px;" onclick="event.stopPropagation()">
+      <button type="button" class="btn btn-sm btn-icon-eliminar" onclick="solicitarEliminarFicha('${p.id}', '${p.nombre}', '${p.codigo}')" title="Eliminar ficha clínica de ${p.nombre}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+      </button>
+    </td>
   `;
 
   // Al hacer clic en la fila se abre el expediente en la página (sin modal)
@@ -393,6 +398,10 @@ function abrirHistorialesPaciente(pacienteId) {
         <a class="btn btn-sm btn-primary" href="/clinical/formulario/?paciente=${encodeURIComponent(p.id)}" title="Abrir la ficha médica completa para analizar antecedentes y registrar atención">
           <span>Abrir Ficha Médica Completa &rarr;</span>
         </a>
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="solicitarEliminarFicha('${p.id}', '${p.nombre}', '${p.codigo}')" title="Eliminar ficha clínica">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          <span>Eliminar Ficha</span>
+        </button>
       </div>
     `;
 

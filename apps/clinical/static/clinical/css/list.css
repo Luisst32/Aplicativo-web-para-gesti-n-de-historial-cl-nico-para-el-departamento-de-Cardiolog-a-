@@ -1396,6 +1396,39 @@ body {
   color: var(--color-text-muted);
 }
 
+
+/* Botones de eliminación protegida */
+.btn-icon-eliminar {
+  color: var(--color-text-muted, #64748b);
+  border: 1px solid var(--slate-200, #e2e8f0);
+  background: var(--color-white, #ffffff);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-icon-eliminar:hover {
+  color: #dc2626 !important;
+  border-color: #fca5a5 !important;
+  background: #fef2f2 !important;
+  transform: translateY(-1px);
+}
+
+.btn-outline-danger {
+  color: #dc2626;
+  border: 1.5px solid #fecaca;
+  background: var(--color-white, #ffffff);
+}
+.btn-outline-danger:hover {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border-color: #dc2626 !important;
+  transform: translateY(-1px);
+}
+
 @media print {
   .sidebar,
   .top-bar,

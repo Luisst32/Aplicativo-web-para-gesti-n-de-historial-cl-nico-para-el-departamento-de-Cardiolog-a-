@@ -164,3 +164,83 @@ class SavImporterTests(TestCase):
             content_type='application/json'
         )
         self.assertEqual(response.status_code, 400)
+
+
+
+class FichaEliminarSecurityTests(TestCase):
+    def setUp(self):
+        self.password = "DoctorSeguro2026!"
+        self.user = User.objects.create_user(
+            username="cardiologo_test",
+            password=self.password,
+            email="cardiologo@unemi.edu.ec"
+        )
+        self.client.force_login(self.user)
+
+        self.country, _ = Country.objects.get_or_create(iso_alpha3='ECU', defaults={'name': 'Ecuador'})
+        self.province, _ = Province.objects.get_or_create(country=self.country, iso_code='EC-G', defaults={'name': 'Guayas'})
+        self.canton, _ = Canton.objects.get_or_create(province=self.province, dpa_code='0910', defaults={'name': 'Milagro'})
+        self.institution, _ = Institution.objects.get_or_create(acronym='UNEMI', defaults={'name': 'Universidad Estatal de Milagro'})
+        self.sex, _ = Sex.objects.get_or_create(sex_id=1, defaults={'name': 'Hombre'})
+        self.ethnicity, _ = Ethnicity.objects.get_or_create(name='Mestizo')
+
+        self.patient = Patient.objects.create(
+            id_card="0923485718",
+            first_names="Carlos",
+            last_name1="Eliminable",
+            birth_date=datetime.date(1990, 5, 20),
+            sex=self.sex,
+            ethnicity=self.ethnicity,
+            birth_canton=self.canton,
+            institution=self.institution,
+            created_by=self.user
+        )
+        self.visit = Visit.objects.create(
+            patient=self.patient,
+            evaluator=self.user,
+            study_code="999",
+            visit_number=1,
+            visit_date=datetime.date.today(),
+            residence_canton=self.canton,
+            status=Visit.Status.COMPLETED
+        )
+
+    def test_delete_without_password_fails(self):
+        resp = self.client.post(
+            '/clinical/api/ficha/eliminar/',
+            data={'patient_id': self.patient.patient_id, 'password': ''},
+            content_type='application/json'
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(resp.json().get('success'))
+        self.assertIn("contraseña", resp.json().get('error', '').lower())
+        # El paciente sigue existiendo
+        self.assertTrue(Patient.objects.filter(patient_id=self.patient.patient_id).exists())
+
+    def test_delete_with_wrong_password_rejected(self):
+        resp = self.client.post(
+            '/clinical/api/ficha/eliminar/',
+            data={'patient_id': self.patient.patient_id, 'password': 'wrong_password_123'},
+            content_type='application/json'
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertFalse(resp.json().get('success'))
+        self.assertIn("incorrecta", resp.json().get('error', '').lower())
+        # El paciente sigue existiendo
+        self.assertTrue(Patient.objects.filter(patient_id=self.patient.patient_id).exists())
+
+    def test_delete_with_correct_password_deletes_patient_and_visit_and_logs_audit(self):
+        resp = self.client.post(
+            '/clinical/api/ficha/eliminar/',
+            data={'patient_id': self.patient.patient_id, 'password': self.password},
+            content_type='application/json'
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json().get('success'))
+        # Ficha y paciente eliminados
+        self.assertFalse(Visit.objects.filter(study_code="999").exists())
+        self.assertFalse(Patient.objects.filter(patient_id=self.patient.patient_id).exists())
+        # Registro en ChangeLog de auditoria
+        log = ChangeLog.objects.filter(record_key=str(self.patient.patient_id), action='DELETE').first()
+        self.assertIsNotNone(log)
+        self.assertEqual(log.user, self.user)

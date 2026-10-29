@@ -26,6 +26,7 @@
 
   {% if request.user.is_authenticated %}
     {% include "includes/modal_import_sav.html" %}
+    {% include "includes/modal_eliminar_ficha.html" %}
   {% endif %}
 
   <!-- Scripts Globales -->
@@ -42,6 +43,7 @@
   <script src="{% static 'js/global/api.js' %}"></script>
   <script src="{% static 'js/global/ui.js' %}"></script>
   <script src="{% static 'js/global/sav_importer.js' %}"></script>
+  <script src="{% static 'js/global/eliminar_ficha.js' %}"></script>
 
   {% block extra_js %}{% endblock %}
 </body>

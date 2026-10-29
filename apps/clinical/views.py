@@ -1168,3 +1168,93 @@ def sav_import_execute_api(request):
         return JsonResponse(import_result)
     except Exception as e:
         return JsonResponse({"success": False, "error": f"Error al ejecutar la importación: {str(e)}"}, status=500)
+
+
+
+@login_required
+@require_POST
+def ficha_eliminar_api(request):
+    """
+    Eliminacion segura y transaccional de una Ficha Clinica y su paciente.
+    Exige la confirmacion de la contrasena del usuario autenticado para autorizar el borrado.
+    Registra el evento en audit.change_log.
+    """
+    try:
+        if request.content_type == 'application/json':
+            data = json.loads(request.body.decode('utf-8'))
+        else:
+            data = request.POST.dict()
+
+        password = (data.get('password') or '').strip()
+        patient_id = data.get('patient_id') or data.get('idPaciente') or data.get('paciente_id')
+
+        # 1. Validar contrasena obligatoria
+        if not password:
+            return JsonResponse({
+                "success": False,
+                "error": "Debe ingresar su contraseña de usuario para autorizar la eliminación."
+            }, status=400)
+
+        # 2. Verificar contrasena del usuario en sesion
+        if not request.user.check_password(password):
+            return JsonResponse({
+                "success": False,
+                "error": "Contraseña incorrecta. No se autorizó la eliminación."
+            }, status=403)
+
+        # 3. Buscar paciente
+        if not patient_id:
+            return JsonResponse({
+                "success": False,
+                "error": "Identificador de paciente o ficha ausente."
+            }, status=400)
+
+        clean_id = str(patient_id).replace('p', '').strip()
+        patient = None
+        if clean_id.isdigit():
+            patient = Patient.objects.filter(patient_id=int(clean_id)).first()
+        if not patient:
+            patient = Patient.objects.filter(visit__study_code=str(patient_id).strip()).first()
+        if not patient:
+            patient = Patient.objects.filter(id_card=str(patient_id).strip()).first()
+
+        if not patient:
+            return JsonResponse({
+                "success": False,
+                "error": "No se encontró el paciente o ficha clínica a eliminar."
+            }, status=404)
+
+        patient_name = patient.full_name
+        p_id = patient.patient_id
+        visit = getattr(patient, 'visit', None)
+        study_code = visit.study_code if visit else str(p_id)
+
+        # 4. Transaccion atomica de eliminacion
+        with transaction.atomic():
+            if visit:
+                visit.delete()
+            patient.delete()
+
+            # Auditoria
+            ip_addr = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '127.0.0.1')
+            register_audit_log(
+                user=request.user,
+                schema_name='clinical',
+                table_name='patient',
+                record_key=str(p_id),
+                action='DELETE',
+                old_value={'patient_name': patient_name, 'study_code': study_code},
+                machine_name=ip_addr
+            )
+
+        return JsonResponse({
+            "success": True,
+            "message": f"La ficha clínica de '{patient_name}' ha sido eliminada permanentemente.",
+            "patient_id": p_id
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "error": f"Error al procesar la eliminación: {str(e)}"
+        }, status=500)

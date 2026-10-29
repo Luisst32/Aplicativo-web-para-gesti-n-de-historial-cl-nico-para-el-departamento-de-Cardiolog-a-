@@ -2308,3 +2308,21 @@ function limpiarFormularioCompleto() {
   // Predimed
   calcPredimed();
 }
+
+
+// Eliminación de Ficha Clínica con confirmación por contraseña
+function solicitarEliminarFichaActual() {
+  const urlParams = new URLSearchParams(location.search);
+  const pId = urlParams.get('paciente') || (pacienteActual ? pacienteActual.id : null);
+  const pNom = (pacienteActual ? pacienteActual.nombre : null) || document.getElementById('heroNombre')?.textContent || 'este paciente';
+  const pCod = (pacienteActual ? pacienteActual.codigo : null) || document.getElementById('heroCodigo')?.textContent || '';
+  if (!pId) {
+    alert('No hay una ficha médica seleccionada para eliminar.');
+    return;
+  }
+  if (typeof solicitarEliminarFicha === 'function') {
+    solicitarEliminarFicha(pId, pNom, pCod);
+  } else {
+    alert('Módulo de eliminación no disponible.');
+  }
+}
