@@ -17,6 +17,10 @@ urlpatterns = [
     path('api/ficha/guardar/', views.form_save_api, name='api_form_save'),
     path('api/ficha/<str:patient_id>/', views.form_get_api, name='api_form_get'),
 
+    # Importación Inteligente de Datos SPSS .SAV
+    path('api/import-sav/analyze/', views.sav_import_analyze_api, name='api_sav_analyze'),
+    path('api/import-sav/execute/', views.sav_import_execute_api, name='api_sav_execute'),
+
     # Exportación oficial a PDF (HU-17)
     path('ficha/<int:visit_id>/pdf/', views.export_pdf_view, name='export_pdf'),
     path('ficha/pdf/', views.export_pdf_view, name='export_pdf_query'),

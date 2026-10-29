@@ -134,3 +134,33 @@ class ClinicalCRUDAndIntegrationTests(TestCase):
         pdf_bytes = generate_clinical_sheet_pdf(visit)
         self.assertGreater(len(pdf_bytes), 1000)
         self.assertTrue(pdf_bytes.startswith(b'%PDF'))
+
+
+class SavImporterTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='evaluador_sav',
+            password='Password123!',
+            email='evaluador@unemi.edu.ec'
+        )
+        self.client.force_login(self.user)
+
+    def test_analyze_without_file_fails(self):
+        response = self.client.post('/clinical/api/import-sav/analyze/')
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json().get('success'))
+
+    def test_analyze_invalid_extension_fails(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        fake_file = SimpleUploadedFile("datos.txt", b"dummy content")
+        response = self.client.post('/clinical/api/import-sav/analyze/', {'file': fake_file})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("SPSS", response.json().get('error', ''))
+
+    def test_execute_without_token_fails(self):
+        response = self.client.post(
+            '/clinical/api/import-sav/execute/',
+            data='{}',
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)

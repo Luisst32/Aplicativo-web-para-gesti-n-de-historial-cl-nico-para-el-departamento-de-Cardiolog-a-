@@ -1,3 +1,4 @@
+from .services.sav_importer import analyze_sav_file, execute_sav_import
 import json
 import datetime
 from decimal import Decimal
@@ -1114,3 +1115,55 @@ def export_pdf_view(request, visit_id=None):
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
+
+
+# =============================================================================
+# IMPORTACION INTELIGENTE DE ARCHIVOS SPSS (.SAV)
+# =============================================================================
+
+@login_required
+@require_POST
+def sav_import_analyze_api(request):
+    """
+    Recibe un archivo .sav / .zsav y realiza un diagnostico inteligente
+    de variables, alertas y vista previa sin modificar la base de datos.
+    """
+    if 'file' not in request.FILES:
+        return JsonResponse({"success": False, "error": "No se proporcionó ningún archivo para analizar."}, status=400)
+
+    uploaded_file = request.FILES['file']
+    filename = uploaded_file.name.lower()
+    if not (filename.endswith('.sav') or filename.endswith('.zsav')):
+        return JsonResponse({"success": False, "error": "Formato de archivo inválido. Debe ser un archivo SPSS (.sav o .zsav)."}, status=400)
+
+    analysis_result = analyze_sav_file(uploaded_file, uploaded_file.name)
+    if not analysis_result.get('success'):
+        return JsonResponse(analysis_result, status=400)
+
+    return JsonResponse(analysis_result)
+
+
+@login_required
+@require_POST
+def sav_import_execute_api(request):
+    """
+    Ejecuta transaccionalmente la importacion del archivo previamente analizado,
+    creando pacientes, visitas, modulos clinicos y respuestas de encuestas.
+    """
+    try:
+        if request.content_type == 'application/json':
+            data = json.loads(request.body.decode('utf-8'))
+        else:
+            data = request.POST.dict()
+
+        temp_token = data.get('temp_token', '').strip()
+        if not temp_token:
+            return JsonResponse({"success": False, "error": "Token de importación no válido o ausente."}, status=400)
+
+        import_result = execute_sav_import(temp_token, request.user)
+        if not import_result.get('success'):
+            return JsonResponse(import_result, status=400)
+
+        return JsonResponse(import_result)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": f"Error al ejecutar la importación: {str(e)}"}, status=500)
