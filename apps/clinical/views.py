@@ -25,131 +25,14 @@ from clinical.pdf import generate_clinical_sheet_pdf
 from audit.services import register_audit_log
 
 
-QUESTION_ALIASES = {
-    # Factores de Riesgo / Antecedentes personales (SPSS <-> Formulario)
-    'r_hta': 'hipertension',
-    'r_hta_trat': 'hta_tto',
-    'r_dm': 'diabetes_mellitus',
-    'r_dislip': 'dislipemia',
-    'r_dislip_trat': 'dlp_tto',
-    'r_tabaco': 'tabaquismo',
-    'r_alcohol': 'alcohol',
-    'r_drogas': 'drogas',
-    'r_sobrepeso': 'peso_corporal',
-    'r_irc': 'insuf_renal_cronica',
-    'r_higado': 'higado_graso',
-    'res_higado_graso': 'higado_graso',
-    'r_apnea': 'apnea_sueno',
-    'r_arritmias': 'arritmias',
-    'arritmias_tipo': 'arritmias',
-    'r_sincopes': 'sincopes',
-    'sincopes_tipo': 'sincopes',
-    'r_ictus': 'antecedentrs_ictus',
-    'r_disfunc': 'disfuncion_erectil',
-    'r_vasc_perif': 'vasculopatia',
-    'r_vasc_carot': 'vasculopatia',
+from clinical.services.sav_importer import (
+    analyze_sav_file, execute_sav_import,
+    SPSS_QUESTION_ALIASES, classify_spss_question_section
+)
 
-    # Factores Emergentes (SPSS <-> Formulario)
-    'sueno_cantidad': 'cantidad_sueno',
-    'sueno_calidad': 'calidad_sueno',
-    'em_toxicos': 'trabaja_con_toxicos',
-    'em_estrogenos': 'bajos_estrogenos',
-    'em_anticonceptivos': 'proteccion_anticonceptivo',
-    'em_estres_trab': 'estres',
-    'em_mal_amb': 'mal_ambiente_laboral',
-    'em_pers_a': 'personalidad_tipo_a',
-    'em_personalidad_a': 'personalidad_tipo_a',
-
-    # Antecedentes Familiares y Médicos
-    'nm_cardiopatia': 'factores_riesgo_cardiopatia',
-    'nm_fallecido': 'af_muerte_subita',
-    'ant_padre_hta': 'af_padre_hta',
-    'ant_madre_hta': 'af_madre_hta',
-    'ant_padre_dm': 'af_padre_dm',
-    'ant_madre_dm': 'af_madre_dm',
-    'ant_padre_dislip': 'af_padre_dlp',
-    'ant_madre_dislip': 'af_madre_dlp',
-    'nc_cancer': 'historia_cancer',
-    'nc_epoc': 'problemas_respiratorios',
-    'nc_asma': 'problemas_respiratorios',
-    'nc_reuma': 'enfermedad_reumatologicas',
-    'nc_depresion': 'salud_mental',
-    'nc_ansiedad': 'salud_mental',
-    'nc_alergia': 'alergias',
-
-    # COVID y Síntomas
-    'covid_paso': 'historia_covid',
-    'covid_ingreso': 'historia_covid',
-    'covid_cv': 'afectacion_covid',
-    'covid_pulm': 'afectacion_covid',
-    'longcovid': 'long_covid',
-    'longcovid_sintomas': 'long_covid',
-    'rose_1': 'dolor_pecho',
-    'rose_3': 'rose_detenerse',
-    'rose_4': 'rose_alivio',
-    'rose_5': 'rose_claudicacion',
-
-    # PREDIMED (Dieta Mediterránea)
-    'pred_q1': 'usa_usted_aceite_de_oliva',
-    'pred_q2': 'usa_usted_aceite_de_oliva',
-    'pred_q3': 'usted_consume_verduras',
-    'pred_q4': 'usted_consume_fruta',
-    'pred_q5': 'usted_consume_carne_roja_embut',
-    'pred_q6': 'usted_consume_mantequilla_marg',
-    'pred_q7': 'usted_consume_bebidas_carbonat',
-    'pred_q8_bebe': 'usted_consume_vino_tinto',
-    'pred_q8': 'usted_consume_vino_tinto',
-    'pred_q9': 'usted_consume_legumbres',
-    'pred_q10': 'usted_consume_pescado_mariscos',
-    'pred_q11': 'usted_consume_pescado_azul',
-    'pred_q12': 'usted_consume_reposteria',
-    'pred_q13_consume': 'usted_consume_leche_de_vaca',
-    'pred_q14_consume': 'usted_consume_queso',
-    'pred_q15_consume': 'usted_consume_yogurt',
-    'pred_q16': 'usted_consume_frutos_secos',
-    'pred_q17': 'usted_consume_cereales',
-    'pred_q18': 'usted_consume_pollo_pavo_o_con',
-    'pred_q19': 'usted_consume_alimentos_con_so',
-
-    # Exploración física / Hallazgos (SPSS <-> Formulario)
-    'soplos': 'soplos_cardiacos',
-    'extratonos': 'extratono_sino_tipo',
-    'pulsos_palp': 'pulsospedios',
-    'pulsos_sim': 'pulsospedios',
-    'resp_norm': 'exploracion_respiratoria',
-    'abdom_norm': 'exploracion_abdominal',
-
-    # Ecocardiograma (SPSS <-> Formulario)
-    'res_vi_dilatado': 'ventriculo_izquierdo_dilatado',
-    'res_vi_hipertrofico': 'ventriculo_izquierdo_hipertrofico',
-    'res_presiones_vi': 'presiones_llenado_ventriculo_izquierdo',
-    'res_contractilidad': 'alteraciones_contractilidad',
-    'res_vd_dilatado': 'ventriculo_derecho_dilatado',
-    'res_vd_hipertrofico': 'ventriculo_derecho_hipertrofico',
-    'res_raiz_aortica': 'aorta_dilatada',
-    'res_derrame': 'derrame_pericardio',
-    'res_ai_dilatada': 'dilatacion_ai',
-    'res_valvulopatia': 'insuficiencia_cardiaca_valvulopatia',
-
-    # Campos generales
-    'f_num_hijos': 'f_hijos',
-    'f_num_convivientes': 'f_convivientes',
-
-    # Sinónimos legados
-    'hta': 'hipertension',
-    'dm': 'diabetes_mellitus',
-    'dlp': 'dislipemia',
-    'tabaco': 'tabaquismo',
-    'sobrepeso': 'peso_corporal',
-    'irc': 'insuf_renal_cronica',
-    'apnea': 'apnea_sueno',
-    'toxicos_laboral': 'trabaja_con_toxicos',
-    'estres_laboral': 'estres',
-    'ant_cancer': 'historia_cancer',
-    'ant_reuma': 'enfermedad_reumatologicas',
-    'antecedentes_ictus': 'antecedentrs_ictus',
-}
-REVERSE_ALIASES = {v: k for k, v in QUESTION_ALIASES.items()}
+QUESTION_ALIASES = SPSS_QUESTION_ALIASES
+REVERSE_QUESTION_ALIASES = {v: k for k, v in QUESTION_ALIASES.items()}
+REVERSE_ALIASES = REVERSE_QUESTION_ALIASES
 
 
 def _patient_to_dict(patient, visit=None):
@@ -657,6 +540,45 @@ def _build_form_datos(patient, visit):
         "hepatica_gpt": str(lab.alt_gpt_u_l) if (lab and lab.alt_gpt_u_l) else "",
         "hepatica_ggt": str(lab.ggt_u_l) if (lab and lab.ggt_u_l) else "",
         "tiroidea_tsh": str(lab.tsh_u_iu_ml) if (lab and lab.tsh_u_iu_ml) else "",
+        # Bioquímica y Hemograma extendidos
+        "hemo_hcm": "",
+        "hemo_chcm": "",
+        "hemo_neutrofilos": "",
+        "hemo_eosinofilos": "",
+        "hemo_basofilos": "",
+        "hemo_linfocitos": "",
+        "hemo_monocitos": "",
+        "hemo_tpt": "",
+        "hemo_fibrinogeno": "",
+        "tiroidea_t4": "",
+        "tiroidea_t3": "",
+        "renal_filtrado": "",
+        "orina_microalbuminuria": "",
+        "ion_potasio": "",
+        "ion_calcio": "",
+        "ion_magnesio": "",
+        "ion_sodio": "",
+        "diab_hba1c": "",
+        "diab_homair": "",
+        "diab_insulina": "",
+        "riesgo_vldl": "",
+        "riesgo_lipoproteina_a": "",
+        "riesgo_apo_b": "",
+        "emerg_homocisteina": "",
+        "emerg_pcr": "",
+        "emerg_acido_urico": "",
+        "hepatica_fosfatasa": "",
+        "hepatica_bilirrubina": "",
+        "res_vi_dilatado": "No",
+        "res_vi_hipertrofico_tipo": "",
+        "res_eco_comentario": "",
+        "res_eco_vascular": "Normal",
+        "res_eco_vascular_comentario": "",
+        "ip_medida_chorro": "",
+        "ip_ancho_chorro": "",
+        "ip_grado": "",
+        "ip_tipo_especificar": "",
+    
     }
 
     if visit:
@@ -871,6 +793,34 @@ def _build_form_datos(patient, visit):
                 for num in range(1, 10):
                     if f"LUGAR {num}" in dp_up or dp_up == str(num):
                         datos[f"rose_zona_{num}"] = "1"
+
+    
+    # Evaluación inteligente del estado de Análisis Clínicos:
+    has_lab = any([
+        datos.get(k) for k in [
+            'hemo_hematies', 'hemo_hemoglobina', 'hemo_leucocitos', 'hemo_plaquetas',
+            'diab_glucosa', 'renal_urea', 'renal_creatinina', 'riesgo_colesterol',
+            'riesgo_trigliceridos', 'tiroidea_tsh', 'hemo_vcm', 'hemo_inr'
+        ]
+    ])
+    if has_lab:
+        datos['ac_prueba'] = 'Si'
+        alt = False
+        try:
+            if datos.get('diab_glucosa') and (float(datos['diab_glucosa']) >= 126 or float(datos['diab_glucosa']) < 70):
+                alt = True
+            if datos.get('riesgo_colesterol') and float(datos['riesgo_colesterol']) >= 200:
+                alt = True
+            if datos.get('riesgo_trigliceridos') and float(datos['riesgo_trigliceridos']) >= 150:
+                alt = True
+            if datos.get('hemo_hemoglobina') and (float(datos['hemo_hemoglobina']) < 12 or float(datos['hemo_hemoglobina']) > 18):
+                alt = True
+        except Exception:
+            pass
+        datos['ac_resultado'] = 'Alterada' if alt else 'Normal'
+    else:
+        datos['ac_prueba'] = 'No'
+        datos['ac_resultado'] = 'Normal'
 
     return datos
 
@@ -1291,9 +1241,10 @@ def form_save_api(request):
                         pass
             lab.save()
 
-            # 8. Persistencia Universal de Todos los Campos del Formulario (VisitAnswer)
+            # 8. Persistencia Universal y Bidireccional de Todos los Campos del Formulario (VisitAnswer)
             ignore_keys = {'csrfmiddlewaretoken', 'idPaciente', 'paciente_id', 'f_codigo'}
-            default_section = QuestionnaireSection.objects.first()
+            sections_by_code = {s.code: s for s in QuestionnaireSection.objects.all()}
+            default_section = sections_by_code.get('MOD_3_FACTORES_MOD') or QuestionnaireSection.objects.first()
 
             for k, v in raw_data.items():
                 if k in ignore_keys or not k.strip():
@@ -1301,15 +1252,21 @@ def form_save_api(request):
                 val_str = str(v).strip()
                 k_clean = k.strip()
 
+                target_sec_code = classify_spss_question_section(k_clean)
+                target_sec = sections_by_code.get(target_sec_code, default_section)
+
                 q = Question.objects.filter(code=k_clean).first()
                 if not q and len(k_clean) <= 30:
                     q = Question.objects.create(
-                        section=default_section,
+                        section=target_sec,
                         code=k_clean,
                         text=f"Campo {k_clean}",
                         response_type=Question.ResponseType.TEXTO,
                         display_order=999
                     )
+                elif q and q.section == default_section and q.section != target_sec:
+                    q.section = target_sec
+                    q.save(update_fields=['section'])
 
                 if q:
                     if val_str != '':
@@ -1325,10 +1282,24 @@ def form_save_api(request):
                     else:
                         VisitAnswer.objects.filter(visit=visit, question=q).delete()
 
-                # Sincronizar alias si existe
-                alias_code = QUESTION_ALIASES.get(k_clean)
-                if alias_code:
+                # Sincronización bidireccional de alias (Formulario HTML <-> SPSS)
+                alias_code = QUESTION_ALIASES.get(k_clean) or REVERSE_QUESTION_ALIASES.get(k_clean)
+                if alias_code and len(alias_code) <= 30:
+                    alias_sec_code = classify_spss_question_section(alias_code)
+                    alias_sec = sections_by_code.get(alias_sec_code, default_section)
                     q_alias = Question.objects.filter(code=alias_code).first()
+                    if not q_alias:
+                        q_alias = Question.objects.create(
+                            section=alias_sec,
+                            code=alias_code,
+                            text=f"Campo {alias_code}",
+                            response_type=Question.ResponseType.TEXTO,
+                            display_order=999
+                        )
+                    elif q_alias and q_alias.section == default_section and q_alias.section != alias_sec:
+                        q_alias.section = alias_sec
+                        q_alias.save(update_fields=['section'])
+
                     if q_alias:
                         if val_str != '':
                             VisitAnswer.objects.update_or_create(

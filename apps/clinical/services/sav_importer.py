@@ -82,6 +82,411 @@ COLUMN_TYPO_RULES = [
     (r'DISPLEMIA', 'DISLIPEMIA', 'Error en etiqueta: "DISPLEMIA" corregido a "DISLIPEMIA"', 'Cuestionario Clínico / Antecedente: Dislipemia', 'etiqueta'),
 ]
 
+SPSS_QUESTION_ALIASES = {
+    # Módulo 1: Ficha / Sociodemográfico
+    'f_universidad': 'universidad',
+    'f_visita': 'visita',
+    'f_estamento': 'categoria_personal',
+    'f_codigo': 'codigo',
+    'f_fecha_visita': 'fecha',
+    'f_nombre': 'nombres',
+    'f_apellido1': 'primer_apellido',
+    'f_apellido2': 'segundo_apellido',
+    'f_cedula': 'cedula',
+    'f_ciudad': 'ciudad',
+    'f_provincia': 'provincia',
+    'f_municipio': 'lugar_de_nacimiento',
+    'f_provincia_nac': 'provincia_nac',
+    'f_fecha_nac': 'fecha_de_nacimiento',
+    'f_edad': 'edad',
+    'f_sexo': 'sexo',
+    'f_raza': 'raza',
+    'f_estado_civil': 'estado_civil',
+    'f_hijos': 'cuantos_hijos__tiene',
+    'f_convive_con': 'con_quien_vive',
+    'f_convivientes': 'cuantas_personas_convive_con_ustes_en_el_hogar',
+    'f_estudios': 'nivel_estudios_obtenido',
+    'f_horario': 'horario_de_trabajo',
+    'f_profesion': 'categoria_profesional',
+    'f_vivienda': 'su_vivienda_es',
+    'f_ingresos': 'ingresos_totales_mensuales',
+
+    # Módulo 2: Antropometría y Signos Vitales
+    'f_peso': 'peso_kg',
+    'f_talla': 'talla_cm',
+    'f_perimetro': 'perimetro_abdominal_cm',
+    'f_imc': 'imc_kgm2',
+    'f_asc': 'asc_m2',
+    'f_tas': 'tas_ts',
+    'f_tsi': 'tas_mmhg',
+    'f_sat_o2': 'saturacion_o2',
+    'f_fc': 'frecuencia_cardiaca_ipm',
+    'soplos': 'soplos_cardiacos',
+    'soplo_grado': 'soplos_cardiacos',
+    'soplo_tipo': 'soplos_cardiacos',
+    'pulsos_palp': 'pulsospedios',
+    'pulsos_sim': 'pulsospedios',
+    'pulsos_pedios': 'pulsospedios',
+    'resp_norm': 'exploracion_respiratoria',
+    'abdom_norm': 'exploracion_abdominal',
+
+    # Módulo 3: Factores de Riesgo Modificables
+    'r_hta': 'hipertension',
+    'r_hta_trat': 'hta_tto',
+    'r_dm': 'diabetes_mellitus',
+    'r_dm_trat': 'diabetes_tto',
+    'r_dislip': 'dislipemia',
+    'r_dislip_trat': 'dlp_tto',
+    'r_tabaco': 'tabaquismo',
+    'r_alcohol': 'alcohol',
+    'r_drogas': 'drogas',
+    'r_sobrepeso': 'peso_corporal',
+    'r_irc': 'insuf_renal_cronica',
+    'r_higado': 'higado_graso',
+    'res_higado_graso': 'higado_graso',
+    'r_apnea': 'apnea_sueno',
+    'r_arritmias': 'arritmias',
+    'arritmias_tipo': 'arritmias',
+    'r_sincopes': 'sincopes',
+    'sincopes_tipo': 'sincopes',
+    'r_ictus': 'antecedentrs_ictus',
+    'r_disfunc': 'disfuncion_erectil',
+    'r_vasc_perif': 'vasculopatia',
+    'r_vasc_carot': 'vasculopatia',
+
+    # Módulo 3: Factores Emergentes
+    'sueno_cantidad': 'cantidad_sueno',
+    'sueno_calidad': 'calidad_sueno',
+    'em_toxicos': 'trabaja_con_toxicos',
+    'em_estrogenos': 'bajos_estrogenos',
+    'em_anticonceptivos': 'proteccion_anticonceptivo',
+    'em_estres_trab': 'estres',
+    'em_estres_fam': 'estres',
+    'em_mal_amb': 'mal_ambiente_laboral',
+    'em_pers_a': 'personalidad_tipo_a',
+    'em_personalidad_a': 'personalidad_tipo_a',
+    'em_exigente': 'exigente',
+    'em_perfeccionista': 'perfeccionista',
+    'em_hiperactivo': 'hiperactivo',
+    'em_ambicioso': 'ambicioso',
+    'em_hostilidad': 'hostilidad',
+    'em_aislamiento': 'aislamiento_social',
+
+    # Módulo 3: Antecedentes Familiares
+    'ant_padre_hta': 'af_padre_hta',
+    'ant_madre_hta': 'af_madre_hta',
+    'ant_padre_dm': 'af_padre_dm',
+    'ant_madre_dm': 'af_madre_dm',
+    'ant_padre_iam': 'af_padre_iam',
+    'ant_madre_iam': 'af_madre_iam',
+    'ant_padre_ictus': 'af_padre_ictus',
+    'ant_madre_ictus': 'af_madre_ictus',
+    'nm_cardiopatia': 'factores_tiesgo_cardiopatia',
+    'nm_fallecido': 'af_muerte_subita',
+
+    # Módulo 4: Historia Cardiovascular y Rose
+    'nc_cancer': 'historia_cancer',
+    'nc_epoc': 'problemas_respiratorios',
+    'nc_asma': 'problemas_respiratorios',
+    'nc_reuma': 'enfermedad_reumatologicas',
+    'nc_depresion': 'salud_mental',
+    'nc_ansiedad': 'salud_mental',
+    'nc_alergia': 'alergias',
+    'rose_1': 'dolor_pecho',
+    'rose_2': 'dolor_pecho',
+    'rose_3': 'molestia_caminar',
+    'rose_4': 'reaccion_dolor_caminar',
+    'rose_5': 'tiempo_dolor_clase_nyha',
+
+    # Módulo 4: COVID-19 y Secuelas
+    'covid_paso': 'historia_covid',
+    'covid_ingreso': 'historia_covid',
+    'covid_cv': 'afectacion_covid',
+    'covid_pulm': 'afectacion_covid',
+    'longcovid': 'long_covid',
+    'longcovid_sintomas': 'sintomas_covid',
+
+    # Módulo 5: Laboratorio Clínico
+    'hemo_hematies': 'hematies',
+    'hemo_hemoglobina': 'hemoglobina',
+    'hemo_hematocrito': 'hematocrito',
+    'hemo_vcm': 'volumen_corpuscular_medio_vcm',
+    'hemo_hcm': 'hemoglobina_corpuscular_medio_hcm',
+    'hemo_chcm': 'concentracion_hemoglobina_corpuscular_media_chcm',
+    'hemo_leucocitos': 'leucocitos',
+    'hemo_neutrofilos': 'neutrofilos',
+    'hemo_eosinofilos': 'eosinofilos',
+    'hemo_basofilos': 'basofilos',
+    'hemo_linfocitos': 'linfocitos',
+    'hemo_monocitos': 'monocitos',
+    'hemo_plaquetas': 'plaquetas',
+    'hemo_inr': 'inr',
+    'hemo_tpt': 'tiempo_protombina',
+    'hemo_fibrinogeno': 'fibrinogeno',
+    'tiroidea_tsh': 'tsh_funcion_tiroidea',
+    'tiroidea_t4': 'hormonas_tiroideas_t4',
+    'tiroidea_t3': 'hormonas_tiroideas_t3',
+    'renal_urea': 'urea_funcion_renal',
+    'renal_creatinina': 'creatina_funcion_renal',
+    'renal_filtrado': 'filtracion_glomerular_tfg',
+    'orina_microalbuminuria': 'orina_microalbuminuria',
+    'ion_potasio': 'potasio_iones',
+    'ion_calcio': 'calcio_iones',
+    'ion_magnesio': 'magnesio_iones',
+    'ion_sodio': 'sodio_iones',
+    'diab_glucosa': 'glucosa_sangre',
+    'diab_hba1c': 'hemoglobina_glicosilada',
+    'diab_homair': 'homa_ir',
+    'diab_insulina': 'insulina_ayunas',
+    'riesgo_colesterol': 'colesterol_total_riesgo_cardiovascular',
+    'riesgo_hdl': 'hdl_riesgo_cardiovascular',
+    'riesgo_ldl': 'ldl_riesgo_cardiovascular',
+    'riesgo_vldl': 'vdl_riesgo_cardiovascular',
+    'riesgo_trigliceridos': 'trigliceridos_riesgo_cardiovascular',
+    'riesgo_lipoproteina_a': 'lipoproteina_riesgo_cardiovascular',
+    'riesgo_apo_b': 'apolipoproteina_b_riesgo_cardiovascular',
+    'emerg_homocisteina': 'homocisteina',
+    'emerg_pcr': 'pcr_ultrasensible',
+    'emerg_acido_urico': 'acido_urico',
+    'hepatica_ggt': 'ggt_funcion_hepatica',
+    'hepatica_gpt': 'gpt_alt_funcion_hepatica',
+    'hepatica_got': 'got_ast_funcion_hepatica',
+
+    # Módulo 5: Electrocardiograma
+    'ecg_ritmo': 'ecg_ritmo',
+    'ecg_pr': 'intervalo_pr_seg',
+    'ecg_qrs': 'complejo_qr_sseg',
+    'ecg_qt': 'intervalo_qt_seg',
+    'ecg_qtc': 'intervalo_corregido_baset_mseg',
+    'ecg_eje': 'eje_electrico_a',
+    'ecg_hvi': 'sobrecarga_sistolica',
+    'ecg_bloqueo': 'bloqueo_de_rama_cual',
+    'ecg_normal': 'ecg_normal',
+
+    # Módulo 4: Ecocardiograma
+    'res_eco_normal': 'ecocardiograma',
+    'res_vi_hipertrofico': 'ventriculo_izquierdo_hipertrofico',
+    'res_vi_dilatado': 'ventriculo_izquierdo_dilatado',
+    'res_fdvi': 'funcion_diastolica_ventriculo_izquierdo',
+    'eco_ddvi': 'dtdvi',
+    'eco_dtsvi': 'dtsvi',
+    'eco_fey': 'fraccion_eyeccion_teicholz',
+    'valvulopatia_tipo_detalle': 'insuficiencia_mitral',
+    'ip_medida_chorro': 'medida_chorro_regurgitante_insuficiencia_pulmonar',
+
+    # Módulo 6: Dieta Mediterránea (PREDIMED)
+    'pred_q1': 'usa_usted_aceite_de_oliva',
+    'pred_q2': 'cuanto_aceite_de_oliva_consume',
+    'pred_q3': 'usted_consume_verduras',
+    'pred_q4': 'usted_consume_fruta',
+    'pred_q5': 'usted_consume_carne_roja_embutidos',
+    'pred_q6': 'usted_consume_mantequilla_margarina_nata',
+    'pred_q7': 'usted_consume_bebidas_carbonatadas',
+    'pred_q8': 'usted_consume_vino_tinto',
+    'pred_q9': 'usted_consume_legumbres',
+    'pred_q10': 'usted_consume_pescado_mariscos',
+    'pred_q11': 'usted_consume_reposteria',
+    'pred_q12': 'usted_consume_frutos_secos',
+    'pred_q13': 'usted_consume_pollo_pavo_o_conejo_en_de_ternera',
+    'pred_q14': 'usted_consume_alimentos_con_sofrito',
+
+    # Módulo 6: Actividad Física (IPAQ)
+    'act_realiza': 'usted_realiza_actividad_fisica',
+    'act_aerob': 'usted_realiza_ejercicios_aerobicos',
+    'act_aerob_cual': 'cual_ejercicios_realiza',
+    'act_aerob_frec': 'cuantas_veces_por_semana',
+    'act_aerob_min': 'cuantos_minutos_al_dia',
+    'act_anaerob': 'usted_realiza_ejercicios_anaerobicos',
+    'act_anaerob_cual': 'cual_ejercicio_anaerobico_realiza',
+    'act_anaerob_frec': 'cuantas_veces_por_semana_anaerobicoss',
+    'act_anaerob_min': 'cuantos_minutos_al_dia_anaerobicos',
+    'act_deporte': 'hace_deporte',
+    'act_deporte_tipo': 'que_tipo_de_deporte',
+    'act_deporte_frec': 'cuantas_veces_por_semana_hace_deporte',
+    'act_deporte_min': 'cuantos_minutos_al_dia_hace_deporte',
+    'act_horas_tv': 'horas_tv',
+    'act_horas_dormir': 'horas_dormir',
+    'act_horas_siesta': 'horas_siesta',
+    'act_horas_ocio': 'horas_ocio',
+    'act_horas_sent_lv': 'horas_sentadolv',
+    'act_horas_sent_sd': 'horas_sentadosd',
+}
+
+
+def classify_spss_question_section(col_name):
+    """
+    Clasifica con precisión médica cualquier columna SPSS en su QuestionnaireSection exacta de PostgreSQL.
+    """
+    norm = normalize_var_name(col_name)
+
+    # 1. PREDIMED (Dieta Mediterránea)
+    if any(k in norm for k in ['aceite_de_oliva', 'consume_verduras', 'consume_fruta', 'consume_carne', 'mantequilla', 'carbonatadas', 'vino_tinto', 'legumbres', 'pescado', 'reposteria', 'leche_de_vaca', 'queso', 'yogurt', 'frutos_secos', 'huevos', 'cereales', 'pollo_pavo', 'sofrito', 'medas', 'predimed', 'pred_']):
+        return 'MOD_6_PREDIMED'
+
+    # 2. Actividad Física / IPAQ
+    if any(k in norm for k in ['actividad_fisica', 'ejercicios_aerobicos', 'cual_ejercicios', 'veces_por_semana', 'minutos_al_dia', 'ejercicios_anaerobicos', 'anaerobic', 'deporte', 'horas_tv', 'horas_dormir', 'horas_siesta', 'horas_ocio', 'horas_sentado', 'ipaq', 'act_']):
+        return 'MOD_6_ACTIVIDAD_FISICA'
+
+    # 3. COVID-19 y Secuelas
+    if 'covid' in norm:
+        return 'MOD_4_COVID'
+
+    # 4. Factores Emergentes
+    if any(k in norm for k in ['sueno', 'toxicos', 'estrogenos', 'anticonceptivo', 'estres', 'ambiente', 'tipo_a', 'exigente', 'perfeccionista', 'hiperactivo', 'ambicioso', 'hostilidad', 'aislamiento', 'condiciones_ambientales', 'em_']):
+        return 'MOD_3_FACTORES_EMERG'
+
+    # 5. Antecedentes Familiares
+    if any(k in norm for k in ['antecedentes_familiares', 'antecedentes_padres', 'antecedentes_madres', 'antecedentes_hermanos', 'padre', 'madre', 'af_']):
+        return 'MOD_3_ANTECEDENTES_FAM'
+
+    # 6. Historia Cardiovascular y Rose
+    if any(k in norm for k in ['problema_corazon', 'revascularizacion', 'insuficiencia_cardiaca', 'ingreso_hospitalario', 'dolor_pecho', 'molestia_caminar', 'reaccion_dolor', 'clase_nyha', 'rose', 'estudios_clinicos', 'estudios_ecocardio', 'estudios_de_mapa', 'estudios_de_ergonometria', 'estudios_de_tac', 'estudios_de_rnm', 'estudios_de_electrofisiologia', 'holter']):
+        return 'MOD_4_HISTORIA_CARDIO'
+
+    # 7. Historia No Cardiovascular
+    if any(k in norm for k in ['cancer', 'problemas_respiratorios', 'salud_mental', 'alergias', 'otras', 'reumatolog', 'nc_']):
+        return 'MOD_4_HISTORIA_NO_CARDIO'
+
+    # 8. Factores Modificables (Predeterminado para factores de riesgo tradicionales)
+    return 'MOD_3_FACTORES_MOD'
+
+
+STANDARD_FIELD_ALIASES = {
+    'codigo': ['codigo', 'study_code', 'id_paciente', 'paciente_id', 'id_participante', 'cod', 'id'],
+    'cedula': ['cedula', 'ci', 'id_card', 'dni', 'identificacion', 'num_cedula'],
+    'nombres': ['nombres', 'nombre', 'first_names', 'nombre_completo', 'paciente'],
+    'apellido1': ['primer_apellido', 'apellido1', 'last_name1', 'apellidos'],
+    'apellido2': ['segundo_apellido', 'apellido2', 'last_name2'],
+    'universidad': ['universidad', 'uni', 'institucion', 'institution'],
+    'estamento': ['categoria_personal', 'estamento', 'estamento_unemi', 'tipo_personal'],
+    'facultad': ['facultad', 'faculty'],
+    'visita': ['visita', 'n_visita', 'num_visita', 'numero_visita'],
+    'fecha_visita': ['fecha', 'fecha_visita', 'visit_date', 'f_visita_fecha'],
+    'ciudad_res': ['ciudad', 'canton', 'residencia_ciudad', 'residencia_canton', 'ciudad_residencia'],
+    'provincia_res': ['provincia', 'provincia_residencia', 'residencia_provincia'],
+    'ciudad_nac': ['lugar_de_nacimiento', 'canton_nacimiento', 'municipio_nacimiento', 'ciudad_nacimiento'],
+    'provincia_nac': ['provincia_nac', 'provincia_nacimiento'],
+    'fecha_nac': ['fecha_de_nacimiento', 'fecha_nac', 'birth_date', 'fnac', 'f_nac'],
+    'edad': ['edad', 'age'],
+    'sexo': ['sexo', 'genero', 'sex'],
+    'raza': ['raza', 'etnia', 'ethnicity'],
+    'estado_civil': ['estado_civil', 'marital_status'],
+    'hijos': ['cuantos_hijos__tiene', 'hijos', 'num_hijos', 'n_hijos'],
+    'convive_con': ['con_quien_vive', 'convive_con', 'convivencia'],
+    'convivientes': ['cuantas_personas_convive_con_ustes_en_el_hogar', 'convivientes', 'num_convivientes'],
+    'estudios': ['nivel_estudios_obtenido', 'estudios', 'educacion', 'nivel_educativo'],
+    'horario': ['horario_de_trabajo', 'horario', 'jornada_laboral'],
+    'profesion': ['categoria_profesional', 'profesion', 'ocupacion'],
+    'vivienda': ['su_vivienda_es', 'vivienda', 'tipo_vivienda'],
+    'ingresos': ['ingresos_totales_mensuales', 'ingresos', 'ingreso_familiar'],
+    'anio': ['ao', 'a_o', 'anio', 'year'],
+
+    # Antropometría
+    'peso': ['peso_kg', 'peso_corporal', 'peso', 'weight'],
+    'talla': ['talla_cm', 'talla', 'estatura', 'height'],
+    'perimetro': ['perimetro_abdominal_cm', 'perimetro', 'cintura'],
+    'imc': ['imc_kgm2', 'imc', 'bmi'],
+    'asc': ['asc_m2', 'asc', 'bsa'],
+
+    # Signos Vitales
+    'tas': ['tas_ts', 'tas', 'pa_sistolica', 'sistolica'],
+    'tad': ['tas_mmhg', 'tad', 'tsi', 'pa_diastolica', 'diastolica'],
+    'sat_o2': ['saturacion_o2', 'sat_o2', 'sato2'],
+    'fc': ['frecuencia_cardiaca_ipm', 'fc', 'frecuencia_cardiaca', 'pulso'],
+    'soplos': ['soplos_cardiacos', 'soplos', 'soplo'],
+    'pulsos': ['pulsospedios', 'pulsos_pedios', 'pulsos'],
+    'resp_normal': ['exploracion_respiratoria', 'auscultacion_pulmonar'],
+    'abdom_normal': ['exploracion_abdominal', 'auscultacion_abdominal'],
+    'extratono': ['extratono_sino_tipo'],
+
+    # ECG
+    'ecg_ritmo': ['ecg_ritmo', 'ritmo'],
+    'ecg_pr': ['intervalo_pr_seg', 'pr_ms', 'pr'],
+    'ecg_qrs': ['complejo_qr_sseg', 'complejo_qrs_seg', 'qrs_ms', 'qrs'],
+    'ecg_qt': ['intervalo_qt_seg', 'qt_ms', 'qt'],
+    'ecg_qtc': ['intervalo_corregido_baset_mseg', 'qtc_bazett_ms', 'qtc'],
+    'ecg_eje': ['eje_electrico_a', 'eje', 'axis'],
+    'ecg_hvi': ['sobrecarga_sistolica', 'hvi'],
+    'ecg_bloqueo': ['bloqueo_de_rama_cual', 'bloqueo_rama'],
+    'ecg_rr': ['intervalo_rr_seg'],
+    'ecg_onda_p': ['anchura_onda_p_mm', 'onda_p_mitral'],
+    'ecg_bloqueo_av': ['bloqueo_av', 'bloqueo_sinoauricular_interauricular'],
+    'ecg_hemibloqueo': ['hemibloqueos'],
+    'ecg_patrones': ['patrones', 'deflexion_intrinsicoide_v5v6_seg'],
+    'ecg_onda_delta': ['onda_delta'],
+    'ecg_cubeta': ['cubeta_digitalica'],
+    'ecg_onda_q': ['onda_q_patologica'],
+    'ecg_t_negativa': ['t_negativa', 't_negativa_complejos'],
+    'ecg_st_ascenso': ['ascenso_st_patologico'],
+    'ecg_st_descenso': ['descenso_st_patologico'],
+    'ecg_normal': ['ecg_normal'],
+
+    # Laboratorio
+    'lab_hematies': ['hematies', 'globulos_rojos'],
+    'lab_hemoglobina': ['hemoglobina', 'hb'],
+    'lab_hematocrito': ['hematocrito', 'hto'],
+    'lab_vcm': ['volumen_corpuscular_medio_vcm', 'vcm'],
+    'lab_hcm': ['hemoglobina_corpuscular_medio_hcm', 'hcm'],
+    'lab_chcm': ['concentracion_hemoglobina_corpuscular_media_chcm', 'chcm'],
+    'lab_leucocitos': ['leucocitos', 'globulos_blancos'],
+    'lab_neutrofilos': ['neutrofilos'],
+    'lab_eosinofilos': ['eosinofilos'],
+    'lab_basofilos': ['basofilos'],
+    'lab_linfocitos': ['linfocitos'],
+    'lab_monocitos': ['monocitos'],
+    'lab_plaquetas': ['plaquetas', 'plt'],
+    'lab_tiempo_protombina': ['tiempo_protombina', 'inr'],
+    'lab_fibrinogeno': ['fibrinogeno'],
+    'lab_glucosa': ['glucosa_sangre', 'glucosa'],
+    'lab_hba1c': ['hemoglobina_glicosilada', 'hba1c'],
+    'lab_insulina': ['insulina_ayunas', 'insulina'],
+    'lab_homair': ['homa_ir', 'homair'],
+    'lab_urea': ['urea_funcion_renal', 'urea'],
+    'lab_creatinina': ['creatina_funcion_renal', 'creatinina'],
+    'lab_tfg': ['filtracion_glomerular_tfg', 'tfg'],
+    'lab_colesterol': ['colesterol_total_riesgo_cardiovascular', 'colesterol_total'],
+    'lab_hdl': ['hdl_riesgo_cardiovascular', 'hdl'],
+    'lab_ldl': ['ldl_riesgo_cardiovascular', 'ldl'],
+    'lab_vldl': ['vdl_riesgo_cardiovascular', 'vldl'],
+    'lab_trigliceridos': ['trigliceridos_riesgo_cardiovascular', 'trigliceridos'],
+    'lab_lipoproteina_a': ['lipoproteina_riesgo_cardiovascular', 'lipoproteina_a'],
+    'lab_apo_b': ['apolipoproteina_b_riesgo_cardiovascular', 'apo_b'],
+    'lab_got': ['got_ast_funcion_hepatica', 'ast', 'got'],
+    'lab_gpt': ['gpt_alt_funcion_hepatica', 'alt', 'gpt'],
+    'lab_ggt': ['ggt_funcion_hepatica', 'ggt'],
+    'lab_tsh': ['tsh_funcion_tiroidea', 'tsh'],
+    'lab_t4': ['hormonas_tiroideas_t4', 't4'],
+    'lab_t3': ['hormonas_tiroideas_t3', 't3'],
+    'lab_potasio': ['potasio_iones', 'potasio'],
+    'lab_calcio': ['calcio_iones', 'calcio'],
+    'lab_magnesio': ['magnesio_iones', 'magnesio'],
+    'lab_sodio': ['sodio_iones', 'sodio'],
+    'lab_homocisteina': ['homocisteina'],
+    'lab_pcr': ['pcr_ultrasensible', 'pcr'],
+    'lab_acido_urico': ['acido_urico'],
+    'lab_orina_microalbuminuria': ['orina_microalbuminuria', 'microalbuminuria'],
+
+    # Ecocardiograma
+    'eco_ddvi': ['dtdvi', 'diametro_diastolico_vi', 'ddvi'],
+    'eco_dtsvi': ['dtsvi'],
+    'eco_fey': ['fraccion_eyeccion_teicholz', 'fey', 'fraccion_eyeccion'],
+    'eco_hvi': ['ventriculo_izquierdo_hipertrofico', 'res_vi_hipertrofico'],
+    'eco_disfuncion': ['funcion_diastolica_ventriculo_izquierdo', 'eco_disfuncion_diastolica'],
+    'eco_calcificacion': ['calcificacion_anillo_aortico', 'calcificacion_anillo_mitral'],
+    'eco_gradiente': ['gradiante_transvalvular', 'gradiente_transvalvular', 'gradiente_medio'],
+    'eco_insuficiencia_mitral': ['insuficiencia_mitral'],
+    'eco_insuficiencia_aortica': ['insuficiencia_aortica'],
+    'eco_insuficiencia_pulmonar': ['insuficiencia_pulmonar', 'medida_chorro_regurgitante_insuficiencia_pulmonar'],
+    'eco_estenosis_mitral': ['esternosis_mitral', 'estenosis_mitral'],
+    'eco_estenosis_aortica': ['estenosis_arotica', 'estenosis_aortica'],
+    'eco_estenosis_pulmonar': ['estenosis_pulmonar'],
+    'eco_derrame': ['derrame_pericardio'],
+    'eco_vi_dilatado': ['ventriculo_izquierdo_dilatado'],
+    'eco_vd_dilatado': ['ventriculo_derecho_dilatado'],
+    'eco_vd_hipertrofico': ['ventriculo_derecho_hipertrofico'],
+    'eco_aorta_dilatada': ['aorta_dilatada'],
+}
+
 FIELD_DESTINATIONS = {
     'codigo': ('Identificación Institucional', 'Código de Estudio (study_code)'),
     'cedula': ('Identificación del Paciente', 'Cédula de Identidad (id_card)'),
@@ -93,6 +498,7 @@ FIELD_DESTINATIONS = {
     'facultad': ('Identificación Institucional', 'Facultad'),
     'visita': ('Identificación Institucional', 'N.° de Visita'),
     'fecha_visita': ('Identificación Institucional', 'Fecha de Visita'),
+    'anio': ('Identificación Institucional', 'Año de Cohorte'),
     'ciudad_res': ('Sociodemográfico', 'Cantón de Residencia'),
     'provincia_res': ('Sociodemográfico', 'Provincia de Residencia'),
     'ciudad_nac': ('Sociodemográfico', 'Cantón de Nacimiento'),
@@ -123,6 +529,7 @@ FIELD_DESTINATIONS = {
     'pulsos': ('Signos Vitales', 'Pulsos Pedios'),
     'resp_normal': ('Signos Vitales', 'Auscultación Pulmonar'),
     'abdom_normal': ('Signos Vitales', 'Auscultación Abdominal'),
+    'extratono': ('Signos Vitales', 'Extratono / Ritmo de Galope'),
     'ecg_ritmo': ('Electrocardiograma', 'Ritmo ECG'),
     'ecg_pr': ('Electrocardiograma', 'Intervalo PR (ms)'),
     'ecg_qrs': ('Electrocardiograma', 'Duración QRS (ms)'),
@@ -131,57 +538,143 @@ FIELD_DESTINATIONS = {
     'ecg_eje': ('Electrocardiograma', 'Eje QRS (grados)'),
     'ecg_hvi': ('Electrocardiograma', 'Hipertrofia Ventricular Izq.'),
     'ecg_bloqueo': ('Electrocardiograma', 'Bloqueo de Rama'),
-    'lab_hematies': ('Laboratorio', 'Hematíes (millones/µL)'),
-    'lab_hemoglobina': ('Laboratorio', 'Hemoglobina (g/dL)'),
-    'lab_hematocrito': ('Laboratorio', 'Hematocrito (%)'),
-    'lab_vcm': ('Laboratorio', 'VCM (fL)'),
-    'lab_leucocitos': ('Laboratorio', 'Leucocitos (miles/µL)'),
-    'lab_plaquetas': ('Laboratorio', 'Plaquetas (miles/µL)'),
-    'lab_tiempo_protombina': ('Laboratorio', 'Tiempo Protrombina (seg)'),
-    'lab_glucosa': ('Laboratorio', 'Glucosa (mg/dL)'),
-    'lab_urea': ('Laboratorio', 'Urea (mg/dL)'),
-    'lab_creatinina': ('Laboratorio', 'Creatinina (mg/dL)'),
-    'lab_colesterol': ('Laboratorio', 'Colesterol Total (mg/dL)'),
-    'lab_hdl': ('Laboratorio', 'Colesterol HDL (mg/dL)'),
-    'lab_ldl': ('Laboratorio', 'Colesterol LDL (mg/dL)'),
-    'lab_trigliceridos': ('Laboratorio', 'Triglicéridos (mg/dL)'),
-    'lab_got': ('Laboratorio', 'Transaminasa GOT/AST (U/L)'),
-    'lab_gpt': ('Laboratorio', 'Transaminasa GPT/ALT (U/L)'),
-    'lab_ggt': ('Laboratorio', 'GGT (U/L)'),
-    'lab_tsh': ('Laboratorio', 'TSH (µUI/mL)'),
+    'ecg_rr': ('Electrocardiograma', 'Intervalo RR (seg)'),
+    'ecg_onda_p': ('Electrocardiograma', 'Morfología Onda P'),
+    'ecg_bloqueo_av': ('Electrocardiograma', 'Bloqueo AV'),
+    'ecg_hemibloqueo': ('Electrocardiograma', 'Hemibloqueos'),
+    'ecg_patrones': ('Electrocardiograma', 'Patrones de Conducción'),
+    'ecg_onda_delta': ('Electrocardiograma', 'Onda Delta (WPW)'),
+    'ecg_cubeta': ('Electrocardiograma', 'Cubeta Digitálica'),
+    'ecg_onda_q': ('Electrocardiograma', 'Onda Q Patológica'),
+    'ecg_t_negativa': ('Electrocardiograma', 'Onda T Negativa'),
+    'ecg_st_ascenso': ('Electrocardiograma', 'Ascenso ST Patológico'),
+    'ecg_st_descenso': ('Electrocardiograma', 'Descenso ST Patológico'),
+    'ecg_normal': ('Electrocardiograma', 'ECG Normal / Patológico'),
+    'lab_hematies': ('Laboratorio Clínico', 'Hematíes (millones/µL)'),
+    'lab_hemoglobina': ('Laboratorio Clínico', 'Hemoglobina (g/dL)'),
+    'lab_hematocrito': ('Laboratorio Clínico', 'Hematocrito (%)'),
+    'lab_vcm': ('Laboratorio Clínico', 'VCM (fL)'),
+    'lab_hcm': ('Laboratorio Clínico', 'HCM (pg)'),
+    'lab_chcm': ('Laboratorio Clínico', 'CHCM (g/dL)'),
+    'lab_leucocitos': ('Laboratorio Clínico', 'Leucocitos (miles/µL)'),
+    'lab_neutrofilos': ('Laboratorio Clínico', 'Neutrófilos (%)'),
+    'lab_eosinofilos': ('Laboratorio Clínico', 'Eosinófilos (%)'),
+    'lab_basofilos': ('Laboratorio Clínico', 'Basófilos (%)'),
+    'lab_linfocitos': ('Laboratorio Clínico', 'Linfocitos (%)'),
+    'lab_monocitos': ('Laboratorio Clínico', 'Monocitos (%)'),
+    'lab_plaquetas': ('Laboratorio Clínico', 'Plaquetas (miles/µL)'),
+    'lab_tiempo_protombina': ('Laboratorio Clínico', 'Tiempo Protrombina / INR (seg)'),
+    'lab_fibrinogeno': ('Laboratorio Clínico', 'Fibrinógeno (mg/dL)'),
+    'lab_glucosa': ('Laboratorio Clínico', 'Glucosa (mg/dL)'),
+    'lab_hba1c': ('Laboratorio Clínico', 'Hemoglobina Glicosilada (%)'),
+    'lab_insulina': ('Laboratorio Clínico', 'Insulina Ayunas (µUI/mL)'),
+    'lab_homair': ('Laboratorio Clínico', 'Índice HOMA-IR'),
+    'lab_urea': ('Laboratorio Clínico', 'Urea (mg/dL)'),
+    'lab_creatinina': ('Laboratorio Clínico', 'Creatinina (mg/dL)'),
+    'lab_tfg': ('Laboratorio Clínico', 'Tasa Filtración Glomerular TFG'),
+    'lab_colesterol': ('Laboratorio Clínico', 'Colesterol Total (mg/dL)'),
+    'lab_hdl': ('Laboratorio Clínico', 'Colesterol HDL (mg/dL)'),
+    'lab_ldl': ('Laboratorio Clínico', 'Colesterol LDL (mg/dL)'),
+    'lab_vldl': ('Laboratorio Clínico', 'Colesterol VLDL (mg/dL)'),
+    'lab_trigliceridos': ('Laboratorio Clínico', 'Triglicéridos (mg/dL)'),
+    'lab_lipoproteina_a': ('Laboratorio Clínico', 'Lipoproteína a (mg/dL)'),
+    'lab_apo_b': ('Laboratorio Clínico', 'Apolipoproteína B (mg/dL)'),
+    'lab_got': ('Laboratorio Clínico', 'Transaminasa GOT/AST (U/L)'),
+    'lab_gpt': ('Laboratorio Clínico', 'Transaminasa GPT/ALT (U/L)'),
+    'lab_ggt': ('Laboratorio Clínico', 'GGT (U/L)'),
+    'lab_tsh': ('Laboratorio Clínico', 'TSH (µUI/mL)'),
+    'lab_t4': ('Laboratorio Clínico', 'Hormona T4 libre (ng/dL)'),
+    'lab_t3': ('Laboratorio Clínico', 'Hormona T3 total (ng/dL)'),
+    'lab_potasio': ('Laboratorio Clínico', 'Potasio K+ (mEq/L)'),
+    'lab_calcio': ('Laboratorio Clínico', 'Calcio Ca++ (mg/dL)'),
+    'lab_magnesio': ('Laboratorio Clínico', 'Magnesio Mg++ (mg/dL)'),
+    'lab_sodio': ('Laboratorio Clínico', 'Sodio Na+ (mEq/L)'),
+    'lab_homocisteina': ('Laboratorio Clínico', 'Homocisteína (µmol/L)'),
+    'lab_pcr': ('Laboratorio Clínico', 'PCR Ultrasensible (mg/L)'),
+    'lab_acido_urico': ('Laboratorio Clínico', 'Ácido Úrico (mg/dL)'),
+    'lab_orina_microalbuminuria': ('Laboratorio Clínico', 'Microalbuminuria en Orina (mg/g)'),
     'eco_ddvi': ('Ecocardiograma', 'Diámetro Diastólico VI (mm)'),
+    'eco_dtsvi': ('Ecocardiograma', 'Diámetro Sistólico VI (mm)'),
     'eco_fey': ('Ecocardiograma', 'Fracción de Eyección FEy (%)'),
     'eco_hvi': ('Ecocardiograma', 'Hipertrofia Ventricular Izq.'),
     'eco_disfuncion': ('Ecocardiograma', 'Disfunción Diastólica'),
-    'eco_calcificacion': ('Ecocardiograma', 'Calcificación Anillo Aórtico'),
+    'eco_calcificacion': ('Ecocardiograma', 'Calcificación Anillo Aórtico / Mitral'),
+    'eco_gradiente': ('Ecocardiograma', 'Gradiente Transvalvular (mmHg)'),
+    'eco_insuficiencia_mitral': ('Ecocardiograma', 'Insuficiencia Mitral'),
+    'eco_insuficiencia_aortica': ('Ecocardiograma', 'Insuficiencia Aórtica'),
+    'eco_insuficiencia_pulmonar': ('Ecocardiograma', 'Insuficiencia Pulmonar'),
+    'eco_estenosis_mitral': ('Ecocardiograma', 'Estenosis Mitral'),
+    'eco_estenosis_aortica': ('Ecocardiograma', 'Estenosis Aórtica'),
+    'eco_estenosis_pulmonar': ('Ecocardiograma', 'Estenosis Pulmonar'),
+    'eco_derrame': ('Ecocardiograma', 'Derrame Pericárdico'),
+    'eco_vi_dilatado': ('Ecocardiograma', 'Ventrículo Izquierdo Dilatado'),
+    'eco_vd_dilatado': ('Ecocardiograma', 'Ventrículo Derecho Dilatado'),
+    'eco_vd_hipertrofico': ('Ecocardiograma', 'Ventrículo Derecho Hipertrófico'),
+    'eco_aorta_dilatada': ('Ecocardiograma', 'Aorta Dilatada'),
 }
 
+
+def _match_column_to_field(col_name):
+    """Encuentra qué campo del sistema corresponde a una columna de SPSS dada."""
+    norm_c = normalize_var_name(col_name)
+    for field_key, aliases in STANDARD_FIELD_ALIASES.items():
+        for alias in aliases:
+            if norm_c == alias:
+                return field_key
+    # Búsqueda por contención
+    for field_key, aliases in STANDARD_FIELD_ALIASES.items():
+        for alias in aliases:
+            if len(alias) >= 4 and (alias in norm_c or norm_c in alias):
+                return field_key
+    return None
+
+
 def get_column_destination(col_name):
-    """Identifica con precisión el módulo y campo destino en PostgreSQL para una columna SPSS."""
+    """Identifica con precisión médica el módulo y campo destino en PostgreSQL para una columna SPSS."""
     matched_field = _match_column_to_field(col_name)
     if matched_field and matched_field in FIELD_DESTINATIONS:
         return FIELD_DESTINATIONS[matched_field]
 
-    u = str(col_name).upper()
-    if any(k in u for k in ['ECO', 'MITRAL', 'AORTIC', 'TRICUSP', 'PULMONAR', 'VENTRICUL', 'AURICUL', 'ONDA_', 'LLENADO', 'REGURGIT', 'VALVUL', 'ESTENOSIS', 'GRADIENTE']):
-        return ('Ecocardiograma', f'Medición / Parámetro ({col_name})')
-    if any(k in u for k in ['ECG', 'RITMO', 'QRS', 'QT', 'BAZETT', 'BLOQUEO']):
+    norm = normalize_var_name(col_name)
+
+    # 1. Ecocardiograma
+    if any(k in norm for k in ['eco', 'mitral', 'aortic', 'tritusp', 'tricusp', 'pulmonar', 'pulmunar', 'ventricul', 'auricul', 'onda_e', 'onda_a', 'onda_s', 'llenado', 'regurgit', 'valvul', 'estenosis', 'esternosis', 'gradiente', 'gradiante', 'tapse', 'mapse', 'dopler', 'biplanar', 'subcostal', 'cayado', 'engrados', 'movilidad', 'prolapso', 'velocidad', 'thp', 'jet_color', 'derrame', 'contractilidad', 'presiones_llenado', 'araesternal', 'area_sistolica', 'area_valvular', 'itv_de_tsvi', 'funcion_sistolica']):
+        return ('Ecocardiograma', f'Parámetro Ecocardiográfico ({col_name})')
+
+    # 2. Electrocardiograma
+    if any(k in norm for k in ['ecg', 'ritmo', 'qrs', 'qt', 'bazett', 'bloqueo', 'onda_p', 'hemibloqueo', 'onda_delta', 'cubeta', 'onda_q', 't_negativa', 'ascenso_st', 'descenso_st']):
         return ('Electrocardiograma', f'Parámetro ECG ({col_name})')
-    if any(k in u for k in ['LAB', 'HEMOGLOBIN', 'COLESTEROL', 'GLUCOSA', 'UREA', 'CREATIN', 'TRIGLIC', 'TSH', 'GOT', 'GPT', 'GGT']):
+
+    # 3. Laboratorio Clínico
+    if any(k in norm for k in ['lab', 'hematies', 'hemoglobin', 'hematocrito', 'vcm', 'hcm', 'chcm', 'leucocit', 'neutrofil', 'eosinofil', 'basofil', 'linfocit', 'monocit', 'plaquet', 'inr', 'fibrinogen', 'protombina', 'tromboplastina', 'glucosa', 'glicosilada', 'hba1c', 'insulina', 'homair', 'homa_ir', 'urea', 'creatin', 'filtracion_glomerular', 'tfg', 'colesterol', 'triglic', 'hdl', 'ldl', 'vdl', 'lipoproteina', 'apolipoproteina', 'got', 'gpt', 'ggt', 'tsh', 'tiroide', 'potasio', 'calcio', 'magnesio', 'sodio', 'homocisteina', 'pcr', 'acido_urico', 'orina', 'transferrina', 'ferritina']):
         return ('Laboratorio Clínico', f'Bioquímica / Hematología ({col_name})')
-    if any(k in u for k in ['TAS', 'TAD', 'FRECUENCIA', 'SATURACION', 'SOPLO', 'PULSO', 'AUSCULT']):
+
+    # 4. Signos Vitales
+    if any(k in norm for k in ['tas', 'tad', 'frecuencia', 'saturacion', 'soplo', 'pulso', 'auscult', 'extratono']):
         return ('Signos Vitales', f'Constante Vital ({col_name})')
-    if any(k in u for k in ['PESO', 'TALLA', 'IMC', 'PERIMETRO', 'ASC']):
+
+    # 5. Antropometría
+    if any(k in norm for k in ['peso', 'talla', 'imc', 'perimetro', 'asc']):
         return ('Antropometría', f'Medición Antropométrica ({col_name})')
-    if any(k in u for k in ['ANTECEDENT', 'FAMILIAR', 'FACTOR', 'DIAB', 'HTA', 'INFARTO', 'ICTUS', 'DISLIPEMIA']):
-        return ('Cuestionario Clínico', f'Antecedentes / Factores ({col_name})')
-    if any(k in u for k in ['MEDAS', 'DIETA', 'ACEITE', 'VERDURA', 'FRUTA', 'VINO', 'LEGUMBRES', 'CARNE']):
+
+    # 6. Cuestionarios Específicos
+    sec_code = classify_spss_question_section(col_name)
+    if sec_code == 'MOD_6_PREDIMED':
         return ('Cuestionario Dieta MEDAS', f'Hábito Nutricional ({col_name})')
-    if any(k in u for k in ['IPAQ', 'ACTIVIDAD', 'CAMINAR', 'SENTADO', 'HORAS', 'EJERCICIO', 'METS', 'PASOS']):
-        return ('Cuestionario IPAQ', f'Actividad Física ({col_name})')
-    if any(k in u for k in ['ESTUDIO', 'RNM', 'CATETERISMO', 'CORONARIOGRAFIA']):
-        return ('Cuestionario Clínico', f'Examen Previo ({col_name})')
-    return ('Cuestionario Clínico', f'Pregunta / Variable ({col_name})')
+    if sec_code == 'MOD_6_ACTIVIDAD_FISICA':
+        return ('Cuestionario Actividad Física', f'Hábito Actividad Física ({col_name})')
+    if sec_code == 'MOD_4_COVID':
+        return ('Cuestionario COVID-19', f'Historia COVID / Secuelas ({col_name})')
+    if sec_code == 'MOD_3_FACTORES_EMERG':
+        return ('Cuestionario Factores Emergentes', f'Factor Emergente ({col_name})')
+    if sec_code == 'MOD_3_ANTECEDENTES_FAM':
+        return ('Cuestionario Antecedentes Familiares', f'Antecedente Familiar ({col_name})')
+    if sec_code == 'MOD_4_HISTORIA_CARDIO':
+        return ('Cuestionario Historia Cardiovascular', f'Historia Cardiovascular ({col_name})')
+    if sec_code == 'MOD_4_HISTORIA_NO_CARDIO':
+        return ('Cuestionario Historia No Cardiovascular', f'Antecedente No Cardiovascular ({col_name})')
+
+    return ('Cuestionario Factores Modificables', f'Factor de Riesgo ({col_name})')
 
 
 def detect_column_typos(column_names):
@@ -218,104 +711,6 @@ def detect_column_typos(column_names):
                 })
     return detected
 
-STANDARD_FIELD_ALIASES = {
-    'codigo': ['codigo', 'study_code', 'id_paciente', 'paciente_id', 'id_participante', 'cod', 'id'],
-    'cedula': ['cedula', 'ci', 'id_card', 'dni', 'identificacion', 'num_cedula'],
-    'nombres': ['nombres', 'nombre', 'first_names', 'nombre_completo', 'paciente'],
-    'apellido1': ['primer_apellido', 'apellido1', 'last_name1', 'apellidos'],
-    'apellido2': ['segundo_apellido', 'apellido2', 'last_name2'],
-    'universidad': ['universidad', 'uni', 'institucion', 'institution'],
-    'estamento': ['categoria_personal', 'estamento', 'estamento_unemi', 'tipo_personal'],
-    'facultad': ['facultad', 'faculty'],
-    'visita': ['visita', 'n_visita', 'num_visita', 'numero_visita'],
-    'fecha_visita': ['fecha', 'fecha_visita', 'visit_date', 'f_visita_fecha'],
-    'ciudad_res': ['ciudad', 'canton', 'residencia_ciudad', 'residencia_canton', 'ciudad_residencia'],
-    'provincia_res': ['provincia', 'provincia_residencia', 'residencia_provincia'],
-    'ciudad_nac': ['lugar_de_nacimiento', 'canton_nacimiento', 'municipio_nacimiento', 'ciudad_nacimiento'],
-    'provincia_nac': ['provincia_nac', 'provincia_nacimiento'],
-    'fecha_nac': ['fecha_de_nacimiento', 'fecha_nac', 'birth_date', 'fnac', 'f_nac'],
-    'edad': ['edad', 'age'],
-    'sexo': ['sexo', 'genero', 'sex'],
-    'raza': ['raza', 'etnia', 'ethnicity'],
-    'estado_civil': ['estado_civil', 'marital_status'],
-    'hijos': ['cuantos_hijos__tiene', 'hijos', 'num_hijos', 'n_hijos'],
-    'convive_con': ['con_quien_vive', 'convive_con', 'convivencia'],
-    'convivientes': ['cuantas_personas_convive_con_ustes_en_el_hogar', 'convivientes', 'num_convivientes'],
-    'estudios': ['nivel_estudios_obtenido', 'estudios', 'educacion', 'nivel_educativo'],
-    'horario': ['horario_de_trabajo', 'horario', 'jornada_laboral'],
-    'profesion': ['categoria_profesional', 'profesion', 'ocupacion'],
-    'vivienda': ['su_vivienda_es', 'vivienda', 'tipo_vivienda'],
-    'ingresos': ['ingresos_totales_mensuales', 'ingresos', 'ingreso_familiar'],
-
-    # Antropometría
-    'peso': ['peso_kg', 'peso', 'weight'],
-    'talla': ['talla_cm', 'talla', 'estatura', 'height'],
-    'perimetro': ['perimetro_abdominal_cm', 'perimetro', 'cintura'],
-    'imc': ['imc_kgm2', 'imc', 'bmi'],
-    'asc': ['asc_m2', 'asc', 'bsa'],
-
-    # Signos Vitales
-    'tas': ['tas_ts', 'tas', 'pa_sistolica', 'sistolica'],
-    'tad': ['tas_mmhg', 'tad', 'tsi', 'pa_diastolica', 'diastolica'],
-    'sat_o2': ['saturacion_o2', 'sat_o2', 'sato2'],
-    'fc': ['frecuencia_cardiaca_ipm', 'fc', 'frecuencia_cardiaca', 'pulso'],
-    'soplos': ['soplos_cardiacos', 'soplos', 'soplo'],
-    'pulsos': ['pulsospedios', 'pulsos_pedios', 'pulsos'],
-    'resp_normal': ['exploracion_respiratoria', 'auscultacion_pulmonar'],
-    'abdom_normal': ['exploracion_abdominal', 'auscultacion_abdominal'],
-
-    # ECG
-    'ecg_ritmo': ['ecg_ritmo', 'ritmo'],
-    'ecg_pr': ['intervalo_pr_seg', 'pr_ms', 'pr'],
-    'ecg_qrs': ['complejo_qr_sseg', 'complejo_qrs_seg', 'qrs_ms', 'qrs'],
-    'ecg_qt': ['intervalo_qt_seg', 'qt_ms', 'qt'],
-    'ecg_qtc': ['intervalo_corregido_baset_mseg', 'qtc_bazett_ms', 'qtc'],
-    'ecg_eje': ['eje_electrico_a', 'eje', 'axis'],
-    'ecg_hvi': ['sobrecarga_sistolica', 'hvi'],
-    'ecg_bloqueo': ['bloqueo_de_rama_cual', 'bloqueo_rama'],
-
-    # Laboratorio
-    'lab_hematies': ['hematies', 'globulos_rojos'],
-    'lab_hemoglobina': ['hemoglobina', 'hb'],
-    'lab_hematocrito': ['hematocrito', 'hto'],
-    'lab_vcm': ['volumen_corpuscular_medio_vcm', 'vcm'],
-    'lab_leucocitos': ['leucocitos', 'globulos_blancos'],
-    'lab_plaquetas': ['plaquetas', 'plt'],
-    'lab_tiempo_protombina': ['tiempo_protombina', 'inr'],
-    'lab_glucosa': ['glucosa_sangre', 'glucosa'],
-    'lab_urea': ['urea_funcion_renal', 'urea'],
-    'lab_creatinina': ['creatina_funcion_renal', 'creatinina'],
-    'lab_colesterol': ['colesterol_total_riesgo_cardiovascular', 'colesterol_total'],
-    'lab_hdl': ['hdl_riesgo_cardiovascular', 'hdl'],
-    'lab_ldl': ['ldl_riesgo_cardiovascular', 'ldl'],
-    'lab_trigliceridos': ['trigliceridos_riesgo_cardiovascular', 'trigliceridos'],
-    'lab_got': ['got_ast_funcion_hepatica', 'ast', 'got'],
-    'lab_gpt': ['gpt_alt_funcion_hepatica', 'alt', 'gpt'],
-    'lab_ggt': ['ggt_funcion_hepatica', 'ggt'],
-    'lab_tsh': ['tsh_funcion_tiroidea', 'tsh'],
-
-    # Ecocardiograma
-    'eco_ddvi': ['dtdvi', 'diametro_diastolico_vi', 'ddvi'],
-    'eco_fey': ['fraccion_eyeccion_teicholz', 'fey', 'fraccion_eyeccion'],
-    'eco_hvi': ['ventriculo_izquierdo_hipertrofico', 'res_vi_hipertrofico'],
-    'eco_disfuncion': ['funcion_diastolica_ventriculo_izquierdo', 'eco_disfuncion_diastolica'],
-    'eco_calcificacion': ['calcificacion_anillo_aortico'],
-}
-
-
-def _match_column_to_field(col_name):
-    """Encuentra qué campo del sistema corresponde a una columna de SPSS dada."""
-    norm_c = normalize_var_name(col_name)
-    for field_key, aliases in STANDARD_FIELD_ALIASES.items():
-        for alias in aliases:
-            if norm_c == alias:
-                return field_key
-    # Búsqueda por contención
-    for field_key, aliases in STANDARD_FIELD_ALIASES.items():
-        for alias in aliases:
-            if len(alias) >= 4 and (alias in norm_c or norm_c in alias):
-                return field_key
-    return None
 
 
 def _resolve_canton_safe(canton_name, province_name=None):
@@ -585,7 +980,8 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
     sex_mujer = Sex.objects.filter(name__istartswith='M').first()
     ethnicity_default = Ethnicity.objects.filter(name__icontains='Mestizo').first() or Ethnicity.objects.first()
     default_canton = Canton.objects.filter(name__icontains='Milagro').first() or Canton.objects.first()
-    default_section = QuestionnaireSection.objects.first()
+    sections_by_code = {s.code: s for s in QuestionnaireSection.objects.all()}
+    default_section = sections_by_code.get('MOD_3_FACTORES_MOD') or QuestionnaireSection.objects.first()
 
     created_count = 0
     updated_count = 0
@@ -1062,8 +1458,8 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                     echo.aortic_valve_calcification = (v_calc == 1.0)
                 echo.save()
 
-                # 10. Persistencia Universal de TODAS las variables SPSS en VisitAnswer
-                # Esto garantiza que encuestas completas (MEDAS, estilos de vida, factores) se guarden
+                # 10. Persistencia Universal e Inteligente de TODAS las variables SPSS en VisitAnswer
+                # Se asigna cada variable a su QuestionnaireSection exacta y se sincroniza bidireccionalmente con el formulario
                 for col_name in col_names:
                     val_raw = df_dict[col_name][i]
                     if val_raw is None or str(val_raw).strip() == '':
@@ -1074,21 +1470,27 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                     val_str = text_lbl if text_lbl else str(val_raw).strip()
 
                     clean_code = normalize_var_name(col_name)
-                    if not clean_code or len(clean_code) > 30:
-                        clean_code = clean_code[:30] if clean_code else "var_spss"
+                    if not clean_code:
+                        continue
+                    clean_code = clean_code[:30]
 
+                    target_sec_code = classify_spss_question_section(col_name)
+                    target_sec = sections_by_code.get(target_sec_code, default_section)
+
+                    var_label = meta.column_names_to_labels.get(col_name) or col_name
                     q = Question.objects.filter(code=clean_code).first()
                     if not q:
-                        var_label = meta.column_names_to_labels.get(col_name) or col_name
                         q = Question.objects.create(
-                            section=default_section,
+                            section=target_sec,
                             code=clean_code,
                             text=str(var_label)[:255],
                             response_type=Question.ResponseType.TEXTO,
                             display_order=999
                         )
+                    elif q.section != target_sec and q.section == default_section:
+                        q.section = target_sec
+                        q.save(update_fields=['section'])
 
-                    # ck_visit_answer_single_value: exactamente uno entre selected_option, numeric_value o text_value
                     num_val = None
                     if isinstance(val_raw, (int, float)) and not text_lbl:
                         try:
@@ -1110,6 +1512,116 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                             "selected_option": None
                         }
                     )
+
+                    # Sincronización cruzada con identificadores del formulario HTML
+                    for form_k, spss_k in SPSS_QUESTION_ALIASES.items():
+                        if spss_k == clean_code:
+                            q_form = Question.objects.filter(code=form_k).first()
+                            if not q_form:
+                                q_form = Question.objects.create(
+                                    section=target_sec,
+                                    code=form_k,
+                                    text=f"Campo {form_k}",
+                                    response_type=Question.ResponseType.TEXTO,
+                                    display_order=999
+                                )
+                            VisitAnswer.objects.update_or_create(
+                                visit=visit,
+                                question=q_form,
+                                defaults={
+                                    "text_value": ans_text,
+                                    "numeric_value": num_val,
+                                    "selected_option": None
+                                }
+                            )
+
+                # Descomposición y derivación inteligente de preguntas compuestas para el formulario web:
+                def _set_derived_ans(q_code, q_val, sec_cd):
+                    sec_obj = sections_by_code.get(sec_cd, default_section)
+                    q_d = Question.objects.filter(code=q_code).first()
+                    if not q_d:
+                        q_d = Question.objects.create(
+                            section=sec_obj,
+                            code=q_code,
+                            text=f"Campo {q_code}",
+                            response_type=Question.ResponseType.TEXTO,
+                            display_order=999
+                        )
+                    VisitAnswer.objects.update_or_create(
+                        visit=visit,
+                        question=q_d,
+                        defaults={"text_value": q_val, "numeric_value": None, "selected_option": None}
+                    )
+
+                # 1. Estrés laboral y familiar
+                estres_raw = str(df_dict.get('ESTRES', [None]*total_rows)[i] or '').upper()
+                if 'TRABAJO' in estres_raw:
+                    _set_derived_ans('em_estres_trab', 'Si', 'MOD_3_FACTORES_EMERG')
+                elif estres_raw and 'NO' in estres_raw:
+                    _set_derived_ans('em_estres_trab', 'No', 'MOD_3_FACTORES_EMERG')
+                if 'FAMILIAR' in estres_raw or 'FAMILIA' in estres_raw:
+                    _set_derived_ans('em_estres_fam', 'Si', 'MOD_3_FACTORES_EMERG')
+                elif estres_raw and 'NO' in estres_raw:
+                    _set_derived_ans('em_estres_fam', 'No', 'MOD_3_FACTORES_EMERG')
+
+                # 2. Personalidad Tipo A
+                pers_raw = str(df_dict.get('PERSONALIDAD_TIPO_A', [None]*total_rows)[i] or '').upper()
+                if 'TIPO A' in pers_raw or 'SI' in pers_raw:
+                    _set_derived_ans('em_pers_a', 'Si', 'MOD_3_FACTORES_EMERG')
+                elif pers_raw and 'NO' in pers_raw:
+                    _set_derived_ans('em_pers_a', 'No', 'MOD_3_FACTORES_EMERG')
+
+                # 3. Antecedentes Padres
+                padre_raw = str(df_dict.get('ANTECEDENTES_PADRES', [None]*total_rows)[i] or '').upper()
+                if padre_raw:
+                    _set_derived_ans('ant_padre_hta', 'Si' if 'HTA' in padre_raw else 'No', 'MOD_3_ANTECEDENTES_FAM')
+                    _set_derived_ans('ant_padre_dm', 'Si' if ('DIAB' in padre_raw or 'DM' in padre_raw) else 'No', 'MOD_3_ANTECEDENTES_FAM')
+                    _set_derived_ans('ant_padre_iam', 'Si' if ('INFARTO' in padre_raw or 'IAM' in padre_raw) else 'No', 'MOD_3_ANTECEDENTES_FAM')
+                    _set_derived_ans('ant_padre_ictus', 'Si' if ('ICTUS' in padre_raw or 'ACV' in padre_raw) else 'No', 'MOD_3_ANTECEDENTES_FAM')
+
+                # 4. Antecedentes Madres
+                madre_raw = str(df_dict.get('ANTECEDENTES_MADRES', [None]*total_rows)[i] or '').upper()
+                if madre_raw:
+                    _set_derived_ans('ant_madre_hta', 'Si' if 'HTA' in madre_raw else 'No', 'MOD_3_ANTECEDENTES_FAM')
+                    _set_derived_ans('ant_madre_dm', 'Si' if ('DIAB' in madre_raw or 'DM' in madre_raw) else 'No', 'MOD_3_ANTECEDENTES_FAM')
+                    _set_derived_ans('ant_madre_iam', 'Si' if ('INFARTO' in madre_raw or 'IAM' in madre_raw) else 'No', 'MOD_3_ANTECEDENTES_FAM')
+                    _set_derived_ans('ant_madre_ictus', 'Si' if ('ICTUS' in madre_raw or 'ACV' in madre_raw) else 'No', 'MOD_3_ANTECEDENTES_FAM')
+
+                # 5. COVID-19
+                covid_raw = str(df_dict.get('HISTORIA_COVID', [None]*total_rows)[i] or '').upper()
+                if covid_raw:
+                    _set_derived_ans('covid_paso', 'Si' if ('SI' in covid_raw or covid_raw == '1.0') else 'No', 'MOD_4_COVID')
+                hosp_raw = str(df_dict.get('AFECTACION_COVID', [None]*total_rows)[i] or '').upper()
+                if 'HOSPITAL' in hosp_raw or 'INGRESO' in hosp_raw:
+                    _set_derived_ans('covid_ingreso', 'Si', 'MOD_4_COVID')
+                long_raw = str(df_dict.get('LONG_COVID', [None]*total_rows)[i] or '').upper()
+                if long_raw:
+                    _set_derived_ans('longcovid', 'Si' if ('SI' in long_raw or long_raw == '1.0') else 'No', 'MOD_4_COVID')
+
+                # 6. PREDIMED (Dieta Mediterránea)
+                oliva_raw = str(df_dict.get('USA_USTED_ACEITE_DE_OLIVA', [None]*total_rows)[i] or '').upper()
+                if oliva_raw:
+                    is_ol = 'Si' if ('SI' in oliva_raw or oliva_raw == '1.0') else 'No'
+                    _set_derived_ans('pred_q1', is_ol, 'MOD_6_PREDIMED')
+                    _set_derived_ans('pred_q2', is_ol, 'MOD_6_PREDIMED')
+
+                # 7. Actividad Física
+                act_raw = str(df_dict.get('USTED_REALIZA_ACTIVIDAD_FISICA', [None]*total_rows)[i] or '').upper()
+                if act_raw:
+                    _set_derived_ans('act_realiza', 'Si' if ('SI' in act_raw or act_raw == '1.0') else 'No', 'MOD_6_ACTIVIDAD_FISICA')
+
+                aer_raw = str(df_dict.get('USTED_REALIZA_EJERCICIOS_AEROBICOS', [None]*total_rows)[i] or '').upper()
+                if aer_raw:
+                    _set_derived_ans('act_aerob', 'Si' if ('SI' in aer_raw or aer_raw == '1.0') else 'No', 'MOD_6_ACTIVIDAD_FISICA')
+
+                ana_raw = str(df_dict.get('USTED_REALIZA_EJERCICIOS_ANAEROBICOS', [None]*total_rows)[i] or '').upper()
+                if ana_raw:
+                    _set_derived_ans('act_anaerob', 'Si' if ('SI' in ana_raw or ana_raw == '1.0') else 'No', 'MOD_6_ACTIVIDAD_FISICA')
+
+                dep_raw = str(df_dict.get('HACE_DEPORTE', [None]*total_rows)[i] or '').upper()
+                if dep_raw:
+                    _set_derived_ans('act_deporte', 'Si' if ('SI' in dep_raw or dep_raw == '1.0') else 'No', 'MOD_6_ACTIVIDAD_FISICA')
+
 
         except Exception as e:
             errors.append(f"Fila {i + 1} (Código {study_code if 'study_code' in locals() else i + 1}): {str(e)}")
