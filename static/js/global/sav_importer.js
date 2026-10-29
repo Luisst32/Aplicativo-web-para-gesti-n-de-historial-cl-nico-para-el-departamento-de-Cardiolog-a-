@@ -59,8 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
     dropZone.addEventListener(eventName, (e) => {
       e.preventDefault();
       e.stopPropagation();
-      dropZone.style.borderColor = '#4338ca';
-      dropZone.style.background = '#eef2ff';
+      dropZone.style.borderColor = 'var(--color-primary-blue, #3AA0FF)';
+      dropZone.style.background = 'var(--blue-card-bg, #f0f7ff)';
     }, false);
   });
 
@@ -191,7 +191,7 @@ async function onSavFileSelected(file) {
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid #f1f5f9';
         tr.innerHTML = `
-          <td style="padding: 6px 10px; font-weight: 700; color: #1e3a8a;">${r.codigo || '--'}</td>
+          <td style="padding: 6px 10px; font-weight: 700; color: var(--color-primary-blue, #3AA0FF);">${r.codigo || '--'}</td>
           <td style="padding: 6px 10px;">${r.universidad || '--'}</td>
           <td style="padding: 6px 10px;">${r.sexo || '--'}</td>
           <td style="padding: 6px 10px;">${r.edad || '--'}</td>
