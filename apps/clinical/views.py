@@ -1157,10 +1157,11 @@ def sav_import_execute_api(request):
             data = request.POST.dict()
 
         temp_token = data.get('temp_token', '').strip()
+        duplicate_action = data.get('duplicate_action', 'update').strip()
         if not temp_token:
             return JsonResponse({"success": False, "error": "Token de importación no válido o ausente."}, status=400)
 
-        import_result = execute_sav_import(temp_token, request.user)
+        import_result = execute_sav_import(temp_token, request.user, duplicate_action=duplicate_action)
         if not import_result.get('success'):
             return JsonResponse(import_result, status=400)
 

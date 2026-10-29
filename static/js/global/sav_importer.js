@@ -118,8 +118,40 @@ async function onSavFileSelected(file) {
 
     // Actualizar métricas
     document.getElementById('savMetricRows').textContent = data.total_rows || '0';
-    document.getElementById('savMetricCols').textContent = data.total_columns || '0';
-    document.getElementById('savMetricMapped').textContent = data.mapped_standard_columns || '0';
+    document.getElementById('savMetricNew').textContent = data.duplicates?.new_patients_count ?? (data.total_rows || '0');
+    document.getElementById('savMetricDups').textContent = data.duplicates?.db_duplicates_count ?? '0';
+    document.getElementById('savMetricTypos').textContent = data.grammatical_errors_count ?? '0';
+
+    // 1. Sección Duplicados en Base de Datos
+    const dupsSection = document.getElementById('savDuplicatesSection');
+    const dupCount = data.duplicates?.db_duplicates_count || 0;
+    if (dupCount > 0) {
+      dupsSection.style.display = 'block';
+      document.getElementById('savDupCountLabel').textContent = dupCount;
+      const dupList = document.getElementById('savDupListContainer');
+      const dups = data.duplicates?.db_duplicates || [];
+      dupList.innerHTML = dups.map(d => `<div style="padding: 2px 0;">• <strong>Código ${d.code}:</strong> ${d.patient_name}</div>`).join('');
+    } else {
+      dupsSection.style.display = 'none';
+    }
+
+    // 2. Sección Errores Gramaticales y Tipográficos en Columnas
+    const typosSection = document.getElementById('savTyposSection');
+    const typoCount = data.grammatical_errors_count || 0;
+    if (typoCount > 0) {
+      typosSection.style.display = 'block';
+      document.getElementById('savTypoCountLabel').textContent = typoCount;
+      const typoList = document.getElementById('savTypoListContainer');
+      const typos = data.grammatical_errors || [];
+      typoList.innerHTML = typos.map(t => `
+        <div style="padding: 3px 0; border-bottom: 1px dashed #f0abfc; display: flex; justify-content: space-between; gap: 8px;">
+          <span>Columna SPSS: <code style="color: #be185d; font-weight: 700;">${t.column}</code> &rarr; Corregida a: <code style="color: #047857; font-weight: 700;">${t.corrected_to}</code></span>
+          <span style="color: #64748b; font-size: 0.72rem;">${t.explanation}</span>
+        </div>
+      `).join('');
+    } else {
+      typosSection.style.display = 'none';
+    }
 
     // Renderizar advertencias y avisos
     const warnBox = document.getElementById('savWarningsBox');
@@ -186,11 +218,29 @@ async function onSavFileSelected(file) {
   }
 }
 
+function toggleSavDupDetails() {
+  const container = document.getElementById('savDupListContainer');
+  if (container) {
+    container.style.display = (container.style.display === 'none' || !container.style.display) ? 'block' : 'none';
+  }
+}
+
+function toggleSavTypoDetails() {
+  const container = document.getElementById('savTypoListContainer');
+  if (container) {
+    container.style.display = (container.style.display === 'none' || !container.style.display) ? 'block' : 'none';
+  }
+}
+
 async function ejecutarImportacionSav() {
   if (!currentSavToken) {
     alert('No hay un archivo cargado actualmente para importar.');
     return;
   }
+
+  // Leer la acción elegida por el usuario para duplicados: 'update' (actualizar) o 'skip' (omitir)
+  const dupActionRadio = document.querySelector('input[name="savDuplicateAction"]:checked');
+  const duplicateAction = dupActionRadio ? dupActionRadio.value : 'update';
 
   // Pasar a fase de ejecución
   document.getElementById('savPhaseConfirm').style.display = 'none';
@@ -209,7 +259,8 @@ async function ejecutarImportacionSav() {
         'X-CSRFToken': getCsrfToken()
       },
       body: JSON.stringify({
-        temp_token: currentSavToken
+        temp_token: currentSavToken,
+        duplicate_action: duplicateAction
       })
     });
 
@@ -241,3 +292,4 @@ async function ejecutarImportacionSav() {
     document.getElementById('savBtnCancel').style.display = 'inline-block';
   }
 }
+

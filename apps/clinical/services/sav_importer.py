@@ -55,6 +55,51 @@ def normalize_var_name(name):
 
 
 # Diccionario de alias clave para detectar columnas clínicas estándar
+
+# -----------------------------------------------------------------------------
+# Patrones de errores gramaticales y tipográficos conocidos en columnas SPSS
+# -----------------------------------------------------------------------------
+
+COLUMN_TYPO_RULES = [
+    (r'CONVIVE_CON_USTES', 'CONVIVE_CON_USTED', 'Error gramatical: "USTES" corregido a "USTED"', 'gramatical'),
+    (r'ANTECEDENTRS', 'ANTECEDENTES', 'Error tipográfico: "ANTECEDENTRS" corregido a "ANTECEDENTES"', 'tipografico'),
+    (r'FACTORES_TIESGO', 'FACTORES_RIESGO', 'Error tipográfico: "TIESGO" corregido a "RIESGO"', 'tipografico'),
+    (r'TRONTO', 'TRONCO', 'Error tipográfico: "TRONTO" corregido a "TRONCO"', 'tipografico'),
+    (r'PULMUNAR', 'PULMONAR', 'Error tipográfico: "PULMUNAR" corregido a "PULMONAR"', 'tipografico'),
+    (r'CALIFICACION_ANILLO', 'CALCIFICACION_ANILLO', 'Error médico/tipográfico: "CALIFICACION" corregido a "CALCIFICACION"', 'medico'),
+    (r'ESTERNOSIS', 'ESTENOSIS', 'Error tipográfico: "ESTERNOSIS" corregido a "ESTENOSIS"', 'tipografico'),
+    (r'AROTICA', 'AORTICA', 'Error tipográfico: "AROTICA" corregido a "AORTICA"', 'tipografico'),
+    (r'GRADIANTE', 'GRADIENTE', 'Error tipográfico: "GRADIANTE" corregido a "GRADIENTE"', 'tipografico'),
+    (r'TRNASVALVULAR', 'TRANSVALVULAR', 'Error tipográfico: "TRNASVALVULAR" corregido a "TRANSVALVULAR"', 'tipografico'),
+    (r'VENA_CONTRTACTA', 'VENA_CONTRACTA', 'Error tipográfico: "CONTRTACTA" corregido a "CONTRACTA"', 'tipografico'),
+    (r'LLENQADO', 'LLENADO', 'Error tipográfico: "LLENQADO" corregido a "LLENADO"', 'tipografico'),
+    (r'TRICUSPUDE', 'TRICUSPIDE', 'Error tipográfico: "TRICUSPUDE" corregido a "TRICUSPIDE"', 'tipografico'),
+    (r'DISTOLICA', 'DIASTOLICA', 'Error tipográfico: "DISTOLICA" corregido a "DIASTOLICA"', 'tipografico'),
+    (r'ECOCARDIOFRAFIA', 'ECOCARDIOGRAFIA', 'Error tipográfico: "ECOCARDIOFRAFIA" corregido a "ECOCARDIOGRAFIA"', 'tipografico'),
+    (r'CCARDIACO', 'CARDIACO', 'Error tipográfico: "CCARDIACO" corregido a "CARDIACO"', 'tipografico'),
+    (r'ANAEROBICOSS', 'ANAEROBICOS', 'Error tipográfico: doble "S" en "ANAEROBICOSS"', 'tipografico'),
+    (r'DISPLEMIA', 'DISLIPEMIA', 'Error en etiqueta: "DISPLEMIA" corregido a "DISLIPEMIA"', 'etiqueta'),
+]
+
+def detect_column_typos(column_names):
+    """Detecta y clasifica errores gramaticales o tipográficos en los nombres de columnas."""
+    detected = []
+    seen = set()
+    for col in column_names:
+        for pattern, replacement, explanation, err_type in COLUMN_TYPO_RULES:
+            if re.search(pattern, col, re.IGNORECASE):
+                corr = re.sub(pattern, replacement, col, flags=re.IGNORECASE)
+                key = (col, corr)
+                if key not in seen:
+                    seen.add(key)
+                    detected.append({
+                        "original": col,
+                        "corrected": corr,
+                        "explanation": explanation,
+                        "type": err_type
+                    })
+    return detected
+
 STANDARD_FIELD_ALIASES = {
     'codigo': ['codigo', 'study_code', 'id_paciente', 'paciente_id', 'id_participante', 'cod', 'id'],
     'cedula': ['cedula', 'ci', 'id_card', 'dni', 'identificacion', 'num_cedula'],
@@ -270,21 +315,62 @@ def analyze_sav_file(file_obj, filename="archivo.sav"):
             f"El sistema las corregirá inteligentemente calculando el año aproximado a partir de la edad reportada."
         )
 
-    # 4. Registros ya existentes en la BD
-    existing_codes_in_db = set(Visit.objects.values_list('study_code', flat=True))
-    overlapping_count = 0
+    # 4. Detección de Errores Gramaticales y Tipográficos en Columnas
+    grammatical_errors = detect_column_typos(col_names)
+
+    # 5. Detección de Duplicados Internos en el Archivo
+    internal_duplicates = []
+    codes_seen_in_file = {}
+    if has_codigo:
+        cod_col = field_to_col['codigo']
+        for idx_row, v in enumerate(df_dict[cod_col]):
+            if v is not None:
+                c_str = str(int(float(v))) if isinstance(v, (int, float)) else str(v).strip()
+                if c_str in codes_seen_in_file:
+                    internal_duplicates.append({
+                        "code": c_str,
+                        "rows": [codes_seen_in_file[c_str] + 1, idx_row + 1]
+                    })
+                else:
+                    codes_seen_in_file[c_str] = idx_row
+
+    if internal_duplicates:
+        warnings.append(
+            f"Se detectaron {len(internal_duplicates)} código(s) duplicado(s) dentro del mismo archivo SPSS "
+            f"(ej: Código {internal_duplicates[0]['code']})."
+        )
+
+    # 6. Detección de Duplicados con la Base de Datos
+    db_visits = Visit.objects.select_related('patient').all()
+    db_codes_map = {
+        v.study_code: (v.patient.full_name if v.patient else f"Código {v.study_code}")
+        for v in db_visits if v.study_code
+    }
+
+    db_duplicates = []
+    new_patients_count = 0
     if has_codigo:
         cod_col = field_to_col['codigo']
         for v in df_dict[cod_col]:
             if v is not None:
                 c_str = str(int(float(v))) if isinstance(v, (int, float)) else str(v).strip()
-                if c_str in existing_codes_in_db:
-                    overlapping_count += 1
+                if c_str in db_codes_map:
+                    db_duplicates.append({
+                        "code": c_str,
+                        "patient_name": db_codes_map[c_str]
+                    })
+                else:
+                    new_patients_count += 1
+            else:
+                new_patients_count += 1
+    else:
+        new_patients_count = total_rows
 
-    if overlapping_count > 0:
+    if db_duplicates:
         warnings.append(
-            f"{overlapping_count} paciente(s) del archivo ya existen en la base de datos (mismo Código). "
-            f"Al confirmar, se actualizarán sus datos clínicos, exámenes y encuestas con la información de este archivo."
+            f"Se encontraron {len(db_duplicates)} paciente(s) que ya existen en la base de datos "
+            f"(Códigos: {', '.join([d['code'] for d in db_duplicates[:5]])}{'...' if len(db_duplicates) > 5 else ''}). "
+            f"Podrá elegir si desea actualizarlos o conservar los datos existentes."
         )
 
     # Vista previa de los primeros 5 registros
@@ -333,6 +419,15 @@ def analyze_sav_file(file_obj, filename="archivo.sav"):
         "mapped_standard_columns": len(field_to_col),
         "unmapped_extra_columns": total_cols - len(field_to_col),
         "categories_breakdown": categories_breakdown,
+        "grammatical_errors": grammatical_errors,
+        "grammatical_errors_count": len(grammatical_errors),
+        "duplicates": {
+            "internal_duplicates": internal_duplicates,
+            "internal_duplicates_count": len(internal_duplicates),
+            "db_duplicates": db_duplicates,
+            "db_duplicates_count": len(db_duplicates),
+            "new_patients_count": new_patients_count
+        },
         "missing_fields": missing_fields,
         "warnings": warnings,
         "preview_rows": preview_rows,
@@ -344,7 +439,7 @@ def analyze_sav_file(file_obj, filename="archivo.sav"):
 # 2. EJECUCIÓN TRANSACCIONAL DE LA IMPORTACIÓN
 # -----------------------------------------------------------------------------
 
-def execute_sav_import(temp_token, user, current_year=2026):
+def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="update"):
     """
     Importa transaccionalmente todas las filas del archivo SPSS a PostgreSQL.
     Crea Paciente, Visita, Antropometría, Signos Vitales, ECG, Eco, Lab y VisitAnswers.
@@ -387,6 +482,7 @@ def execute_sav_import(temp_token, user, current_year=2026):
 
     created_count = 0
     updated_count = 0
+    skipped_count = 0
     errors = []
 
     # Mapas de conversión de textos a modelos de catálogo
@@ -549,6 +645,11 @@ def execute_sav_import(temp_token, user, current_year=2026):
                 patient = Patient.objects.filter(visit__study_code=study_code).first()
                 if not patient:
                     patient = Patient.objects.filter(id_card=id_card).first()
+
+                # Si el usuario eligió omitir duplicados y ya existe, saltar
+                if patient and duplicate_action == "skip":
+                    skipped_count += 1
+                    continue
 
                 is_new_patient = False
                 if not patient:
@@ -944,6 +1045,7 @@ def execute_sav_import(temp_token, user, current_year=2026):
         "total_rows": total_rows,
         "imported_count": created_count,
         "updated_count": updated_count,
+        "skipped_count": skipped_count,
         "errors": errors[:10],
-        "message": f"Se procesaron con éxito {total_rows} registros ({created_count} nuevos pacientes creados, {updated_count} actualizados)."
+        "message": f"Se procesaron con éxito {total_rows} registros ({created_count} nuevos creados, {updated_count} actualizados, {skipped_count} omitidos)."
     }
