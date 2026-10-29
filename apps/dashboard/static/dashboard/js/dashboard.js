@@ -56,49 +56,56 @@ function switchTab(tabId, element) {
     }
   }
 
-  // Redibujar gráficos si es necesario por resize del contenedor
+  // Redibujar gráficos para recalcular dimensiones tras cambiar de tab
   setTimeout(() => {
     window.dispatchEvent(new Event('resize'));
-  }, 60);
+  }, 80);
 }
 
-// Inicialización al cargar el DOM
-document.addEventListener('DOMContentLoaded', async () => {
-  // Intentar cargar datos desde el script JSON embebido
+// Inicialización del Dashboard
+async function initDashboard() {
+  // 1. Intentar cargar datos desde el script JSON embebido
   const embeddedDataEl = document.getElementById('dashboard-records-data');
   if (embeddedDataEl && embeddedDataEl.textContent.trim()) {
     try {
       allRecords = JSON.parse(embeddedDataEl.textContent);
     } catch (e) {
-      console.warn('Error al parsear datos embebidos, solicitando vía API:', e);
+      console.warn('Error al parsear datos embebidos:', e);
     }
   }
 
-  // Si no había datos embebidos o estaban vacíos, consultar la API REST
+  // 2. Si no había datos embebidos o estaban vacíos, consultar la API REST
   if (!allRecords || allRecords.length === 0) {
     try {
-      const response = await fetch('/dashboard/api/data/');
+      const response = await fetch('/api/data/');
       if (response.ok) {
         const payload = await response.json();
         allRecords = payload.records || [];
       }
     } catch (err) {
-      console.error('Error al consultar /dashboard/api/data/:', err);
+      console.error('Error al consultar /api/data/:', err);
     }
   }
 
-  // Sincronizar opciones dinámicas de slicers con los datos reales
+  // 3. Sincronizar opciones dinámicas de slicers con los datos reales
   syncSlicerOptions();
 
-  // Inicializar registros filtrados con la muestra completa
+  // 4. Inicializar registros filtrados con la muestra completa
   filteredRecords = [...allRecords];
 
-  // Inicializar gráficos
+  // 5. Renderizar gráficos construidos directamente con la cohorte real
   initAllCharts();
 
-  // Actualizar KPIs, tablas y series con datos reales
+  // 6. Actualizar tarjetas KPI y tablas
   updateDashboard();
-});
+}
+
+// Ejecutar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDashboard);
+} else {
+  initDashboard();
+}
 
 // Sincroniza dinámicamente los selectores con las cohortes reales existentes
 function syncSlicerOptions() {
@@ -154,6 +161,7 @@ function onSlicerChange() {
   });
 
   updateDashboard();
+  updateCharts(filteredRecords.length);
 }
 
 // Restablecer Slicers a vista global
@@ -165,13 +173,14 @@ function resetSlicers() {
   if (document.getElementById('slicer-riesgo')) document.getElementById('slicer-riesgo').value = 'all';
   filteredRecords = [...allRecords];
   updateDashboard();
+  updateCharts(filteredRecords.length);
 }
 
-// Actualización de todo el Dashboard
+// Actualización de KPIs y Tablas del Dashboard
 function updateDashboard() {
   const n = filteredRecords.length;
   const total = allRecords.length;
-  const pct = total > 0 ? ((n / total) * 100).toFixed(1) : 0;
+  const pct = total > 0 ? ((n / total) * 100).toFixed(1) : '0';
 
   // Badge superior de muestra activa
   const sampleBadge = document.getElementById('active-sample-count');
@@ -179,7 +188,7 @@ function updateDashboard() {
     sampleBadge.innerText = `${n} de ${total} evaluados (${pct}%)`;
   }
 
-  // 1. Cálculos de Factores Clínicos y Estilo de Vida
+  // Cálculos de Factores Clínicos y Estilo de Vida
   const htaCount = filteredRecords.filter(r => r.hipertension).length;
   const dlCount = filteredRecords.filter(r => r.dislipemia).length;
   const spObCount = filteredRecords.filter(r => r.sobrepeso_u_obesidad).length;
@@ -229,11 +238,8 @@ function updateDashboard() {
   updateKpiVal('kpi-sueno-malo', suenoMaloPct, suenoMaloPct >= 25 ? 'color-semaforo-red' : (suenoMaloPct >= 15 ? 'color-semaforo-yellow' : 'color-semaforo-green'));
   updateKpiVal('kpi-tabaco', tabacoPct, tabacoPct <= 10 ? 'color-semaforo-green' : (tabacoPct <= 20 ? 'color-semaforo-yellow' : 'color-semaforo-red'));
 
-  // 2. Actualizar Tablas Dinámicas
+  // Actualizar Tablas
   updateTables(n, htaCount, dlCount, spObCount, obCount, dbCount, hgCount, tabacoCount);
-
-  // 3. Actualizar Gráficos Visuales
-  updateCharts(n);
 }
 
 // Actualización de Tablas Dinámicas
@@ -300,13 +306,20 @@ function updateTables(n, hta, dl, spOb, ob, db, hg, tabaco) {
   }
 }
 
-// Inicialización de Gráficos
+// Inicialización de Todos los Gráficos directamente con los datos reales
 function initAllCharts() {
+  const n = filteredRecords.length;
+
   // 1. Tendencia Temporal (ApexCharts)
+  const years = [...new Set(filteredRecords.map(r => r.ano))].filter(Boolean).sort((a, b) => a - b);
+  const evalData = years.map(y => filteredRecords.filter(r => r.ano === y).length);
+  const htaData = years.map(y => filteredRecords.filter(r => r.ano === y && r.hipertension).length);
+  const catYears = years.length > 0 ? years.map(y => `Cohorte ${y}`) : ['Sin datos'];
+
   const optTendencia = {
     series: [
-      { name: 'Evaluaciones Realizadas', data: [] },
-      { name: 'Casos Hipertensión', data: [] }
+      { name: 'Evaluaciones Realizadas', data: evalData.length > 0 ? evalData : [0] },
+      { name: 'Casos Hipertensión', data: htaData.length > 0 ? htaData : [0] }
     ],
     chart: {
       height: 280,
@@ -322,7 +335,7 @@ function initAllCharts() {
       gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05, stops: [20, 100] }
     },
     xaxis: {
-      categories: [],
+      categories: catYears,
       axisBorder: { color: '#E2E8F0' }
     },
     yaxis: {
@@ -332,14 +345,21 @@ function initAllCharts() {
     tooltip: { theme: 'light' }
   };
   const elTendencia = document.querySelector("#chart-tendencia-temporal");
-  if (elTendencia) {
+  if (elTendencia && typeof ApexCharts !== 'undefined') {
     chartTendencia = new ApexCharts(elTendencia, optTendencia);
     chartTendencia.render();
   }
 
   // 2. Factores Modificables Horizontales (ApexCharts)
+  const htaPct = n > 0 ? parseFloat(((filteredRecords.filter(r => r.hipertension).length / n) * 100).toFixed(1)) : 0;
+  const dlPct = n > 0 ? parseFloat(((filteredRecords.filter(r => r.dislipemia).length / n) * 100).toFixed(1)) : 0;
+  const obPct = n > 0 ? parseFloat(((filteredRecords.filter(r => r.obesidad).length / n) * 100).toFixed(1)) : 0;
+  const hgPct = n > 0 ? parseFloat(((filteredRecords.filter(r => r.higado_graso).length / n) * 100).toFixed(1)) : 0;
+  const dbPct = n > 0 ? parseFloat(((filteredRecords.filter(r => r.diabetes).length / n) * 100).toFixed(1)) : 0;
+  const tbPct = n > 0 ? parseFloat(((filteredRecords.filter(r => r.fumador_activo).length / n) * 100).toFixed(1)) : 0;
+
   const optFactores = {
-    series: [{ name: 'Prevalencia (%)', data: [0, 0, 0, 0, 0, 0] }],
+    series: [{ name: 'Prevalencia (%)', data: [dlPct, htaPct, obPct, hgPct, dbPct, tbPct] }],
     chart: {
       type: 'bar',
       height: 280,
@@ -368,28 +388,32 @@ function initAllCharts() {
     grid: { borderColor: '#EEF2F6' }
   };
   const elFactores = document.querySelector("#chart-factores-modificables");
-  if (elFactores) {
+  if (elFactores && typeof ApexCharts !== 'undefined') {
     chartFactores = new ApexCharts(elFactores, optFactores);
     chartFactores.render();
   }
 
   // 3. Distribución por Categoría de Personal (Chart.js)
+  const cats = ['PDI (Docentes)', 'PAS (Administrativos)', 'Servicios', 'Estudiantes'];
+  const hData = cats.map(c => filteredRecords.filter(r => r.categoria === c && r.sexo === 'Hombre').length);
+  const mData = cats.map(c => filteredRecords.filter(r => r.categoria === c && r.sexo === 'Mujer').length);
+
   const ctxCat = document.getElementById('chart-categoria-personal');
-  if (ctxCat) {
+  if (ctxCat && typeof Chart !== 'undefined') {
     chartCategoria = new Chart(ctxCat.getContext('2d'), {
       type: 'bar',
       data: {
-        labels: ['PDI (Docentes)', 'PAS (Administrativos)', 'Servicios', 'Estudiantes'],
+        labels: cats,
         datasets: [
           {
             label: 'Hombres',
-            data: [0, 0, 0, 0],
+            data: hData,
             backgroundColor: 'rgba(58, 160, 255, 0.85)',
             borderRadius: 5
           },
           {
             label: 'Mujeres',
-            data: [0, 0, 0, 0],
+            data: mData,
             backgroundColor: 'rgba(255, 90, 95, 0.85)',
             borderRadius: 5
           }
@@ -408,8 +432,12 @@ function initAllCharts() {
   }
 
   // 4. Género y Nivel de Riesgo (Chart.js)
+  const riskLevels = ['Bajo (0 factores)', 'Moderado (1 factor)', 'Alto (2-3 factores)', 'Muy Alto (4+ factores)'];
+  const hRisk = riskLevels.map(lvl => filteredRecords.filter(r => r.riesgo_global === lvl && r.sexo === 'Hombre').length);
+  const mRisk = riskLevels.map(lvl => filteredRecords.filter(r => r.riesgo_global === lvl && r.sexo === 'Mujer').length);
+
   const ctxGen = document.getElementById('chart-genero-riesgo');
-  if (ctxGen) {
+  if (ctxGen && typeof Chart !== 'undefined') {
     chartGenero = new Chart(ctxGen.getContext('2d'), {
       type: 'bar',
       data: {
@@ -417,13 +445,13 @@ function initAllCharts() {
         datasets: [
           {
             label: 'Hombres',
-            data: [0, 0, 0, 0],
+            data: hRisk,
             backgroundColor: PALETTE.primaryBlue,
             borderRadius: 4
           },
           {
             label: 'Mujeres',
-            data: [0, 0, 0, 0],
+            data: mRisk,
             backgroundColor: PALETTE.iceBlue,
             borderColor: PALETTE.primaryBlue,
             borderWidth: 1,
@@ -441,8 +469,15 @@ function initAllCharts() {
   }
 
   // 5. Donut Presión Arterial (ApexCharts)
+  const htaNorm = filteredRecords.filter(r => !r.hipertension).length;
+  const htaTrat = filteredRecords.filter(r => r.hta_desc === 'Tratada').length;
+  const htaNoTrat = filteredRecords.filter(r => r.hta_desc === 'No tratada').length;
+  const pNorm = n > 0 ? parseFloat(((htaNorm / n) * 100).toFixed(1)) : 100;
+  const pTrat = n > 0 ? parseFloat(((htaTrat / n) * 100).toFixed(1)) : 0;
+  const pNoTrat = n > 0 ? parseFloat(((htaNoTrat / n) * 100).toFixed(1)) : 0;
+
   const optDonutHta = {
-    series: [100, 0, 0],
+    series: [pNorm, pTrat, pNoTrat],
     labels: ['Normotensos (PA Normal)', 'HTA Tratada Farmacológicamente', 'HTA No Tratada'],
     chart: { type: 'donut', height: 280, fontFamily: 'Inter' },
     colors: [PALETTE.green, PALETTE.yellow, PALETTE.emergencyRed],
@@ -455,27 +490,34 @@ function initAllCharts() {
     }
   };
   const elDonutHta = document.querySelector("#chart-donut-hta");
-  if (elDonutHta) {
+  if (elDonutHta && typeof ApexCharts !== 'undefined') {
     chartDonutHta = new ApexCharts(elDonutHta, optDonutHta);
     chartDonutHta.render();
   }
 
   // 6. Scatter Plot IMC vs Perímetro Abdominal (Chart.js)
+  const hombresScatter = filteredRecords
+    .filter(r => r.sexo === 'Hombre' && r.perimetro_abdominal && r.imc && r.imc > 0)
+    .map(r => ({ x: r.imc, y: r.perimetro_abdominal }));
+  const mujeresScatter = filteredRecords
+    .filter(r => r.sexo === 'Mujer' && r.perimetro_abdominal && r.imc && r.imc > 0)
+    .map(r => ({ x: r.imc, y: r.perimetro_abdominal }));
+
   const ctxScatter = document.getElementById('chart-scatter-imc-cintura');
-  if (ctxScatter) {
+  if (ctxScatter && typeof Chart !== 'undefined') {
     chartScatter = new Chart(ctxScatter.getContext('2d'), {
       type: 'scatter',
       data: {
         datasets: [
           {
             label: 'Hombres',
-            data: [],
+            data: hombresScatter,
             backgroundColor: 'rgba(58, 160, 255, 0.75)',
             pointRadius: 5
           },
           {
             label: 'Mujeres',
-            data: [],
+            data: mujeresScatter,
             backgroundColor: 'rgba(255, 90, 95, 0.75)',
             pointRadius: 5
           }
@@ -506,15 +548,25 @@ function initAllCharts() {
   }
 
   // 7. Riesgo por Grupo de Edad (Chart.js)
+  const cohorts = ['<40 años', '40-49 años', '50-59 años', '60+ años'];
+  const htaCohortData = cohorts.map(cohort => {
+    const sub = filteredRecords.filter(r => r.grupo_edad === cohort);
+    return sub.length > 0 ? parseFloat(((sub.filter(r => r.hipertension).length / sub.length) * 100).toFixed(1)) : 0;
+  });
+  const dlCohortData = cohorts.map(cohort => {
+    const sub = filteredRecords.filter(r => r.grupo_edad === cohort);
+    return sub.length > 0 ? parseFloat(((sub.filter(r => r.dislipemia).length / sub.length) * 100).toFixed(1)) : 0;
+  });
+
   const ctxEdad = document.getElementById('chart-riesgo-por-edad');
-  if (ctxEdad) {
+  if (ctxEdad && typeof Chart !== 'undefined') {
     chartEdad = new Chart(ctxEdad.getContext('2d'), {
       type: 'bar',
       data: {
-        labels: ['<40 años', '40-49 años', '50-59 años', '60+ años'],
+        labels: cohorts,
         datasets: [
-          { label: '% Hipertensión', data: [0, 0, 0, 0], backgroundColor: PALETTE.emergencyRed, borderRadius: 4 },
-          { label: '% Dislipemia', data: [0, 0, 0, 0], backgroundColor: PALETTE.primaryBlue, borderRadius: 4 }
+          { label: '% Hipertensión', data: htaCohortData, backgroundColor: PALETTE.emergencyRed, borderRadius: 4 },
+          { label: '% Dislipemia', data: dlCohortData, backgroundColor: PALETTE.primaryBlue, borderRadius: 4 }
         ]
       },
       options: {
@@ -527,7 +579,7 @@ function initAllCharts() {
 
   // 8. Hígado Graso y Diabetes (ApexCharts)
   const optMetabolico = {
-    series: [{ name: 'Prevalencia (%)', data: [0, 0] }],
+    series: [{ name: 'Prevalencia (%)', data: [hgPct, dbPct] }],
     chart: { type: 'bar', height: 280, toolbar: { show: false }, fontFamily: 'Inter' },
     colors: [PALETTE.primaryBlue, PALETTE.emergencyRed],
     xaxis: { categories: ['Hígado Graso', 'Diabetes Mellitus'] },
@@ -536,39 +588,52 @@ function initAllCharts() {
     grid: { borderColor: '#EEF2F6' }
   };
   const elMetabolico = document.querySelector("#chart-bar-metabolico");
-  if (elMetabolico) {
+  if (elMetabolico && typeof ApexCharts !== 'undefined') {
     chartMetabolico = new ApexCharts(elMetabolico, optMetabolico);
     chartMetabolico.render();
   }
 
   // 9. Actividad Física por Categoría (ApexCharts)
+  const actCats = ['PDI (Docentes)', 'PAS (Administrativos)', 'Personal de Servicios'];
+  const actData = actCats.map(cat => {
+    const sub = filteredRecords.filter(r => r.categoria === cat);
+    return sub.length > 0 ? parseFloat(((sub.filter(r => r.actividad_fisica).length / sub.length) * 100).toFixed(1)) : 0;
+  });
+  const sedData = actData.map(v => parseFloat((100 - v).toFixed(1)));
+
   const optActCat = {
     series: [
-      { name: 'Realiza Actividad Física (%)', data: [0, 0, 0] },
-      { name: 'Sedentarios (%)', data: [0, 0, 0] }
+      { name: 'Realiza Actividad Física (%)', data: actData },
+      { name: 'Sedentarios (%)', data: sedData }
     ],
     chart: { type: 'bar', height: 280, stacked: true, toolbar: { show: false }, fontFamily: 'Inter' },
     colors: [PALETTE.primaryBlue, PALETTE.iceBlue],
     plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4 } },
-    xaxis: { categories: ['PDI (Docentes)', 'PAS (Administrativos)', 'Servicios'] },
+    xaxis: { categories: actCats },
     legend: { position: 'top' },
     grid: { borderColor: '#EEF2F6' }
   };
   const elActCat = document.querySelector("#chart-actividad-categoria");
-  if (elActCat) {
+  if (elActCat && typeof ApexCharts !== 'undefined') {
     chartActividadCat = new ApexCharts(elActCat, optActCat);
     chartActividadCat.render();
   }
 
   // 10. Consumo de Alcohol (Chart.js Donut)
+  const alcLabels = ['No consume', 'Ocasional', 'Semanal', 'Diario'];
+  const alcData = alcLabels.map(lvl => {
+    const count = filteredRecords.filter(r => r.alcohol === lvl).length;
+    return n > 0 ? parseFloat(((count / n) * 100).toFixed(1)) : 0;
+  });
+
   const ctxAlcohol = document.getElementById('chart-consumo-alcohol');
-  if (ctxAlcohol) {
+  if (ctxAlcohol && typeof Chart !== 'undefined') {
     chartAlcohol = new Chart(ctxAlcohol.getContext('2d'), {
       type: 'doughnut',
       data: {
-        labels: ['No consume', 'Ocasional', 'Semanal', 'Diario'],
+        labels: alcLabels,
         datasets: [{
-          data: [100, 0, 0, 0],
+          data: alcData,
           backgroundColor: [PALETTE.green, PALETTE.primaryBlue, PALETTE.yellow, PALETTE.emergencyRed]
         }]
       },
@@ -581,10 +646,9 @@ function initAllCharts() {
   }
 }
 
-// Actualización dinámica de datos de los gráficos con base en filteredRecords
+// Actualización dinámica de datos de los gráficos con base en filteredRecords al cambiar slicers
 function updateCharts(n) {
   if (n === 0) {
-    // Si la muestra filtrada está vacía, limpiar series
     if (chartFactores) chartFactores.updateSeries([{ name: 'Prevalencia (%)', data: [0, 0, 0, 0, 0, 0] }]);
     if (chartDonutHta) chartDonutHta.updateSeries([0, 0, 0]);
     if (chartMetabolico) chartMetabolico.updateSeries([{ name: 'Prevalencia (%)', data: [0, 0] }]);
@@ -593,17 +657,22 @@ function updateCharts(n) {
 
   // 1. Tendencia Temporal
   if (chartTendencia) {
-    const years = [...new Set(allRecords.map(r => r.ano))].filter(Boolean).sort((a, b) => a - b);
-    const evalData = years.map(y => filteredRecords.filter(r => r.ano === y).length);
-    const htaData = years.map(y => filteredRecords.filter(r => r.ano === y && r.hipertension).length);
+    try {
+      const years = [...new Set(filteredRecords.map(r => r.ano))].filter(Boolean).sort((a, b) => a - b);
+      const evalData = years.map(y => filteredRecords.filter(r => r.ano === y).length);
+      const htaData = years.map(y => filteredRecords.filter(r => r.ano === y && r.hipertension).length);
+      const catYears = years.length > 0 ? years.map(y => `Cohorte ${y}`) : ['Sin datos'];
 
-    chartTendencia.updateOptions({
-      xaxis: { categories: years.map(y => `Cohorte ${y}`) }
-    });
-    chartTendencia.updateSeries([
-      { name: 'Evaluaciones Realizadas', data: evalData },
-      { name: 'Casos Hipertensión', data: htaData }
-    ]);
+      chartTendencia.updateOptions({
+        xaxis: { categories: catYears }
+      });
+      chartTendencia.updateSeries([
+        { name: 'Evaluaciones Realizadas', data: evalData.length > 0 ? evalData : [0] },
+        { name: 'Casos Hipertensión', data: htaData.length > 0 ? htaData : [0] }
+      ]);
+    } catch (e) {
+      console.warn('Error al actualizar chartTendencia:', e);
+    }
   }
 
   // 2. Factores de Riesgo Modificables
@@ -615,114 +684,150 @@ function updateCharts(n) {
   const tbPct = ((filteredRecords.filter(r => r.fumador_activo).length / n) * 100).toFixed(1);
 
   if (chartFactores) {
-    chartFactores.updateSeries([{
-      name: 'Prevalencia (%)',
-      data: [parseFloat(dlPct), parseFloat(htaPct), parseFloat(obPct), parseFloat(hgPct), parseFloat(dbPct), parseFloat(tbPct)]
-    }]);
+    try {
+      chartFactores.updateSeries([{
+        name: 'Prevalencia (%)',
+        data: [parseFloat(dlPct), parseFloat(htaPct), parseFloat(obPct), parseFloat(hgPct), parseFloat(dbPct), parseFloat(tbPct)]
+      }]);
+    } catch (e) {
+      console.warn('Error al actualizar chartFactores:', e);
+    }
   }
 
   // 3. Distribución por Categoría de Personal (Chart.js)
   if (chartCategoria) {
-    const cats = ['PDI (Docentes)', 'PAS (Administrativos)', 'Personal de Servicios', 'Estudiantes'];
-    const hData = cats.map(c => filteredRecords.filter(r => r.categoria === c && r.sexo === 'Hombre').length);
-    const mData = cats.map(c => filteredRecords.filter(r => r.categoria === c && r.sexo === 'Mujer').length);
+    try {
+      const cats = ['PDI (Docentes)', 'PAS (Administrativos)', 'Servicios', 'Estudiantes'];
+      const hData = cats.map(c => filteredRecords.filter(r => r.categoria === c && r.sexo === 'Hombre').length);
+      const mData = cats.map(c => filteredRecords.filter(r => r.categoria === c && r.sexo === 'Mujer').length);
 
-    chartCategoria.data.labels = cats;
-    chartCategoria.data.datasets[0].data = hData;
-    chartCategoria.data.datasets[1].data = mData;
-    chartCategoria.update();
+      chartCategoria.data.labels = cats;
+      chartCategoria.data.datasets[0].data = hData;
+      chartCategoria.data.datasets[1].data = mData;
+      chartCategoria.update();
+    } catch (e) {
+      console.warn('Error al actualizar chartCategoria:', e);
+    }
   }
 
   // 4. Género y Nivel de Riesgo (Chart.js)
   if (chartGenero) {
-    const riskLevels = ['Bajo (0 factores)', 'Moderado (1 factor)', 'Alto (2-3 factores)', 'Muy Alto (4+ factores)'];
-    const hRisk = riskLevels.map(lvl => filteredRecords.filter(r => r.riesgo_global === lvl && r.sexo === 'Hombre').length);
-    const mRisk = riskLevels.map(lvl => filteredRecords.filter(r => r.riesgo_global === lvl && r.sexo === 'Mujer').length);
+    try {
+      const riskLevels = ['Bajo (0 factores)', 'Moderado (1 factor)', 'Alto (2-3 factores)', 'Muy Alto (4+ factores)'];
+      const hRisk = riskLevels.map(lvl => filteredRecords.filter(r => r.riesgo_global === lvl && r.sexo === 'Hombre').length);
+      const mRisk = riskLevels.map(lvl => filteredRecords.filter(r => r.riesgo_global === lvl && r.sexo === 'Mujer').length);
 
-    chartGenero.data.datasets[0].data = hRisk;
-    chartGenero.data.datasets[1].data = mRisk;
-    chartGenero.update();
+      chartGenero.data.datasets[0].data = hRisk;
+      chartGenero.data.datasets[1].data = mRisk;
+      chartGenero.update();
+    } catch (e) {
+      console.warn('Error al actualizar chartGenero:', e);
+    }
   }
 
   // 5. Donut Presión Arterial (ApexCharts)
   if (chartDonutHta) {
-    const htaNorm = filteredRecords.filter(r => !r.hipertension).length;
-    const htaTrat = filteredRecords.filter(r => r.hta_desc === 'Tratada').length;
-    const htaNoTrat = filteredRecords.filter(r => r.hta_desc === 'No tratada').length;
+    try {
+      const htaNorm = filteredRecords.filter(r => !r.hipertension).length;
+      const htaTrat = filteredRecords.filter(r => r.hta_desc === 'Tratada').length;
+      const htaNoTrat = filteredRecords.filter(r => r.hta_desc === 'No tratada').length;
 
-    const pNorm = parseFloat(((htaNorm / n) * 100).toFixed(1));
-    const pTrat = parseFloat(((htaTrat / n) * 100).toFixed(1));
-    const pNoTrat = parseFloat(((htaNoTrat / n) * 100).toFixed(1));
+      const pNorm = parseFloat(((htaNorm / n) * 100).toFixed(1));
+      const pTrat = parseFloat(((htaTrat / n) * 100).toFixed(1));
+      const pNoTrat = parseFloat(((htaNoTrat / n) * 100).toFixed(1));
 
-    chartDonutHta.updateSeries([pNorm, pTrat, pNoTrat]);
+      chartDonutHta.updateSeries([pNorm, pTrat, pNoTrat]);
+    } catch (e) {
+      console.warn('Error al actualizar chartDonutHta:', e);
+    }
   }
 
   // 6. Scatter Plot IMC vs Perímetro Abdominal (Chart.js)
   if (chartScatter) {
-    const hombresScatter = filteredRecords
-      .filter(r => r.sexo === 'Hombre' && r.perimetro_abdominal && r.imc && r.imc > 0)
-      .map(r => ({ x: r.imc, y: r.perimetro_abdominal }));
-    const mujeresScatter = filteredRecords
-      .filter(r => r.sexo === 'Mujer' && r.perimetro_abdominal && r.imc && r.imc > 0)
-      .map(r => ({ x: r.imc, y: r.perimetro_abdominal }));
+    try {
+      const hombresScatter = filteredRecords
+        .filter(r => r.sexo === 'Hombre' && r.perimetro_abdominal && r.imc && r.imc > 0)
+        .map(r => ({ x: r.imc, y: r.perimetro_abdominal }));
+      const mujeresScatter = filteredRecords
+        .filter(r => r.sexo === 'Mujer' && r.perimetro_abdominal && r.imc && r.imc > 0)
+        .map(r => ({ x: r.imc, y: r.perimetro_abdominal }));
 
-    chartScatter.data.datasets[0].data = hombresScatter;
-    chartScatter.data.datasets[1].data = mujeresScatter;
-    chartScatter.update();
+      chartScatter.data.datasets[0].data = hombresScatter;
+      chartScatter.data.datasets[1].data = mujeresScatter;
+      chartScatter.update();
+    } catch (e) {
+      console.warn('Error al actualizar chartScatter:', e);
+    }
   }
 
   // 7. Riesgo por Grupo de Edad (Chart.js)
   if (chartEdad) {
-    const cohorts = ['<40 años', '40-49 años', '50-59 años', '60+ años'];
-    const htaCohortData = cohorts.map(cohort => {
-      const sub = filteredRecords.filter(r => r.grupo_edad === cohort);
-      return sub.length > 0 ? parseFloat(((sub.filter(r => r.hipertension).length / sub.length) * 100).toFixed(1)) : 0;
-    });
-    const dlCohortData = cohorts.map(cohort => {
-      const sub = filteredRecords.filter(r => r.grupo_edad === cohort);
-      return sub.length > 0 ? parseFloat(((sub.filter(r => r.dislipemia).length / sub.length) * 100).toFixed(1)) : 0;
-    });
+    try {
+      const cohorts = ['<40 años', '40-49 años', '50-59 años', '60+ años'];
+      const htaCohortData = cohorts.map(cohort => {
+        const sub = filteredRecords.filter(r => r.grupo_edad === cohort);
+        return sub.length > 0 ? parseFloat(((sub.filter(r => r.hipertension).length / sub.length) * 100).toFixed(1)) : 0;
+      });
+      const dlCohortData = cohorts.map(cohort => {
+        const sub = filteredRecords.filter(r => r.grupo_edad === cohort);
+        return sub.length > 0 ? parseFloat(((sub.filter(r => r.dislipemia).length / sub.length) * 100).toFixed(1)) : 0;
+      });
 
-    chartEdad.data.datasets[0].data = htaCohortData;
-    chartEdad.data.datasets[1].data = dlCohortData;
-    chartEdad.update();
+      chartEdad.data.datasets[0].data = htaCohortData;
+      chartEdad.data.datasets[1].data = dlCohortData;
+      chartEdad.update();
+    } catch (e) {
+      console.warn('Error al actualizar chartEdad:', e);
+    }
   }
 
   // 8. Hígado Graso y Diabetes (ApexCharts)
   if (chartMetabolico) {
-    chartMetabolico.updateSeries([{
-      name: 'Prevalencia (%)',
-      data: [parseFloat(hgPct), parseFloat(dbPct)]
-    }]);
+    try {
+      chartMetabolico.updateSeries([{
+        name: 'Prevalencia (%)',
+        data: [parseFloat(hgPct), parseFloat(dbPct)]
+      }]);
+    } catch (e) {
+      console.warn('Error al actualizar chartMetabolico:', e);
+    }
   }
 
   // 9. Actividad Física por Categoría (ApexCharts)
   if (chartActividadCat) {
-    const actCats = ['PDI (Docentes)', 'PAS (Administrativos)', 'Personal de Servicios'];
-    const actData = actCats.map(cat => {
-      const sub = filteredRecords.filter(r => r.categoria === cat);
-      return sub.length > 0 ? parseFloat(((sub.filter(r => r.actividad_fisica).length / sub.length) * 100).toFixed(1)) : 0;
-    });
-    const sedData = actData.map(v => parseFloat((100 - v).toFixed(1)));
+    try {
+      const actCats = ['PDI (Docentes)', 'PAS (Administrativos)', 'Personal de Servicios'];
+      const actData = actCats.map(cat => {
+        const sub = filteredRecords.filter(r => r.categoria === cat);
+        return sub.length > 0 ? parseFloat(((sub.filter(r => r.actividad_fisica).length / sub.length) * 100).toFixed(1)) : 0;
+      });
+      const sedData = actData.map(v => parseFloat((100 - v).toFixed(1)));
 
-    chartActividadCat.updateOptions({
-      xaxis: { categories: actCats }
-    });
-    chartActividadCat.updateSeries([
-      { name: 'Realiza Actividad Física (%)', data: actData },
-      { name: 'Sedentarios (%)', data: sedData }
-    ]);
+      chartActividadCat.updateOptions({
+        xaxis: { categories: actCats }
+      });
+      chartActividadCat.updateSeries([
+        { name: 'Realiza Actividad Física (%)', data: actData },
+        { name: 'Sedentarios (%)', data: sedData }
+      ]);
+    } catch (e) {
+      console.warn('Error al actualizar chartActividadCat:', e);
+    }
   }
 
   // 10. Consumo de Alcohol (Chart.js Donut)
   if (chartAlcohol) {
-    const alcLabels = ['No consume', 'Ocasional', 'Semanal', 'Diario'];
-    const alcData = alcLabels.map(lvl => {
-      const count = filteredRecords.filter(r => r.alcohol === lvl).length;
-      return n > 0 ? parseFloat(((count / n) * 100).toFixed(1)) : 0;
-    });
+    try {
+      const alcLabels = ['No consume', 'Ocasional', 'Semanal', 'Diario'];
+      const alcData = alcLabels.map(lvl => {
+        const count = filteredRecords.filter(r => r.alcohol === lvl).length;
+        return n > 0 ? parseFloat(((count / n) * 100).toFixed(1)) : 0;
+      });
 
-    chartAlcohol.data.datasets[0].data = alcData;
-    chartAlcohol.update();
+      chartAlcohol.data.datasets[0].data = alcData;
+      chartAlcohol.update();
+    } catch (e) {
+      console.warn('Error al actualizar chartAlcohol:', e);
+    }
   }
 }

@@ -72,7 +72,7 @@
         <div data-user-menu></div>
           <div class="sample-pill">
             <span class="status-dot"></span>
-            <span id="active-sample-count">Cargando evaluaciones...</span>
+            <span id="active-sample-count">{{ summary_kpis.total|default:"0" }} de {{ summary_kpis.total|default:"0" }} evaluados (100%)</span>
           </div>
         </div>
       </div>
@@ -148,7 +148,7 @@
             <span class="kpi-title">Total Evaluados</span>
           </div>
           <div class="kpi-main-body">
-            <div class="kpi-value color-palette-navy" id="kpi-total">280</div>
+            <div class="kpi-value color-palette-navy" id="kpi-total">{{ summary_kpis.total|default:"0" }}</div>
           </div>
         </div>
 
@@ -158,7 +158,7 @@
             <span class="kpi-title">Prevalencia Hipertensión</span>
           </div>
           <div class="kpi-main-body">
-            <div class="kpi-value color-semaforo-red" id="kpi-hta">27,9 %</div>
+            <div class="kpi-value color-semaforo-red" id="kpi-hta">{{ summary_kpis.hta_pct|default:"0,0" }} %</div>
           </div>
         </div>
 
@@ -168,7 +168,7 @@
             <span class="kpi-title">Prevalencia Dislipemia</span>
           </div>
           <div class="kpi-main-body">
-            <div class="kpi-value color-semaforo-yellow" id="kpi-dl">36,8 %</div>
+            <div class="kpi-value color-semaforo-yellow" id="kpi-dl">{{ summary_kpis.dl_pct|default:"0,0" }} %</div>
           </div>
         </div>
 
@@ -178,7 +178,7 @@
             <span class="kpi-title">Sobrepeso y Obesidad</span>
           </div>
           <div class="kpi-main-body">
-            <div class="kpi-value color-semaforo-yellow" id="kpi-sp-ob">73,6 %</div>
+            <div class="kpi-value color-semaforo-yellow" id="kpi-sp-ob">{{ summary_kpis.sp_ob_pct|default:"0,0" }} %</div>
           </div>
         </div>
 
@@ -188,7 +188,7 @@
             <span class="kpi-title">Riesgo Alto (≥2 F.)</span>
           </div>
           <div class="kpi-main-body">
-            <div class="kpi-value color-semaforo-red" id="kpi-riesgo-alto">34,3 %</div>
+            <div class="kpi-value color-semaforo-red" id="kpi-riesgo-alto">{{ summary_kpis.riesgo_alto_pct|default:"0,0" }} %</div>
           </div>
         </div>
       </section>
@@ -273,7 +273,7 @@
                 <tfoot>
                   <tr>
                     <td>Total Muestra Analizada</td>
-                    <td id="tfoot-casos-clinicos">280</td>
+                    <td id="tfoot-casos-clinicos">{{ summary_kpis.total|default:"0" }}</td>
                     <td>100 %</td>
                     <td>Estudio CardioUNEMI</td>
                   </tr>
@@ -457,5 +457,5 @@
   <!-- Controlador e inicialización del Dashboard -->
   
   <script id="dashboard-records-data" type="application/json">{{ records_json|safe }}</script>
-  <script src="{% static 'dashboard/js/dashboard.js' %}"></script>
+  <script src="{% static 'dashboard/js/dashboard.js' %}?v=20261029_real1"></script>
 {% endblock %}

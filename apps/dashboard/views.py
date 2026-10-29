@@ -16,6 +16,7 @@ def index_view(request):
     data = services.get_dashboard_evaluation_data()
     context = {
         'total_evaluated': data['total'],
+        'summary_kpis': data['summary_kpis'],
         'available_years': data['years'],
         'available_categories': data['categories'],
         'records_json': json.dumps(data['records']),
@@ -33,6 +34,7 @@ def api_dashboard_data(request):
     return JsonResponse({
         'status': 'success',
         'total': data['total'],
+        'summary_kpis': data['summary_kpis'],
         'years': data['years'],
         'categories': data['categories'],
         'records': data['records'],

@@ -346,9 +346,24 @@ def get_dashboard_evaluation_data():
     sorted_years = sorted(list(available_years))
     sorted_categories = sorted(list(available_categories))
 
+    n = len(records)
+    hta_cnt = sum(1 for r in records if r['hipertension'])
+    dl_cnt = sum(1 for r in records if r['dislipemia'])
+    sp_ob_cnt = sum(1 for r in records if r['sobrepeso_u_obesidad'])
+    riesgo_alto_cnt = sum(1 for r in records if r['factores_riesgo_count'] >= 2)
+
+    summary_kpis = {
+        'total': n,
+        'hta_pct': f"{(hta_cnt / n * 100):.1f}".replace('.', ',') if n > 0 else "0,0",
+        'dl_pct': f"{(dl_cnt / n * 100):.1f}".replace('.', ',') if n > 0 else "0,0",
+        'sp_ob_pct': f"{(sp_ob_cnt / n * 100):.1f}".replace('.', ',') if n > 0 else "0,0",
+        'riesgo_alto_pct': f"{(riesgo_alto_cnt / n * 100):.1f}".replace('.', ',') if n > 0 else "0,0",
+    }
+
     return {
         'records': records,
-        'total': len(records),
+        'total': n,
+        'summary_kpis': summary_kpis,
         'years': sorted_years,
         'categories': sorted_categories,
     }
