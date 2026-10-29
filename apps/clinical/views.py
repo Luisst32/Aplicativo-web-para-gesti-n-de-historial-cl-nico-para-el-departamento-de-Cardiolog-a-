@@ -26,23 +26,34 @@ from audit.services import register_audit_log
 
 
 QUESTION_ALIASES = {
-    'r_hta': 'hta',
+    # Factores de Riesgo / Antecedentes personales (SPSS <-> Formulario)
+    'r_hta': 'hipertension',
     'r_hta_trat': 'hta_tto',
-    'r_dm': 'dm',
-    'r_dislip': 'dlp',
+    'r_dm': 'diabetes_mellitus',
+    'r_dislip': 'dislipemia',
     'r_dislip_trat': 'dlp_tto',
-    'r_tabaco': 'tabaco',
+    'r_tabaco': 'tabaquismo',
     'r_alcohol': 'alcohol',
     'r_drogas': 'drogas',
-    'r_sobrepeso': 'sobrepeso',
-    'r_irc': 'irc',
+    'r_sobrepeso': 'peso_corporal',
+    'r_irc': 'insuf_renal_cronica',
     'r_higado': 'higado_graso',
-    'r_apnea': 'apnea',
-    'em_toxicos': 'toxicos_laboral',
-    'em_estres_trab': 'estres_laboral',
+    'r_apnea': 'apnea_sueno',
+
+    # Factores Emergentes (SPSS <-> Formulario)
+    'sueno_cantidad': 'cantidad_sueno',
+    'sueno_calidad': 'calidad_sueno',
+    'em_toxicos': 'trabaja_con_toxicos',
+    'em_estrogenos': 'bajos_estrogenos',
+    'em_anticonceptivos': 'proteccion_anticonceptivo',
+    'em_estres_trab': 'estres',
     'em_estres_fam': 'estres_familiar',
+    'em_mal_amb': 'mal_ambiente_laboral',
     'em_pers_a': 'personalidad_tipo_a',
-    'nm_cardiopatia': 'af_cardiopatia_prematura',
+    'em_personalidad_a': 'personalidad_tipo_a',
+
+    # Antecedentes Familiares y Médicos
+    'nm_cardiopatia': 'factores_riesgo_cardiopatia',
     'nm_fallecido': 'af_muerte_subita',
     'ant_padre_hta': 'af_padre_hta',
     'ant_madre_hta': 'af_madre_hta',
@@ -51,22 +62,58 @@ QUESTION_ALIASES = {
     'ant_padre_dislip': 'af_padre_dlp',
     'ant_madre_dislip': 'af_madre_dlp',
     'nc_cancer': 'ant_cancer',
-    'nc_epoc': 'ant_epoc',
-    'nc_asma': 'ant_asma',
+    'nc_epoc': 'problemas_respiratorios',
+    'nc_asma': 'problemas_respiratorios',
     'nc_reuma': 'ant_reuma',
-    'nc_depresion': 'ant_depresion',
-    'nc_ansiedad': 'ant_ansiedad',
-    'nc_alergia': 'ant_alergias',
-    'covid_paso': 'covid_infeccion',
+    'nc_depresion': 'salud_mental',
+    'nc_ansiedad': 'salud_mental',
+    'nc_alergia': 'alergias',
+
+    # COVID y Síntomas
+    'covid_paso': 'historia_covid',
     'covid_ingreso': 'covid_hosp',
     'covid_cv': 'covid_secuelas_cardio',
     'covid_pulm': 'covid_secuelas_resp',
-    'rose_1': 'rose_dolor_pecho',
+    'rose_1': 'dolor_pecho',
     'rose_3': 'rose_detenerse',
     'rose_4': 'rose_alivio',
     'rose_5': 'rose_claudicacion',
+
+    # PREDIMED (Dieta Mediterránea)
+    'pred_q1': 'usa_usted_aceite_de_oliva',
+    'pred_q3': 'usted_consume_verduras',
+    'pred_q4': 'usted_consume_fruta',
+    'pred_q5': 'usted_consume_carne_roja_embut',
+    'pred_q6': 'usted_consume_mantequilla_marg',
+    'pred_q7': 'usted_consume_bebidas_carbonat',
+    'pred_q8_bebe': 'usted_consume_vino_tinto',
+    'pred_q8': 'usted_consume_vino_tinto',
+    'pred_q9': 'usted_consume_legumbres',
+    'pred_q10': 'usted_consume_pescado_mariscos',
+    'pred_q11': 'usted_consume_pescado_azul',
+    'pred_q12': 'usted_consume_reposteria',
+    'pred_q13_consume': 'usted_consume_leche_de_vaca',
+    'pred_q14_consume': 'usted_consume_queso',
+    'pred_q15_consume': 'usted_consume_yogurt',
+    'pred_q16': 'usted_consume_frutos_secos',
+    'pred_q17': 'usted_consume_cereales',
+    'pred_q18': 'usted_consume_pollo_pavo_o_con',
+    'pred_q19': 'usted_consume_alimentos_con_so',
+
+    # Campos generales
     'f_num_hijos': 'f_hijos',
     'f_num_convivientes': 'f_convivientes',
+
+    # Sinónimos legados
+    'hta': 'hipertension',
+    'dm': 'diabetes_mellitus',
+    'dlp': 'dislipemia',
+    'tabaco': 'tabaquismo',
+    'sobrepeso': 'peso_corporal',
+    'irc': 'insuf_renal_cronica',
+    'apnea': 'apnea_sueno',
+    'toxicos_laboral': 'trabaja_con_toxicos',
+    'estres_laboral': 'estres',
 }
 REVERSE_ALIASES = {v: k for k, v in QUESTION_ALIASES.items()}
 
@@ -570,13 +617,12 @@ def _build_form_datos(patient, visit):
             val = ans.text_value or (str(ans.numeric_value) if ans.numeric_value is not None else (ans.selected_option.label if ans.selected_option else ""))
             if val is not None and str(val).strip() != '':
                 datos[q_code] = val
-                # Sincronizar alias si no está presente
-                alias_code = QUESTION_ALIASES.get(q_code)
-                if alias_code and alias_code not in datos:
-                    datos[alias_code] = val
-                rev_code = REVERSE_ALIASES.get(q_code)
-                if rev_code and rev_code not in datos:
-                    datos[rev_code] = val
+                # Sincronizar bidireccionalmente con los identificadores del formulario HTML
+                for form_k, spss_k in QUESTION_ALIASES.items():
+                    if q_code == spss_k and form_k not in datos:
+                        datos[form_k] = val
+                    elif q_code == form_k and spss_k not in datos:
+                        datos[spss_k] = val
 
     return datos
 

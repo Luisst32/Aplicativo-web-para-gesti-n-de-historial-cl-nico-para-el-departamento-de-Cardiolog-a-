@@ -800,24 +800,54 @@ function restaurarFichaDesdeObjeto(datos) {
     const val = datos[key];
     if (val === null || val === undefined || val === '') return;
 
-    const elements = form.elements[key];
+    let elements = form.elements[key];
     if (!elements) {
-      const elById = document.getElementById(key);
-      if (elById) elById.value = val;
-      return;
+      elements = document.getElementById(key);
+      if (!elements) return;
     }
 
     if (elements instanceof RadioNodeList || (elements.length && elements[0].type === 'radio')) {
+      const vNorm = String(val).toLowerCase().trim();
+      let matched = false;
       for (let i = 0; i < elements.length; i++) {
-        if (elements[i].value.toLowerCase() === String(val).toLowerCase()) {
+        const rVal = elements[i].value.toLowerCase().trim();
+        if (rVal === vNorm) {
           elements[i].checked = true;
           if (elements[i].onchange) elements[i].onchange();
+          matched = true;
+          break;
         }
       }
-    } else if (elements.type === 'checkbox') {
-      elements.checked = (val === '1' || val === 'Si' || val === true || val === elements.value);
+      if (!matched) {
+        const isSi = (vNorm === 'si' || vNorm === 'sí' || vNorm.startsWith('si') || vNorm.startsWith('sí') || vNorm === '1' || vNorm === 'true');
+        const isNo = (vNorm === 'no' || vNorm.startsWith('no') || vNorm === '0' || vNorm === 'false');
+        for (let i = 0; i < elements.length; i++) {
+          const rVal = elements[i].value.toLowerCase().trim();
+          if ((isSi && rVal === 'si') || (isNo && rVal === 'no')) {
+            elements[i].checked = true;
+            if (elements[i].onchange) elements[i].onchange();
+            break;
+          }
+        }
+      }
+    } else if (elements.type === 'select-one') {
+      elements.value = val;
+      if (!elements.value && val) {
+        const vLower = String(val).toLowerCase().trim();
+        for (let j = 0; j < elements.options.length; j++) {
+          if (elements.options[j].value.toLowerCase().trim() === vLower ||
+              elements.options[j].text.toLowerCase().trim() === vLower) {
+            elements.selectedIndex = j;
+            break;
+          }
+        }
+      }
       if (elements.onchange) elements.onchange();
-    } else if (elements.type === 'select-one' || elements.type === 'text' || elements.type === 'number' || elements.type === 'date') {
+    } else if (elements.type === 'checkbox') {
+      const vLower = String(val).toLowerCase().trim();
+      elements.checked = (val === '1' || val === 1 || val === true || vLower === 'si' || vLower === 'sí' || vLower === elements.value.toLowerCase());
+      if (elements.onchange) elements.onchange();
+    } else if (elements.type === 'text' || elements.type === 'number' || elements.type === 'date') {
       elements.value = val;
       if (elements.oninput) elements.oninput();
       if (elements.onchange) elements.onchange();
