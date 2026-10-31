@@ -311,3 +311,70 @@ class SavImporterColumnMappingTests(SimpleTestCase):
 
         mod_medas, _ = get_column_destination('ACEITE_DE_OLIVA_CONSUMO')
         self.assertEqual(mod_medas, 'Cuestionario Dieta MEDAS')
+
+
+class PatientCreateApiTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='evaluador_modal',
+            password='Password123!',
+            email='evaluador@unemi.edu.ec'
+        )
+        self.client.force_login(self.user)
+        self.country, _ = Country.objects.get_or_create(iso_alpha3='ECU', defaults={'name': 'Ecuador'})
+        self.province, _ = Province.objects.get_or_create(country=self.country, iso_code='EC-G', defaults={'name': 'Guayas'})
+        self.canton, _ = Canton.objects.get_or_create(province=self.province, dpa_code='0910', defaults={'name': 'Milagro'})
+        self.inst_unemi, _ = Institution.objects.get_or_create(acronym='UNEMI', defaults={'name': 'Universidad Estatal de Milagro'})
+        self.inst_espol, _ = Institution.objects.get_or_create(acronym='ESPOL', defaults={'name': 'Escuela Superior Politécnica del Litoral'})
+        self.sex, _ = Sex.objects.get_or_create(sex_id=1, defaults={'name': 'Hombre'})
+        self.ethnicity, _ = Ethnicity.objects.get_or_create(name='Mestizo')
+        self.staff_cat, _ = StaffCategory.objects.get_or_create(name='PDI')
+
+    def test_create_patient_unemi_success(self):
+        payload = {
+            'nombre': 'Carmen Villacrés Moreira',
+            'cedula': '0928475615',
+            'fecha_nac': '1985-06-15',
+            'sexo': 'M',
+            'estamento': 'PDI',
+            'universidad': 'UNEMI',
+            'facultad': 'FACS',
+            'telefono': '0987654321',
+            'correo': 'cvillacres@unemi.edu.ec'
+        }
+        resp = self.client.post('/clinical/api/pacientes/crear/', data=payload, content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data.get('success'))
+        p = Patient.objects.get(id_card='0928475615')
+        self.assertEqual(p.institution.acronym, 'UNEMI')
+        self.assertEqual(p.visit.faculty, 'FACS')
+
+    def test_create_patient_espol_success(self):
+        payload = {
+            'nombre': 'Roberto Gómez Andrade',
+            'cedula': '0923485718',
+            'fecha_nac': '1992-03-22',
+            'sexo': 'H',
+            'estamento': 'PDI',
+            'universidad': 'ESPOL',
+            'facultad': 'FIEC',
+            'telefono': '0991234567',
+            'correo': 'rgomez@espol.edu.ec'
+        }
+        resp = self.client.post('/clinical/api/pacientes/crear/', data=payload, content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data.get('success'))
+        p = Patient.objects.get(id_card='0923485718')
+        self.assertEqual(p.institution.acronym, 'ESPOL')
+        self.assertEqual(p.visit.faculty, 'FIEC')
+
+    def test_create_patient_missing_required_fails(self):
+        payload = {
+            'nombre': '',
+            'fecha_nac': ''
+        }
+        resp = self.client.post('/clinical/api/pacientes/crear/', data=payload, content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(resp.json().get('success'))

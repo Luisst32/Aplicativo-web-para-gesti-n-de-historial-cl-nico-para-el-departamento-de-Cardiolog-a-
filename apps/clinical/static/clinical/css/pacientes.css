@@ -48,3 +48,15 @@
 .modal-aviso.visible {
   display: flex;
 }
+
+/* Modal Registrar Paciente: tamaño adaptativo y scroll suave */
+#modalAdd .modal-card {
+  max-width: 540px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#modalAdd .modal-body {
+  overflow-y: auto;
+}

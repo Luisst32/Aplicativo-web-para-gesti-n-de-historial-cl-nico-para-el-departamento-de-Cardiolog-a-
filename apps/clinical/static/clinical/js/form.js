@@ -359,7 +359,7 @@ function obtenerPayloadTabaquismo() {
 // =============================================================================
 // CATÁLOGOS DINÁMICOS EN CASCADA: UNIVERSIDAD-FACULTAD Y PROVINCIA-CANTÓN
 // =============================================================================
-const FACULTADES_POR_UNIVERSIDAD = {
+var FACULTADES_POR_UNIVERSIDAD = window.FACULTADES_POR_UNIVERSIDAD || {
   'UNEMI': [
     { value: 'FACI', label: 'FACI - Facultad de Ciencias e Ingeniería' },
     { value: 'FACS', label: 'FACS - Facultad de Salud' },

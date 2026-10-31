@@ -287,7 +287,8 @@ def patient_create_api(request):
         fecha_nac = data.get('fecha_nac', '').strip()
         sexo_str = data.get('sexo', 'H').strip().upper()
         estamento_str = data.get('estamento', 'PDI').strip()
-        facultad = data.get('facultad', 'UNEMI').strip()
+        universidad_str = data.get('universidad', 'UNEMI').strip().upper()
+        facultad = data.get('facultad', 'FACS').strip()
         telefono = data.get('telefono', '').strip()
         correo = data.get('correo', '').strip()
 
@@ -333,7 +334,11 @@ def patient_create_api(request):
 
         with transaction.atomic():
             # Catálogos base
-            unemi = Institution.objects.first()
+            inst = (
+                Institution.objects.filter(acronym__iexact=universidad_str).first() or
+                Institution.objects.filter(name__icontains=universidad_str).first() or
+                Institution.objects.first()
+            )
             sexo = Sex.objects.filter(name__istartswith=sexo_str[0]).first() or Sex.objects.first()
             mestizo = Ethnicity.objects.filter(name="Mestizo").first() or Ethnicity.objects.first()
             milagro = Canton.objects.filter(name="Milagro").first() or Canton.objects.first()
@@ -345,7 +350,7 @@ def patient_create_api(request):
                 cedula = f"09{Patient.objects.count() + 10000000:08d}"
 
             paciente = Patient.objects.create(
-                institution=unemi,
+                institution=inst,
                 id_card=cedula,
                 first_names=first_names,
                 last_name1=last_name1,

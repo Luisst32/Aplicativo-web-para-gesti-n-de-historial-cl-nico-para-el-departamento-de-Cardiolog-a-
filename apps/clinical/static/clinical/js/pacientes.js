@@ -116,8 +116,46 @@ function buscarPacienteExistente(nombre, fechaNac) {
 }
 
 // =========================================================================
-// MODAL AGREGAR NUEVO PACIENTE
+// CATÁLOGO DE FACULTADES Y MODAL AGREGAR NUEVO PACIENTE
 // =========================================================================
+
+var FACULTADES_POR_UNIVERSIDAD = window.FACULTADES_POR_UNIVERSIDAD || {
+  'UNEMI': [
+    { value: 'FACS', label: 'FACS - Facultad de Salud y Servicios Sociales' },
+    { value: 'FACI', label: 'FACI - Facultad de Ciencias e Ingeniería' },
+    { value: 'FACSO', label: 'FACSO - Ciencias Sociales, Educación Comercial y Derecho' },
+    { value: 'FACE', label: 'FACE - Facultad de Educación' },
+    { value: 'POSGRADO', label: 'Posgrado / Dirección de Posgrado' }
+  ],
+  'ESPOL': [
+    { value: 'FCV', label: 'FCV - Facultad de Ciencias de la Vida' },
+    { value: 'FIEC', label: 'FIEC - Fac. de Ing. en Electricidad y Computación' },
+    { value: 'FCNM', label: 'FCNM - Fac. de Ciencias Naturales y Matemáticas' },
+    { value: 'FIMCP', label: 'FIMCP - Fac. de Ing. Mecánica y Ciencias de la Producción' },
+    { value: 'FCSH', label: 'FCSH - Fac. de Ciencias Sociales y Humanísticas' },
+    { value: 'FIMCM', label: 'FIMCM - Fac. de Ing. Marítima y Ciencias del Mar' },
+    { value: 'EDCOM', label: 'EDCOM - Escuela de Diseño y Comunicación Visual' }
+  ]
+};
+
+function actualizarFacultadesModal(uni, valorSeleccionado) {
+  const selFac = document.getElementById('m_facultad');
+  if (!selFac) return;
+  const catalogo = window.FACULTADES_POR_UNIVERSIDAD || FACULTADES_POR_UNIVERSIDAD;
+  const cleanUni = (uni || 'UNEMI').toUpperCase().trim();
+  const facList = catalogo[cleanUni] || catalogo['UNEMI'] || [];
+
+  selFac.innerHTML = '';
+  facList.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.value;
+    opt.textContent = f.label;
+    if (valorSeleccionado && (f.value === valorSeleccionado || f.label.toLowerCase().includes(valorSeleccionado.toLowerCase()))) {
+      opt.selected = true;
+    }
+    selFac.appendChild(opt);
+  });
+}
 
 let alTerminarModalPaciente = null;
 
@@ -145,7 +183,7 @@ function montarModalAgregarPaciente(onListo) {
         <div class="grid form-grid-2">
           <div class="form-field">
             <label class="field-label">Número de Cédula (10 dígitos ecuatoriana)</label>
-            <input type="text" class="form-input" id="m_cedula" placeholder="Ej: 0928475612" maxlength="10" name="m_cedula">
+            <input type="text" class="form-input" id="m_cedula" placeholder="Ej: 0928475615" maxlength="10" name="m_cedula">
           </div>
           <div class="form-field">
             <label class="field-label">Fecha de Nacimiento *</label>
@@ -167,7 +205,21 @@ function montarModalAgregarPaciente(onListo) {
         </div>
         <div class="grid form-grid-2">
           <div class="form-field">
-            <label class="field-label">Estamento UNEMI *</label>
+            <label class="field-label">Universidad / Institución *</label>
+            <select class="form-select" id="m_universidad" name="m_universidad" onchange="actualizarFacultadesModal(this.value)">
+              <option value="UNEMI">UNEMI - Universidad Estatal de Milagro</option>
+              <option value="ESPOL">ESPOL - Escuela Superior Politécnica del Litoral</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="field-label">Facultad / Dependencia *</label>
+            <select class="form-select" id="m_facultad" name="m_facultad">
+            </select>
+          </div>
+        </div>
+        <div class="grid form-grid-2">
+          <div class="form-field">
+            <label class="field-label">Estamento Institucional *</label>
             <select class="form-select" id="m_estamento" name="m_estamento">
               <option value="PDI">PDI (Profesor)</option>
               <option value="AD">AD (Administrativo)</option>
@@ -176,19 +228,13 @@ function montarModalAgregarPaciente(onListo) {
             </select>
           </div>
           <div class="form-field">
-            <label class="field-label">Facultad / Dependencia</label>
-            <input type="text" class="form-input" id="m_facultad" placeholder="Ej: Ciencias de la Salud" name="m_facultad">
-          </div>
-        </div>
-        <div class="grid form-grid-2">
-          <div class="form-field">
             <label class="field-label">Teléfono Móvil</label>
             <input type="tel" class="form-input" id="m_telefono" placeholder="Ej: 0987654321" name="m_telefono">
           </div>
-          <div class="form-field">
-            <label class="field-label">Correo Electrónico</label>
-            <input type="email" class="form-input" id="m_correo" placeholder="Ej: cvillacres@unemi.edu.ec" name="m_correo">
-          </div>
+        </div>
+        <div class="form-field">
+          <label class="field-label">Correo Electrónico</label>
+          <input type="email" class="form-input" id="m_correo" placeholder="Ej: cvillacres@unemi.edu.ec" name="m_correo">
         </div>
         <div class="modal-aviso" id="m_duplicado">
           <span id="m_duplicado_texto"></span>
@@ -202,6 +248,8 @@ function montarModalAgregarPaciente(onListo) {
     </div>
   </div>
   `);
+
+  actualizarFacultadesModal(document.getElementById('m_universidad').value);
 
   document.getElementById('btnCancelX').addEventListener('click', cerrarModalAgregarPaciente);
   document.getElementById('btnCancelModal').addEventListener('click', cerrarModalAgregarPaciente);
@@ -218,6 +266,8 @@ function abrirModalAgregarPaciente() {
   const modal = document.getElementById('modalAdd');
   if (modal) {
     modal.classList.add('active');
+    const uni = document.getElementById('m_universidad')?.value || 'UNEMI';
+    actualizarFacultadesModal(uni);
     document.getElementById('m_nombre').focus();
   }
 }
@@ -231,7 +281,9 @@ function cerrarModalAgregarPaciente() {
     document.getElementById('m_cedula').value = '';
     document.getElementById('m_fecha_nac').value = '';
     document.getElementById('m_edad').value = '';
-    document.getElementById('m_facultad').value = '';
+    const selUni = document.getElementById('m_universidad');
+    if (selUni) selUni.value = 'UNEMI';
+    actualizarFacultadesModal('UNEMI');
     document.getElementById('m_telefono').value = '';
     document.getElementById('m_correo').value = '';
   }
@@ -247,7 +299,8 @@ async function guardarPacienteDelModal() {
   const cedula = document.getElementById('m_cedula').value.trim();
   const sexo = document.getElementById('m_sexo').value;
   const estamento = document.getElementById('m_estamento').value;
-  const facultad = document.getElementById('m_facultad').value.trim();
+  const universidad = document.getElementById('m_universidad')?.value || 'UNEMI';
+  const facultad = document.getElementById('m_facultad')?.value || 'FACS';
   const telefono = document.getElementById('m_telefono').value.trim();
   const correo = document.getElementById('m_correo').value.trim();
 
@@ -262,6 +315,7 @@ async function guardarPacienteDelModal() {
     fecha_nac: fn,
     sexo: sexo,
     estamento: estamento,
+    universidad: universidad,
     facultad: facultad,
     telefono: telefono,
     correo: correo
