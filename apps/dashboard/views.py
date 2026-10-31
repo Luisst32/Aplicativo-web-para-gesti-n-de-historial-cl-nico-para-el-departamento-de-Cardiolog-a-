@@ -11,12 +11,13 @@ def index_view(request):
     """
     Renders the clinical and epidemiological dashboard view.
     Supplies real aggregated patient evaluation records computed
-    from the clinical PostgreSQL models.
+    from the clinical PostgreSQL models across all 8 clinical blocks.
     """
     data = services.get_dashboard_evaluation_data()
     context = {
         'total_evaluated': data['total'],
         'summary_kpis': data['summary_kpis'],
+        'module_kpis': data['module_kpis'],
         'available_years': data['years'],
         'available_categories': data['categories'],
         'records_json': json.dumps(data['records']),
@@ -35,6 +36,7 @@ def api_dashboard_data(request):
         'status': 'success',
         'total': data['total'],
         'summary_kpis': data['summary_kpis'],
+        'module_kpis': data['module_kpis'],
         'years': data['years'],
         'categories': data['categories'],
         'records': data['records'],

@@ -175,3 +175,52 @@ class DashboardServicesAndViewsTestCase(TestCase):
         self.assertEqual(payload['total'], 2)
         self.assertEqual(len(payload['records']), 2)
         self.assertEqual(payload['years'], [2026])
+        self.assertIn('module_kpis', payload)
+
+    def test_dashboard_incorporates_all_8_clinical_blocks(self):
+        """Verifies that all 8 requested clinical blocks are incorporated in context and template."""
+        response = self.client.get(reverse("dashboard:index"))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode('utf-8')
+
+        # 1. Verification of all 8 tabs in template HTML
+        expected_tabs = [
+            'tab-resumen-general',
+            'tab-datos-individuo',
+            'tab-exploracion-fisica',
+            'tab-factores-modificables',
+            'tab-factores-emergentes',
+            'tab-antecedentes-familiares',
+            'tab-historia-no-cardio',
+            'tab-covid-19',
+            'tab-electrocardiograma',
+        ]
+        for tab in expected_tabs:
+            self.assertIn(tab, content, f"Pestaña {tab} no encontrada en el HTML")
+
+        # 2. Verification of module_kpis in template context
+        self.assertIn('module_kpis', response.context)
+        m_kpis = response.context['module_kpis']
+        expected_modules = [
+            'individuo', 'exploracion', 'modificables',
+            'emergentes', 'familiares', 'no_cardio',
+            'covid', 'ecg'
+        ]
+        for m in expected_modules:
+            self.assertIn(m, m_kpis, f"Módulo KPI {m} ausente en context['module_kpis']")
+
+        # 3. Verification of 8 block fields inside evaluated records
+        data = services.get_dashboard_evaluation_data()
+        rec1 = data['records'][0]
+        block_fields = [
+            'nivel_estudios', 'estado_civil',             # Bloque 1: Datos individuo
+            'pa_categoria', 'abd_riesgo',                 # Bloque 2: Exploración física
+            'predimed_adherencia', 'tabaquismo',          # Bloque 3: Factores modificables
+            'calidad_sueno', 'personalidad_tipo_a',       # Bloque 4: Factores emergentes
+            'ant_fam_hta', 'ant_fam_cv_mayor',            # Bloque 5: Antecedentes familiares
+            'respiratorio_desc', 'salud_mental_desc',     # Bloque 6: Historia no cardio
+            'covid_infeccion', 'covid_tiene_secuelas',    # Bloque 7: COVID-19
+            'ecg_es_sinusal', 'ecg_pr_cat', 'ecg_qtc_cat' # Bloque 8: Electrocardiograma
+        ]
+        for f in block_fields:
+            self.assertIn(f, rec1, f"Campo clínico {f} ausente en record")
