@@ -104,12 +104,16 @@ def get_dashboard_evaluation_data():
     records = []
     available_years = set()
     available_categories = set()
+    available_institutions = set()
 
     for v in visits:
         p = v.patient
         v_date = v.visit_date or date(2024, 1, 1)
         ano = v_date.year
         available_years.add(ano)
+
+        inst_name = p.institution.name if (p and p.institution) else 'Universidad Estatal de Milagro'
+        available_institutions.add(inst_name)
 
         # -------------------------------------------------------------
         # BLOQUE 1: DATOS DEL INDIVIDUO (SOCIODEMOGRAFÍA)
@@ -541,6 +545,7 @@ def get_dashboard_evaluation_data():
             'id': v.visit_id,
             'study_code': v.study_code,
             'ano': ano,
+            'institucion': inst_name,
             'sexo': sexo,
             'edad': edad,
             'grupo_edad': grupo_edad,
@@ -667,6 +672,7 @@ def get_dashboard_evaluation_data():
 
     sorted_years = sorted(list(available_years))
     sorted_categories = sorted(list(available_categories))
+    sorted_institutions = sorted(list(available_institutions))
 
     n = len(records)
     fmt_pct = lambda cnt: f"{(cnt / n * 100):.1f}".replace('.', ',') if n > 0 else "0,0"
@@ -799,4 +805,5 @@ def get_dashboard_evaluation_data():
         'module_kpis': module_kpis,
         'years': sorted_years,
         'categories': sorted_categories,
+        'institutions': sorted_institutions,
     }

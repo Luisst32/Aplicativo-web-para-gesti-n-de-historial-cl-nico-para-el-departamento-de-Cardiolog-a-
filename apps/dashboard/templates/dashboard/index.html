@@ -158,6 +158,17 @@
 
       <!-- PANEL DE FILTROS SLICERS -->
       <div class="slicers-container">
+        <!-- Slicer Institución -->
+        <div class="slicer-group">
+          <label for="slicer-inst">Institución</label>
+          <select id="slicer-inst" class="form-select slicer-select" onchange="onSlicerChange()">
+            <option value="all">Todas las Instituciones</option>
+            {% for inst in available_institutions %}
+            <option value="{{ inst }}">{{ inst }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
         <!-- Slicer Año -->
         <div class="slicer-group">
           <label for="slicer-ano">Año Cohorte</label>

@@ -20,6 +20,7 @@ def index_view(request):
         'module_kpis': data['module_kpis'],
         'available_years': data['years'],
         'available_categories': data['categories'],
+        'available_institutions': data['institutions'],
         'records_json': json.dumps(data['records']),
     }
     return render(request, "dashboard/index.html", context)
@@ -39,5 +40,6 @@ def api_dashboard_data(request):
         'module_kpis': data['module_kpis'],
         'years': data['years'],
         'categories': data['categories'],
+        'institutions': data['institutions'],
         'records': data['records'],
     })

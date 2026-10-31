@@ -180,6 +180,20 @@ if (document.readyState === 'loading') {
 function syncSlicerOptions() {
   if (!allRecords || allRecords.length === 0) return;
 
+  const instSelect = document.getElementById('slicer-inst');
+  if (instSelect) {
+    const existing = Array.from(instSelect.options).map(o => o.value);
+    const unique = [...new Set(allRecords.map(r => r.institucion))].filter(Boolean).sort();
+    unique.forEach(inst => {
+      if (!existing.includes(inst)) {
+        const opt = document.createElement('option');
+        opt.value = inst;
+        opt.textContent = inst;
+        instSelect.appendChild(opt);
+      }
+    });
+  }
+
   const yearSelect = document.getElementById('slicer-ano');
   if (yearSelect) {
     const existing = Array.from(yearSelect.options).map(o => o.value);
@@ -212,6 +226,7 @@ function syncSlicerOptions() {
 
 // Evento disparado al cambiar cualquier slicer
 function onSlicerChange() {
+  const inst = document.getElementById('slicer-inst')?.value || 'all';
   const ano = document.getElementById('slicer-ano')?.value || 'all';
   const cat = document.getElementById('slicer-cat')?.value || 'all';
   const sexo = document.getElementById('slicer-sexo')?.value || 'all';
@@ -219,6 +234,7 @@ function onSlicerChange() {
   const riesgo = document.getElementById('slicer-riesgo')?.value || 'all';
 
   filteredRecords = allRecords.filter(r => {
+    if (inst !== 'all' && r.institucion !== inst) return false;
     if (ano !== 'all' && String(r.ano) !== String(ano)) return false;
     if (cat !== 'all' && r.categoria !== cat) return false;
     if (sexo !== 'all' && r.sexo !== sexo) return false;

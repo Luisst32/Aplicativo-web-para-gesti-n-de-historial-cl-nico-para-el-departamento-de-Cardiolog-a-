@@ -176,6 +176,7 @@ class DashboardServicesAndViewsTestCase(TestCase):
         self.assertEqual(len(payload['records']), 2)
         self.assertEqual(payload['years'], [2026])
         self.assertIn('module_kpis', payload)
+        self.assertIn('institutions', payload)
 
     def test_dashboard_incorporates_all_8_clinical_blocks(self):
         """Verifies that all 8 requested clinical blocks are incorporated in context and template."""
@@ -198,6 +199,10 @@ class DashboardServicesAndViewsTestCase(TestCase):
         for tab in expected_tabs:
             self.assertIn(tab, content, f"Pestaña {tab} no encontrada en el HTML")
 
+        # Verification of slicer-inst in template
+        self.assertIn('slicer-inst', content)
+        self.assertIn('available_institutions', response.context)
+
         # 2. Verification of module_kpis in template context
         self.assertIn('module_kpis', response.context)
         m_kpis = response.context['module_kpis']
@@ -213,6 +218,7 @@ class DashboardServicesAndViewsTestCase(TestCase):
         data = services.get_dashboard_evaluation_data()
         rec1 = data['records'][0]
         block_fields = [
+            'institucion',                                 # Filtro Institución
             'nivel_estudios', 'estado_civil',             # Bloque 1: Datos individuo
             'pa_categoria', 'abd_riesgo',                 # Bloque 2: Exploración física
             'predimed_adherencia', 'tabaquismo',          # Bloque 3: Factores modificables
