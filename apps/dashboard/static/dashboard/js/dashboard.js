@@ -48,6 +48,65 @@ function formatMean(arr, decimals = 1) {
 }
 
 // Navegación entre pestañas temáticas
+
+// Helpers para tooltips con porcentaje tanto en ApexCharts como en Chart.js
+function apexCountTooltip(customTotal) {
+  return {
+    y: {
+      formatter: function(val) {
+        if (typeof val !== 'number') return val;
+        const total = customTotal || filteredRecords.length || 1;
+        const pct = total > 0 ? ((val / total) * 100).toFixed(1).replace('.', ',') : '0,0';
+        return `${val} casos (${pct} %)`;
+      }
+    }
+  };
+}
+
+function apexPctTooltip() {
+  return {
+    y: {
+      formatter: function(val) {
+        if (typeof val !== 'number') return val;
+        const n = filteredRecords.length || 0;
+        const casos = n > 0 ? Math.round((val * n) / 100) : 0;
+        return `${val}% (${casos} de ${n} casos)`;
+      }
+    }
+  };
+}
+
+if (typeof Chart !== 'undefined' && Chart.defaults) {
+  Chart.defaults.plugins.tooltip.callbacks.label = function(context) {
+    let label = context.dataset.label || '';
+    if (label) label += ': ';
+
+    if (context.chart.config.type === 'scatter') {
+      const p = context.raw || context.parsed;
+      return `${label}IMC: ${p.x} kg/m², Cintura: ${p.y} cm`;
+    }
+
+    const val = context.parsed.y !== undefined ? context.parsed.y : (context.parsed !== undefined ? context.parsed : context.raw);
+    if (typeof val !== 'number') return `${label}${val}`;
+
+    if (context.chart.canvas.id === 'chart-ecg-fc-comparativa') {
+      return `${label}${val} lpm`;
+    }
+
+    let total = 0;
+    if (context.chart.config.type === 'doughnut' || context.chart.config.type === 'pie') {
+      total = context.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
+    } else if (context.chart.config.options?.scales?.x?.stacked || context.chart.config.options?.scales?.y?.stacked) {
+      total = context.chart.data.datasets.reduce((acc, ds) => acc + (typeof ds.data[context.dataIndex] === 'number' ? ds.data[context.dataIndex] : 0), 0);
+    } else {
+      total = filteredRecords.length || context.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
+    }
+
+    const pct = total > 0 ? ((val / total) * 100).toFixed(1).replace('.', ',') : '0,0';
+    return `${label}${val} casos (${pct} %)`;
+  };
+}
+
 function switchTab(tabId, element) {
   activeTabId = tabId;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -349,6 +408,8 @@ function renderTabResumenGeneral() {
         series: [{ name: 'Evaluados', data: yearData }],
         xaxis: { categories: years.map(y => `Año ${y}`) },
         dataLabels: { enabled: true }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.tendencia.render();
     }
@@ -380,6 +441,8 @@ function renderTabResumenGeneral() {
         xaxis: { categories: fLabels, max: 100 },
         legend: { show: false },
         dataLabels: { enabled: true, formatter: val => `${val}%` }
+      ,
+        tooltip: apexPctTooltip()
       });
       charts.factores.render();
     }
@@ -472,6 +535,8 @@ function renderTabDatosIndividuo() {
         ],
         xaxis: { categories: grupos },
         legend: { position: 'top' }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.indEdad.render();
     }
@@ -545,6 +610,8 @@ function renderTabDatosIndividuo() {
         plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
         series: [{ name: 'Personas', data: vivVals }],
         xaxis: { categories: vivLabels }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.indViv.render();
     }
@@ -572,6 +639,8 @@ function renderTabExploracionFisica() {
         series: [{ name: 'Casos', data: imcCounts }],
         xaxis: { categories: imcCats },
         legend: { show: false }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.expImc.render();
     }
@@ -650,6 +719,8 @@ function renderTabExploracionFisica() {
         series: [{ name: 'Casos', data: [auscNorm, soplosPres, auscAlt] }],
         xaxis: { categories: ['Auscultación Normal', 'Soplos Cardíacos', 'Ruidos / Alteración'] },
         legend: { show: false }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.expAusc.render();
     }
@@ -688,6 +759,8 @@ function renderTabFactoresModificables() {
         ],
         xaxis: { categories: ['Hipertensión (HTA)', 'Diabetes Mellitus', 'Dislipemia'] },
         legend: { position: 'top' }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.modControl.render();
     }
@@ -740,6 +813,8 @@ function renderTabFactoresModificables() {
         ],
         xaxis: { categories: catNames },
         legend: { position: 'top' }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.modActCat.render();
     }
@@ -790,6 +865,8 @@ function renderTabFactoresEmergentes() {
         series: [{ name: 'Casos', data: [suenoBuena, suenoMala, suenoAdecuado, suenoInsuf] }],
         xaxis: { categories: ['Buena Calidad', 'Mala Calidad', 'Sueño Adecuado (7-8h)', 'Sueño Corto (<6h)'] },
         legend: { show: false }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.emSueno.render();
     }
@@ -859,6 +936,8 @@ function renderTabFactoresEmergentes() {
         series: [{ name: 'Casos', data: [malAmb, toxLab, estrogenos, anticoncep] }],
         xaxis: { categories: ['Mal Clima Laboral', 'Tóxicos Ocupacionales', 'Bajos Estrógenos / Menopausia', 'Anticonceptivos >35a'] },
         legend: { show: false }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.emHorm.render();
     }
@@ -898,6 +977,8 @@ function renderTabAntecedentesFamiliares() {
         ],
         xaxis: { categories: ['Hipertensión', 'Diabetes', 'Dislipemia', 'Infarto / Ictus'] },
         legend: { position: 'top' }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.famPadres.render();
     }
@@ -955,6 +1036,8 @@ function renderTabAntecedentesFamiliares() {
         ],
         xaxis: { categories: grupos },
         legend: { position: 'top' }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.famEdad.render();
     }
@@ -1013,6 +1096,8 @@ function renderTabHistoriaNoCardio() {
         series: [{ name: 'Prevalencia Casos', data: vals }],
         xaxis: { categories: labels },
         legend: { show: false }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.ncComorb.render();
     }
@@ -1078,6 +1163,8 @@ function renderTabHistoriaNoCardio() {
         series: [{ name: 'Casos', data: [reumaCnt, alergiasCnt] }],
         xaxis: { categories: ['Patología Reumatológica / Artritis', 'Alergias Medicamentosas'] },
         legend: { show: false }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.ncReuma.render();
     }
@@ -1106,6 +1193,8 @@ function renderTabCovid19() {
         series: [{ name: 'Casos', data: [sinHosp, conHosp, noCovid] }],
         xaxis: { categories: ['Infección Leve (Sin Hospitalización)', 'Requirió Hospitalización', 'No ha presentado COVID'] },
         legend: { show: false }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.covHist.render();
     }
@@ -1161,6 +1250,8 @@ function renderTabCovid19() {
         ],
         xaxis: { categories: catNames },
         legend: { position: 'top' }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.covCat.render();
     }
@@ -1208,6 +1299,8 @@ function renderTabElectrocardiograma() {
         labels: ['Ritmo Sinusal (Normal)', 'Arritmias / Otros Ritmos'],
         series: [sinusalCnt, arritmiaCnt],
         legend: { position: 'bottom' }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.ecgRitmo.render();
     }
@@ -1267,6 +1360,8 @@ function renderTabElectrocardiograma() {
         series: [{ name: 'Casos', data: [sinAnom, brCnt, hviCnt, repolCnt] }],
         xaxis: { categories: ['ECG Morfológicamente Normal', 'Bloqueo de Rama', 'Hipertrofia Ventricular (HVI)', 'Alteraciones Repolarización'] },
         legend: { show: false }
+      ,
+        tooltip: apexCountTooltip()
       });
       charts.ecgAnom.render();
     }
