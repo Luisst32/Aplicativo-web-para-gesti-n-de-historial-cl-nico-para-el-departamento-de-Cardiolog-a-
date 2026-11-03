@@ -175,13 +175,13 @@ function chartJsBarDataLabels(showPct = true, customTotal = null) {
   };
 }
 
-// Helper para datalabels de Chart.js en donas/pies
-function chartJsDonutDataLabels() {
+// Helper para datalabels de Chart.js en donas/pies (Solución 1: umbral mínimo 8% para evitar colisión en rebanadas estrechas)
+function chartJsDonutDataLabels(minPct = 0.08) {
   return {
     display: (ctx) => {
       const v = ctx.dataset.data[ctx.dataIndex];
       const sum = ctx.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
-      return typeof v === 'number' && v > 0 && (v / sum) >= 0.05;
+      return typeof v === 'number' && v > 0 && (v / sum) >= minPct;
     },
     color: '#FFFFFF',
     backgroundColor: '#1B2A41',
