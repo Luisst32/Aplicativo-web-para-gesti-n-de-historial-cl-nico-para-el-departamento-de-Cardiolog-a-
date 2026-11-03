@@ -1832,8 +1832,25 @@ function openExportModal() {
     if (prog) prog.style.display = 'none';
     const btn = document.getElementById('btn-do-export');
     if (btn) btn.disabled = false;
+  } else {
+    console.warn('Modal de exportación #modal-export-dashboard no encontrado en el DOM.');
   }
 }
+
+// Exposición explícita global para llamadas inline y listeners
+window.openExportModal = openExportModal;
+window.closeExportModal = closeExportModal;
+window.startExport = startExport;
+
+// Enlace defensivo directo al botón de exportar
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.btn-export-dashboard').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openExportModal();
+    });
+  });
+});
 
 function closeExportModal() {
   const modal = document.getElementById('modal-export-dashboard');
@@ -1882,7 +1899,8 @@ async function startExport() {
 
 // 1. Exportación a Imagen PNG
 async function exportImage(scope, setProgress) {
-  if (typeof html2canvas === 'undefined') {
+  const h2c = window.html2canvas || (typeof html2canvas !== 'undefined' ? html2canvas : null);
+  if (!h2c) {
     throw new Error('La librería html2canvas no está disponible.');
   }
 
@@ -1900,7 +1918,7 @@ async function exportImage(scope, setProgress) {
     const targetEl = document.getElementById('tab-' + tab.id);
     if (!targetEl) continue;
 
-    const canvas = await html2canvas(targetEl, {
+    const canvas = await h2c(targetEl, {
       scale: 2,
       useCORS: true,
       backgroundColor: '#F8FAFC',
@@ -1925,7 +1943,8 @@ async function exportPdf(scope, setProgress) {
   if (!jsPDF) {
     throw new Error('La librería jsPDF no está disponible.');
   }
-  if (typeof html2canvas === 'undefined') {
+  const h2c = window.html2canvas || (typeof html2canvas !== 'undefined' ? html2canvas : null);
+  if (!h2c) {
     throw new Error('La librería html2canvas no está disponible.');
   }
 
@@ -1954,7 +1973,7 @@ async function exportPdf(scope, setProgress) {
     const targetEl = document.getElementById('tab-' + tab.id);
     if (!targetEl) continue;
 
-    const canvas = await html2canvas(targetEl, {
+    const canvas = await h2c(targetEl, {
       scale: 1.8,
       useCORS: true,
       backgroundColor: '#FFFFFF',
@@ -2019,14 +2038,16 @@ async function exportPdf(scope, setProgress) {
 
 // 3. Exportación a Diapositivas PowerPoint (.pptx)
 async function exportPowerPoint(scope, setProgress) {
-  if (typeof PptxGenJS === 'undefined') {
+  const pptxClass = window.PptxGenJS || (typeof PptxGenJS !== 'undefined' ? PptxGenJS : null);
+  if (!pptxClass) {
     throw new Error('La librería PptxGenJS no está disponible.');
   }
-  if (typeof html2canvas === 'undefined') {
+  const h2c = window.html2canvas || (typeof html2canvas !== 'undefined' ? html2canvas : null);
+  if (!h2c) {
     throw new Error('La librería html2canvas no está disponible.');
   }
 
-  const pptx = new PptxGenJS();
+  const pptx = new pptxClass();
   pptx.layout = 'LAYOUT_16x9';
 
   const tabsToExport = scope === 'all' ? DASHBOARD_TABS : [DASHBOARD_TABS.find(t => t.id === activeTabId) || DASHBOARD_TABS[0]];
@@ -2089,7 +2110,7 @@ async function exportPowerPoint(scope, setProgress) {
     const targetEl = document.getElementById('tab-' + tab.id);
     if (!targetEl) continue;
 
-    const canvas = await html2canvas(targetEl, {
+    const canvas = await h2c(targetEl, {
       scale: 1.8,
       useCORS: true,
       backgroundColor: '#FFFFFF',
