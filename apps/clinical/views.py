@@ -613,7 +613,17 @@ def _build_form_datos(patient, visit):
         ans_dict = {}
         for ans in visit.answers.select_related('question').all():
             q_code = ans.question.code
-            val = ans.text_value or (str(ans.numeric_value) if ans.numeric_value is not None else (ans.selected_option.label if ans.selected_option else ""))
+            if ans.text_value:
+                val = ans.text_value
+            elif ans.numeric_value is not None:
+                if ans.numeric_value % 1 == 0:
+                    val = str(int(ans.numeric_value))
+                else:
+                    val = f"{float(ans.numeric_value):.2f}".rstrip('0').rstrip('.')
+            elif ans.selected_option:
+                val = ans.selected_option.label
+            else:
+                val = ""
             if val is not None and str(val).strip() != '':
                 ans_dict[q_code] = val
                 datos[q_code] = val

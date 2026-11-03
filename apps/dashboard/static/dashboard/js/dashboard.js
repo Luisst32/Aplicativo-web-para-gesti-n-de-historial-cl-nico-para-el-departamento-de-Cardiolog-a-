@@ -109,9 +109,12 @@ if (typeof Chart !== 'undefined') {
   if (typeof ChartDataLabels !== 'undefined') {
     Chart.register(ChartDataLabels);
     Chart.defaults.plugins.datalabels = {
-      display: false // Se activa explícitamente por gráfico
+      display: false,
+      clip: false
     };
   }
+  Chart.defaults.layout = Chart.defaults.layout || {};
+  Chart.defaults.layout.padding = { top: 24, right: 8, bottom: 4, left: 4 };
 
   if (Chart.defaults?.plugins?.tooltip) {
     Chart.defaults.plugins.tooltip.callbacks.label = function(context) {
@@ -154,12 +157,13 @@ function chartJsBarDataLabels(showPct = true) {
     },
     anchor: 'end',
     align: 'top',
-    offset: 2,
+    offset: 4,
+    clip: false,
     color: '#1B2A41',
     font: { weight: 'bold', size: 10 },
     formatter: (val) => {
       if (!val || val <= 0) return '';
-      if (!showPct) return `${val}`;
+      if (!showPct) return `${val} casos`;
       const n = filteredRecords.length || 1;
       return `${val} (${formatPct(val, n)}%)`;
     }
@@ -618,14 +622,28 @@ function renderTabResumenGeneral() {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+          layout: { padding: { top: 15, right: 8, bottom: 4, left: 4 } },
+          scales: {
+            x: { stacked: true },
+            y: {
+              stacked: true,
+              beginAtZero: true,
+              grace: '10%',
+              title: { display: true, text: 'Casos (n)', font: { size: 11, weight: 'bold' } }
+            }
+          },
           plugins: {
             legend: { position: 'bottom' },
             datalabels: {
               display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
               color: '#FFFFFF',
-              font: { weight: 'bold', size: 11 },
-              formatter: (val) => val > 0 ? `${val}` : ''
+              font: { weight: 'bold', size: 9.5 },
+              clip: false,
+              formatter: (val) => {
+                if (!val || val <= 0) return '';
+                const n = filteredRecords.length || 1;
+                return `${val} (${formatPct(val, n)}%)`;
+              }
             }
           }
         }
@@ -728,6 +746,14 @@ function renderTabDatosIndividuo() {
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          layout: { padding: { top: 25, right: 8, bottom: 4, left: 4 } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grace: '20%',
+              title: { display: true, text: 'Casos (n)', font: { size: 11, weight: 'bold' } }
+            }
+          },
           plugins: {
             legend: { display: false },
             datalabels: chartJsBarDataLabels(true)
@@ -995,10 +1021,11 @@ function renderTabFactoresModificables() {
           { name: 'Sedentarios', data: actNo }
         ],
         xaxis: { categories: catNames },
+        yaxis: { title: { text: 'Casos (n)' } },
         legend: { position: 'top' },
         dataLabels: {
           enabled: true,
-          formatter: (val) => val > 0 ? `${val}` : '',
+          formatter: (val) => val > 0 ? `${val} (${formatPct(val, n)}%)` : '',
           style: { fontSize: '10px', fontWeight: 'bold' }
         },
         tooltip: apexCountTooltip()
@@ -1204,10 +1231,11 @@ function renderTabAntecedentesFamiliares() {
           { name: 'Rama Materna', data: [madreHta, madreDm, madreDlp, madreIam] }
         ],
         xaxis: { categories: ['Hipertensión', 'Diabetes', 'Dislipemia', 'Infarto / Ictus'] },
+        yaxis: { title: { text: 'Casos (n)' } },
         legend: { position: 'top' },
         dataLabels: {
           enabled: true,
-          formatter: (val) => val > 0 ? `${val}` : '',
+          formatter: (val) => val > 0 ? `${val} (${formatPct(val, n)}%)` : '',
           style: { fontSize: '10px', fontWeight: 'bold' }
         },
         tooltip: apexCountTooltip()
@@ -1282,10 +1310,11 @@ function renderTabAntecedentesFamiliares() {
           { name: 'Diabetes Familiar', data: dmPorEdad }
         ],
         xaxis: { categories: grupos },
+        yaxis: { title: { text: 'Casos (n)' } },
         legend: { position: 'top' },
         dataLabels: {
           enabled: true,
-          formatter: (val) => val > 0 ? `${val}` : '',
+          formatter: (val) => val > 0 ? `${val} (${formatPct(val, n)}%)` : '',
           style: { fontSize: '10px', fontWeight: 'bold' }
         },
         tooltip: apexCountTooltip()
@@ -1315,6 +1344,14 @@ function renderTabAntecedentesFamiliares() {
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          layout: { padding: { top: 25, right: 8, bottom: 4, left: 4 } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grace: '20%',
+              title: { display: true, text: 'Casos (n)', font: { size: 10, weight: 'bold' } }
+            }
+          },
           plugins: {
             legend: { display: false },
             datalabels: chartJsBarDataLabels(true)
@@ -1419,6 +1456,14 @@ function renderTabHistoriaNoCardio() {
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          layout: { padding: { top: 25, right: 8, bottom: 4, left: 4 } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grace: '20%',
+              title: { display: true, text: 'Casos (n)', font: { size: 10, weight: 'bold' } }
+            }
+          },
           plugins: {
             legend: { display: false },
             datalabels: chartJsBarDataLabels(true)
@@ -1503,6 +1548,14 @@ function renderTabCovid19() {
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          layout: { padding: { top: 25, right: 8, bottom: 4, left: 4 } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grace: '20%',
+              title: { display: true, text: 'Casos (n)', font: { size: 10, weight: 'bold' } }
+            }
+          },
           plugins: {
             legend: { display: false },
             datalabels: chartJsBarDataLabels(true)
@@ -1537,10 +1590,11 @@ function renderTabCovid19() {
           { name: 'Hospitalizados', data: hospPorCat }
         ],
         xaxis: { categories: catNames },
+        yaxis: { title: { text: 'Casos (n)' } },
         legend: { position: 'top' },
         dataLabels: {
           enabled: true,
-          formatter: (val) => val > 0 ? `${val}` : '',
+          formatter: (val) => val > 0 ? `${val} (${formatPct(val, n)}%)` : '',
           style: { fontSize: '10px', fontWeight: 'bold' }
         },
         tooltip: apexCountTooltip()
@@ -1646,14 +1700,28 @@ function renderTabElectrocardiograma() {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+          layout: { padding: { top: 15, right: 8, bottom: 4, left: 4 } },
+          scales: {
+            x: { stacked: true },
+            y: {
+              stacked: true,
+              beginAtZero: true,
+              grace: '10%',
+              title: { display: true, text: 'Casos (n)', font: { size: 11, weight: 'bold' } }
+            }
+          },
           plugins: {
             legend: { position: 'bottom' },
             datalabels: {
               display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
               color: '#FFFFFF',
-              font: { weight: 'bold', size: 11 },
-              formatter: (val) => val > 0 ? `${val}` : ''
+              font: { weight: 'bold', size: 9.5 },
+              clip: false,
+              formatter: (val) => {
+                if (!val || val <= 0) return '';
+                const n = filteredRecords.length || 1;
+                return `${val} (${formatPct(val, n)}%)`;
+              }
             }
           }
         }

@@ -61,6 +61,24 @@ class NumberedCanvas(canvas.Canvas):
         self.restoreState()
 
 
+def clean_int_str(val_str):
+    if val_str is None:
+        return ""
+    s = str(val_str).strip()
+    if not s:
+        return ""
+    if '.' in s:
+        parts = s.split('.')
+        if len(parts) == 2 and parts[1].replace('0', '') == '':
+            return parts[0]
+    try:
+        f = float(s)
+        if f.is_integer():
+            return str(int(f))
+    except (ValueError, TypeError):
+        pass
+    return s
+
 def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> bytes:
     """
     Generates the official UNEMI cardiovascular study clinical questionnaire PDF report,
@@ -91,7 +109,10 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
     def val(key, default=""):
         if is_blank:
             return ""
-        v = str(datos.get(key, "") or "").strip()
+        raw = datos.get(key, "")
+        if raw is None:
+            return default
+        v = clean_int_str(raw)
         return v if v else default
 
     def is_yes(key):
@@ -139,24 +160,21 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
         'BannerTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=8.5,
-        leading=11,
+        fontSize=8.8, leading=11.5,
         textColor=colors.white
     )
     q_style = ParagraphStyle(
         'QStyle',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=7.2,
-        leading=9.2,
+        fontSize=7.8, leading=10.2,
         textColor=colors.HexColor('#1e293b')
     )
     q_bold = ParagraphStyle(
         'QBold',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=7.2,
-        leading=9.2,
+        fontSize=7.8, leading=10.2,
         textColor=colors.HexColor('#0f172a')
     )
 
@@ -177,10 +195,10 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
     def add_section(banner_title, table):
         elements.append(KeepTogether([
             section_banner(banner_title),
-            Spacer(1, 2),
+            Spacer(1, 3.5),
             table
         ]))
-        elements.append(Spacer(1, 4))
+        elements.append(Spacer(1, 6.0))
 
     # 1. INSTITUTIONAL HEADER & LOGO
     logo_path = 'apps/clinical/static/clinical/images/unemi_logo.png'
@@ -889,30 +907,7 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
     ]))
     add_section("Estudios que se le ha mandado al Paciente", t_mod16)
 
-    # =========================================================================
-    # 17. FIRMAS DE RESPONSABILIDAD
-    # =========================================================================
-    evaluador_str = (getattr(visit.evaluator, 'full_name', None) or visit.evaluator.username) if (visit and visit.evaluator) else "Médico Especialista en Cardiología"
-    paciente_str = nom_comp if nom_comp else "Paciente Participante"
-    cedula_str = val('f_cedula', '____________________')
-
-    sign_rows = [
-        [
-            Paragraph("________________________________________________", ParagraphStyle('SignL', parent=styles['Normal'], alignment=1, fontSize=8)),
-            Paragraph("________________________________________________", ParagraphStyle('SignR', parent=styles['Normal'], alignment=1, fontSize=8))
-        ],
-        [
-            Paragraph(f"<b>Evaluador Responsable:</b> Dr/a. {evaluador_str}<br/>Departamento de Cardiología · UNEMI", ParagraphStyle('SignDesc1', parent=styles['Normal'], alignment=1, fontSize=7.5, leading=10, textColor=colors.HexColor('#334155'))),
-            Paragraph(f"<b>Paciente Evaluado:</b> {paciente_str}<br/>Cédula de Identidad: {cedula_str}", ParagraphStyle('SignDesc2', parent=styles['Normal'], alignment=1, fontSize=7.5, leading=10, textColor=colors.HexColor('#334155')))
-        ]
-    ]
-    t_sign = Table(sign_rows, colWidths=[269, 270])
-    t_sign.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 2),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-    ]))
-    elements.append(KeepTogether([t_sign]))
+    # Bloque de firmas removido a petición del usuario
 
     doc.build(elements, canvasmaker=NumberedCanvas)
     buffer.seek(0)
