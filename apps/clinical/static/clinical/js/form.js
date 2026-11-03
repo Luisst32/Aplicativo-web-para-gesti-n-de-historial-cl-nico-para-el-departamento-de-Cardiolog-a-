@@ -2390,3 +2390,53 @@ function solicitarEliminarFichaActual() {
     alert('Módulo de eliminación no disponible.');
   }
 }
+
+
+// =============================================================================
+// EXPORTACIÓN OFICIAL DE CUESTIONARIO UNEMI EN FORMATO PDF (HU-17)
+// =============================================================================
+
+function togglePdfMenu(event) {
+  if (event) {
+    event.stopPropagation();
+  }
+  const menu = document.getElementById('pdfDropdownMenu');
+  if (menu) {
+    const isShown = menu.style.display === 'block';
+    menu.style.display = isShown ? 'none' : 'block';
+  }
+}
+
+document.addEventListener('click', function(e) {
+  const menu = document.getElementById('pdfDropdownMenu');
+  const btn = document.getElementById('btnExportarPdfDropdown');
+  if (menu && menu.style.display === 'block') {
+    if (!menu.contains(e.target) && !btn?.contains(e.target)) {
+      menu.style.display = 'none';
+    }
+  }
+});
+
+function exportarFormularioPDF(isBlank = false) {
+  const menu = document.getElementById('pdfDropdownMenu');
+  if (menu) menu.style.display = 'none';
+
+  if (isBlank) {
+    window.open('/clinical/ficha/pdf/?blank=1', '_blank');
+    return;
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const pId = urlParams.get('paciente') || (typeof pacienteActual !== 'undefined' && pacienteActual ? pacienteActual.id : null);
+  const hId = urlParams.get('historial');
+
+  let url = '/clinical/ficha/pdf/';
+  const params = [];
+  if (pId) params.push(`paciente=${encodeURIComponent(pId)}`);
+  if (hId) params.push(`historial=${encodeURIComponent(hId)}`);
+
+  if (params.length > 0) {
+    url += '?' + params.join('&');
+  }
+  window.open(url, '_blank');
+}

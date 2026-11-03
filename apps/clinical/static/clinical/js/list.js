@@ -1019,8 +1019,11 @@ function exportSAV() {
 
 // Impresión y descarga oficial en PDF de la Ficha Clínica (HU-17)
 function exportarPDFHistorial(pacienteId, historialId) {
-  // Descarga directa del PDF oficial generado por el backend
-  window.open(`/clinical/ficha/pdf/?paciente=${encodeURIComponent(pacienteId)}`, '_blank');
+  let url = `/clinical/ficha/pdf/?paciente=${encodeURIComponent(pacienteId)}`;
+  if (historialId) {
+    url += `&historial=${encodeURIComponent(historialId)}`;
+  }
+  window.open(url, '_blank');
 }
 
 // Impresión PDF del resumen del paciente con sus historiales

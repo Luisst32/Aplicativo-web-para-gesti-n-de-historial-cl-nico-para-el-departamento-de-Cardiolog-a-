@@ -1357,33 +1357,48 @@ def form_save_api(request):
 @login_required
 def export_pdf_view(request, visit_id=None):
     """
-    Generates and downloads the official institutional clinical record PDF (HU-17).
+    Genera y descarga el Cuestionario Clínico Oficial UNEMI en formato PDF (HU-17).
+    Soporta descarga de evaluación completa o plantilla en blanco oficial.
     """
+    is_blank = request.GET.get('blank') in ('1', 'true', 'True') or request.GET.get('vacio') in ('1', 'true', 'True')
+
+    if is_blank:
+        pdf_bytes = generate_clinical_sheet_pdf(None, is_blank=True)
+        filename = "CUESTIONARIO_UNEMI_Plantilla_Definitivo_2026.pdf"
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        disposition = 'attachment' if request.GET.get('download') in ('1', 'true', 'True') else 'inline'
+        response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
+        return response
+
     patient_id_param = request.GET.get('paciente')
+    historial_param = request.GET.get('historial')
     visit = None
 
-    if visit_id:
-        clean_vid = str(visit_id).replace('h_', '').replace('h', '')
+    target_visit_id = visit_id or historial_param
+    if target_visit_id:
+        clean_vid = str(target_visit_id).replace('h_', '').replace('h', '')
         if clean_vid.isdigit():
             visit = Visit.objects.filter(visit_id=int(clean_vid)).first()
 
     if not visit and patient_id_param:
         clean_pid = str(patient_id_param).replace('p', '')
         if clean_pid.isdigit():
-            visit = Visit.objects.filter(patient__patient_id=int(clean_pid)).first()
+            visit = Visit.objects.filter(patient__patient_id=int(clean_pid)).order_by('-visit_date', '-visit_id').first()
         if not visit:
-            visit = Visit.objects.filter(patient__id_card=patient_id_param).first()
+            visit = Visit.objects.filter(patient__id_card=patient_id_param).order_by('-visit_date', '-visit_id').first()
 
     if not visit:
-        visit = Visit.objects.first()
+        visit = Visit.objects.order_by('-visit_date', '-visit_id').first()
 
     if not visit:
         return HttpResponse("No se encontró ninguna ficha clínica para generar el PDF.", status=404)
 
-    pdf_bytes = generate_clinical_sheet_pdf(visit)
-    filename = f"Ficha_Clinica_{visit.study_code.replace('/', '-')}.pdf"
+    pdf_bytes = generate_clinical_sheet_pdf(visit, is_blank=False)
+    study_code_clean = (visit.study_code or f"V{visit.visit_id}").replace('/', '-').replace(' ', '_')
+    filename = f"Cuestionario_UNEMI_{study_code_clean}.pdf"
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    disposition = 'attachment' if request.GET.get('download') in ('1', 'true', 'True') else 'inline'
+    response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
     return response
 
 
