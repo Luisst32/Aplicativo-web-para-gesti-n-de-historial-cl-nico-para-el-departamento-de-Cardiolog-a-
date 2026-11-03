@@ -96,10 +96,10 @@ function apexCountAndPctDataLabel(customTotal) {
       enabled: true,
       foreColor: '#FFFFFF',
       borderRadius: 4,
-      padding: 3,
-      opacity: 0.92,
+      padding: 4,
+      opacity: 0.95,
       borderWidth: 1,
-      borderColor: '#E2E8F0'
+      borderColor: '#0F172A'
     }
   };
 }
@@ -149,7 +149,7 @@ if (typeof Chart !== 'undefined') {
 }
 
 // Helper para datalabels de Chart.js en barras
-function chartJsBarDataLabels(showPct = true) {
+function chartJsBarDataLabels(showPct = true, customTotal = null) {
   return {
     display: (ctx) => {
       const v = ctx.dataset.data[ctx.dataIndex];
@@ -157,15 +157,20 @@ function chartJsBarDataLabels(showPct = true) {
     },
     anchor: 'end',
     align: 'top',
-    offset: 4,
+    offset: 5,
     clip: false,
-    color: '#1B2A41',
-    font: { weight: 'bold', size: 10 },
+    color: '#FFFFFF',
+    backgroundColor: '#1B2A41',
+    borderRadius: 4,
+    padding: { top: 3, bottom: 3, left: 6, right: 6 },
+    borderWidth: 1,
+    borderColor: '#0F172A',
+    font: { weight: 'bold', size: 10.5 },
     formatter: (val) => {
       if (!val || val <= 0) return '';
-      if (!showPct) return `${val} casos`;
-      const n = filteredRecords.length || 1;
-      return `${val} (${formatPct(val, n)}%)`;
+      const total = customTotal || filteredRecords.length || 1;
+      const pct = ((val / total) * 100).toFixed(1).replace('.', ',');
+      return `${val} (${pct}%)`;
     }
   };
 }
@@ -179,7 +184,12 @@ function chartJsDonutDataLabels() {
       return typeof v === 'number' && v > 0 && (v / sum) >= 0.05;
     },
     color: '#FFFFFF',
-    font: { weight: 'bold', size: 10.5 },
+    backgroundColor: '#1B2A41',
+    borderRadius: 4,
+    padding: { top: 3, bottom: 3, left: 6, right: 6 },
+    borderWidth: 1,
+    borderColor: '#0F172A',
+    font: { weight: 'bold', size: 10 },
     formatter: (val, ctx) => {
       const sum = ctx.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0) || 1;
       const pct = ((val / sum) * 100).toFixed(1).replace('.', ',');
@@ -512,9 +522,9 @@ function renderTabResumenGeneral() {
         xaxis: { categories: years.map(y => `Año ${y}`) },
         dataLabels: {
           enabled: true,
-          formatter: val => `${val} evaluados`,
-          style: { fontSize: '11px', fontWeight: 'bold' },
-          background: { enabled: true, foreColor: '#1B2A41', borderRadius: 3, padding: 3 }
+          formatter: val => `${val} (${formatPct(val, filteredRecords.length)}%)`,
+          style: { fontSize: '11px', fontWeight: 'bold', colors: ['#1B2A41'] },
+          background: { enabled: true, foreColor: '#FFFFFF', borderRadius: 4, padding: 4, opacity: 0.95, borderWidth: 1, borderColor: '#0F172A' }
         },
         tooltip: apexCountTooltip()
       });
@@ -552,10 +562,10 @@ function renderTabResumenGeneral() {
           formatter: (val) => {
             const total = filteredRecords.length || 1;
             const casos = Math.round((parseFloat(val) * total) / 100);
-            return `${casos} casos (${val}%)`;
+            return `${casos} (${val}%)`;
           },
-          style: { fontSize: '11px', fontWeight: 'bold' },
-          background: { enabled: true, foreColor: '#1B2A41', borderRadius: 3, padding: 3 }
+          style: { fontSize: '11px', fontWeight: 'bold', colors: ['#1B2A41'] },
+          background: { enabled: true, foreColor: '#FFFFFF', borderRadius: 4, padding: 4, opacity: 0.95, borderWidth: 1, borderColor: '#0F172A' }
         },
         tooltip: apexPctTooltip()
       });
@@ -637,6 +647,11 @@ function renderTabResumenGeneral() {
             datalabels: {
               display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
               color: '#FFFFFF',
+              backgroundColor: '#1B2A41',
+              borderRadius: 4,
+              padding: { top: 2.5, bottom: 2.5, left: 5, right: 5 },
+              borderWidth: 1,
+              borderColor: '#0F172A',
               font: { weight: 'bold', size: 9.5 },
               clip: false,
               formatter: (val) => {
@@ -668,24 +683,21 @@ function renderTabDatosIndividuo() {
         series: [
           { name: 'Hombres', data: hEdad },
           { name: 'Mujeres', data: mEdad }
-        ]
+        ],
+        dataLabels: apexCountAndPctDataLabel()
       });
     } else {
       charts.indEdad = new ApexCharts(elPiramide, {
         chart: { type: 'bar', height: 260, toolbar: { show: false } },
         colors: [PALETTE.primaryBlue, PALETTE.purple],
-        plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 4 } },
+        plotOptions: { bar: { horizontal: true, barHeight: '65%', borderRadius: 4 } },
         series: [
           { name: 'Hombres', data: hEdad },
           { name: 'Mujeres', data: mEdad }
         ],
         xaxis: { categories: grupos },
         legend: { position: 'top' },
-        dataLabels: {
-          enabled: true,
-          formatter: (val) => val > 0 ? `${val} (${formatPct(val, n)}%)` : '',
-          style: { fontSize: '10px', fontWeight: 'bold' }
-        },
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.indEdad.render();
@@ -756,7 +768,7 @@ function renderTabDatosIndividuo() {
           },
           plugins: {
             legend: { display: false },
-            datalabels: chartJsBarDataLabels(true)
+            datalabels: chartJsBarDataLabels()
           }
         }
       });
@@ -945,11 +957,7 @@ function renderTabFactoresModificables() {
         ],
         xaxis: { categories: ['Hipertensión (HTA)', 'Diabetes Mellitus', 'Dislipemia'] },
         legend: { position: 'top' },
-        dataLabels: {
-          enabled: true,
-          formatter: (val) => val > 0 ? `${val} (${formatPct(val, n)}%)` : '0',
-          style: { fontSize: '10px', fontWeight: 'bold' }
-        },
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.modControl.render();
@@ -989,7 +997,7 @@ function renderTabFactoresModificables() {
           maintainAspectRatio: false,
           plugins: {
             legend: { display: true, position: 'top' },
-            datalabels: chartJsBarDataLabels(true)
+            datalabels: chartJsBarDataLabels()
           }
         }
       });
@@ -1023,11 +1031,7 @@ function renderTabFactoresModificables() {
         xaxis: { categories: catNames },
         yaxis: { title: { text: 'Casos (n)' } },
         legend: { position: 'top' },
-        dataLabels: {
-          enabled: true,
-          formatter: (val) => val > 0 ? `${val} (${formatPct(val, n)}%)` : '',
-          style: { fontSize: '10px', fontWeight: 'bold' }
-        },
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.modActCat.render();
@@ -1219,25 +1223,21 @@ function renderTabAntecedentesFamiliares() {
         series: [
           { name: 'Rama Paterna', data: [padreHta, padreDm, padreDlp, padreIam] },
           { name: 'Rama Materna', data: [madreHta, madreDm, madreDlp, madreIam] }
-        ]
+        ],
+        dataLabels: apexCountAndPctDataLabel()
       });
     } else {
       charts.famPadres = new ApexCharts(elPadres, {
         chart: { type: 'bar', height: 260, toolbar: { show: false } },
         colors: [PALETTE.primaryBlue, PALETTE.purple],
-        plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 4 } },
+        plotOptions: { bar: { horizontal: true, barHeight: '65%', borderRadius: 4 } },
         series: [
           { name: 'Rama Paterna', data: [padreHta, padreDm, padreDlp, padreIam] },
           { name: 'Rama Materna', data: [madreHta, madreDm, madreDlp, madreIam] }
         ],
         xaxis: { categories: ['Hipertensión', 'Diabetes', 'Dislipemia', 'Infarto / Ictus'] },
-        yaxis: { title: { text: 'Casos (n)' } },
         legend: { position: 'top' },
-        dataLabels: {
-          enabled: true,
-          formatter: (val) => val > 0 ? `${val} (${formatPct(val, n)}%)` : '',
-          style: { fontSize: '10px', fontWeight: 'bold' }
-        },
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.famPadres.render();
@@ -1304,7 +1304,7 @@ function renderTabAntecedentesFamiliares() {
       charts.famEdad = new ApexCharts(elEdad, {
         chart: { type: 'bar', height: 260, toolbar: { show: false } },
         colors: [PALETTE.emergencyRed, PALETTE.yellow],
-        plotOptions: { bar: { horizontal: false, borderRadius: 4 } },
+        plotOptions: { bar: { horizontal: true, barHeight: '65%', borderRadius: 4 } },
         series: [
           { name: 'HTA Familiar', data: htaPorEdad },
           { name: 'Diabetes Familiar', data: dmPorEdad }
@@ -1312,11 +1312,7 @@ function renderTabAntecedentesFamiliares() {
         xaxis: { categories: grupos },
         yaxis: { title: { text: 'Casos (n)' } },
         legend: { position: 'top' },
-        dataLabels: {
-          enabled: true,
-          formatter: (val) => val > 0 ? `${val} (${formatPct(val, n)}%)` : '',
-          style: { fontSize: '10px', fontWeight: 'bold' }
-        },
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.famEdad.render();
@@ -1354,7 +1350,7 @@ function renderTabAntecedentesFamiliares() {
           },
           plugins: {
             legend: { display: false },
-            datalabels: chartJsBarDataLabels(true)
+            datalabels: chartJsBarDataLabels()
           }
         }
       });
@@ -1466,7 +1462,7 @@ function renderTabHistoriaNoCardio() {
           },
           plugins: {
             legend: { display: false },
-            datalabels: chartJsBarDataLabels(true)
+            datalabels: chartJsBarDataLabels()
           }
         }
       });
@@ -1558,7 +1554,7 @@ function renderTabCovid19() {
           },
           plugins: {
             legend: { display: false },
-            datalabels: chartJsBarDataLabels(true)
+            datalabels: chartJsBarDataLabels()
           }
         }
       });
@@ -1584,7 +1580,7 @@ function renderTabCovid19() {
       charts.covCat = new ApexCharts(elPorCat, {
         chart: { type: 'bar', height: 260, toolbar: { show: false } },
         colors: [PALETTE.primaryBlue, PALETTE.emergencyRed],
-        plotOptions: { bar: { horizontal: false, borderRadius: 4 } },
+        plotOptions: { bar: { horizontal: true, barHeight: '65%', borderRadius: 4 } },
         series: [
           { name: 'Infectados COVID', data: covPorCat },
           { name: 'Hospitalizados', data: hospPorCat }
@@ -1592,11 +1588,7 @@ function renderTabCovid19() {
         xaxis: { categories: catNames },
         yaxis: { title: { text: 'Casos (n)' } },
         legend: { position: 'top' },
-        dataLabels: {
-          enabled: true,
-          formatter: (val) => val > 0 ? `${val} (${formatPct(val, n)}%)` : '',
-          style: { fontSize: '10px', fontWeight: 'bold' }
-        },
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.covCat.render();
@@ -1665,7 +1657,16 @@ function renderTabElectrocardiograma() {
             const cnt = opt.seriesIndex === 0 ? sinusalCnt : arritmiaCnt;
             return `${cnt} (${val.toFixed(1)}%)`;
           },
-          style: { fontSize: '11px', fontWeight: 'bold' }
+          style: { fontSize: '11px', fontWeight: 'bold', colors: ['#1B2A41'] },
+          background: {
+            enabled: true,
+            foreColor: '#FFFFFF',
+            borderRadius: 4,
+            padding: 4,
+            opacity: 0.95,
+            borderWidth: 1,
+            borderColor: '#0F172A'
+          }
         },
         tooltip: apexCountTooltip()
       });
@@ -1715,6 +1716,11 @@ function renderTabElectrocardiograma() {
             datalabels: {
               display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
               color: '#FFFFFF',
+              backgroundColor: '#1B2A41',
+              borderRadius: 4,
+              padding: { top: 2.5, bottom: 2.5, left: 5, right: 5 },
+              borderWidth: 1,
+              borderColor: '#0F172A',
               font: { weight: 'bold', size: 9.5 },
               clip: false,
               formatter: (val) => {
@@ -1784,6 +1790,13 @@ function renderTabElectrocardiograma() {
               align: 'top',
               color: '#1B2A41',
               font: { weight: 'bold', size: 11 },
+              color: '#FFFFFF',
+              backgroundColor: '#1B2A41',
+              borderRadius: 4,
+              padding: { top: 3, bottom: 3, left: 6, right: 6 },
+              borderWidth: 1,
+              borderColor: '#0F172A',
+              clip: false,
               formatter: (val) => `${val} lpm`
             }
           }
