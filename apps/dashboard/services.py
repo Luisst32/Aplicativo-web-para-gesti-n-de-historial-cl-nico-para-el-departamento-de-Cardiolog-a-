@@ -442,9 +442,25 @@ def get_dashboard_evaluation_data():
         # -------------------------------------------------------------
         # BLOQUE 6: HISTORIA CLÍNICA NO CARDIOVASCULAR
         # -------------------------------------------------------------
-        resp_raw = answers_dict.get('problemas_respiratorios', '')
-        asma = 'asma' in resp_raw.lower() or 'si' in answers_dict.get('ant_asma', '').lower() or 'si' in answers_dict.get('nc_asma', '').lower()
-        epoc = 'epoc' in resp_raw.lower() or 'si' in answers_dict.get('ant_epoc', '').lower() or 'si' in answers_dict.get('nc_epoc', '').lower()
+        def _es_negativo(texto):
+            if not texto:
+                return True
+            t = str(texto).strip().lower()
+            if t in ('no', '0', 'false', 'negativo', 'sin', 'ninguno', 'ninguna'):
+                return True
+            if t.startswith('no ') or t.startswith('sin ') or t.startswith('ningun') or t.startswith('no tiene'):
+                return True
+            return False
+
+        # Respiratorio (Asma / EPOC)
+        resp_raw = (answers_dict.get('problemas_respiratorios', '') or answers_dict.get('nc_asma', '') or answers_dict.get('nc_epoc', '') or '').strip()
+        if _es_negativo(resp_raw):
+            asma = False
+            epoc = False
+        else:
+            asma = 'asma' in resp_raw.lower()
+            epoc = 'epoc' in resp_raw.lower()
+
         if asma and epoc:
             respiratorio_desc = 'Asma y EPOC'
         elif asma:
@@ -454,22 +470,43 @@ def get_dashboard_evaluation_data():
         else:
             respiratorio_desc = 'Sin patología respiratoria'
 
-        mental_raw = answers_dict.get('salud_mental', '')
-        ansiedad = 'ansiedad' in mental_raw.lower() or 'si' in answers_dict.get('ant_ansiedad', '').lower() or 'si' in answers_dict.get('nc_ansiedad', '').lower()
-        depresion = 'depresi' in mental_raw.lower() or 'si' in answers_dict.get('ant_depresion', '').lower() or 'si' in answers_dict.get('nc_depresion', '').lower()
-        if ansiedad and depresion:
-            salud_mental_desc = 'Ansiedad y Depresión'
-        elif ansiedad:
-            salud_mental_desc = 'Ansiedad'
-        elif depresion:
-            salud_mental_desc = 'Depresión'
-        else:
+        # Salud Mental (Ansiedad / Depresión)
+        mental_raw = (answers_dict.get('salud_mental', '') or answers_dict.get('nc_depresion', '') or answers_dict.get('nc_ansiedad', '') or '').strip()
+        if _es_negativo(mental_raw):
             salud_mental_desc = 'Sin trastorno diagnosticado'
+            ansiedad = False
+            depresion = False
+        else:
+            m_low = mental_raw.lower()
+            if 'ambas' in m_low or ('ansiedad' in m_low and 'depresi' in m_low):
+                salud_mental_desc = 'Ansiedad y Depresión'
+                ansiedad = True
+                depresion = True
+            elif 'ansiedad' in m_low:
+                salud_mental_desc = 'Ansiedad'
+                ansiedad = True
+                depresion = False
+            elif 'depresi' in m_low:
+                salud_mental_desc = 'Depresión'
+                ansiedad = False
+                depresion = True
+            else:
+                salud_mental_desc = 'Sin trastorno diagnosticado'
+                ansiedad = False
+                depresion = False
 
-        enfermedad_reumatologica = 'si' in answers_dict.get('enfermedad_reumatologicas', '').lower() or 'tiene' in answers_dict.get('enfermedad_reumatologicas', '').lower() or 'si' in answers_dict.get('ant_reuma', '').lower() or 'si' in answers_dict.get('nc_reuma', '').lower()
-        cancer = 'si' in answers_dict.get('historia_cancer', '').lower() or 'si' in answers_dict.get('ant_cancer', '').lower() or 'si' in answers_dict.get('nc_cancer', '').lower()
-        alergias_medicamentos = 'si' in answers_dict.get('alergias', '').lower() or 'si' in answers_dict.get('ant_alergias', '').lower() or 'si' in answers_dict.get('nc_alergia', '').lower()
-        insuficiencia_renal = 'si' in answers_dict.get('r_irc', '').lower() or 'si' in answers_dict.get('irc', '').lower()
+        # Reumatología / Cáncer / Alergias / Insuficiencia Renal
+        reuma_raw = (answers_dict.get('enfermedad_reumatologicas', '') or answers_dict.get('nc_reuma', '') or '').strip()
+        enfermedad_reumatologica = not _es_negativo(reuma_raw) and ('tiene' in reuma_raw.lower() or 'si' in reuma_raw.lower() or 'sí' in reuma_raw.lower())
+
+        cancer_raw = (answers_dict.get('historia_cancer', '') or answers_dict.get('nc_cancer', '') or '').strip()
+        cancer = not _es_negativo(cancer_raw) and ('tiene' in cancer_raw.lower() or 'si' in cancer_raw.lower() or 'sí' in cancer_raw.lower())
+
+        alergia_raw = (answers_dict.get('alergias', '') or answers_dict.get('nc_alergia', '') or '').strip()
+        alergias_medicamentos = not _es_negativo(alergia_raw) and ('tiene' in alergia_raw.lower() or 'si' in alergia_raw.lower() or 'sí' in alergia_raw.lower())
+
+        irc_raw = (answers_dict.get('r_irc', '') or answers_dict.get('irc', '') or '').strip()
+        insuficiencia_renal = not _es_negativo(irc_raw) and ('tiene' in irc_raw.lower() or 'si' in irc_raw.lower() or 'sí' in irc_raw.lower())
 
         # -------------------------------------------------------------
         # BLOQUE 7: COVID-19 Y SECUELAS
