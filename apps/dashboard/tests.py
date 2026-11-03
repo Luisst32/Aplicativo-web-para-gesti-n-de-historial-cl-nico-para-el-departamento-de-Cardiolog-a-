@@ -230,3 +230,48 @@ class DashboardServicesAndViewsTestCase(TestCase):
         ]
         for f in block_fields:
             self.assertIn(f, rec1, f"Campo clínico {f} ausente en record")
+
+    def test_audit_classification_precision(self):
+        """Verifies clinical classification precision on negative phrases, edge cases, and ECG."""
+        from catalog.models.questionnaire import Question, QuestionnaireSection
+        from catalog.models.demographics import EcgRhythm
+        from clinical.models import VisitAnswer, Electrocardiogram
+
+        sec, _ = QuestionnaireSection.objects.get_or_create(code='SEC_TEST', defaults={'name': 'Seccion Test', 'display_order': 1})
+        q_mental = Question.objects.create(section=sec, code='salud_mental', text='Salud mental', response_type='TEXTO', display_order=1)
+        q_dl = Question.objects.create(section=sec, code='r_dislip', text='Dislipemia', response_type='TEXTO', display_order=2)
+        q_covid = Question.objects.create(section=sec, code='historia_covid', text='Historia COVID', response_type='TEXTO', display_order=3)
+        q_pers = Question.objects.create(section=sec, code='personalidad_tipo_a', text='Tipo A', response_type='TEXTO', display_order=4)
+        q_estres = Question.objects.create(section=sec, code='estres', text='Estres', response_type='TEXTO', display_order=5)
+
+        # Visit 1 answers
+        VisitAnswer.objects.create(visit=self.visit1, question=q_mental, text_value='No tiene depresión NI ansiedad')
+        VisitAnswer.objects.create(visit=self.visit1, question=q_dl, text_value='SI, pero no tratada con farmacos')
+        VisitAnswer.objects.create(visit=self.visit1, question=q_covid, text_value='Sí, pasó COVID-19, sin ingreso')
+        VisitAnswer.objects.create(visit=self.visit1, question=q_pers, text_value='No tiene personalidad tipo A')
+        VisitAnswer.objects.create(visit=self.visit1, question=q_estres, text_value='Si en el trebajo pero no en la vida familiar')
+        rhythm, _ = EcgRhythm.objects.get_or_create(name='Ritmo Sinusal (RS)')
+        Electrocardiogram.objects.create(visit=self.visit1, rhythm=rhythm, bundle_branch_block='NINGUNA')
+
+        data = services.get_dashboard_evaluation_data()
+        rec = next(r for r in data['records'] if r['id'] == self.visit1.visit_id)
+
+        # Assert no false positives
+        self.assertEqual(rec['salud_mental_desc'], 'Sin trastorno diagnosticado')
+        self.assertFalse(rec['ansiedad'])
+        self.assertFalse(rec['depresion'])
+
+        self.assertEqual(rec['dl_desc'], 'No tratada')
+        self.assertTrue(rec['dislipemia'])
+
+        self.assertEqual(rec['covid_historia'], 'Pasó COVID-19 sin hospitalización')
+        self.assertTrue(rec['covid_infeccion'])
+        self.assertFalse(rec['covid_hospitalizacion'])
+
+        self.assertFalse(rec['personalidad_tipo_a'])
+
+        self.assertEqual(rec['estres'], 'Estrés Laboral')
+        self.assertTrue(rec['estres_laboral'])
+        self.assertFalse(rec['estres_familiar'])
+
+        self.assertEqual(rec['ecg_bloqueo_rama'], 'Sin bloqueo')

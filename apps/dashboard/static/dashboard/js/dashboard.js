@@ -783,22 +783,38 @@ function renderTabFactoresModificables() {
   }
 
   // Hábitos Tóxicos (Tabaquismo y Alcohol)
-  const tabCats = ['No fuma', 'Exfumador', 'Fumador Activo'];
-  const tabVals = tabCats.map(c => filteredRecords.filter(r => r.tabaquismo === c).length);
+  const tabNo = filteredRecords.filter(r => r.tabaquismo === 'No fuma').length;
+  const tabEx = filteredRecords.filter(r => r.tabaquismo === 'Exfumador').length;
+  const tabAct = filteredRecords.filter(r => r.tabaquismo === 'Fumador Activo').length;
+
+  const alcNo = filteredRecords.filter(r => r.alcohol === 'No consume').length;
+  const alcOcas = filteredRecords.filter(r => r.alcohol === 'Ocasional').length;
+  const alcReg = filteredRecords.filter(r => r.alcohol === 'Semanal' || r.alcohol === 'Diario').length;
+
+  const toxCats = ['Sin Consumo / No Fuma', 'Consumo Ocasional / Ex', 'Consumo Activo / Regular'];
 
   const ctxTox = document.getElementById('chart-mod-toxicos');
   if (ctxTox) {
     if (charts.modTox) {
-      charts.modTox.data.datasets[0].data = tabVals;
+      charts.modTox.data.labels = toxCats;
+      charts.modTox.data.datasets[0].data = [tabNo, tabEx, tabAct];
+      charts.modTox.data.datasets[1].data = [alcNo, alcOcas, alcReg];
       charts.modTox.update();
     } else {
       charts.modTox = new Chart(ctxTox, {
         type: 'bar',
         data: {
-          labels: tabCats,
-          datasets: [{ label: 'Personas', data: tabVals, backgroundColor: [PALETTE.green, PALETTE.yellow, PALETTE.emergencyRed], borderRadius: 5 }]
+          labels: toxCats,
+          datasets: [
+            { label: 'Tabaquismo', data: [tabNo, tabEx, tabAct], backgroundColor: PALETTE.emergencyRed, borderRadius: 5 },
+            { label: 'Consumo de Alcohol', data: [alcNo, alcOcas, alcReg], backgroundColor: PALETTE.primaryBlue, borderRadius: 5 }
+          ]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: true, position: 'top' } }
+        }
       });
     }
   }
@@ -1326,7 +1342,7 @@ function renderTabElectrocardiograma() {
   const prNorm = filteredRecords.filter(r => r.ecg_pr_cat.includes('Normal')).length;
   const prBloq = filteredRecords.filter(r => r.ecg_pr_cat.includes('Bloqueo')).length;
   const qrsNorm = filteredRecords.filter(r => r.ecg_qrs_cat.includes('Normal')).length;
-  const qrsBloq = filteredRecords.filter(r => r.ecg_qrs_cat.includes('Bloqueo')).length;
+  const qrsBloq = filteredRecords.filter(r => r.ecg_qrs_cat.includes('Bloqueo') || r.ecg_qrs_cat.includes('Incompleto')).length;
   const qtcNorm = filteredRecords.filter(r => r.ecg_qtc_cat.includes('Normal')).length;
   const qtcProl = filteredRecords.filter(r => r.ecg_qtc_cat.includes('Prolongado')).length;
 
@@ -1358,9 +1374,9 @@ function renderTabElectrocardiograma() {
 
   // Anomalías de Conducción y Morfología
   const hviCnt = filteredRecords.filter(r => r.ecg_hvi).length;
-  const brCnt = filteredRecords.filter(r => r.ecg_bloqueo_rama && r.ecg_bloqueo_rama !== 'Sin bloqueo').length;
+  const brCnt = filteredRecords.filter(r => r.ecg_bloqueo_rama && r.ecg_bloqueo_rama !== 'Sin bloqueo' && r.ecg_bloqueo_rama.toUpperCase() !== 'NINGUNA').length;
   const repolCnt = filteredRecords.filter(r => r.ecg_repolarizacion).length;
-  const sinAnom = filteredRecords.filter(r => !r.ecg_hvi && (!r.ecg_bloqueo_rama || r.ecg_bloqueo_rama === 'Sin bloqueo') && !r.ecg_repolarizacion).length;
+  const sinAnom = filteredRecords.filter(r => !r.ecg_hvi && (!r.ecg_bloqueo_rama || r.ecg_bloqueo_rama === 'Sin bloqueo' || r.ecg_bloqueo_rama.toUpperCase() === 'NINGUNA') && !r.ecg_repolarizacion).length;
 
   const elAnom = document.getElementById('chart-ecg-anomalias');
   if (elAnom) {

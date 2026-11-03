@@ -64,6 +64,27 @@ def map_category_label(cat_name):
     return cat_name
 
 
+def _es_negativo(texto):
+    """Verifica si una respuesta textual clínica expresa un valor negativo o ausencia de patología."""
+    if not texto:
+        return True
+    t = str(texto).strip().lower()
+    if t in ('no', '0', 'false', 'negativo', 'sin', 'ninguno', 'ninguna', 'no especificado', 'no registra'):
+        return True
+    if (
+        t.startswith('no ') or
+        t.startswith('sin ') or
+        t.startswith('ningun') or
+        t.startswith('no tiene') or
+        t.startswith('no presenta') or
+        t.startswith('no realiza') or
+        t.startswith('no consume') or
+        t.startswith('no ha pasado')
+    ):
+        return True
+    return False
+
+
 def get_dashboard_evaluation_data():
     """
     Extracts all clinical encounters and generates normalized, calculated
@@ -252,13 +273,16 @@ def get_dashboard_evaluation_data():
         r_hta_val = (
             answers_dict.get('r_hta', '') or
             answers_dict.get('hta', '') or
-            answers_dict.get('hta_tto', '')
-        )
-        is_hta_ans = 'si' in r_hta_val.lower() or 'sí' in r_hta_val.lower()
+            answers_dict.get('hta_tto', '') or
+            ''
+        ).strip()
+        is_hta_ans = not _es_negativo(r_hta_val) and ('si' in r_hta_val.lower() or 'sí' in r_hta_val.lower())
         is_hta_bp = tas >= 140.0 or tad >= 90.0
         hipertension = is_hta_ans or is_hta_bp
 
-        if 'tratada con farmacos' in r_hta_val.lower() or 'si tratada' in r_hta_val.lower() or 'si, y si tratada' in r_hta_val.lower():
+        if 'no tratada' in r_hta_val.lower():
+            hta_desc = 'No tratada'
+        elif 'tratada con farmacos' in r_hta_val.lower() or 'si tratada' in r_hta_val.lower() or 'y si tratada' in r_hta_val.lower():
             hta_desc = 'Tratada'
         elif hipertension:
             hta_desc = 'No tratada'
@@ -272,9 +296,10 @@ def get_dashboard_evaluation_data():
             answers_dict.get('r_dm', '') or
             answers_dict.get('diabetes_mellitus', '') or
             answers_dict.get('dm', '') or
-            answers_dict.get('diab_glucosa', '')
-        )
-        is_dm_ans = 'si' in r_dm_val.lower() or 'sí' in r_dm_val.lower()
+            answers_dict.get('diab_glucosa', '') or
+            ''
+        ).strip()
+        is_dm_ans = not _es_negativo(r_dm_val) and ('si' in r_dm_val.lower() or 'sí' in r_dm_val.lower())
         is_dm_lab = glucosa >= 126.0
         diabetes = is_dm_ans or is_dm_lab
         if 'tratada' in r_dm_val.lower():
@@ -289,11 +314,14 @@ def get_dashboard_evaluation_data():
         col_ldl = float(lab.ldl_mg_dl) if lab and lab.ldl_mg_dl is not None else 0.0
         triglic = float(lab.triglycerides_mg_dl) if lab and lab.triglycerides_mg_dl is not None else 0.0
 
-        r_dl_val = answers_dict.get('r_dislip', '') or answers_dict.get('dislipemia', '')
-        is_dl_ans = 'si' in r_dl_val.lower() or 'sí' in r_dl_val.lower()
+        r_dl_val = (answers_dict.get('r_dislip', '') or answers_dict.get('dislipemia', '') or '').strip()
+        is_dl_ans = not _es_negativo(r_dl_val) and ('si' in r_dl_val.lower() or 'sí' in r_dl_val.lower())
         is_dl_lab = col_total >= 200.0 or col_ldl >= 130.0 or triglic >= 150.0
         dislipemia = is_dl_ans or is_dl_lab
-        if 'tratada con farmacos' in r_dl_val.lower():
+
+        if 'no tratada' in r_dl_val.lower():
+            dl_desc = 'No tratada'
+        elif 'tratada' in r_dl_val.lower():
             dl_desc = 'Tratada'
         elif dislipemia:
             dl_desc = 'No tratada'
@@ -389,24 +417,43 @@ def get_dashboard_evaluation_data():
         apnea_sueno = 'si' in (answers_dict.get('apnea_sueno', '') or answers_dict.get('apnea', '')).lower()
 
         # Estrés
-        r_est_val = answers_dict.get('estres', '') or answers_dict.get('em_estres_trab', '')
-        has_estres_trab = 'trabajo' in r_est_val.lower() or 'trebajo' in r_est_val.lower() or 'laboral' in r_est_val.lower()
-        has_estres_fam = 'familiar' in r_est_val.lower()
-        if has_estres_trab and has_estres_fam:
-            estres_desc = 'Laboral y Familiar'
-        elif has_estres_trab:
-            estres_desc = 'Estrés Laboral'
-        elif has_estres_fam:
-            estres_desc = 'Estrés Familiar'
-        else:
+        r_est_val = (answers_dict.get('estres', '') or answers_dict.get('em_estres_trab', '') or '').strip()
+        if not r_est_val or _es_negativo(r_est_val):
             estres_desc = 'Sin estrés significativo'
-        estres_laboral = has_estres_trab
-        estres_familiar = has_estres_fam
+            estres_laboral = False
+            estres_familiar = False
+        else:
+            e_low = r_est_val.lower()
+            has_estres_trab = (
+                ('trabajo' in e_low or 'trebajo' in e_low or 'laboral' in e_low)
+                and 'no en el trabajo' not in e_low
+                and 'no laboral' not in e_low
+            )
+            has_estres_fam = (
+                'familiar' in e_low
+                and 'no en la vida familiar' not in e_low
+                and 'no familiar' not in e_low
+            )
+            if has_estres_trab and has_estres_fam:
+                estres_desc = 'Laboral y Familiar'
+            elif has_estres_trab:
+                estres_desc = 'Estrés Laboral'
+            elif has_estres_fam:
+                estres_desc = 'Estrés Familiar'
+            else:
+                estres_desc = 'Sin estrés significativo'
+            estres_laboral = has_estres_trab
+            estres_familiar = has_estres_fam
 
         # Ambiente laboral, personalidad Tipo A y tóxicos
-        mal_ambiente_laboral = 'si' in (answers_dict.get('mal_ambiente_laboral', '') or answers_dict.get('em_mal_amb', '')).lower()
-        personalidad_tipo_a = 'tipo a' in (answers_dict.get('personalidad_tipo_a', '') or answers_dict.get('em_pers_a', '')).lower()
-        toxicos_laboral = 'si' in (answers_dict.get('trabaja_con_toxicos', '') or answers_dict.get('em_toxicos', '')).lower()
+        mal_amb_raw = answers_dict.get('mal_ambiente_laboral', '') or answers_dict.get('em_mal_amb', '')
+        mal_ambiente_laboral = not _es_negativo(mal_amb_raw) and ('si' in str(mal_amb_raw).lower() or 'sí' in str(mal_amb_raw).lower())
+
+        pers_a_raw = answers_dict.get('personalidad_tipo_a', '') or answers_dict.get('em_pers_a', '')
+        personalidad_tipo_a = not _es_negativo(pers_a_raw) and ('si' in str(pers_a_raw).lower() or 'sí' in str(pers_a_raw).lower() or 'exigente' in str(pers_a_raw).lower())
+
+        tox_raw = answers_dict.get('trabaja_con_toxicos', '') or answers_dict.get('em_toxicos', '')
+        toxicos_laboral = not _es_negativo(tox_raw) and ('si' in str(tox_raw).lower() or 'sí' in str(tox_raw).lower())
 
         # Factores hormonales femeninos
         bajos_estrogenos = 'si' in (answers_dict.get('bajos_estrogenos', '') or answers_dict.get('em_estrogenos', '')).lower() or 'menopausia' in (answers_dict.get('bajos_estrogenos', '') or answers_dict.get('em_estrogenos', '')).lower()
@@ -442,16 +489,6 @@ def get_dashboard_evaluation_data():
         # -------------------------------------------------------------
         # BLOQUE 6: HISTORIA CLÍNICA NO CARDIOVASCULAR
         # -------------------------------------------------------------
-        def _es_negativo(texto):
-            if not texto:
-                return True
-            t = str(texto).strip().lower()
-            if t in ('no', '0', 'false', 'negativo', 'sin', 'ninguno', 'ninguna'):
-                return True
-            if t.startswith('no ') or t.startswith('sin ') or t.startswith('ningun') or t.startswith('no tiene'):
-                return True
-            return False
-
         # Respiratorio (Asma / EPOC)
         resp_raw = (answers_dict.get('problemas_respiratorios', '') or answers_dict.get('nc_asma', '') or answers_dict.get('nc_epoc', '') or '').strip()
         if _es_negativo(resp_raw):
@@ -511,22 +548,43 @@ def get_dashboard_evaluation_data():
         # -------------------------------------------------------------
         # BLOQUE 7: COVID-19 Y SECUELAS
         # -------------------------------------------------------------
-        covid_raw = answers_dict.get('historia_covid', '') or answers_dict.get('covid_paso', '') or answers_dict.get('covid_infeccion', '')
-        covid_infeccion = 'si' in covid_raw.lower() or 'pasó' in covid_raw.lower() or 'paso' in covid_raw.lower()
-        covid_hospitalizacion = 'con ingreso' in covid_raw.lower() or 'hospital' in covid_raw.lower() or 'si' in answers_dict.get('covid_hosp', '').lower() or 'si' in answers_dict.get('covid_ingreso', '').lower()
+        covid_raw = (
+            answers_dict.get('historia_covid', '') or
+            answers_dict.get('covid_ingreso', '') or
+            answers_dict.get('covid_paso', '') or
+            answers_dict.get('covid_infeccion', '') or
+            ''
+        ).strip()
+        c_low = covid_raw.lower()
 
-        if covid_hospitalizacion:
+        if not covid_raw or _es_negativo(covid_raw) or 'no ha pasado' in c_low:
+            covid_infeccion = False
+            covid_hospitalizacion = False
+            covid_historia = 'No ha pasado COVID-19'
+        elif 'con ingreso' in c_low or 'con hospital' in c_low:
+            covid_infeccion = True
+            covid_hospitalizacion = True
             covid_historia = 'Pasó COVID-19 con hospitalización'
-        elif covid_infeccion:
+        elif 'sin ingreso' in c_low or 'no especifica' in c_low or 'pasó' in c_low or 'paso' in c_low or 'si' in c_low or 'sí' in c_low:
+            covid_infeccion = True
+            covid_hospitalizacion = False
             covid_historia = 'Pasó COVID-19 sin hospitalización'
         else:
+            covid_infeccion = False
+            covid_hospitalizacion = False
             covid_historia = 'No ha pasado COVID-19'
 
-        covid_secuelas_cardio = 'si' in answers_dict.get('covid_secuelas_cardio', '').lower() or 'si' in answers_dict.get('covid_cv', '').lower()
-        covid_secuelas_resp = 'si' in answers_dict.get('covid_secuelas_resp', '').lower() or 'si' in answers_dict.get('covid_pulm', '').lower()
-        long_covid_raw = answers_dict.get('long_covid', '') or answers_dict.get('longcovid', '')
-        covid_fatiga_long = 'si' in answers_dict.get('covid_fatiga', '').lower() or ('no presentó' not in long_covid_raw.lower() and ('sí' in long_covid_raw.lower() or 'olfato' in long_covid_raw.lower() or 'fatiga' in long_covid_raw.lower()))
-        covid_niebla_mental = 'si' in answers_dict.get('covid_niebla', '').lower()
+        covid_secuelas_cardio = not _es_negativo(answers_dict.get('covid_secuelas_cardio', '') or answers_dict.get('covid_cv', '')) and ('si' in str(answers_dict.get('covid_secuelas_cardio', '') or answers_dict.get('covid_cv', '')).lower())
+        covid_secuelas_resp = not _es_negativo(answers_dict.get('covid_secuelas_resp', '') or answers_dict.get('covid_pulm', '')) and ('si' in str(answers_dict.get('covid_secuelas_resp', '') or answers_dict.get('covid_pulm', '')).lower())
+
+        long_covid_raw = (answers_dict.get('long_covid', '') or answers_dict.get('longcovid', '') or '').strip()
+        if _es_negativo(long_covid_raw):
+            covid_fatiga_long = False
+        else:
+            lc_low = long_covid_raw.lower()
+            covid_fatiga_long = 'olfato' in lc_low or 'fatiga' in lc_low or lc_low == 'si' or lc_low == 'sí'
+
+        covid_niebla_mental = not _es_negativo(answers_dict.get('covid_niebla', '')) and ('si' in str(answers_dict.get('covid_niebla', '')).lower())
         covid_tiene_secuelas = covid_secuelas_cardio or covid_secuelas_resp or covid_fatiga_long or covid_niebla_mental
 
         # -------------------------------------------------------------
@@ -571,7 +629,11 @@ def get_dashboard_evaluation_data():
 
         ecg_eje_grados = int(ecg.qrs_axis_degrees) if (ecg and ecg.qrs_axis_degrees is not None) else None
         ecg_hvi = bool(ecg and ecg.left_ventricular_hypertrophy)
-        ecg_bloqueo_rama = str(ecg.bundle_branch_block).strip() if (ecg and ecg.bundle_branch_block) else 'Sin bloqueo'
+        bbb_raw = str(ecg.bundle_branch_block).strip().upper() if (ecg and ecg.bundle_branch_block) else ''
+        if not bbb_raw or bbb_raw in ('NINGUNA', 'NINGUNO', 'NO', 'SIN BLOQUEO', 'NORMAL'):
+            ecg_bloqueo_rama = 'Sin bloqueo'
+        else:
+            ecg_bloqueo_rama = str(ecg.bundle_branch_block).strip()
         ecg_repolarizacion = bool(ecg and ecg.repolarization_abnormalities)
 
         # -------------------------------------------------------------
