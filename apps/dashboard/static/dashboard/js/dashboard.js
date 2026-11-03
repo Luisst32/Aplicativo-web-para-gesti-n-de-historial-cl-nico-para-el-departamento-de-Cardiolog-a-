@@ -121,14 +121,14 @@ function switchTab(tabId, element) {
   if (titleEl) {
     const titles = {
       'resumen-general': 'Resumen General Epidemiológico',
-      'datos-individuo': '1. Datos del Individuo y Filiación',
-      'exploracion-fisica': '2. Exploración Física y Antropometría',
-      'factores-modificables': '3. Factores de Riesgo Modificables',
-      'factores-emergentes': '4. Factores de Riesgo Emergentes',
-      'antecedentes-familiares': '5. Antecedentes Familiares Cardiovasculares',
-      'historia-no-cardio': '6. Historia Clínica No Cardiovascular',
-      'covid-19': '7. COVID-19 y Secuelas Post-Infección',
-      'electrocardiograma': '8. Resultados del Electrocardiograma (ECG)'
+      'datos-individuo': 'Datos del Individuo y Filiación',
+      'exploracion-fisica': 'Exploración Física y Antropometría',
+      'factores-modificables': 'Factores de Riesgo Modificables',
+      'factores-emergentes': 'Factores de Riesgo Emergentes',
+      'antecedentes-familiares': 'Antecedentes Familiares Cardiovasculares',
+      'historia-no-cardio': 'Historia Clínica No Cardiovascular',
+      'covid-19': 'COVID-19 y Secuelas Post-Infección',
+      'electrocardiograma': 'Resultados del Electrocardiograma (ECG)'
     };
     titleEl.innerText = titles[tabId] || 'Dashboard Epidemiológico';
   }
