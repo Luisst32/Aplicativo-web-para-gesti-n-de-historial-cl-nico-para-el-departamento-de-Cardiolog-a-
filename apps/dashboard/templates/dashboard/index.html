@@ -153,6 +153,14 @@
             <span class="status-dot"></span>
             <span id="active-sample-count">{{ summary_kpis.total|default:"0" }} de {{ summary_kpis.total|default:"0" }} evaluados (100%)</span>
           </div>
+          <button type="button" class="btn btn-export-dashboard" onclick="openExportModal()" title="Exportar Dashboard en PDF, PowerPoint o Imagen">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>Exportar</span>
+          </button>
         </div>
       </div>
 
@@ -682,6 +690,118 @@
       </section>
 
     </div>
+
+  <!-- MODAL DE EXPORTACIÓN DEL DASHBOARD -->
+  <div id="modal-export-dashboard" class="export-modal-backdrop" style="display: none;">
+    <div class="export-modal-card">
+      <div class="export-modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="export-icon-badge" style="display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 8px; background: rgba(58, 160, 255, 0.12); color: #3AA0FF;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="export-modal-title">Exportar Dashboard Epidemiológico</h2>
+            <p class="export-modal-subtitle">Descarga reportes con cantidades y porcentajes integrados</p>
+          </div>
+        </div>
+        <button type="button" class="export-modal-close" onclick="closeExportModal()" title="Cerrar">&times;</button>
+      </div>
+
+      <div class="export-modal-body">
+        <!-- 1. Formato de Exportación -->
+        <div class="export-section">
+          <label class="export-section-label">1. Formato de Salida</label>
+          <div class="export-options-grid export-3-cols">
+            <label class="export-card-option">
+              <input type="radio" name="export-format" value="pdf" checked>
+              <div class="export-card-content">
+                <span class="export-card-icon">📄</span>
+                <div class="export-card-texts">
+                  <strong>Documento PDF</strong>
+                  <small>Reporte clínico paginado de alta fidelidad</small>
+                </div>
+              </div>
+            </label>
+            <label class="export-card-option">
+              <input type="radio" name="export-format" value="pptx">
+              <div class="export-card-content">
+                <span class="export-card-icon">📊</span>
+                <div class="export-card-texts">
+                  <strong>Diapositivas (.pptx)</strong>
+                  <small>Presentación PowerPoint 16:9 con slides</small>
+                </div>
+              </div>
+            </label>
+            <label class="export-card-option">
+              <input type="radio" name="export-format" value="image">
+              <div class="export-card-content">
+                <span class="export-card-icon">🖼️</span>
+                <div class="export-card-texts">
+                  <strong>Imagen PNG</strong>
+                  <small>Captura gráfica en alta resolución</small>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- 2. Alcance del Reporte -->
+        <div class="export-section">
+          <label class="export-section-label">2. Alcance del Reporte</label>
+          <div class="export-options-grid export-2-cols">
+            <label class="export-card-option">
+              <input type="radio" name="export-scope" value="current" checked>
+              <div class="export-card-content">
+                <span class="export-card-icon">📌</span>
+                <div class="export-card-texts">
+                  <strong>Sección Actual</strong>
+                  <small id="export-current-tab-name">Resumen General</small>
+                </div>
+              </div>
+            </label>
+            <label class="export-card-option">
+              <input type="radio" name="export-scope" value="all">
+              <div class="export-card-content">
+                <span class="export-card-icon">📑</span>
+                <div class="export-card-texts">
+                  <strong>Todas las Secciones</strong>
+                  <small>Informe integral con los 8 bloques clínicos</small>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- 3. Indicador de Progreso -->
+        <div id="export-progress-container" class="export-progress-box" style="display: none;">
+          <div class="export-spinner"></div>
+          <div class="export-progress-info">
+            <span id="export-progress-text">Procesando gráficos y métricas...</span>
+            <div class="export-progress-bar-bg">
+              <div id="export-progress-bar" class="export-progress-bar-fill" style="width: 10%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeExportModal()">Cancelar</button>
+        <button type="button" id="btn-do-export" class="btn btn-primary" onclick="startExport()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span>Generar y Descargar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   </main>
 
   <!-- Widget Flotante del Chatbot Asistente -->
@@ -689,11 +809,15 @@
 {% endblock %}
 
 {% block extra_js %}
-  <!-- Librerías de Gráficos (vendor local) -->
+  <!-- Librerías de Gráficos y Exportación (vendor local) -->
   <script src="{% static 'dashboard/vendor/chart.umd.min.js' %}"></script>
+  <script src="{% static 'dashboard/vendor/chartjs-plugin-datalabels.min.js' %}"></script>
   <script src="{% static 'dashboard/vendor/apexcharts.min.js' %}"></script>
+  <script src="{% static 'dashboard/vendor/html2canvas.min.js' %}"></script>
+  <script src="{% static 'dashboard/vendor/jspdf.umd.min.js' %}"></script>
+  <script src="{% static 'dashboard/vendor/pptxgen.bundle.js' %}"></script>
 
-  <!-- Controlador e inicialización del Dashboard con los 8 bloques -->
+  <!-- Controlador e inicialización del Dashboard con los 8 bloques y motor de exportación -->
   <script id="dashboard-records-data" type="application/json">{{ records_json|safe }}</script>
-  <script src="{% static 'dashboard/js/dashboard.js' %}?v=20261103_03"></script>
+  <script src="{% static 'dashboard/js/dashboard.js' %}?v=20261103_04"></script>
 {% endblock %}

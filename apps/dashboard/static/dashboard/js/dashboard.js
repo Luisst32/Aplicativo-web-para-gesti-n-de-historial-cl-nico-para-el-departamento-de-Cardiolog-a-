@@ -1,6 +1,6 @@
 /**
  * CARDIOUNEMI - Dashboard Epidemiológico y Clínico.
- * Motor dinámico de analítica y agregación estadística en tiempo real.
+ * Motor dinámico de analítica, agregación estadística y exportación profesional.
  * Procesa la cohorte clínica institucional a través de los 8 bloques:
  * 1. Datos del Individuo
  * 2. Exploración Física
@@ -34,7 +34,7 @@ const PALETTE = {
   gray: '#94A3B8'
 };
 
-// Formateador numérico en formato local
+// Formateadores numéricos locales
 function formatPct(cnt, total) {
   if (!total || total === 0) return '0,0';
   return ((cnt / total) * 100).toFixed(1).replace('.', ',');
@@ -47,9 +47,7 @@ function formatMean(arr, decimals = 1) {
   return decimals === 0 ? Math.round(mean).toString() : mean.toFixed(decimals).replace('.', ',');
 }
 
-// Navegación entre pestañas temáticas
-
-// Helpers para tooltips con porcentaje tanto en ApexCharts como en Chart.js
+// Helpers para tooltips con porcentaje (ApexCharts y Chart.js)
 function apexCountTooltip(customTotal) {
   return {
     y: {
@@ -76,41 +74,126 @@ function apexPctTooltip() {
   };
 }
 
-if (typeof Chart !== 'undefined' && Chart.defaults) {
-  Chart.defaults.plugins.tooltip.callbacks.label = function(context) {
-    let label = context.dataset.label || '';
-    if (label) label += ': ';
-
-    if (context.chart.config.type === 'scatter') {
-      const p = context.raw || context.parsed;
-      return `${label}IMC: ${p.x} kg/m², Cintura: ${p.y} cm`;
+// Helper para DataLabels en ApexCharts: muestra cantidad y porcentaje de manera visible
+function apexCountAndPctDataLabel(customTotal) {
+  return {
+    enabled: true,
+    formatter: function(val) {
+      if (typeof val !== 'number') {
+        val = parseFloat(val);
+      }
+      if (isNaN(val) || val <= 0) return '';
+      const total = customTotal || filteredRecords.length || 1;
+      const pct = ((val / total) * 100).toFixed(1).replace('.', ',');
+      return `${val} (${pct}%)`;
+    },
+    style: {
+      fontSize: '11px',
+      fontWeight: 'bold',
+      colors: ['#1B2A41']
+    },
+    background: {
+      enabled: true,
+      foreColor: '#FFFFFF',
+      borderRadius: 4,
+      padding: 3,
+      opacity: 0.92,
+      borderWidth: 1,
+      borderColor: '#E2E8F0'
     }
-
-    const val = context.parsed.y !== undefined ? context.parsed.y : (context.parsed !== undefined ? context.parsed : context.raw);
-    if (typeof val !== 'number') return `${label}${val}`;
-
-    if (context.chart.canvas.id === 'chart-ecg-fc-comparativa') {
-      return `${label}${val} lpm`;
-    }
-
-    let total = 0;
-    if (context.chart.config.type === 'doughnut' || context.chart.config.type === 'pie') {
-      total = context.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
-    } else if (context.chart.config.options?.scales?.x?.stacked || context.chart.config.options?.scales?.y?.stacked) {
-      total = context.chart.data.datasets.reduce((acc, ds) => acc + (typeof ds.data[context.dataIndex] === 'number' ? ds.data[context.dataIndex] : 0), 0);
-    } else {
-      total = filteredRecords.length || context.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
-    }
-
-    const pct = total > 0 ? ((val / total) * 100).toFixed(1).replace('.', ',') : '0,0';
-    return `${label}${val} casos (${pct} %)`;
   };
 }
 
+// Configuración de Chart.js y DataLabels
+if (typeof Chart !== 'undefined') {
+  if (typeof ChartDataLabels !== 'undefined') {
+    Chart.register(ChartDataLabels);
+    Chart.defaults.plugins.datalabels = {
+      display: false // Se activa explícitamente por gráfico
+    };
+  }
+
+  if (Chart.defaults?.plugins?.tooltip) {
+    Chart.defaults.plugins.tooltip.callbacks.label = function(context) {
+      let label = context.dataset.label || '';
+      if (label) label += ': ';
+
+      if (context.chart.config.type === 'scatter') {
+        const p = context.raw || context.parsed;
+        return `${label}IMC: ${p.x} kg/m², Cintura: ${p.y} cm`;
+      }
+
+      const val = context.parsed.y !== undefined ? context.parsed.y : (context.parsed !== undefined ? context.parsed : context.raw);
+      if (typeof val !== 'number') return `${label}${val}`;
+
+      if (context.chart.canvas.id === 'chart-ecg-fc-comparativa') {
+        return `${label}${val} lpm`;
+      }
+
+      let total = 0;
+      if (context.chart.config.type === 'doughnut' || context.chart.config.type === 'pie') {
+        total = context.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
+      } else if (context.chart.config.options?.scales?.x?.stacked || context.chart.config.options?.scales?.y?.stacked) {
+        total = context.chart.data.datasets.reduce((acc, ds) => acc + (typeof ds.data[context.dataIndex] === 'number' ? ds.data[context.dataIndex] : 0), 0);
+      } else {
+        total = filteredRecords.length || context.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
+      }
+
+      const pct = total > 0 ? ((val / total) * 100).toFixed(1).replace('.', ',') : '0,0';
+      return `${label}${val} casos (${pct} %)`;
+    };
+  }
+}
+
+// Helper para datalabels de Chart.js en barras
+function chartJsBarDataLabels(showPct = true) {
+  return {
+    display: (ctx) => {
+      const v = ctx.dataset.data[ctx.dataIndex];
+      return typeof v === 'number' && v > 0;
+    },
+    anchor: 'end',
+    align: 'top',
+    offset: 2,
+    color: '#1B2A41',
+    font: { weight: 'bold', size: 10 },
+    formatter: (val) => {
+      if (!val || val <= 0) return '';
+      if (!showPct) return `${val}`;
+      const n = filteredRecords.length || 1;
+      return `${val} (${formatPct(val, n)}%)`;
+    }
+  };
+}
+
+// Helper para datalabels de Chart.js en donas/pies
+function chartJsDonutDataLabels() {
+  return {
+    display: (ctx) => {
+      const v = ctx.dataset.data[ctx.dataIndex];
+      const sum = ctx.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
+      return typeof v === 'number' && v > 0 && (v / sum) >= 0.05;
+    },
+    color: '#FFFFFF',
+    font: { weight: 'bold', size: 10.5 },
+    formatter: (val, ctx) => {
+      const sum = ctx.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0) || 1;
+      const pct = ((val / sum) * 100).toFixed(1).replace('.', ',');
+      return `${val} (${pct}%)`;
+    }
+  };
+}
+
+// Navegación entre pestañas temáticas
 function switchTab(tabId, element) {
   activeTabId = tabId;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-  if (element) element.classList.add('active');
+  if (element) {
+    element.classList.add('active');
+  } else {
+    const navBtn = document.querySelector(`.nav-item[onclick*="${tabId}"]`);
+    if (navBtn) navBtn.classList.add('active');
+  }
 
   document.querySelectorAll('.tab-view').forEach(view => view.classList.remove('active'));
   const targetView = document.getElementById('tab-' + tabId);
@@ -423,8 +506,12 @@ function renderTabResumenGeneral() {
         fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05 } },
         series: [{ name: 'Evaluados', data: yearData }],
         xaxis: { categories: years.map(y => `Año ${y}`) },
-        dataLabels: { enabled: true }
-      ,
+        dataLabels: {
+          enabled: true,
+          formatter: val => `${val} evaluados`,
+          style: { fontSize: '11px', fontWeight: 'bold' },
+          background: { enabled: true, foreColor: '#1B2A41', borderRadius: 3, padding: 3 }
+        },
         tooltip: apexCountTooltip()
       });
       charts.tendencia.render();
@@ -456,37 +543,53 @@ function renderTabResumenGeneral() {
         series: [{ name: 'Prevalencia (%)', data: fData }],
         xaxis: { categories: fLabels, max: 100 },
         legend: { show: false },
-        dataLabels: { enabled: true, formatter: val => `${val}%` }
-      ,
+        dataLabels: {
+          enabled: true,
+          formatter: (val) => {
+            const total = filteredRecords.length || 1;
+            const casos = Math.round((parseFloat(val) * total) / 100);
+            return `${casos} casos (${val}%)`;
+          },
+          style: { fontSize: '11px', fontWeight: 'bold' },
+          background: { enabled: true, foreColor: '#1B2A41', borderRadius: 3, padding: 3 }
+        },
         tooltip: apexPctTooltip()
       });
       charts.factores.render();
     }
   }
 
-  // 3. Distribución por Categoría de Personal (Chart.js Donut)
+  // 3. Distribución por Categoría de Personal (Chart.js Donut con Leyenda Detallada)
   const catCounts = {};
   filteredRecords.forEach(r => { catCounts[r.categoria] = (catCounts[r.categoria] || 0) + 1; });
   const catLabels = Object.keys(catCounts);
   const catVals = catLabels.map(k => catCounts[k]);
+  const catLegendLabels = catLabels.map(k => `${k}: ${catCounts[k]} (${formatPct(catCounts[k], n)}%)`);
 
   const ctxCat = document.getElementById('chart-categoria-personal');
   if (ctxCat) {
     if (charts.categoria) {
-      charts.categoria.data.labels = catLabels;
+      charts.categoria.data.labels = catLegendLabels;
       charts.categoria.data.datasets[0].data = catVals;
       charts.categoria.update();
     } else {
       charts.categoria = new Chart(ctxCat, {
         type: 'doughnut',
         data: {
-          labels: catLabels,
+          labels: catLegendLabels,
           datasets: [{
             data: catVals,
             backgroundColor: [PALETTE.primaryBlue, PALETTE.yellow, PALETTE.green, PALETTE.purple, PALETTE.navy]
           }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: chartJsDonutDataLabels()
+          }
+        }
       });
     }
   }
@@ -516,7 +619,15 @@ function renderTabResumenGeneral() {
           responsive: true,
           maintainAspectRatio: false,
           scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
-          plugins: { legend: { position: 'bottom' } }
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: {
+              display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
+              color: '#FFFFFF',
+              font: { weight: 'bold', size: 11 },
+              formatter: (val) => val > 0 ? `${val}` : ''
+            }
+          }
         }
       });
     }
@@ -527,6 +638,7 @@ function renderTabResumenGeneral() {
 // TAB 1: DATOS DEL INDIVIDUO CHARTS
 // -------------------------------------------------------------
 function renderTabDatosIndividuo() {
+  const n = filteredRecords.length;
   const grupos = ['<40 años', '40-49 años', '50-59 años', '60+ años'];
   const hEdad = grupos.map(g => filteredRecords.filter(r => r.sexo === 'Hombre' && r.grupo_edad === g).length);
   const mEdad = grupos.map(g => filteredRecords.filter(r => r.sexo === 'Mujer' && r.grupo_edad === g).length);
@@ -550,8 +662,12 @@ function renderTabDatosIndividuo() {
           { name: 'Mujeres', data: mEdad }
         ],
         xaxis: { categories: grupos },
-        legend: { position: 'top' }
-      ,
+        legend: { position: 'top' },
+        dataLabels: {
+          enabled: true,
+          formatter: (val) => val > 0 ? `${val} (${formatPct(val, n)}%)` : '',
+          style: { fontSize: '10px', fontWeight: 'bold' }
+        },
         tooltip: apexCountTooltip()
       });
       charts.indEdad.render();
@@ -563,21 +679,29 @@ function renderTabDatosIndividuo() {
   filteredRecords.forEach(r => { eduCounts[r.nivel_estudios] = (eduCounts[r.nivel_estudios] || 0) + 1; });
   const eduLabels = Object.keys(eduCounts);
   const eduVals = eduLabels.map(k => eduCounts[k]);
+  const eduLegendLabels = eduLabels.map(k => `${k}: ${eduCounts[k]} (${formatPct(eduCounts[k], n)}%)`);
 
   const ctxEdu = document.getElementById('chart-ind-educacion');
   if (ctxEdu) {
     if (charts.indEdu) {
-      charts.indEdu.data.labels = eduLabels;
+      charts.indEdu.data.labels = eduLegendLabels;
       charts.indEdu.data.datasets[0].data = eduVals;
       charts.indEdu.update();
     } else {
       charts.indEdu = new Chart(ctxEdu, {
         type: 'doughnut',
         data: {
-          labels: eduLabels,
+          labels: eduLegendLabels,
           datasets: [{ data: eduVals, backgroundColor: [PALETTE.green, PALETTE.primaryBlue, PALETTE.yellow, PALETTE.navy] }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: chartJsDonutDataLabels()
+          }
+        }
       });
     }
   }
@@ -601,7 +725,14 @@ function renderTabDatosIndividuo() {
           labels: civLabels,
           datasets: [{ label: 'Personas', data: civVals, backgroundColor: PALETTE.teal, borderRadius: 6 }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            datalabels: chartJsBarDataLabels(true)
+          }
+        }
       });
     }
   }
@@ -625,8 +756,8 @@ function renderTabDatosIndividuo() {
         colors: [PALETTE.primaryBlue],
         plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
         series: [{ name: 'Personas', data: vivVals }],
-        xaxis: { categories: vivLabels }
-      ,
+        xaxis: { categories: vivLabels },
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.indViv.render();
@@ -638,6 +769,7 @@ function renderTabDatosIndividuo() {
 // TAB 2: EXPLORACIÓN FÍSICA CHARTS
 // -------------------------------------------------------------
 function renderTabExploracionFisica() {
+  const n = filteredRecords.length;
   const imcCats = ['Bajo peso', 'Normal', 'Sobrepeso', 'Obesidad I', 'Obesidad II', 'Obesidad Mórbida'];
   const imcCounts = imcCats.map(c => filteredRecords.filter(r => r.imc_cat === c).length);
 
@@ -654,8 +786,8 @@ function renderTabExploracionFisica() {
         plotOptions: { bar: { distributed: true, borderRadius: 5 } },
         series: [{ name: 'Casos', data: imcCounts }],
         xaxis: { categories: imcCats },
-        legend: { show: false }
-      ,
+        legend: { show: false },
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.expImc.render();
@@ -689,35 +821,45 @@ function renderTabExploracionFisica() {
           scales: {
             x: { title: { display: true, text: 'IMC (kg/m²)' } },
             y: { title: { display: true, text: 'Perímetro Abdominal (cm)' } }
-          }
+          },
+          plugins: { datalabels: { display: false } }
         }
       });
     }
   }
 
-  // Clasificación Presión Arterial
+  // Clasificación Presión Arterial (Pie con leyenda detallada)
   const paCats = ['PA Normal (<130/<80)', 'PA Elevada (130-139/80-89)', 'HTA Grado 1 (140-159/90-99)', 'HTA Grado 2 (≥140/90)'];
   const paVals = paCats.map(c => filteredRecords.filter(r => r.pa_categoria === c).length);
+  const paLegendLabels = ['Normal', 'Elevada / Limítrofe', 'HTA Grado 1', 'HTA Grado 2'].map((lbl, idx) => `${lbl}: ${paVals[idx]} (${formatPct(paVals[idx], n)}%)`);
 
   const ctxPa = document.getElementById('chart-exp-pa-cat');
   if (ctxPa) {
     if (charts.expPa) {
+      charts.expPa.data.labels = paLegendLabels;
       charts.expPa.data.datasets[0].data = paVals;
       charts.expPa.update();
     } else {
       charts.expPa = new Chart(ctxPa, {
         type: 'pie',
         data: {
-          labels: ['Normal', 'Elevada / Limítrofe', 'HTA Grado 1', 'HTA Grado 2'],
+          labels: paLegendLabels,
           datasets: [{ data: paVals, backgroundColor: [PALETTE.green, PALETTE.yellow, PALETTE.emergencyRed, '#991B1B'] }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: chartJsDonutDataLabels()
+          }
+        }
       });
     }
   }
 
   // Hallazgos Auscultación
-  const auscNorm = filteredRecords.filter(r => r.ausc_pulm_normal && r.ausc_abdom_normal).length;
+  const auscNorm = filteredRecords.filter(r => r.ausc_pulm_normal && r.ausc_abdom_normal && !r.soplos).length;
   const soplosPres = filteredRecords.filter(r => r.soplos).length;
   const auscAlt = filteredRecords.filter(r => !r.ausc_pulm_normal || !r.ausc_abdom_normal).length;
 
@@ -734,8 +876,8 @@ function renderTabExploracionFisica() {
         plotOptions: { bar: { distributed: true, borderRadius: 5 } },
         series: [{ name: 'Casos', data: [auscNorm, soplosPres, auscAlt] }],
         xaxis: { categories: ['Auscultación Normal', 'Soplos Cardíacos', 'Ruidos / Alteración'] },
-        legend: { show: false }
-      ,
+        legend: { show: false },
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.expAusc.render();
@@ -747,6 +889,8 @@ function renderTabExploracionFisica() {
 // TAB 3: FACTORES DE RIESGO MODIFICABLES CHARTS
 // -------------------------------------------------------------
 function renderTabFactoresModificables() {
+  const n = filteredRecords.length;
+
   // Control Terapéutico
   const htaTto = filteredRecords.filter(r => r.hta_desc === 'Tratada').length;
   const htaNoTto = filteredRecords.filter(r => r.hta_desc === 'No tratada').length;
@@ -774,8 +918,12 @@ function renderTabFactoresModificables() {
           { name: 'Sin Tratamiento / Sin Control', data: [htaNoTto, dmNoTto, dlNoTto] }
         ],
         xaxis: { categories: ['Hipertensión (HTA)', 'Diabetes Mellitus', 'Dislipemia'] },
-        legend: { position: 'top' }
-      ,
+        legend: { position: 'top' },
+        dataLabels: {
+          enabled: true,
+          formatter: (val) => val > 0 ? `${val} (${formatPct(val, n)}%)` : '0',
+          style: { fontSize: '10px', fontWeight: 'bold' }
+        },
         tooltip: apexCountTooltip()
       });
       charts.modControl.render();
@@ -813,7 +961,10 @@ function renderTabFactoresModificables() {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: true, position: 'top' } }
+          plugins: {
+            legend: { display: true, position: 'top' },
+            datalabels: chartJsBarDataLabels(true)
+          }
         }
       });
     }
@@ -844,31 +995,47 @@ function renderTabFactoresModificables() {
           { name: 'Sedentarios', data: actNo }
         ],
         xaxis: { categories: catNames },
-        legend: { position: 'top' }
-      ,
+        legend: { position: 'top' },
+        dataLabels: {
+          enabled: true,
+          formatter: (val) => val > 0 ? `${val}` : '',
+          style: { fontSize: '10px', fontWeight: 'bold' }
+        },
         tooltip: apexCountTooltip()
       });
       charts.modActCat.render();
     }
   }
 
-  // Dieta Mediterránea PREDIMED
+  // Dieta Mediterránea PREDIMED (Donut con leyenda detallada)
   const predimedAlta = filteredRecords.filter(r => r.predimed_adherencia === 'Buena Adherencia').length;
   const predimedBaja = filteredRecords.filter(r => r.predimed_adherencia !== 'Buena Adherencia').length;
+  const predLegend = [
+    `Buena Adherencia Mediterránea: ${predimedAlta} (${formatPct(predimedAlta, n)}%)`,
+    `Adherencia Moderada / Baja: ${predimedBaja} (${formatPct(predimedBaja, n)}%)`
+  ];
 
   const ctxPred = document.getElementById('chart-mod-predimed');
   if (ctxPred) {
     if (charts.modPred) {
+      charts.modPred.data.labels = predLegend;
       charts.modPred.data.datasets[0].data = [predimedAlta, predimedBaja];
       charts.modPred.update();
     } else {
       charts.modPred = new Chart(ctxPred, {
         type: 'doughnut',
         data: {
-          labels: ['Buena Adherencia Mediterránea', 'Adherencia Moderada / Baja'],
+          labels: predLegend,
           datasets: [{ data: [predimedAlta, predimedBaja], backgroundColor: [PALETTE.green, PALETTE.yellow] }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: chartJsDonutDataLabels()
+          }
+        }
       });
     }
   }
@@ -878,6 +1045,7 @@ function renderTabFactoresModificables() {
 // TAB 4: FACTORES EMERGENTES CHARTS
 // -------------------------------------------------------------
 function renderTabFactoresEmergentes() {
+  const n = filteredRecords.length;
   const suenoBuena = filteredRecords.filter(r => r.calidad_sueno === 'Buena').length;
   const suenoMala = filteredRecords.filter(r => r.calidad_sueno === 'Mala').length;
   const suenoAdecuado = filteredRecords.filter(r => r.cantidad_sueno.includes('Adecuada')).length;
@@ -896,54 +1064,81 @@ function renderTabFactoresEmergentes() {
         plotOptions: { bar: { distributed: true, borderRadius: 5 } },
         series: [{ name: 'Casos', data: [suenoBuena, suenoMala, suenoAdecuado, suenoInsuf] }],
         xaxis: { categories: ['Buena Calidad', 'Mala Calidad', 'Sueño Adecuado (7-8h)', 'Sueño Corto (<6h)'] },
-        legend: { show: false }
-      ,
+        legend: { show: false },
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.emSueno.render();
     }
   }
 
-  // Espectro de Estrés
+  // Espectro de Estrés (Pie con leyenda detallada)
   const estLab = filteredRecords.filter(r => r.estres === 'Estrés Laboral').length;
   const estFam = filteredRecords.filter(r => r.estres === 'Estrés Familiar').length;
   const estAmbos = filteredRecords.filter(r => r.estres === 'Laboral y Familiar').length;
   const estSin = filteredRecords.filter(r => r.estres === 'Sin estrés significativo').length;
 
+  const estLabels = [
+    `Estrés Laboral: ${estLab} (${formatPct(estLab, n)}%)`,
+    `Estrés Familiar: ${estFam} (${formatPct(estFam, n)}%)`,
+    `Ambos Factores: ${estAmbos} (${formatPct(estAmbos, n)}%)`,
+    `Sin Estrés Significativo: ${estSin} (${formatPct(estSin, n)}%)`
+  ];
+
   const ctxEstres = document.getElementById('chart-em-estres');
   if (ctxEstres) {
     if (charts.emEstres) {
+      charts.emEstres.data.labels = estLabels;
       charts.emEstres.data.datasets[0].data = [estLab, estFam, estAmbos, estSin];
       charts.emEstres.update();
     } else {
       charts.emEstres = new Chart(ctxEstres, {
         type: 'pie',
         data: {
-          labels: ['Estrés Laboral', 'Estrés Familiar', 'Ambos Factores', 'Sin Estrés Significativo'],
+          labels: estLabels,
           datasets: [{ data: [estLab, estFam, estAmbos, estSin], backgroundColor: [PALETTE.yellow, PALETTE.purple, PALETTE.emergencyRed, PALETTE.green] }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: chartJsDonutDataLabels()
+          }
+        }
       });
     }
   }
 
-  // Personalidad Tipo A
+  // Personalidad Tipo A (Donut con leyenda detallada)
   const persSi = filteredRecords.filter(r => r.personalidad_tipo_a).length;
   const persNo = filteredRecords.filter(r => !r.personalidad_tipo_a).length;
+  const persLabels = [
+    `Con Personalidad Tipo A: ${persSi} (${formatPct(persSi, n)}%)`,
+    `Sin Personalidad Tipo A: ${persNo} (${formatPct(persNo, n)}%)`
+  ];
 
   const ctxPers = document.getElementById('chart-em-personalidad-a');
   if (ctxPers) {
     if (charts.emPers) {
+      charts.emPers.data.labels = persLabels;
       charts.emPers.data.datasets[0].data = [persSi, persNo];
       charts.emPers.update();
     } else {
       charts.emPers = new Chart(ctxPers, {
         type: 'doughnut',
         data: {
-          labels: ['Presenta Personalidad Tipo A (Alta Autoexigencia)', 'Sin Personalidad Tipo A'],
+          labels: persLabels,
           datasets: [{ data: [persSi, persNo], backgroundColor: [PALETTE.emergencyRed, PALETTE.teal] }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: chartJsDonutDataLabels()
+          }
+        }
       });
     }
   }
@@ -967,8 +1162,8 @@ function renderTabFactoresEmergentes() {
         plotOptions: { bar: { distributed: true, borderRadius: 5 } },
         series: [{ name: 'Casos', data: [malAmb, toxLab, estrogenos, anticoncep] }],
         xaxis: { categories: ['Mal Clima Laboral', 'Tóxicos Ocupacionales', 'Bajos Estrógenos / Menopausia', 'Anticonceptivos >35a'] },
-        legend: { show: false }
-      ,
+        legend: { show: false },
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.emHorm.render();
@@ -980,6 +1175,7 @@ function renderTabFactoresEmergentes() {
 // TAB 5: ANTECEDENTES FAMILIARES CHARTS
 // -------------------------------------------------------------
 function renderTabAntecedentesFamiliares() {
+  const n = filteredRecords.length;
   const padreHta = filteredRecords.filter(r => r.ant_padre_hta).length;
   const madreHta = filteredRecords.filter(r => r.ant_madre_hta).length;
   const padreDm = filteredRecords.filter(r => r.ant_padre_dm).length;
@@ -1008,8 +1204,12 @@ function renderTabAntecedentesFamiliares() {
           { name: 'Rama Materna', data: [madreHta, madreDm, madreDlp, madreIam] }
         ],
         xaxis: { categories: ['Hipertensión', 'Diabetes', 'Dislipemia', 'Infarto / Ictus'] },
-        legend: { position: 'top' }
-      ,
+        legend: { position: 'top' },
+        dataLabels: {
+          enabled: true,
+          formatter: (val) => val > 0 ? `${val}` : '',
+          style: { fontSize: '10px', fontWeight: 'bold' }
+        },
         tooltip: apexCountTooltip()
       });
       charts.famPadres.render();
@@ -1026,19 +1226,34 @@ function renderTabAntecedentesFamiliares() {
     else c3++;
   });
 
+  const cargaLabels = [
+    `Sin Antecedentes: ${c0} (${formatPct(c0, n)}%)`,
+    `1 Antecedente: ${c1} (${formatPct(c1, n)}%)`,
+    `2 Antecedentes: ${c2} (${formatPct(c2, n)}%)`,
+    `≥3 Antecedentes: ${c3} (${formatPct(c3, n)}%)`
+  ];
+
   const ctxCarga = document.getElementById('chart-fam-carga-global');
   if (ctxCarga) {
     if (charts.famCarga) {
+      charts.famCarga.data.labels = cargaLabels;
       charts.famCarga.data.datasets[0].data = [c0, c1, c2, c3];
       charts.famCarga.update();
     } else {
       charts.famCarga = new Chart(ctxCarga, {
         type: 'doughnut',
         data: {
-          labels: ['Sin Antecedentes', '1 Antecedente', '2 Antecedentes', '3 o más Antecedentes'],
+          labels: cargaLabels,
           datasets: [{ data: [c0, c1, c2, c3], backgroundColor: [PALETTE.green, PALETTE.teal, PALETTE.yellow, PALETTE.emergencyRed] }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: chartJsDonutDataLabels()
+          }
+        }
       });
     }
   }
@@ -1067,8 +1282,12 @@ function renderTabAntecedentesFamiliares() {
           { name: 'Diabetes Familiar', data: dmPorEdad }
         ],
         xaxis: { categories: grupos },
-        legend: { position: 'top' }
-      ,
+        legend: { position: 'top' },
+        dataLabels: {
+          enabled: true,
+          formatter: (val) => val > 0 ? `${val}` : '',
+          style: { fontSize: '10px', fontWeight: 'bold' }
+        },
         tooltip: apexCountTooltip()
       });
       charts.famEdad.render();
@@ -1090,10 +1309,17 @@ function renderTabAntecedentesFamiliares() {
       charts.famCoex = new Chart(ctxCoex, {
         type: 'bar',
         data: {
-          labels: ['Solo HTA Familiar', 'Solo Diabetes Familiar', 'Ambas Patologías Coexistentes', 'Sin Estos Antecedentes'],
+          labels: ['Solo HTA Familiar', 'Solo Diabetes Familiar', 'Ambas Coexistentes', 'Sin Estos Antecedentes'],
           datasets: [{ label: 'Casos', data: [soloHta, soloDm, ambos, ninguno], backgroundColor: [PALETTE.emergencyRed, PALETTE.yellow, PALETTE.purple, PALETTE.green], borderRadius: 5 }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            datalabels: chartJsBarDataLabels(true)
+          }
+        }
       });
     }
   }
@@ -1111,7 +1337,7 @@ function renderTabHistoriaNoCardio() {
   const cancerCnt = filteredRecords.filter(r => r.cancer).length;
   const ircCnt = filteredRecords.filter(r => r.insuficiencia_renal).length;
 
-  const labels = ['Respiratorio (Asma/EPOC)', 'Salud Mental (Ansiedad/Depresión)', 'Alergias Medicamentosas', 'Reumatológica', 'Cáncer / Oncología', 'Insuficiencia Renal'];
+  const labels = ['Respiratorio (Asma/EPOC)', 'Salud Mental (Ansiedad/Dep)', 'Alergias Medicamentosas', 'Reumatológica', 'Cáncer / Oncología', 'Insuficiencia Renal'];
   const vals = [respCnt, mentalCnt, alergiasCnt, reumaCnt, cancerCnt, ircCnt];
 
   const elComorb = document.getElementById('chart-nc-comorbilidades');
@@ -1127,33 +1353,48 @@ function renderTabHistoriaNoCardio() {
         colors: [PALETTE.yellow, PALETTE.purple, PALETTE.teal, PALETTE.primaryBlue, PALETTE.emergencyRed, PALETTE.navy],
         series: [{ name: 'Prevalencia Casos', data: vals }],
         xaxis: { categories: labels },
-        legend: { show: false }
-      ,
+        legend: { show: false },
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.ncComorb.render();
     }
   }
 
-  // Salud Mental Donut
+  // Salud Mental Donut (con cantidades y porcentajes explícitos en leyenda)
   const ansSolo = filteredRecords.filter(r => r.salud_mental_desc === 'Ansiedad').length;
   const depSolo = filteredRecords.filter(r => r.salud_mental_desc === 'Depresión').length;
   const ambMental = filteredRecords.filter(r => r.salud_mental_desc.includes('Ansiedad y Depresión')).length;
   const sinMental = filteredRecords.filter(r => r.salud_mental_desc.includes('Sin trastorno')).length;
 
+  const mentalLegend = [
+    `Solo Ansiedad: ${ansSolo} (${formatPct(ansSolo, n)}%)`,
+    `Solo Depresión: ${depSolo} (${formatPct(depSolo, n)}%)`,
+    `Ansiedad y Depresión: ${ambMental} (${formatPct(ambMental, n)}%)`,
+    `Sin Trastorno: ${sinMental} (${formatPct(sinMental, n)}%)`
+  ];
+
   const ctxMental = document.getElementById('chart-nc-salud-mental');
   if (ctxMental) {
     if (charts.ncMental) {
+      charts.ncMental.data.labels = mentalLegend;
       charts.ncMental.data.datasets[0].data = [ansSolo, depSolo, ambMental, sinMental];
       charts.ncMental.update();
     } else {
       charts.ncMental = new Chart(ctxMental, {
         type: 'doughnut',
         data: {
-          labels: ['Solo Ansiedad', 'Solo Depresión', 'Ansiedad y Depresión', 'Sin Trastorno'],
+          labels: mentalLegend,
           datasets: [{ data: [ansSolo, depSolo, ambMental, sinMental], backgroundColor: [PALETTE.yellow, PALETTE.purple, PALETTE.emergencyRed, PALETTE.green] }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: chartJsDonutDataLabels()
+          }
+        }
       });
     }
   }
@@ -1175,7 +1416,14 @@ function renderTabHistoriaNoCardio() {
           labels: ['Asma Bronquial', 'EPOC', 'Sin Patología Respiratoria'],
           datasets: [{ label: 'Casos', data: [asmaCnt, epocCnt, sinResp], backgroundColor: [PALETTE.yellow, PALETTE.emergencyRed, PALETTE.green], borderRadius: 5 }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            datalabels: chartJsBarDataLabels(true)
+          }
+        }
       });
     }
   }
@@ -1194,8 +1442,8 @@ function renderTabHistoriaNoCardio() {
         plotOptions: { bar: { distributed: true, borderRadius: 5 } },
         series: [{ name: 'Casos', data: [reumaCnt, alergiasCnt] }],
         xaxis: { categories: ['Patología Reumatológica / Artritis', 'Alergias Medicamentosas'] },
-        legend: { show: false }
-      ,
+        legend: { show: false },
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.ncReuma.render();
@@ -1207,6 +1455,7 @@ function renderTabHistoriaNoCardio() {
 // TAB 7: COVID-19 Y SECUELAS CHARTS
 // -------------------------------------------------------------
 function renderTabCovid19() {
+  const n = filteredRecords.length;
   const sinHosp = filteredRecords.filter(r => r.covid_infeccion && !r.covid_hospitalizacion).length;
   const conHosp = filteredRecords.filter(r => r.covid_hospitalizacion).length;
   const noCovid = filteredRecords.filter(r => !r.covid_infeccion).length;
@@ -1224,8 +1473,8 @@ function renderTabCovid19() {
         plotOptions: { bar: { distributed: true, borderRadius: 5 } },
         series: [{ name: 'Casos', data: [sinHosp, conHosp, noCovid] }],
         xaxis: { categories: ['Infección Leve (Sin Hospitalización)', 'Requirió Hospitalización', 'No ha presentado COVID'] },
-        legend: { show: false }
-      ,
+        legend: { show: false },
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.covHist.render();
@@ -1251,7 +1500,14 @@ function renderTabCovid19() {
           labels: ['Secuelas Cardiovasculares', 'Secuelas Respiratorias', 'Fatiga Crónica / Long-COVID', 'Niebla Mental', 'Recuperación Asintomática'],
           datasets: [{ label: 'Casos', data: [secCardio, secResp, secFatiga, secNiebla, sinSecuelas], backgroundColor: [PALETTE.emergencyRed, PALETTE.yellow, PALETTE.purple, PALETTE.teal, PALETTE.green], borderRadius: 5 }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            datalabels: chartJsBarDataLabels(true)
+          }
+        }
       });
     }
   }
@@ -1281,31 +1537,48 @@ function renderTabCovid19() {
           { name: 'Hospitalizados', data: hospPorCat }
         ],
         xaxis: { categories: catNames },
-        legend: { position: 'top' }
-      ,
+        legend: { position: 'top' },
+        dataLabels: {
+          enabled: true,
+          formatter: (val) => val > 0 ? `${val}` : '',
+          style: { fontSize: '10px', fontWeight: 'bold' }
+        },
         tooltip: apexCountTooltip()
       });
       charts.covCat.render();
     }
   }
 
-  // Prevalencia por Sexo
+  // Prevalencia por Sexo (Donut con cantidades y porcentajes)
   const covH = filteredRecords.filter(r => r.sexo === 'Hombre' && r.covid_infeccion).length;
   const covM = filteredRecords.filter(r => r.sexo === 'Mujer' && r.covid_infeccion).length;
+  const covTotal = covH + covM;
+  const covGenderLegend = [
+    `Hombres Infectados: ${covH} (${formatPct(covH, covTotal || 1)}%)`,
+    `Mujeres Infectadas: ${covM} (${formatPct(covM, covTotal || 1)}%)`
+  ];
 
   const ctxGen = document.getElementById('chart-cov-por-genero');
   if (ctxGen) {
     if (charts.covGen) {
+      charts.covGen.data.labels = covGenderLegend;
       charts.covGen.data.datasets[0].data = [covH, covM];
       charts.covGen.update();
     } else {
       charts.covGen = new Chart(ctxGen, {
         type: 'doughnut',
         data: {
-          labels: ['Hombres Infectados', 'Mujeres Infectadas'],
+          labels: covGenderLegend,
           datasets: [{ data: [covH, covM], backgroundColor: [PALETTE.primaryBlue, PALETTE.purple] }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: chartJsDonutDataLabels()
+          }
+        }
       });
     }
   }
@@ -1315,6 +1588,7 @@ function renderTabCovid19() {
 // TAB 8: RESULTADOS DEL ELECTROCARDIOGRAMA CHARTS
 // -------------------------------------------------------------
 function renderTabElectrocardiograma() {
+  const n = filteredRecords.length;
   const sinusalCnt = filteredRecords.filter(r => r.ecg_es_sinusal).length;
   const arritmiaCnt = filteredRecords.filter(r => r.ecg_arritmia).length;
 
@@ -1330,8 +1604,15 @@ function renderTabElectrocardiograma() {
         colors: [PALETTE.green, PALETTE.emergencyRed],
         labels: ['Ritmo Sinusal (Normal)', 'Arritmias / Otros Ritmos'],
         series: [sinusalCnt, arritmiaCnt],
-        legend: { position: 'bottom' }
-      ,
+        legend: { position: 'bottom' },
+        dataLabels: {
+          enabled: true,
+          formatter: (val, opt) => {
+            const cnt = opt.seriesIndex === 0 ? sinusalCnt : arritmiaCnt;
+            return `${cnt} (${val.toFixed(1)}%)`;
+          },
+          style: { fontSize: '11px', fontWeight: 'bold' }
+        },
         tooltip: apexCountTooltip()
       });
       charts.ecgRitmo.render();
@@ -1366,7 +1647,15 @@ function renderTabElectrocardiograma() {
           responsive: true,
           maintainAspectRatio: false,
           scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
-          plugins: { legend: { position: 'bottom' } }
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: {
+              display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
+              color: '#FFFFFF',
+              font: { weight: 'bold', size: 11 },
+              formatter: (val) => val > 0 ? `${val}` : ''
+            }
+          }
         }
       });
     }
@@ -1391,8 +1680,8 @@ function renderTabElectrocardiograma() {
         plotOptions: { bar: { distributed: true, borderRadius: 5 } },
         series: [{ name: 'Casos', data: [sinAnom, brCnt, hviCnt, repolCnt] }],
         xaxis: { categories: ['ECG Morfológicamente Normal', 'Bloqueo de Rama', 'Hipertrofia Ventricular (HVI)', 'Alteraciones Repolarización'] },
-        legend: { show: false }
-      ,
+        legend: { show: false },
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.ecgAnom.render();
@@ -1419,9 +1708,367 @@ function renderTabElectrocardiograma() {
           responsive: true,
           maintainAspectRatio: false,
           scales: { y: { min: 40, max: 120, title: { display: true, text: 'Frecuencia Cardíaca (lpm)' } } },
-          plugins: { legend: { display: false } }
+          plugins: {
+            legend: { display: false },
+            datalabels: {
+              display: true,
+              anchor: 'end',
+              align: 'top',
+              color: '#1B2A41',
+              font: { weight: 'bold', size: 11 },
+              formatter: (val) => `${val} lpm`
+            }
+          }
         }
       });
     }
   }
+}
+
+// =============================================================
+// MÓDULO DE EXPORTACIÓN (PDF, POWERPOINT, IMAGEN)
+// =============================================================
+const DASHBOARD_TABS = [
+  { id: 'resumen-general', title: 'Resumen General Epidemiológico' },
+  { id: 'datos-individuo', title: 'Datos del Individuo y Filiación' },
+  { id: 'exploracion-fisica', title: 'Exploración Física y Antropometría' },
+  { id: 'factores-modificables', title: 'Factores de Riesgo Modificables' },
+  { id: 'factores-emergentes', title: 'Factores de Riesgo Emergentes' },
+  { id: 'antecedentes-familiares', title: 'Antecedentes Familiares Cardiovasculares' },
+  { id: 'historia-no-cardio', title: 'Historia Clínica No Cardiovascular' },
+  { id: 'covid-19', title: 'COVID-19 y Secuelas Post-Infección' },
+  { id: 'electrocardiograma', title: 'Resultados del Electrocardiograma (ECG)' }
+];
+
+function openExportModal() {
+  const modal = document.getElementById('modal-export-dashboard');
+  if (modal) {
+    modal.style.display = 'flex';
+    const curTab = DASHBOARD_TABS.find(t => t.id === activeTabId) || DASHBOARD_TABS[0];
+    const lbl = document.getElementById('export-current-tab-name');
+    if (lbl) lbl.textContent = curTab.title;
+    const prog = document.getElementById('export-progress-container');
+    if (prog) prog.style.display = 'none';
+    const btn = document.getElementById('btn-do-export');
+    if (btn) btn.disabled = false;
+  }
+}
+
+function closeExportModal() {
+  const modal = document.getElementById('modal-export-dashboard');
+  if (modal) modal.style.display = 'none';
+}
+
+// Controlador de inicio de exportación
+async function startExport() {
+  const formatEl = document.querySelector('input[name="export-format"]:checked');
+  const scopeEl = document.querySelector('input[name="export-scope"]:checked');
+  const format = formatEl ? formatEl.value : 'pdf';
+  const scope = scopeEl ? scopeEl.value : 'current';
+
+  const btn = document.getElementById('btn-do-export');
+  const progBox = document.getElementById('export-progress-container');
+  const progText = document.getElementById('export-progress-text');
+  const progBar = document.getElementById('export-progress-bar');
+
+  if (btn) btn.disabled = true;
+  if (progBox) progBox.style.display = 'flex';
+
+  const setProgress = (text, pct) => {
+    if (progText) progText.textContent = text;
+    if (progBar) progBar.style.width = `${pct}%`;
+  };
+
+  try {
+    if (format === 'image') {
+      await exportImage(scope, setProgress);
+    } else if (format === 'pptx') {
+      await exportPowerPoint(scope, setProgress);
+    } else {
+      await exportPdf(scope, setProgress);
+    }
+    setTimeout(() => {
+      closeExportModal();
+    }, 700);
+  } catch (err) {
+    console.error('Error durante la exportación:', err);
+    alert('Ocurrió un inconveniente al generar la exportación: ' + (err.message || err));
+  } finally {
+    if (btn) btn.disabled = false;
+    if (progBox) progBox.style.display = 'none';
+  }
+}
+
+// 1. Exportación a Imagen PNG
+async function exportImage(scope, setProgress) {
+  if (typeof html2canvas === 'undefined') {
+    throw new Error('La librería html2canvas no está disponible.');
+  }
+
+  const tabsToExport = scope === 'all' ? DASHBOARD_TABS : [DASHBOARD_TABS.find(t => t.id === activeTabId) || DASHBOARD_TABS[0]];
+  const total = tabsToExport.length;
+  const originalTab = activeTabId;
+
+  for (let i = 0; i < total; i++) {
+    const tab = tabsToExport[i];
+    setProgress(`Capturando imagen: ${tab.title} (${i + 1}/${total})...`, Math.round(((i + 0.5) / total) * 100));
+
+    switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
+    await new Promise(r => setTimeout(r, 250));
+
+    const targetEl = document.getElementById('tab-' + tab.id);
+    if (!targetEl) continue;
+
+    const canvas = await html2canvas(targetEl, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#F8FAFC',
+      logging: false
+    });
+
+    const link = document.createElement('a');
+    const safeTitle = tab.title.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    link.download = `CardioUNEMI_${safeTitle}_${new Date().toISOString().slice(0, 10)}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
+  setProgress('¡Imágenes descargadas con éxito!', 100);
+}
+
+// 2. Exportación a Documento PDF Paginado
+async function exportPdf(scope, setProgress) {
+  const { jsPDF } = window.jspdf || window;
+  if (!jsPDF) {
+    throw new Error('La librería jsPDF no está disponible.');
+  }
+  if (typeof html2canvas === 'undefined') {
+    throw new Error('La librería html2canvas no está disponible.');
+  }
+
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const tabsToExport = scope === 'all' ? DASHBOARD_TABS : [DASHBOARD_TABS.find(t => t.id === activeTabId) || DASHBOARD_TABS[0]];
+  const total = tabsToExport.length;
+  const originalTab = activeTabId;
+
+  const pageWidth = 297;
+  const pageHeight = 210;
+  const marginX = 10;
+  const contentWidth = pageWidth - (marginX * 2);
+
+  const instVal = document.getElementById('slicer-inst')?.value || 'Todas las Instituciones';
+  const anoVal = document.getElementById('slicer-ano')?.value || 'Todos los Años';
+  const sampleText = `${filteredRecords.length} de ${allRecords.length} evaluados`;
+  const todayStr = new Date().toLocaleDateString('es-EC', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  for (let i = 0; i < total; i++) {
+    const tab = tabsToExport[i];
+    setProgress(`Generando página PDF: ${tab.title} (${i + 1}/${total})...`, Math.round(((i + 0.3) / total) * 100));
+
+    switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
+    await new Promise(r => setTimeout(r, 250));
+
+    const targetEl = document.getElementById('tab-' + tab.id);
+    if (!targetEl) continue;
+
+    const canvas = await html2canvas(targetEl, {
+      scale: 1.8,
+      useCORS: true,
+      backgroundColor: '#FFFFFF',
+      logging: false
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+    if (i > 0) {
+      doc.addPage();
+    }
+
+    // Cabecera Institucional
+    doc.setFillColor(27, 42, 65); // #1B2A41 Navy
+    doc.rect(0, 0, pageWidth, 15, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.text('CARDIOUNEMI • VIGILANCIA EPIDEMIOLÓGICA CARDIOVASCULAR', marginX, 9.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(`Cohorte: ${sampleText} | ${instVal} - Año ${anoVal} | ${todayStr}`, pageWidth - marginX, 9.5, { align: 'right' });
+
+    // Título de la Sección
+    doc.setTextColor(27, 42, 65);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text(tab.title, marginX, 23);
+
+    // Renderizado del contenido visual
+    const imgAspect = canvas.height / canvas.width;
+    const maxImgHeight = pageHeight - 34;
+    let renderW = contentWidth;
+    let renderH = renderW * imgAspect;
+    if (renderH > maxImgHeight) {
+      renderH = maxImgHeight;
+      renderW = renderH / imgAspect;
+    }
+    const renderX = marginX + (contentWidth - renderW) / 2;
+
+    doc.addImage(imgData, 'JPEG', renderX, 26, renderW, renderH, undefined, 'FAST');
+
+    // Pie de página
+    doc.setTextColor(148, 163, 184);
+    doc.setFontSize(7.5);
+    doc.text('Universidad Estatal de Milagro (UNEMI) • Departamento de Cardiología', marginX, pageHeight - 4);
+    doc.text(`Página ${i + 1} de ${total}`, pageWidth - marginX, pageHeight - 4, { align: 'right' });
+  }
+
+  switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
+
+  setProgress('Guardando documento PDF...', 95);
+  const fileName = scope === 'all'
+    ? `CardioUNEMI_Reporte_Integral_8_Bloques_${new Date().toISOString().slice(0, 10)}.pdf`
+    : `CardioUNEMI_${activeTabId}_${new Date().toISOString().slice(0, 10)}.pdf`;
+
+  doc.save(fileName);
+  setProgress('¡PDF generado exitosamente!', 100);
+}
+
+// 3. Exportación a Diapositivas PowerPoint (.pptx)
+async function exportPowerPoint(scope, setProgress) {
+  if (typeof PptxGenJS === 'undefined') {
+    throw new Error('La librería PptxGenJS no está disponible.');
+  }
+  if (typeof html2canvas === 'undefined') {
+    throw new Error('La librería html2canvas no está disponible.');
+  }
+
+  const pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_16x9';
+
+  const tabsToExport = scope === 'all' ? DASHBOARD_TABS : [DASHBOARD_TABS.find(t => t.id === activeTabId) || DASHBOARD_TABS[0]];
+  const total = tabsToExport.length;
+  const originalTab = activeTabId;
+
+  const instVal = document.getElementById('slicer-inst')?.value || 'Todas las Instituciones';
+  const anoVal = document.getElementById('slicer-ano')?.value || 'Todos los Años';
+  const sampleText = `${filteredRecords.length} de ${allRecords.length} evaluados (100%)`;
+  const todayStr = new Date().toLocaleDateString('es-EC', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  // Slide 1: Portada Ejecutiva
+  setProgress('Construyendo portada institucional...', 10);
+  const slidePortada = pptx.addSlide();
+  slidePortada.background = { color: '1B2A41' }; // Navy UNEMI
+
+  slidePortada.addText('UNIVERSIDAD ESTATAL DE MILAGRO', {
+    x: 0.8, y: 1.0, w: 8.4, h: 0.4,
+    fontSize: 13, color: '3AA0FF', bold: true
+  });
+
+  slidePortada.addText('CARDIOUNEMI • INFORME EPIDEMIOLÓGICO', {
+    x: 0.8, y: 1.45, w: 8.4, h: 1.0,
+    fontSize: 27, color: 'FFFFFF', bold: true
+  });
+
+  slidePortada.addText('Vigilancia de Salud Cardiovascular y Factores de Riesgo Clínico', {
+    x: 0.8, y: 2.5, w: 8.4, h: 0.5,
+    fontSize: 14, color: 'CFE9FF'
+  });
+
+  slidePortada.addShape(pptx.ShapeType.rect, {
+    x: 0.8, y: 3.3, w: 8.4, h: 1.6,
+    fill: { color: '142132' },
+    line: { color: '3AA0FF', width: 1.5 }
+  });
+
+  slidePortada.addText([
+    { text: 'Muestra Total Analizada: ', options: { bold: true, color: '3AA0FF' } },
+    { text: `${sampleText}\n`, options: { color: 'FFFFFF' } },
+    { text: 'Institución / Cohorte: ', options: { bold: true, color: '3AA0FF' } },
+    { text: `${instVal} (Año: ${anoVal})\n`, options: { color: 'FFFFFF' } },
+    { text: 'Fecha de Emisión: ', options: { bold: true, color: '3AA0FF' } },
+    { text: `${todayStr}\n`, options: { color: 'FFFFFF' } },
+    { text: 'Alcance del Reporte: ', options: { bold: true, color: '3AA0FF' } },
+    { text: scope === 'all' ? 'Informe Integral Completo (8 Bloques Clínicos)' : `Módulo Específico: ${tabsToExport[0].title}`, options: { color: 'FFFFFF' } }
+  ], {
+    x: 1.05, y: 3.45, w: 7.9, h: 1.3,
+    fontSize: 11
+  });
+
+  // Slide 2..N: Slides por cada Módulo Clínico
+  for (let i = 0; i < total; i++) {
+    const tab = tabsToExport[i];
+    setProgress(`Generando diapositiva: ${tab.title} (${i + 1}/${total})...`, Math.round(15 + ((i + 1) / total) * 75));
+
+    switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
+    await new Promise(r => setTimeout(r, 250));
+
+    const targetEl = document.getElementById('tab-' + tab.id);
+    if (!targetEl) continue;
+
+    const canvas = await html2canvas(targetEl, {
+      scale: 1.8,
+      useCORS: true,
+      backgroundColor: '#FFFFFF',
+      logging: false
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+
+    const slide = pptx.addSlide();
+    slide.background = { color: 'F8FAFC' };
+
+    // Barra Superior
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 0, y: 0, w: 10, h: 0.65,
+      fill: { color: '1B2A41' }
+    });
+
+    slide.addText(`CARDIOUNEMI • ${tab.title.toUpperCase()}`, {
+      x: 0.5, y: 0.12, w: 7.0, h: 0.4,
+      fontSize: 12.5, color: 'FFFFFF', bold: true
+    });
+
+    slide.addText(`${todayStr} | N = ${filteredRecords.length}`, {
+      x: 7.5, y: 0.14, w: 2.0, h: 0.35,
+      fontSize: 9, color: 'CFE9FF', align: 'right'
+    });
+
+    // Imagen del Panel de Gráficos
+    const imgAspect = canvas.height / canvas.width;
+    const maxW = 9.2;
+    const maxH = 4.65;
+    let w = maxW;
+    let h = w * imgAspect;
+    if (h > maxH) {
+      h = maxH;
+      w = h / imgAspect;
+    }
+    const x = 0.4 + (maxW - w) / 2;
+    const y = 0.78 + (maxH - h) / 2;
+
+    slide.addImage({ data: imgData, x: x, y: y, w: w, h: h });
+
+    // Pie de diapositiva
+    slide.addText('Universidad Estatal de Milagro • Departamento de Cardiología', {
+      x: 0.5, y: 5.35, w: 6.0, h: 0.25,
+      fontSize: 8, color: '94A3B8'
+    });
+    slide.addText(`Diapositiva ${i + 2} de ${total + 1}`, {
+      x: 7.5, y: 5.35, w: 2.0, h: 0.25,
+      fontSize: 8, color: '94A3B8', align: 'right'
+    });
+  }
+
+  switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
+
+  setProgress('Compilando presentación PowerPoint (.pptx)...', 95);
+  const fileName = scope === 'all'
+    ? `CardioUNEMI_Presentacion_Completa_${new Date().toISOString().slice(0, 10)}.pptx`
+    : `CardioUNEMI_${activeTabId}_${new Date().toISOString().slice(0, 10)}.pptx`;
+
+  await pptx.writeFile({ fileName: fileName });
+  setProgress('¡Presentación PPTX descargada exitosamente!', 100);
 }
