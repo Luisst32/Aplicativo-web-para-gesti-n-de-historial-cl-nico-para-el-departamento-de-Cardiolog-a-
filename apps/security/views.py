@@ -208,10 +208,13 @@ def api_settings_view(request):
     """
     Consulta o actualización de la configuración global del sistema (SystemSetting).
     Permite activar/desactivar el chatbot y configurar la clave de API de Gemini (encriptada).
+    Solo usuarios con rol Administrador pueden visualizar y modificar la API key y el modelo.
     """
+    is_admin = getattr(request.user, 'is_administrator', False)
+    cfg = SystemSetting.get_settings()
+
     if request.method == "GET":
-        cfg = SystemSetting.get_settings()
-        raw_key = SystemSetting.get_gemini_api_key()
+        raw_key = SystemSetting.get_gemini_api_key() if is_admin else ""
         if raw_key and len(raw_key) > 8:
             masked = f"{raw_key[:6]}...{'*' * 8}...{raw_key[-4:]}"
         elif raw_key:
@@ -222,9 +225,10 @@ def api_settings_view(request):
         return JsonResponse({
             "status": "success",
             "chatbot_enabled": cfg.chatbot_enabled,
-            "gemini_model": cfg.gemini_model,
-            "api_key_configured": bool(raw_key),
-            "api_key_masked": masked,
+            "gemini_model": cfg.gemini_model if is_admin else "",
+            "api_key_configured": bool(raw_key) if is_admin else False,
+            "api_key_masked": masked if is_admin else "",
+            "is_admin": is_admin,
             "updated_at": cfg.updated_at_utc.strftime("%d/%m/%Y %H:%M") if cfg.updated_at_utc else ""
         })
 
@@ -241,12 +245,15 @@ def api_settings_view(request):
         elif chatbot_enabled is None:
             chatbot_enabled = True
 
-        raw_api_key = data.get('gemini_api_key')
-        # Si envían la clave enmascarada (con asteriscos), no sobreescribir la existente
-        if raw_api_key and '***' in raw_api_key:
+        # Solo el Administrador puede modificar la API key y el modelo
+        if is_admin:
+            raw_api_key = data.get('gemini_api_key')
+            if raw_api_key and '***' in raw_api_key:
+                raw_api_key = None
+            gemini_model = (data.get('gemini_model') or 'gemini-3.5-flash-lite').strip()
+        else:
             raw_api_key = None
-
-        gemini_model = (data.get('gemini_model') or 'gemini-3.5-flash-lite').strip()
+            gemini_model = None
 
         cfg = SystemSetting.set_settings(
             chatbot_enabled=chatbot_enabled,
@@ -255,7 +262,7 @@ def api_settings_view(request):
             user=request.user
         )
 
-        raw_key = SystemSetting.get_gemini_api_key()
+        raw_key = SystemSetting.get_gemini_api_key() if is_admin else ""
         if raw_key and len(raw_key) > 8:
             masked = f"{raw_key[:6]}...{'*' * 8}...{raw_key[-4:]}"
         elif raw_key:
@@ -267,9 +274,10 @@ def api_settings_view(request):
             "status": "success",
             "message": "Ajustes del sistema guardados correctamente.",
             "chatbot_enabled": cfg.chatbot_enabled,
-            "gemini_model": cfg.gemini_model,
-            "api_key_configured": bool(raw_key),
-            "api_key_masked": masked
+            "gemini_model": cfg.gemini_model if is_admin else "",
+            "api_key_configured": bool(raw_key) if is_admin else False,
+            "api_key_masked": masked if is_admin else "",
+            "is_admin": is_admin
         })
     except Exception as e:
         logger.exception(f"Error guardando ajustes: {e}")

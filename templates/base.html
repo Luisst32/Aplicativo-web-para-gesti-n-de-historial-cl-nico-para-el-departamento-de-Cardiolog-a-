@@ -42,7 +42,8 @@
       nombre: "{{ request.user.full_name|default:request.user.username|escapejs }}",
       rol: "{% if request.user.is_superuser %}Administrador{% elif request.user.roles.exists %}{{ request.user.roles.first.name|escapejs }}{% elif request.user.is_staff %}Médico Evaluador{% else %}Usuario{% endif %}",
       correo: "{{ request.user.email|default:''|escapejs }}",
-      is_staff: {% if request.user.is_staff or request.user.is_superuser %}true{% else %}false{% endif %}
+      is_staff: {% if request.user.is_staff or request.user.is_superuser %}true{% else %}false{% endif %},
+      is_admin: {% if request.user.is_administrator %}true{% else %}false{% endif %}
     };
     window.CHATBOT_ENABLED = {{ chatbot_enabled|yesno:"true,false" }};
     {% endif %}

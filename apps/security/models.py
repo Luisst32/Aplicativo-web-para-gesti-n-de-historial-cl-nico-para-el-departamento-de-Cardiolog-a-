@@ -134,6 +134,12 @@ class User(AbstractBaseUser, PermissionsMixin):
         last_names = f"{self.last_name} {self.second_last_name or ''}".strip()
         return f"{self.first_name} {last_names}"
 
+    @property
+    def is_administrator(self) -> bool:
+        if getattr(self, 'is_superuser', False) or self.is_staff or self.username == 'admin':
+            return True
+        return self.roles.filter(name__icontains='admin').exists()
+
 
 class UserRole(models.Model):
     """

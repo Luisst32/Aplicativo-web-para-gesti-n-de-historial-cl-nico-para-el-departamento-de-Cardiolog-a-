@@ -494,6 +494,9 @@ function actualizarBadgeSwitchChatbot(activo) {
   const slider = document.getElementById('sliderSwitchChatbot');
   const circulo = document.getElementById('circuloSwitchChatbot');
   const seccionIa = document.getElementById('seccionConfiguracionChatbot');
+  const esAdmin = (window.CURRENT_USER && typeof window.CURRENT_USER.is_admin !== 'undefined') 
+    ? Boolean(window.CURRENT_USER.is_admin) 
+    : true;
 
   if (badge) {
     badge.textContent = activo ? 'ACTIVO' : 'DESACTIVADO';
@@ -507,7 +510,7 @@ function actualizarBadgeSwitchChatbot(activo) {
     circulo.style.transform = activo ? 'translateX(22px)' : 'translateX(0)';
   }
   if (seccionIa) {
-    seccionIa.style.display = activo ? 'block' : 'none';
+    seccionIa.style.display = (activo && esAdmin) ? 'block' : 'none';
   }
 }
 

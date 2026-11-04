@@ -67,6 +67,14 @@ class SecurityApiEndpointsTests(TestCase):
             last_name='Pérez',
             password='CurrentPassword123!'
         )
+        self.admin_user = User.objects.create_user(
+            username='admin_test',
+            email='admin@cardiounemi.edu.ec',
+            first_name='Admin',
+            last_name='UNEMI',
+            password='AdminPassword123!',
+            is_staff=True
+        )
 
     def test_profile_api_requires_login(self):
         response = self.client.get('/security/api/profile/')
@@ -174,19 +182,20 @@ class SecurityApiEndpointsTests(TestCase):
         data = response.json()
         self.assertIn('8 caracteres', data['message'].lower())
 
-    def test_settings_api_get_and_post(self):
-        self.client.login(username='doctor_test', password='CurrentPassword123!')
+    def test_settings_api_admin_can_view_and_update_api_key(self):
+        self.client.login(username='admin_test', password='AdminPassword123!')
         # GET settings
         get_res = self.client.get('/security/api/settings/')
         self.assertEqual(get_res.status_code, 200)
         get_data = get_res.json()
         self.assertEqual(get_data['status'], 'success')
+        self.assertTrue(get_data['is_admin'])
         self.assertIn('chatbot_enabled', get_data)
 
-        # POST settings (toggle chatbot and update key)
+        # POST settings (admin updates key)
         post_payload = {
-            'chatbot_enabled': False,
-            'gemini_api_key': 'AIzaSy_NEW_FROM_AJUSTES_MODAL',
+            'chatbot_enabled': True,
+            'gemini_api_key': 'AIzaSy_ADMIN_NEW_KEY_999',
             'gemini_model': 'gemini-3.5-flash-lite'
         }
         post_res = self.client.post(
@@ -197,7 +206,36 @@ class SecurityApiEndpointsTests(TestCase):
         self.assertEqual(post_res.status_code, 200)
         post_data = post_res.json()
         self.assertEqual(post_data['status'], 'success')
+        self.assertEqual(SystemSetting.get_gemini_api_key(), 'AIzaSy_ADMIN_NEW_KEY_999')
 
-        # Verify DB updated
+    def test_settings_api_non_admin_cannot_view_or_update_api_key(self):
+        # Seed an existing key
+        SystemSetting.set_settings(chatbot_enabled=True, raw_api_key='ORIGINAL_SECRET_KEY')
+
+        # Non-admin logs in
+        self.client.login(username='doctor_test', password='CurrentPassword123!')
+
+        # GET should NOT leak the key or model
+        get_res = self.client.get('/security/api/settings/')
+        self.assertEqual(get_res.status_code, 200)
+        get_data = get_res.json()
+        self.assertFalse(get_data['is_admin'])
+        self.assertEqual(get_data['api_key_masked'], '')
+        self.assertEqual(get_data['gemini_model'], '')
+
+        # POST should NOT update key or model
+        post_payload = {
+            'chatbot_enabled': False,
+            'gemini_api_key': 'MALICIOUS_KEY_ATTEMPT',
+            'gemini_model': 'gemini-hacker'
+        }
+        post_res = self.client.post(
+            '/security/api/settings/',
+            data=json.dumps(post_payload),
+            content_type='application/json'
+        )
+        self.assertEqual(post_res.status_code, 200)
+
+        # Chatbot toggled, but key was NOT modified
         self.assertFalse(SystemSetting.is_chatbot_enabled())
-        self.assertEqual(SystemSetting.get_gemini_api_key(), 'AIzaSy_NEW_FROM_AJUSTES_MODAL')
+        self.assertEqual(SystemSetting.get_gemini_api_key(), 'ORIGINAL_SECRET_KEY')

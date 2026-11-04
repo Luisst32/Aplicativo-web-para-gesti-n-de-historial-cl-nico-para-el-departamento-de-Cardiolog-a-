@@ -195,7 +195,8 @@
             </label>
           </div>
 
-          <!-- Contenedor dinámico: Si el chat está desactivado, NO se muestra la API ni el Modelo -->
+          <!-- Contenedor dinámico: Solo visible si el usuario es Administrador y el chatbot está activo -->
+          {% if request.user.is_administrator %}
           <div id="seccionConfiguracionChatbot" style="display: none;">
             <!-- Control 2: API Key de Google Gemini -->
             <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;">
@@ -239,6 +240,7 @@
               </select>
             </div>
           </div>
+          {% endif %}
 
           <!-- Mensajes de estado -->
           <div id="ajustesErrorMsg" style="display: none; padding: 8px 12px; border-radius: 6px; background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; font-size: 0.8rem; margin-bottom: 12px;"></div>
