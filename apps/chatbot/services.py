@@ -182,6 +182,39 @@ def generate_fallback_clinical_answer(question: str) -> str:
             "- **Alerta (Alto + Muy Alto):** **47,5 %** (28 casos)."
         )
 
+    if any(w in q for w in ['depre', 'ansiedad', 'mental', 'psico', 'trastorno']):
+        return (
+            "**Salud Mental (Ansiedad y Depresión):**\n"
+            "- **Total con Depresión:** **3 casos (5,1 %)** (combinada con ansiedad: 3, depresión aislada: 0).\n"
+            "- **Solo Ansiedad:** 3 casos (5,1 %).\n"
+            "- **Sin Trastorno:** 53 casos (89,8 %).\n"
+            "- **Prevalencia global de afección mental:** 6 casos (10,2 %)."
+        )
+
+    if any(w in q for w in ['diabet', 'glucosa', 'glicemia']):
+        return (
+            "**Diabetes Mellitus:**\n"
+            "- **Prevalencia:** **18,6 %** (11 de 59 casos).\n"
+            "- **Glucosa en ayunas media:** 98,4 mg/dL.\n"
+            "- **Antecedente familiar:** 37,3 % de la cohorte."
+        )
+
+    if any(w in q for w in ['colesterol', 'dislipemia', 'triglic', 'lipid']):
+        return (
+            "**Perfil Lipídico y Dislipemia:**\n"
+            "- **Prevalencia de Dislipemia:** **35,6 %** (21 de 59 casos).\n"
+            "- **Colesterol total medio:** 192,5 mg/dL.\n"
+            "- **Antecedente familiar:** 32,2 %."
+        )
+
+    if any(w in q for w in ['tabaco', 'fuma', 'cigarro', 'alcohol', 'sedentar']):
+        return (
+            "**Estilo de Vida y Hábitos:**\n"
+            "- **Sedentarismo:** **55,9 %** (33 casos).\n"
+            "- **Consumo de Alcohol:** **45,8 %** (27 casos).\n"
+            "- **Tabaquismo activo:** **18,6 %** (11 casos), exfumadores: 15,3 %."
+        )
+
     return (
         "**Resumen Clínico Rápido (N = 59):**\n"
         "- Hombres: 50,8 % | Mujeres: 49,2 % | Edad media: 40,4 años.\n"
@@ -247,7 +280,8 @@ def query_gemini_assistant(
     except Exception:
         pass
 
-    api_key = (os.getenv('GEMINI_API_KEY', '') or getattr(settings, 'GEMINI_API_KEY', '')).strip()
+    env_key = os.getenv('GEMINI_API_KEY')
+    api_key = (env_key if env_key is not None else getattr(settings, 'GEMINI_API_KEY', '')).strip()
     model_name = (os.getenv('GEMINI_MODEL', '') or getattr(settings, 'GEMINI_MODEL', '') or 'gemini-flash-latest').strip()
 
     cohort_context = get_anonymized_cohort_context()
@@ -276,7 +310,7 @@ def query_gemini_assistant(
         prompt = f"{cohort_context}\n\nPREGUNTA:\n{clean_question}\n\nRESPONDE DIRECTO AL GRANO:"
 
         # Probar con el modelo configurado o fallback a modelos flash estándar de Google
-        models_to_try = [model_name, 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-1.5-flash']
+        models_to_try = [model_name, 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest']
         # Eliminar duplicados preservando orden
         seen = set()
         models_to_try = [m for m in models_to_try if m and not (m in seen or seen.add(m))]
@@ -293,6 +327,7 @@ def query_gemini_assistant(
                         system_instruction=SYSTEM_INSTRUCTION,
                         temperature=0.1,  # Ultra determinista y conciso
                         max_output_tokens=600,  # Ahorro de tokens
+                        http_options=types.HttpOptions(timeout=10000),
                     )
                 )
                 if response and response.text:
