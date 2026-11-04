@@ -106,6 +106,24 @@ function apexCountAndPctDataLabel(customTotal, extraOptions = {}) {
 }
 
 // Configuración de Chart.js y DataLabels
+// Configuración Global de ApexCharts (Desactivar animaciones y forzar relleno sólido para exportaciones 100% nítidas)
+if (typeof ApexCharts !== 'undefined' || typeof window.Apex !== 'undefined') {
+  window.Apex = {
+    chart: {
+      toolbar: { show: false },
+      animations: {
+        enabled: false,
+        animateGradually: { enabled: false },
+        dynamicAnimation: { enabled: false }
+      }
+    },
+    fill: {
+      type: 'solid',
+      opacity: 1
+    }
+  };
+}
+
 if (typeof Chart !== 'undefined') {
   Chart.defaults.devicePixelRatio = Math.max(window.devicePixelRatio || 1, 2);
   if (typeof ChartDataLabels !== 'undefined') {
@@ -553,7 +571,8 @@ function renderTabResumenGeneral() {
       });
     } else {
       charts.factores = new ApexCharts(elFactores, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false } },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         plotOptions: { bar: { horizontal: true, distributed: true, borderRadius: 4 } },
         colors: [PALETTE.emergencyRed, PALETTE.yellow, PALETTE.yellow, PALETTE.primaryBlue, PALETTE.green, PALETTE.purple],
         series: [{ name: 'Prevalencia (%)', data: fData }],
@@ -690,7 +709,8 @@ function renderTabDatosIndividuo() {
       });
     } else {
       charts.indEdad = new ApexCharts(elPiramide, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false } },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.primaryBlue, PALETTE.purple],
         plotOptions: { bar: { horizontal: true, barHeight: '65%', borderRadius: 4 } },
         series: [
@@ -792,7 +812,8 @@ function renderTabDatosIndividuo() {
       });
     } else {
       charts.indViv = new ApexCharts(elViv, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false } },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.primaryBlue],
         plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
         series: [{ name: 'Personas', data: vivVals }],
@@ -821,7 +842,8 @@ function renderTabExploracionFisica() {
       });
     } else {
       charts.expImc = new ApexCharts(elImc, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false } },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.iceBlue, PALETTE.green, PALETTE.yellow, PALETTE.emergencyRed, '#DC2626', '#991B1B'],
         plotOptions: {
           bar: {
@@ -920,7 +942,8 @@ function renderTabExploracionFisica() {
       });
     } else {
       charts.expAusc = new ApexCharts(elAusc, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false } },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.yellow, PALETTE.emergencyRed],
         plotOptions: { bar: { distributed: true, borderRadius: 5 } },
         series: [{ name: 'Casos', data: [auscNorm, soplosPres, auscAlt] }],
@@ -959,7 +982,8 @@ function renderTabFactoresModificables() {
       });
     } else {
       charts.modControl = new ApexCharts(elControl, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false } },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.emergencyRed],
         plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 4 } },
         series: [
@@ -1040,7 +1064,8 @@ function renderTabFactoresModificables() {
       });
     } else {
       charts.modActCat = new ApexCharts(elActCat, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false }, stacked: true },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, stacked: true, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.emergencyRed],
         plotOptions: { bar: { horizontal: false, borderRadius: 4 } },
         series: [
@@ -1109,7 +1134,8 @@ function renderTabFactoresEmergentes() {
       });
     } else {
       charts.emSueno = new ApexCharts(elSueno, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false } },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.emergencyRed, PALETTE.primaryBlue, PALETTE.yellow],
         plotOptions: { bar: { distributed: true, borderRadius: 5 } },
         series: [{ name: 'Casos', data: [suenoBuena, suenoMala, suenoAdecuado, suenoInsuf] }],
@@ -1207,7 +1233,8 @@ function renderTabFactoresEmergentes() {
       });
     } else {
       charts.emHorm = new ApexCharts(elHorm, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false } },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.yellow, PALETTE.purple, PALETTE.emergencyRed, PALETTE.teal],
         plotOptions: { bar: { distributed: true, borderRadius: 5 } },
         series: [{ name: 'Casos', data: [malAmb, toxLab, estrogenos, anticoncep] }],
@@ -1247,7 +1274,8 @@ function renderTabAntecedentesFamiliares() {
       });
     } else {
       charts.famPadres = new ApexCharts(elPadres, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false } },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.primaryBlue, PALETTE.purple],
         plotOptions: { bar: { horizontal: true, barHeight: '65%', borderRadius: 4 } },
         series: [
@@ -1321,7 +1349,8 @@ function renderTabAntecedentesFamiliares() {
       });
     } else {
       charts.famEdad = new ApexCharts(elEdad, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false } },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.emergencyRed, PALETTE.yellow],
         plotOptions: { bar: { horizontal: true, barHeight: '65%', borderRadius: 4 } },
         series: [
@@ -1400,7 +1429,8 @@ function renderTabHistoriaNoCardio() {
       });
     } else {
       charts.ncComorb = new ApexCharts(elComorb, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false } },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         plotOptions: { bar: { horizontal: true, distributed: true, borderRadius: 4 } },
         colors: [PALETTE.yellow, PALETTE.purple, PALETTE.teal, PALETTE.primaryBlue, PALETTE.emergencyRed, PALETTE.navy],
         series: [{ name: 'Prevalencia Casos', data: vals }],
@@ -1497,7 +1527,8 @@ function renderTabHistoriaNoCardio() {
       });
     } else {
       charts.ncReuma = new ApexCharts(elReuma, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false } },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.purple, PALETTE.teal],
         plotOptions: { bar: { distributed: true, borderRadius: 5 } },
         series: [{ name: 'Casos', data: [reumaCnt, alergiasCnt] }],
@@ -1528,7 +1559,8 @@ function renderTabCovid19() {
       });
     } else {
       charts.covHist = new ApexCharts(elHist, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false } },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.yellow, PALETTE.emergencyRed, PALETTE.green],
         plotOptions: {
           bar: {
@@ -1606,7 +1638,8 @@ function renderTabCovid19() {
       });
     } else {
       charts.covCat = new ApexCharts(elPorCat, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false } },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.primaryBlue, PALETTE.emergencyRed],
         plotOptions: { bar: { horizontal: true, barHeight: '65%', borderRadius: 4 } },
         series: [
@@ -1674,7 +1707,8 @@ function renderTabElectrocardiograma() {
       });
     } else {
       charts.ecgRitmo = new ApexCharts(elRitmo, {
-        chart: { type: 'donut', height: 260 },
+        chart: { type: 'donut', height: 260, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.emergencyRed],
         labels: ['Ritmo Sinusal (Normal)', 'Arritmias / Otros Ritmos'],
         series: [sinusalCnt, arritmiaCnt],
@@ -1777,7 +1811,8 @@ function renderTabElectrocardiograma() {
       });
     } else {
       charts.ecgAnom = new ApexCharts(elAnom, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false } },
+        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.yellow, PALETTE.emergencyRed, PALETTE.purple],
         plotOptions: {
           bar: {
@@ -1934,6 +1969,59 @@ async function startExport() {
 }
 
 // 1. Exportación a Imagen PNG
+// Helper para normalizar gradientes y asegurar visibilidad de rellenos SVG en html2canvas
+function fixSvgFillsForHtml2Canvas(clonedDoc) {
+  if (!clonedDoc) return;
+  try {
+    const svgElements = clonedDoc.querySelectorAll('svg [fill*="url("]');
+    svgElements.forEach(el => {
+      const fillAttr = el.getAttribute('fill') || '';
+      const match = fillAttr.match(/url\(#?([^)]+)\)/);
+      if (match) {
+        const gradId = match[1].replace(/["']/g, '');
+        const grad = clonedDoc.getElementById(gradId) || document.getElementById(gradId);
+        if (grad) {
+          const stop = grad.querySelector('stop');
+          if (stop) {
+            const color = stop.getAttribute('stop-color') || stop.style.stopColor;
+            if (color) {
+              el.setAttribute('fill', color);
+              el.style.fill = color;
+              el.setAttribute('fill-opacity', '1');
+              el.style.fillOpacity = '1';
+            }
+          }
+        }
+      }
+    });
+
+    clonedDoc.querySelectorAll('.apexcharts-bar-area, .apexcharts-series path, .apexcharts-area').forEach(el => {
+      const fill = el.getAttribute('fill') || '';
+      if (fill.startsWith('url(')) {
+        const match = fill.match(/url\(#?([^)]+)\)/);
+        if (match) {
+          const gradId = match[1].replace(/["']/g, '');
+          const grad = clonedDoc.getElementById(gradId) || document.getElementById(gradId);
+          if (grad) {
+            const stop = grad.querySelector('stop');
+            if (stop) {
+              const color = stop.getAttribute('stop-color') || stop.style.stopColor;
+              if (color) {
+                el.setAttribute('fill', color);
+                el.style.fill = color;
+                el.setAttribute('fill-opacity', '1');
+                el.style.fillOpacity = '1';
+              }
+            }
+          }
+        }
+      }
+    });
+  } catch (err) {
+    console.warn('Advertencia en fixSvgFillsForHtml2Canvas:', err);
+  }
+}
+
 async function exportImage(scope, setProgress) {
   const h2c = window.html2canvas || (typeof html2canvas !== 'undefined' ? html2canvas : null);
   if (!h2c) {
@@ -1949,7 +2037,7 @@ async function exportImage(scope, setProgress) {
     setProgress(`Capturando imagen: ${tab.title} (${i + 1}/${total})...`, Math.round(((i + 0.5) / total) * 100));
 
     switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
-    await new Promise(r => setTimeout(r,  400));
+    await new Promise(r => setTimeout(r, 450));
 
     const targetEl = document.getElementById('tab-' + tab.id);
     if (!targetEl) continue;
@@ -1957,7 +2045,8 @@ async function exportImage(scope, setProgress) {
       scale: 2,
       useCORS: true,
       backgroundColor: '#F8FAFC',
-      logging: false
+      logging: false,
+      onclone: (clonedDoc) => fixSvgFillsForHtml2Canvas(clonedDoc)
     });
 
     const link = document.createElement('a');
@@ -2003,7 +2092,7 @@ async function exportPdf(scope, setProgress) {
     setProgress(`Generando página PDF: ${tab.title} (${i + 1}/${total})...`, Math.round(((i + 0.3) / total) * 100));
 
     switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
-    await new Promise(r => setTimeout(r,  400));
+    await new Promise(r => setTimeout(r, 450));
 
     const targetEl = document.getElementById('tab-' + tab.id);
     if (!targetEl) continue;
@@ -2012,7 +2101,8 @@ async function exportPdf(scope, setProgress) {
       scale: 2,
       useCORS: true,
       backgroundColor: '#FFFFFF',
-      logging: false
+      logging: false,
+      onclone: (clonedDoc) => fixSvgFillsForHtml2Canvas(clonedDoc)
     });
 
     const imgData = canvas.toDataURL('image/png');
@@ -2140,7 +2230,7 @@ async function exportPowerPoint(scope, setProgress) {
     setProgress(`Generando diapositiva: ${tab.title} (${i + 1}/${total})...`, Math.round(15 + ((i + 1) / total) * 75));
 
     switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
-    await new Promise(r => setTimeout(r,  400));
+    await new Promise(r => setTimeout(r, 450));
 
     const targetEl = document.getElementById('tab-' + tab.id);
     if (!targetEl) continue;
@@ -2149,7 +2239,8 @@ async function exportPowerPoint(scope, setProgress) {
       scale: 2,
       useCORS: true,
       backgroundColor: '#FFFFFF',
-      logging: false
+      logging: false,
+      onclone: (clonedDoc) => fixSvgFillsForHtml2Canvas(clonedDoc)
     });
 
     const imgData = canvas.toDataURL('image/png');
