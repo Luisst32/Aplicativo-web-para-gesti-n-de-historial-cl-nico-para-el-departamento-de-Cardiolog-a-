@@ -35,6 +35,14 @@ def query_api_view(request):
         else:
             question = request.POST.get('question', '')
 
+        from security.models import SystemSetting
+        if not SystemSetting.is_chatbot_enabled():
+            return JsonResponse({
+                'status': 'disabled',
+                'message': 'El Asistente Clínico Inteligente ha sido desactivado temporalmente.',
+                'response': '⚠️ El Asistente Clínico Inteligente ha sido desactivado temporalmente por la administración del sistema.'
+            }, status=200)
+
         question = (question or '').strip()
         if not question:
             return JsonResponse({

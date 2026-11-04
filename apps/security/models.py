@@ -1,5 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
+from django.conf import settings
+import base64
+import hashlib
+from cryptography.fernet import Fernet
 
 
 class Role(models.Model):
@@ -159,3 +163,124 @@ class UserRole(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.role.name}"
+
+
+def _get_fernet_cipher():
+    secret = getattr(settings, 'SECRET_KEY', 'default-insecure-key-cardiounemi')
+    key_bytes = hashlib.sha256(secret.encode('utf-8')).digest()
+    return Fernet(base64.urlsafe_b64encode(key_bytes))
+
+
+def encrypt_api_key(raw_key: str) -> str:
+    if not raw_key or not raw_key.strip():
+        return ""
+    cipher = _get_fernet_cipher()
+    return cipher.encrypt(raw_key.strip().encode('utf-8')).decode('utf-8')
+
+
+def decrypt_api_key(enc_key: str) -> str:
+    if not enc_key or not enc_key.strip():
+        return ""
+    cipher = _get_fernet_cipher()
+    try:
+        return cipher.decrypt(enc_key.strip().encode('utf-8')).decode('utf-8')
+    except Exception:
+        # Fallback si ya estuviera en texto plano o corrupted
+        return enc_key.strip()
+
+
+class SystemSetting(models.Model):
+    """
+    Tabla global de configuración del sistema (security.system_setting).
+    Guarda ajustes globales institucionales, switch del chatbot y la API Key encriptada.
+    """
+    setting_id = models.AutoField(primary_key=True, db_column='setting_id')
+    chatbot_enabled = models.BooleanField(
+        default=True,
+        db_column='chatbot_enabled',
+        help_text="Interruptor global para activar o desactivar el Asistente Clínico con IA"
+    )
+    gemini_api_key_encrypted = models.TextField(
+        blank=True,
+        null=True,
+        db_column='gemini_api_key_encrypted',
+        help_text="Clave de API de Google Gemini encriptada con Fernet (AES-128-CBC + HMAC)"
+    )
+    gemini_model = models.CharField(
+        max_length=60,
+        default='gemini-3.5-flash-lite',
+        db_column='gemini_model',
+        help_text="Modelo por defecto de Gemini Flash"
+    )
+    updated_at_utc = models.DateTimeField(auto_now=True, db_column='updated_at_utc')
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='updated_by_id',
+        related_name='updated_settings'
+    )
+
+    class Meta:
+        app_label = 'security'
+        db_table = 'security"."system_setting'
+        verbose_name = "System Setting"
+        verbose_name_plural = "System Settings"
+
+    def __str__(self):
+        status = "ACTIVO" if self.chatbot_enabled else "INACTIVO"
+        return f"Configuración Global (Chatbot: {status})"
+
+    @classmethod
+    def get_settings(cls):
+        obj = cls.objects.first()
+        if not obj:
+            # Sembrar inicialmente con .env si existe clave previa
+            import os
+            env_key = os.getenv('GEMINI_API_KEY', '').strip()
+            enc_key = encrypt_api_key(env_key) if env_key else ""
+            obj = cls.objects.create(
+                chatbot_enabled=True,
+                gemini_api_key_encrypted=enc_key,
+                gemini_model=os.getenv('GEMINI_MODEL', 'gemini-3.5-flash-lite').strip()
+            )
+        return obj
+
+    @classmethod
+    def is_chatbot_enabled(cls) -> bool:
+        try:
+            return cls.get_settings().chatbot_enabled
+        except Exception:
+            return True
+
+    @classmethod
+    def get_gemini_api_key(cls) -> str:
+        try:
+            cfg = cls.get_settings()
+            if cfg.gemini_api_key_encrypted:
+                decrypted = decrypt_api_key(cfg.gemini_api_key_encrypted)
+                if decrypted:
+                    return decrypted
+        except Exception:
+            pass
+        # Fallback a .env
+        import os
+        return os.getenv('GEMINI_API_KEY', '').strip()
+
+    @classmethod
+    def set_settings(cls, chatbot_enabled: bool, raw_api_key: str = None, model: str = None, user=None):
+        cfg = cls.get_settings()
+        cfg.chatbot_enabled = bool(chatbot_enabled)
+        if raw_api_key is not None:
+            raw_key_clean = raw_api_key.strip()
+            if raw_key_clean:
+                cfg.gemini_api_key_encrypted = encrypt_api_key(raw_key_clean)
+            elif raw_api_key == "":
+                cfg.gemini_api_key_encrypted = ""
+        if model:
+            cfg.gemini_model = model.strip()
+        if user and getattr(user, 'is_authenticated', False):
+            cfg.updated_by = user
+        cfg.save()
+        return cfg

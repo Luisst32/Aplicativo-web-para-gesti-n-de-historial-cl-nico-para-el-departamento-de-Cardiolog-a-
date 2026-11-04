@@ -242,6 +242,23 @@ def query_gemini_assistant(
             "response": "Escriba una pregunta clínica o estadística."
         }
 
+    # 0. Verificación de interruptor global (Chatbot activado / desactivado en Ajustes)
+    try:
+        from security.models import SystemSetting
+        if not SystemSetting.is_chatbot_enabled():
+            disabled_msg = "⚠️ El Asistente Clínico Inteligente ha sido desactivado temporalmente por la administración del sistema."
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            _log_bot_query(user, clean_question, disabled_msg, tokens=0, execution_ms=elapsed_ms, status=BotQuery.Status.SUCCESS)
+            return {
+                "status": "disabled",
+                "response": disabled_msg,
+                "tokens_used": 0,
+                "execution_time_ms": elapsed_ms,
+                "mode": "disabled"
+            }
+    except Exception as e:
+        logger.warning(f"No se pudo consultar estado del chatbot en SystemSetting: {e}")
+
     # 1. Filtro estricto de privacidad (Zero PII) - Corto y directo
     if is_sensitive_or_pii_query(clean_question):
         privacy_refusal = (
@@ -280,9 +297,21 @@ def query_gemini_assistant(
     except Exception:
         pass
 
+    # Leer clave de API encriptada desde la tabla global SystemSetting con fallback a .env
+    db_key = ""
+    db_model = ""
+    try:
+        from security.models import SystemSetting
+        db_key = SystemSetting.get_gemini_api_key()
+        cfg = SystemSetting.get_settings()
+        if cfg:
+            db_model = cfg.gemini_model
+    except Exception as e:
+        logger.warning(f"Error consultando SystemSetting: {e}")
+
     env_key = os.getenv('GEMINI_API_KEY')
-    api_key = (env_key if env_key is not None else getattr(settings, 'GEMINI_API_KEY', '')).strip()
-    model_name = (os.getenv('GEMINI_MODEL', '') or getattr(settings, 'GEMINI_MODEL', '') or 'gemini-flash-latest').strip()
+    api_key = (db_key or (env_key if env_key is not None else getattr(settings, 'GEMINI_API_KEY', ''))).strip()
+    model_name = (db_model or os.getenv('GEMINI_MODEL', '') or getattr(settings, 'GEMINI_MODEL', '') or 'gemini-3.5-flash-lite').strip()
 
     cohort_context = get_anonymized_cohort_context()
 

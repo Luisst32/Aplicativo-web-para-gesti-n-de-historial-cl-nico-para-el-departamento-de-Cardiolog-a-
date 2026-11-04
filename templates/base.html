@@ -25,6 +25,7 @@
   {% block content %}{% endblock %}
 
   {% if request.user.is_authenticated %}
+    {% include "includes/modal_universal.html" %}
     {% include "includes/modal_import_sav.html" %}
     {% include "includes/modal_eliminar_ficha.html" %}
   {% endif %}
@@ -33,10 +34,17 @@
   <script>
     {% if request.user.is_authenticated %}
     window.CURRENT_USER = {
+      id: {{ request.user.user_id|default:0 }},
+      username: "{{ request.user.username|escapejs }}",
+      first_name: "{{ request.user.first_name|escapejs }}",
+      last_name: "{{ request.user.last_name|escapejs }}",
+      second_last_name: "{{ request.user.second_last_name|default:''|escapejs }}",
       nombre: "{{ request.user.full_name|default:request.user.username|escapejs }}",
       rol: "{% if request.user.is_superuser %}Administrador{% elif request.user.roles.exists %}{{ request.user.roles.first.name|escapejs }}{% elif request.user.is_staff %}Médico Evaluador{% else %}Usuario{% endif %}",
-      correo: "{{ request.user.email|default:''|escapejs }}"
+      correo: "{{ request.user.email|default:''|escapejs }}",
+      is_staff: {% if request.user.is_staff or request.user.is_superuser %}true{% else %}false{% endif %}
     };
+    window.CHATBOT_ENABLED = {{ chatbot_enabled|yesno:"true,false" }};
     {% endif %}
   </script>
   <script src="{% static 'js/global/utils.js' %}"></script>
