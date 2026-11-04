@@ -1573,3 +1573,43 @@ def ficha_eliminar_api(request):
             "success": False,
             "error": f"Error al procesar la eliminación: {str(e)}"
         }, status=500)
+
+
+from .services.sav_exporter import generate_export_dataset
+
+
+@login_required
+def export_dataset_api(request):
+    """
+    Exporta el dataset completo de pacientes y visitas a formato SPSS (.sav) o CSV
+    con las 342 columnas completas idénticas a Base_datos_Unemi_CardioUnemi-ACTUALIZADO.sav.
+    """
+    try:
+        if request.method == 'POST':
+            if request.content_type == 'application/json':
+                data = json.loads(request.body.decode('utf-8'))
+            else:
+                data = request.POST.dict()
+        else:
+            data = request.GET.dict()
+
+        format_type = data.get('format', 'sav').strip().lower()
+        patient_ids = data.get('patient_ids', [])
+        if isinstance(patient_ids, str):
+            try:
+                patient_ids = json.loads(patient_ids)
+            except Exception:
+                patient_ids = [x.strip() for x in patient_ids.split(',') if x.strip()]
+
+        file_bytes, filename, content_type = generate_export_dataset(
+            patient_ids=patient_ids,
+            format_type=format_type
+        )
+
+        response = HttpResponse(file_bytes, content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['Content-Length'] = len(file_bytes)
+        return response
+
+    except Exception as e:
+        return JsonResponse({"success": False, "error": f"Error al generar exportación: {str(e)}"}, status=500)

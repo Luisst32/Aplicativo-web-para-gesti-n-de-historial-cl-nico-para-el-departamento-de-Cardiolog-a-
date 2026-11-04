@@ -22,6 +22,9 @@ urlpatterns = [
     path('api/import-sav/analyze/', views.sav_import_analyze_api, name='api_sav_analyze'),
     path('api/import-sav/execute/', views.sav_import_execute_api, name='api_sav_execute'),
 
+    # Exportación Completa de Dataset (342 columnas SPSS .sav y CSV)
+    path('api/export-dataset/', views.export_dataset_api, name='api_export_dataset'),
+
     # Exportación oficial a PDF (HU-17)
     path('ficha/<int:visit_id>/pdf/', views.export_pdf_view, name='export_pdf'),
     path('ficha/pdf/', views.export_pdf_view, name='export_pdf_query'),

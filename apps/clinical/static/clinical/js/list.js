@@ -627,394 +627,85 @@ function obtenerPacientesSegunAlcance() {
 
 function actualizarResumenExportacion() {
   const pacs = obtenerPacientesSegunAlcance();
-  const formato = document.querySelector('input[name="exportFormato"]:checked')?.value || 'csv';
+  const formato = document.querySelector('input[name="exportFormato"]:checked')?.value || 'sav';
   const totalRegistros = pacs.length;
 
   const preview = document.getElementById('exportPreviewText');
   if (preview) {
-    const etiquetaFormato = formato === 'csv' ? 'Excel / CSV (.csv)' : 'SPSS Statistics (.sav)';
-    preview.innerHTML = `Se exportarán <strong>${totalRegistros} paciente(s)</strong> en formato <strong>${etiquetaFormato}</strong> con su expediente clínico consolidado y variables cardiovasculares.`;
+    const etiquetaFormato = formato === 'sav' ? 'SPSS Statistics (.sav)' : 'Excel / CSV (.csv)';
+    preview.innerHTML = `Se exportarán <strong>${totalRegistros} paciente(s)</strong> en formato <strong>${etiquetaFormato}</strong> con las <strong>342 columnas completas</strong> de la base de datos de Cardiología UNEMI.`;
   }
 }
 
-function ejecutarExportacionInteligente() {
+async function ejecutarExportacionInteligente() {
   const pacs = obtenerPacientesSegunAlcance();
   if (!pacs || pacs.length === 0) {
     alert('No hay pacientes que coincidan con el alcance seleccionado.');
     return;
   }
 
-  const formato = document.querySelector('input[name="exportFormato"]:checked')?.value || 'csv';
-  const estructura = 'pacientes';
-  const mods = { modFiliacion: true, modBiometria: true, modClinico: true };
-  const fechaIso = new Date().toISOString().split('T')[0];
+  const formato = document.querySelector('input[name="exportFormato"]:checked')?.value || 'sav';
+  const alcance = document.querySelector('input[name="exportAlcance"]:checked')?.value || 'todos';
+  const patientIds = alcance === 'todos' ? [] : pacs.map(p => p.id);
 
-  if (formato === 'csv') {
-    generarExportacionCSV(pacs, estructura, mods, fechaIso);
-  } else if (formato === 'sav') {
-    generarExportacionSAV(pacs, estructura, mods, fechaIso);
-  }
-
-  // Feedback en botón
   const btnTxt = document.getElementById('btnTxtDescargar');
-  if (btnTxt) {
-    const original = btnTxt.textContent;
-    btnTxt.textContent = '¡Exportado!';
-    setTimeout(() => {
-      btnTxt.textContent = original;
-      cerrarModalExportar();
-    }, 600);
-  } else {
-    cerrarModalExportar();
-  }
-}
+  const btn = document.querySelector('.btn-ejecutar-exportacion');
+  if (btn) btn.disabled = true;
+  if (btnTxt) btnTxt.textContent = 'Generando dataset oficial (342 columnas)...';
 
-function generarExportacionCSV(pacs, estructura, mods, fechaIso) {
-  const cols = [];
-  if (mods.modFiliacion) {
-    cols.push('Codigo', 'Cedula', 'Nombre', 'FechaNacimiento', 'Edad', 'Sexo', 'Estamento', 'Facultad', 'Ciudad');
-  }
-  if (estructura === 'historiales') {
-    if (mods.modClinico) cols.push('NumeroVisita', 'FechaVisita', 'TipoEvaluacion', 'Motivo', 'Medico', 'EstadoConsulta');
-    if (mods.modBiometria) cols.push('TAS', 'TSI', 'Peso', 'Talla', 'IMC', 'ASC', 'SatO2', 'Perimetro', 'RiesgoGlobal');
-  } else {
-    cols.push('TotalHistoriales');
-    if (mods.modClinico) cols.push('UltimaVisita', 'TipoUltimaVisita', 'Medico', 'RiesgoGlobal');
-    if (mods.modBiometria) cols.push('TAS', 'TSI', 'Peso', 'Talla', 'IMC', 'ASC', 'Perimetro');
-  }
-
-  const lineas = [cols.join(',')];
-
-  pacs.forEach(p => {
-    const historiales = obtenerHistorialesPaciente(p);
-
-    if (estructura === 'historiales') {
-      historiales.forEach(h => {
-        const fila = [];
-        if (mods.modFiliacion) {
-          fila.push(p.codigo, p.cedula || '', p.nombre, p.fechaNac, parseInt(calcAgeStr(p.fechaNac), 10), p.sexo, p.estamento, p.facultad, p.ciudad || '');
-        }
-        if (mods.modClinico) {
-          fila.push(h.numeroVisita, h.fechaVisita, h.tipo || '', h.motivo || '', h.medico || '', h.estado || '');
-        }
-        if (mods.modBiometria) {
-          fila.push(h.tas || p.tas || '', h.tsi || p.tsi || '', h.peso || p.peso || '', h.talla || p.talla || '', h.imc || calcIMCValor(h.peso, h.talla) || '', h.asc || calcASCValor(h.peso, h.talla) || '', h.satO2 || 98, h.perimetro || p.perimetro || '', h.riesgoGlobal || 'Bajo');
-        }
-        lineas.push(fila.map(csvEscape).join(','));
-      });
-    } else {
-      const ult = historiales[0] || null;
-      const fila = [];
-      if (mods.modFiliacion) {
-        fila.push(p.codigo, p.cedula || '', p.nombre, p.fechaNac, parseInt(calcAgeStr(p.fechaNac), 10), p.sexo, p.estamento, p.facultad, p.ciudad || '');
-      }
-      fila.push(historiales.length);
-      if (mods.modClinico) {
-        fila.push(ult ? ult.fechaVisita : '', ult ? (ult.tipo || '') : '', ult ? (ult.medico || '') : '', ult ? (ult.riesgoGlobal || 'Bajo') : 'Bajo');
-      }
-      if (mods.modBiometria) {
-        fila.push(ult ? ult.tas : (p.tas || ''), ult ? ult.tsi : (p.tsi || ''), ult ? ult.peso : (p.peso || ''), ult ? ult.talla : (p.talla || ''), ult ? (ult.imc || calcIMCValor(ult.peso, ult.talla)) : '', ult ? (ult.asc || calcASCValor(ult.peso, ult.talla)) : '', ult ? ult.perimetro : (p.perimetro || ''));
-      }
-      lineas.push(fila.map(csvEscape).join(','));
-    }
-  });
-
-  const contenido = '\uFEFF' + lineas.join('\r\n');
-  const filename = `cardiounemi_${estructura}_${fechaIso}.csv`;
-  descargarBlob(new Blob([contenido], { type: 'text/csv;charset=utf-8;' }), filename);
-}
-
-function generarExportacionSAV(pacs, estructura, mods, fechaIso) {
-  const columns = [];
-  if (mods.modFiliacion) {
-    columns.push(
-      { name: 'CODIGO', type: 'string', width: 12 },
-      { name: 'CEDULA', type: 'string', width: 12 },
-      { name: 'NOMBRE', type: 'string', width: 40 },
-      { name: 'EDAD', type: 'numeric' },
-      { name: 'SEXO', type: 'string', width: 1 },
-      { name: 'ESTAMENT', type: 'string', width: 14 }
+  try {
+    const csrfToken = (typeof getCsrfToken === 'function') ? getCsrfToken() : (
+      document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+      document.cookie.split('; ').find(r => r.startsWith('csrftoken='))?.split('=')[1] || ''
     );
-  }
 
-  if (estructura === 'historiales') {
-    if (mods.modClinico) {
-      columns.push(
-        { name: 'NUMVISIT', type: 'numeric' },
-        { name: 'FECHAVIS', type: 'string', width: 10 },
-        { name: 'TIPOVIS', type: 'string', width: 30 }
-      );
-    }
-    if (mods.modBiometria) {
-      columns.push(
-        { name: 'TAS', type: 'numeric' },
-        { name: 'TSI', type: 'numeric' },
-        { name: 'PESO', type: 'numeric' },
-        { name: 'TALLA', type: 'numeric' },
-        { name: 'IMC', type: 'numeric' }
-      );
-    }
-  } else {
-    columns.push({ name: 'NHISTOR', type: 'numeric' });
-    if (mods.modBiometria) {
-      columns.push(
-        { name: 'TAS', type: 'numeric' },
-        { name: 'TSI', type: 'numeric' },
-        { name: 'IMC', type: 'numeric' }
-      );
-    }
-    if (mods.modClinico) {
-      columns.push({ name: 'RIESGO', type: 'string', width: 10 });
-    }
-  }
-
-  const rows = [];
-  pacs.forEach(p => {
-    const historiales = obtenerHistorialesPaciente(p);
-
-    if (estructura === 'historiales') {
-      historiales.forEach(h => {
-        const r = {};
-        if (mods.modFiliacion) {
-          r.CODIGO = p.codigo;
-          r.CEDULA = p.cedula || '';
-          r.NOMBRE = p.nombre;
-          r.EDAD = parseInt(calcAgeStr(p.fechaNac), 10);
-          r.SEXO = p.sexo;
-          r.ESTAMENT = p.estamento;
-        }
-        if (mods.modClinico) {
-          r.NUMVISIT = h.numeroVisita || 1;
-          r.FECHAVIS = h.fechaVisita || '';
-          r.TIPOVIS = h.tipo || '';
-        }
-        if (mods.modBiometria) {
-          r.TAS = h.tas || p.tas || 120;
-          r.TSI = h.tsi || p.tsi || 80;
-          r.PESO = h.peso || p.peso || 70;
-          r.TALLA = h.talla || p.talla || 170;
-          r.IMC = h.imc || calcIMCValor(r.PESO, r.TALLA) || 24;
-        }
-        rows.push(r);
-      });
-    } else {
-      const ult = historiales[0] || null;
-      const r = {};
-      if (mods.modFiliacion) {
-        r.CODIGO = p.codigo;
-        r.CEDULA = p.cedula || '';
-        r.NOMBRE = p.nombre;
-        r.EDAD = parseInt(calcAgeStr(p.fechaNac), 10);
-        r.SEXO = p.sexo;
-        r.ESTAMENT = p.estamento;
-      }
-      r.NHISTOR = historiales.length;
-      if (mods.modBiometria) {
-        r.TAS = ult ? (ult.tas || 120) : (p.tas || 120);
-        r.TSI = ult ? (ult.tsi || 80) : (p.tsi || 80);
-        r.IMC = ult ? (ult.imc || 24) : 24;
-      }
-      if (mods.modClinico) {
-        r.RIESGO = ult ? (ult.riesgoGlobal || 'Bajo') : 'Bajo';
-      }
-      rows.push(r);
-    }
-  });
-
-  const blob = buildSavFile(columns, rows);
-  const filename = `cardiounemi_${estructura}_${fechaIso}.sav`;
-  descargarBlob(blob, filename);
-}
-
-function generarExportacionJSON(pacs, estructura, mods, fechaIso) {
-  const dataset = {
-    institucion: "CARDIOUNEMI - Universidad Estatal de Milagro",
-    departamento: "Departamento de Cardiología",
-    fechaExportacion: new Date().toISOString(),
-    totalPacientes: pacs.length,
-    estructura: estructura,
-    registros: pacs.map(p => {
-      const r = {};
-      if (mods.modFiliacion) {
-        r.id = p.id;
-        r.codigo = p.codigo;
-        r.cedula = p.cedula;
-        r.nombre = p.nombre;
-        r.fechaNac = p.fechaNac;
-        r.edad = parseInt(calcAgeStr(p.fechaNac), 10);
-        r.sexo = p.sexo;
-        r.estamento = p.estamento;
-        r.facultad = p.facultad;
-        r.correo = p.correo;
-        r.telefono = p.telefono;
-        r.ciudad = p.ciudad;
-      }
-      if (mods.modClinico || mods.modBiometria) {
-        const historiales = obtenerHistorialesPaciente(p);
-        if (estructura === 'historiales') {
-          r.historiales = historiales;
-        } else {
-          r.totalHistoriales = historiales.length;
-          r.ultimaEvaluacion = historiales[0] || null;
-        }
-      }
-      return r;
-    })
-  };
-
-  const contenido = JSON.stringify(dataset, null, 2);
-  const filename = `cardiounemi_dataset_${fechaIso}.json`;
-  descargarBlob(new Blob([contenido], { type: 'application/json;charset=utf-8;' }), filename);
-}
-
-// SPSS SAV Writer binario
-class SavByteWriter {
-  constructor() {
-    this.chunks = [];
-  }
-  writeInt32(value) {
-    const buf = new ArrayBuffer(4);
-    new DataView(buf).setInt32(0, value, true);
-    this.chunks.push(new Uint8Array(buf));
-  }
-  writeFloat64(value) {
-    const buf = new ArrayBuffer(8);
-    new DataView(buf).setFloat64(0, value, true);
-    this.chunks.push(new Uint8Array(buf));
-  }
-  writeFixedString(str, byteLen) {
-    const s = (str === null || str === undefined ? '' : String(str)).slice(0, byteLen);
-    const arr = new Uint8Array(byteLen).fill(0x20);
-    for (let i = 0; i < s.length; i++) {
-      arr[i] = s.charCodeAt(i) & 0xFF;
-    }
-    this.chunks.push(arr);
-  }
-  writeZeros(n) {
-    this.chunks.push(new Uint8Array(n));
-  }
-  toBlob() {
-    return new Blob(this.chunks, { type: 'application/octet-stream' });
-  }
-}
-
-function buildSavFile(columns, rows) {
-  const w = new SavByteWriter();
-  const FMT_A = 1;
-  const FMT_F = 5;
-
-  let nominalCaseSize = 0;
-  columns.forEach(c => {
-    nominalCaseSize += c.type === 'numeric' ? 1 : Math.ceil(c.width / 8);
-  });
-
-  w.writeFixedString('$FL2', 4);
-  w.writeFixedString('@(#) Exportado desde CARDIOUNEMI - Directorio de Pacientes', 60);
-  w.writeInt32(2);
-  w.writeInt32(nominalCaseSize);
-  w.writeInt32(0);
-  w.writeInt32(0);
-  w.writeInt32(rows.length);
-  w.writeFloat64(100.0);
-
-  const ahora = new Date();
-  const meses = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const dd = String(ahora.getDate()).padStart(2, '0');
-  const mmm = meses[ahora.getMonth()];
-  const yy = String(ahora.getFullYear()).slice(-2);
-  w.writeFixedString(`${dd} ${mmm} ${yy}`, 9);
-  const hh = String(ahora.getHours()).padStart(2, '0');
-  const mi = String(ahora.getMinutes()).padStart(2, '0');
-  const ss = String(ahora.getSeconds()).padStart(2, '0');
-  w.writeFixedString(`${hh}:${mi}:${ss}`, 8);
-  w.writeFixedString('Directorio de Pacientes e Historiales - CARDIOUNEMI', 64);
-  w.writeZeros(3);
-
-  columns.forEach(col => {
-    if (col.type === 'numeric') {
-      w.writeInt32(2);
-      w.writeInt32(0);
-      w.writeInt32(0);
-      w.writeInt32(0);
-      const fmt = (FMT_F << 24) | (8 << 16) | (2 << 8);
-      w.writeInt32(fmt);
-      w.writeInt32(fmt);
-      w.writeFixedString(col.name, 8);
-    } else {
-      const totalElementos = Math.ceil(col.width / 8);
-      w.writeInt32(2);
-      w.writeInt32(col.width);
-      w.writeInt32(0);
-      w.writeInt32(0);
-      const fmt = (FMT_A << 24) | (col.width << 16);
-      w.writeInt32(fmt);
-      w.writeInt32(fmt);
-      w.writeFixedString(col.name, 8);
-      for (let i = 1; i < totalElementos; i++) {
-        w.writeInt32(2);
-        w.writeInt32(-1);
-        w.writeInt32(0);
-        w.writeInt32(0);
-        w.writeInt32(0);
-        w.writeInt32(0);
-        w.writeFixedString('', 8);
-      }
-    }
-  });
-
-  w.writeInt32(999);
-  w.writeInt32(0);
-
-  rows.forEach(row => {
-    columns.forEach(col => {
-      const val = row[col.name];
-      if (col.type === 'numeric') {
-        w.writeFloat64(Number(val) || 0);
-      } else {
-        w.writeFixedString(val, Math.ceil(col.width / 8) * 8);
-      }
+    const res = await fetch('/clinical/api/export-dataset/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify({
+        patient_ids: patientIds,
+        format: formato,
+        scope: alcance
+      })
     });
-  });
 
-  return w.toBlob();
-}
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      throw new Error((errJson && errJson.error) || `Error HTTP ${res.status}`);
+    }
 
-function exportSAV() {
-  const seleccion = obtenerPacientesParaExportar();
-  const columns = [
-    { name: 'CODIGO', type: 'string', width: 12 },
-    { name: 'CEDULA', type: 'string', width: 12 },
-    { name: 'NOMBRE', type: 'string', width: 40 },
-    { name: 'FECHANAC', type: 'string', width: 10 },
-    { name: 'EDAD', type: 'numeric' },
-    { name: 'SEXO', type: 'string', width: 1 },
-    { name: 'ESTAMENT', type: 'string', width: 12 },
-    { name: 'FACULTAD', type: 'string', width: 40 },
-    { name: 'HISTORLS', type: 'numeric' },
-    { name: 'TAS', type: 'numeric' },
-    { name: 'TSI', type: 'numeric' }
-  ];
+    const blob = await res.blob();
+    const disposition = res.headers.get('Content-Disposition') || '';
+    let filename = formato === 'sav' ? 'Base_datos_Unemi_CardioUnemi.sav' : 'Base_datos_Unemi_CardioUnemi.csv';
+    const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+    if (match && match[1]) {
+      filename = match[1].replace(/['"]/g, '').trim();
+    }
 
-  const rows = seleccion.map(p => {
-    const historiales = obtenerHistorialesPaciente(p);
-    const ult = historiales[0] || null;
-    return {
-      CODIGO: p.codigo,
-      CEDULA: p.cedula || '',
-      NOMBRE: p.nombre,
-      FECHANAC: p.fechaNac,
-      EDAD: parseInt(calcAgeStr(p.fechaNac), 10),
-      SEXO: p.sexo,
-      ESTAMENT: p.estamento,
-      FACULTAD: p.facultad,
-      HISTORLS: historiales.length,
-      TAS: ult ? (ult.tas || 0) : (p.tas || 0),
-      TSI: ult ? (ult.tsi || 0) : (p.tsi || 0)
-    };
-  });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
 
-  const blob = buildSavFile(columns, rows);
-  descargarBlob(blob, 'directorio_pacientes_cardiounemi.sav');
+    if (btnTxt) btnTxt.textContent = '¡Descarga lista!';
+    setTimeout(() => {
+      if (btnTxt) btnTxt.textContent = 'Descargar Archivo';
+      if (btn) btn.disabled = false;
+      cerrarModalExportar();
+    }, 700);
+
+  } catch (err) {
+    alert('Error al exportar dataset: ' + err.message);
+    if (btnTxt) btnTxt.textContent = 'Descargar Archivo';
+    if (btn) btn.disabled = false;
+  }
 }
 
 // Impresión y descarga oficial en PDF de la Ficha Clínica (HU-17)

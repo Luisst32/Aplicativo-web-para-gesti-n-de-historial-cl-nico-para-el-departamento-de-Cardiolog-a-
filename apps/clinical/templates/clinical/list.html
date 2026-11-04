@@ -315,105 +315,124 @@
        Permite exportar todos los pacientes, filtrados o seleccionados, con
        elección de estructura longitudinal o consolidada.
        ========================================================================= -->
+    <!-- =========================================================================
+       MODAL DE EXPORTACION INTELIGENTE CON LAS 342 COLUMNAS SPSS OFICIALES
+       ========================================================================= -->
   <div class="modal-overlay" id="modalExportarInteligente">
-    <div class="modal-card modal-exportar-card">
-      <div class="modal-header">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <span class="export-icon-badge">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          </span>
+    <div class="modal-card modal-exportar-card" style="max-width: 680px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28); background: #ffffff;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 22px; border-bottom: 1px solid var(--slate-200, #e2e8f0); background: #f8fafc;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width: 38px; height: 38px; border-radius: 8px; background: #eff6ff; color: #1b2a41; display: flex; align-items: center; justify-content: center;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </div>
           <div>
-            <h3 class="modal-title" style="margin:0; font-size:1.15rem; font-weight:800; color:var(--color-navy);">Exportación Inteligente de Datos</h3>
-            <p style="margin:2px 0 0 0; font-size:0.78rem; color:var(--color-text-muted);">Defina el alcance, formato y estructura para su análisis clínico o estadístico</p>
+            <h3 class="modal-title" style="margin:0; font-size:1.12rem; font-weight:800; color:#1b2a41;">Exportación Oficial de Base de Datos</h3>
+            <p style="margin:2px 0 0 0; font-size:0.78rem; color:#64748b;">Dataset completo con las 342 columnas de la investigación CardioUNEMI</p>
           </div>
         </div>
-        <button type="button" class="modal-close-btn" onclick="cerrarModalExportar()" title="Cerrar">&times;</button>
+        <button type="button" class="modal-close-btn" onclick="cerrarModalExportar()" title="Cerrar ventana">&times;</button>
       </div>
 
-      <div class="modal-body" style="padding: 1.25rem 1.5rem; display:flex; flex-direction:column; gap:1.25rem;">
+      <div class="modal-body" style="padding: 20px 24px; display:flex; flex-direction:column; gap:16px; overflow-y:auto; flex:1;">
         
-        <!-- 1. ALCANCE DE LA EXPORTACIÓN -->
+        <!-- 1. ALCANCE DE LA EXPORTACION -->
         <div class="export-seccion">
-          <label class="export-seccion-titulo">1. Alcance de los Pacientes a Exportar</label>
-          <div class="export-radio-grid">
-            <label class="export-radio-card" id="lblAlcanceTodos">
-              <input type="radio" name="exportAlcance" value="todos" checked onchange="actualizarResumenExportacion()">
-              <div class="export-radio-content">
-                <span class="export-radio-title">Todos los pacientes</span>
-                <span class="export-radio-desc" id="descAlcanceTodos">Total del directorio clínico</span>
+          <label style="display:block; font-size:0.86rem; font-weight:700; color:#1b2a41; margin-bottom:8px;">1. Alcance de los Pacientes a Exportar</label>
+          <div class="export-radio-grid" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px;">
+            <label class="export-radio-card" id="lblAlcanceTodos" style="border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 12px; display:flex; align-items:center; gap:10px; cursor:pointer; background:#f8fafc; transition:all 0.15s ease;">
+              <input type="radio" name="exportAlcance" value="todos" checked onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41;">
+              <div style="flex:1;">
+                <div style="font-weight:700; font-size:0.84rem; color:#1e293b;">Todos los pacientes</div>
+                <div style="font-size:0.74rem; color:#64748b;" id="descAlcanceTodos">Total del directorio clínico</div>
               </div>
-              <span class="export-count-pill" id="pillAlcanceTodos">0</span>
+              <span class="export-count-pill" id="pillAlcanceTodos" style="background:#eff6ff; color:#1e40af; font-weight:700; font-size:0.75rem; padding:2px 8px; border-radius:12px;">0</span>
             </label>
 
-            <label class="export-radio-card" id="lblAlcanceFiltrados">
-              <input type="radio" name="exportAlcance" value="filtrados" onchange="actualizarResumenExportacion()">
-              <div class="export-radio-content">
-                <span class="export-radio-title">Según filtros activos</span>
-                <span class="export-radio-desc" id="descAlcanceFiltrados">Coincidentes con búsqueda y filtros</span>
+            <label class="export-radio-card" id="lblAlcanceFiltrados" style="border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 12px; display:flex; align-items:center; gap:10px; cursor:pointer; background:#f8fafc; transition:all 0.15s ease;">
+              <input type="radio" name="exportAlcance" value="filtrados" onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41;">
+              <div style="flex:1;">
+                <div style="font-weight:700; font-size:0.84rem; color:#1e293b;">Según filtros activos</div>
+                <div style="font-size:0.74rem; color:#64748b;" id="descAlcanceFiltrados">Coincidentes con búsqueda</div>
               </div>
-              <span class="export-count-pill" id="pillAlcanceFiltrados">0</span>
+              <span class="export-count-pill" id="pillAlcanceFiltrados" style="background:#f1f5f9; color:#475569; font-weight:700; font-size:0.75rem; padding:2px 8px; border-radius:12px;">0</span>
             </label>
 
-            <label class="export-radio-card" id="lblAlcanceSeleccionados">
-              <input type="radio" name="exportAlcance" value="seleccionados" onchange="actualizarResumenExportacion()">
-              <div class="export-radio-content">
-                <span class="export-radio-title">Pacientes seleccionados</span>
-                <span class="export-radio-desc" id="descAlcanceSeleccionados">Marcados con casilla en la tabla</span>
+            <label class="export-radio-card" id="lblAlcanceSeleccionados" style="border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 12px; display:flex; align-items:center; gap:10px; cursor:pointer; background:#f8fafc; transition:all 0.15s ease;">
+              <input type="radio" name="exportAlcance" value="seleccionados" onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41;">
+              <div style="flex:1;">
+                <div style="font-weight:700; font-size:0.84rem; color:#1e293b;">Pacientes seleccionados</div>
+                <div style="font-size:0.74rem; color:#64748b;" id="descAlcanceSeleccionados">Marcados en la tabla</div>
               </div>
-              <span class="export-count-pill" id="pillAlcanceSeleccionados">0</span>
+              <span class="export-count-pill" id="pillAlcanceSeleccionados" style="background:#f1f5f9; color:#475569; font-weight:700; font-size:0.75rem; padding:2px 8px; border-radius:12px;">0</span>
             </label>
 
-            <label class="export-radio-card" id="lblAlcancePagina">
-              <input type="radio" name="exportAlcance" value="pagina" onchange="actualizarResumenExportacion()">
-              <div class="export-radio-content">
-                <span class="export-radio-title">Solo página actual</span>
-                <span class="export-radio-desc" id="descAlcancePagina">10 pacientes de la vista actual</span>
+            <label class="export-radio-card" id="lblAlcancePagina" style="border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 12px; display:flex; align-items:center; gap:10px; cursor:pointer; background:#f8fafc; transition:all 0.15s ease;">
+              <input type="radio" name="exportAlcance" value="pagina" onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41;">
+              <div style="flex:1;">
+                <div style="font-weight:700; font-size:0.84rem; color:#1e293b;">Solo página actual</div>
+                <div style="font-size:0.74rem; color:#64748b;" id="descAlcancePagina">Vista activa en pantalla</div>
               </div>
-              <span class="export-count-pill" id="pillAlcancePagina">0</span>
+              <span class="export-count-pill" id="pillAlcancePagina" style="background:#f1f5f9; color:#475569; font-weight:700; font-size:0.75rem; padding:2px 8px; border-radius:12px;">0</span>
             </label>
           </div>
         </div>
 
         <!-- 2. FORMATO DE SALIDA -->
         <div class="export-seccion">
-          <label class="export-seccion-titulo">2. Formato de Salida</label>
-          <div class="export-format-grid">
-            <label class="export-format-card">
-              <input type="radio" name="exportFormato" value="csv" checked onchange="actualizarResumenExportacion()">
-              <div class="format-card-body">
-                <div class="format-badge format-csv">CSV / EXCEL</div>
-                <div class="format-details">
-                  <strong>Hoja de Cálculo (.csv)</strong>
-                  <span>Compatible con Excel y Google Sheets con codificación UTF-8 BOM.</span>
+          <label style="display:block; font-size:0.86rem; font-weight:700; color:#1b2a41; margin-bottom:8px;">2. Formato de Salida</label>
+          <div class="export-format-grid" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;">
+            <label class="export-format-card" style="border:1.5px solid #bfdbfe; border-radius:8px; padding:12px 14px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:#eff6ff; transition:all 0.15s ease;">
+              <input type="radio" name="exportFormato" value="sav" checked onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41; margin-top:3px;">
+              <div>
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+                  <span style="background:#1b2a41; color:#fff; font-size:0.7rem; font-weight:800; padding:2px 6px; border-radius:4px;">SPSS (.SAV)</span>
+                  <strong style="font-size:0.88rem; color:#1e293b;">SPSS Statistics</strong>
                 </div>
+                <span style="font-size:0.76rem; color:#475569; line-height:1.35; display:block;">
+                  Dataset binario oficial con las <strong>342 columnas completas</strong>, diccionarios de variables y etiquetas de valor (idéntico a Base_datos_Unemi_CardioUnemi).
+                </span>
               </div>
             </label>
 
-            <label class="export-format-card">
-              <input type="radio" name="exportFormato" value="sav" onchange="actualizarResumenExportacion()">
-              <div class="format-card-body">
-                <div class="format-badge format-sav">SPSS (.SAV)</div>
-                <div class="format-details">
-                  <strong>SPSS Statistics (.sav)</strong>
-                  <span>Dataset binario estructurado con diccionario de variables para tesis.</span>
+            <label class="export-format-card" style="border:1.5px solid #e2e8f0; border-radius:8px; padding:12px 14px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:#f8fafc; transition:all 0.15s ease;">
+              <input type="radio" name="exportFormato" value="csv" onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41; margin-top:3px;">
+              <div>
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+                  <span style="background:#047857; color:#fff; font-size:0.7rem; font-weight:800; padding:2px 6px; border-radius:4px;">CSV / EXCEL</span>
+                  <strong style="font-size:0.88rem; color:#1e293b;">Hoja de Cálculo</strong>
                 </div>
+                <span style="font-size:0.76rem; color:#475569; line-height:1.35; display:block;">
+                  Archivo tabular delimitado por comas con las <strong>342 columnas completas</strong> y codificación UTF-8 BOM compatible con Excel y Google Sheets.
+                </span>
               </div>
             </label>
-
           </div>
         </div>
 
-        <!-- CUADRO DE PREVISUALIZACIÓN EN VIVO -->
-        <div class="export-preview-card">
-          <div class="preview-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <!-- CUADRO DE PREVISUALIZACION EN VIVO -->
+        <div style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:12px 14px; display:flex; align-items:center; gap:12px;">
+          <div style="width:36px; height:36px; border-radius:50%; background:#eff6ff; color:#1b2a41; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
           </div>
-          <div class="preview-text" id="exportPreviewText">
-            Se exportarán <strong>12 pacientes</strong> en formato <strong>CSV (.csv)</strong> con <strong>15 columnas</strong>.
+          <div style="font-size:0.83rem; color:#334155; line-height:1.4;" id="exportPreviewText">
+            Se exportarán <strong>58 pacientes</strong> en formato <strong>SPSS Statistics (.sav)</strong> con las <strong>342 columnas completas</strong> de la base de datos de Cardiología UNEMI.
           </div>
         </div>
 
       </div>
+
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 22px; background:#f8fafc; border-top:1px solid #e2e8f0;">
+        <button type="button" class="btn btn-modal-cancel" onclick="cerrarModalExportar()" style="display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:8px 18px; font-size:0.88rem; font-weight:600; border-radius:8px; border:1.5px solid #cbd5e1; background:#ffffff; color:#475569; cursor:pointer; transition:all 0.2s ease;">
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-modal-primary btn-ejecutar-exportacion" onclick="ejecutarExportacionInteligente()" style="display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:8px 22px; font-size:0.88rem; font-weight:700; border-radius:8px; border:1px solid #1b2a41; background:#1b2a41; color:#ffffff; cursor:pointer; transition:all 0.2s ease; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span id="btnTxtDescargar">Descargar Archivo</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
 
       <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding: 1rem 1.5rem; background:#f8fafc; border-top:1px solid var(--slate-200); border-radius: 0 0 var(--radius-lg) var(--radius-lg);">
         <button type="button" class="btn" onclick="cerrarModalExportar()">Cancelar</button>
@@ -432,5 +451,5 @@
 
 {% block extra_js %}
   <script src="{% static 'clinical/js/pacientes.js' %}?v=20261031_03"></script>
-  <script src="{% static 'clinical/js/list.js' %}?v=20261031_03"></script>
+  <script src="{% static 'clinical/js/list.js' %}?v=20261104_05"></script>
 {% endblock %}
