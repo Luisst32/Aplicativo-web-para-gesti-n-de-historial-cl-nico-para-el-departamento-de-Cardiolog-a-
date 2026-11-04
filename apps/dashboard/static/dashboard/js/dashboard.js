@@ -106,7 +106,8 @@ function apexCountAndPctDataLabel(customTotal, extraOptions = {}) {
 }
 
 // Configuración de Chart.js y DataLabels
-if (typeof Chart !== 'undefined') {
+if (typeof Chart !== 'undefined') {
+  Chart.defaults.devicePixelRatio = Math.max(window.devicePixelRatio || 1, 2.5);
   if (typeof ChartDataLabels !== 'undefined') {
     Chart.register(ChartDataLabels);
     Chart.defaults.plugins.datalabels = {
@@ -1948,16 +1949,18 @@ async function exportImage(scope, setProgress) {
     setProgress(`Capturando imagen: ${tab.title} (${i + 1}/${total})...`, Math.round(((i + 0.5) / total) * 100));
 
     switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
-    await new Promise(r => setTimeout(r, 250));
+    await new Promise(r => setTimeout(r,  400));
 
     const targetEl = document.getElementById('tab-' + tab.id);
-    if (!targetEl) continue;
-
-    const canvas = await h2c(targetEl, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#F8FAFC',
-      logging: false
+    if (!targetEl) continue;
+    const canvas = await h2c(targetEl, {
+      scale: 2.8,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#FFFFFF',
+      logging: false,
+      imageTimeout: 20000,
+      windowWidth: targetEl.scrollWidth || 1350
     });
 
     const link = document.createElement('a');
@@ -2003,19 +2006,22 @@ async function exportPdf(scope, setProgress) {
     setProgress(`Generando página PDF: ${tab.title} (${i + 1}/${total})...`, Math.round(((i + 0.3) / total) * 100));
 
     switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
-    await new Promise(r => setTimeout(r, 250));
+    await new Promise(r => setTimeout(r,  400));
 
     const targetEl = document.getElementById('tab-' + tab.id);
     if (!targetEl) continue;
 
     const canvas = await h2c(targetEl, {
-      scale: 1.8,
-      useCORS: true,
-      backgroundColor: '#FFFFFF',
-      logging: false
-    });
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      scale:  2.8,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#FFFFFF',
+      logging: false,
+      imageTimeout: 20000,
+      windowWidth: targetEl.scrollWidth || 1350
+    });
+
+    const imgData = canvas.toDataURL('image/png');
 
     if (i > 0) {
       doc.addPage();
@@ -2051,7 +2057,7 @@ async function exportPdf(scope, setProgress) {
     }
     const renderX = marginX + (contentWidth - renderW) / 2;
 
-    doc.addImage(imgData, 'JPEG', renderX, 26, renderW, renderH, undefined, 'FAST');
+    doc.addImage(imgData, 'PNG', renderX, 26, renderW, renderH, undefined, 'SLOW');
 
     // Pie de página
     doc.setTextColor(148, 163, 184);
@@ -2140,16 +2146,19 @@ async function exportPowerPoint(scope, setProgress) {
     setProgress(`Generando diapositiva: ${tab.title} (${i + 1}/${total})...`, Math.round(15 + ((i + 1) / total) * 75));
 
     switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
-    await new Promise(r => setTimeout(r, 250));
+    await new Promise(r => setTimeout(r,  400));
 
     const targetEl = document.getElementById('tab-' + tab.id);
     if (!targetEl) continue;
 
     const canvas = await h2c(targetEl, {
-      scale: 1.8,
-      useCORS: true,
-      backgroundColor: '#FFFFFF',
-      logging: false
+      scale:  2.8,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#FFFFFF',
+      logging: false,
+      imageTimeout: 20000,
+      windowWidth: targetEl.scrollWidth || 1350
     });
 
     const imgData = canvas.toDataURL('image/png');
