@@ -710,25 +710,24 @@ body {
 .btn-export-dashboard {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.45rem 0.95rem;
-  background: var(--color-primary-blue, #3AA0FF);
-  color: #FFFFFF !important;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm, 6px);
-  font-size: 0.82rem;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #FFFFFF;
+  color: #1B2A41 !important;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 8px;
+  font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(58, 160, 255, 0.25);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   text-decoration: none;
 }
 
 .btn-export-dashboard:hover {
-  background: #2563EB;
-  color: #FFFFFF !important;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.35);
+  background: #F8FAFC;
+  border-color: #3AA0FF;
+  color: #3AA0FF !important;
 }
 
 .btn-export-dashboard:active {
