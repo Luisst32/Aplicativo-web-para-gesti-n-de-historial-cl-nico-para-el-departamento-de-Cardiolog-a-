@@ -7,7 +7,7 @@
   <!-- KaTeX CSS para renderizado de fórmulas médicas y estadísticas -->
   <link rel="stylesheet" href="{% static 'chatbot/vendor/katex/katex.min.css' %}">
   <!-- Estilos de la página completa de Asistente IA -->
-  <link rel="stylesheet" href="{% static 'chatbot/css/chat.css' %}">
+  <link rel="stylesheet" href="{% static 'chatbot/css/chat.css' %}?v=20261104_01">
 {% endblock %}
 
 {% block content %}
@@ -93,6 +93,7 @@
       <!-- Barra de Entrada de Consulta -->
       <footer class="chat-page-input-area">
         <form id="chat-page-form" onsubmit="return false;">
+          {% csrf_token %}
           <div class="chat-input-wrapper">
             <input
               type="text"
@@ -119,5 +120,5 @@
   <script src="{% static 'chatbot/vendor/katex/katex.min.js' %}"></script>
   <script src="{% static 'chatbot/vendor/katex/auto-render.min.js' %}"></script>
   <!-- Controlador del Chatbot -->
-  <script src="{% static 'chatbot/js/chat.js' %}"></script>
+  <script src="{% static 'chatbot/js/chat.js' %}?v=20261104_01"></script>
 {% endblock %}

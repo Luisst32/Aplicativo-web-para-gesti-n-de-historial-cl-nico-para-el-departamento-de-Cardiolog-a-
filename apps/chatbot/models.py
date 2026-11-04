@@ -52,6 +52,7 @@ class BotQuery(models.Model):
     )
 
     class Meta:
+        app_label = 'chatbot'
         db_table = 'ai"."bot_query'
         ordering = ['-created_at']
         indexes = [
