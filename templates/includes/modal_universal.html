@@ -79,7 +79,7 @@
             <button 
               type="button" 
               onclick="cambiarVistaModal('password')" 
-              style="display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; font-size: 0.82rem; font-weight: 600; color: #334155; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;"
+              style="display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; font-size: 0.82rem; font-weight: 600; color: #334155; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; cursor: pointer; transition: all 0.2s ease;"
               onmouseover="this.style.background='#f1f5f9'; this.style.borderColor='#94a3b8'; this.style.color='#0f172a';"
               onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.color='#334155';"
               title="Cambiar contraseña de acceso a su cuenta"
@@ -88,8 +88,22 @@
               <span>Cambiar contraseña</span>
             </button>
             <div style="display: flex; gap: 10px;">
-              <button type="button" class="btn-modal-cancel" onclick="cerrarModalUniversal()">Cancelar</button>
-              <button type="submit" id="btnGuardarPerfil" class="btn-modal-primary">Guardar cambios</button>
+              <button 
+                type="button" 
+                class="btn btn-modal-cancel" 
+                onclick="cerrarModalUniversal()"
+                style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 18px; font-size: 0.88rem; font-weight: 600; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer; transition: all 0.2s ease;"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit" 
+                id="btnGuardarPerfil" 
+                class="btn btn-modal-primary"
+                style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 20px; font-size: 0.88rem; font-weight: 700; border-radius: 8px; border: 1px solid #1b2a41; background: #1b2a41; color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);"
+              >
+                Guardar cambios
+              </button>
             </div>
           </div>
         </form>
@@ -132,8 +146,22 @@
           <div id="confirmPasswordErrorMsg" style="display: none; padding: 8px 12px; border-radius: 6px; background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; font-size: 0.82rem; margin-bottom: 14px;"></div>
 
           <div style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px;">
-            <button type="button" class="btn-modal-cancel" onclick="volverAFormularioPerfil()">Volver</button>
-            <button type="submit" id="btnEjecutarGuardarPerfil" class="btn-modal-primary">Confirmar y Guardar</button>
+            <button 
+              type="button" 
+              class="btn btn-modal-cancel" 
+              onclick="volverAFormularioPerfil()"
+              style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 18px; font-size: 0.88rem; font-weight: 600; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer; transition: all 0.2s ease;"
+            >
+              Volver
+            </button>
+            <button 
+              type="submit" 
+              id="btnEjecutarGuardarPerfil" 
+              class="btn btn-modal-primary"
+              style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 20px; font-size: 0.88rem; font-weight: 700; border-radius: 8px; border: 1px solid #1b2a41; background: #1b2a41; color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);"
+            >
+              Confirmar y Guardar
+            </button>
           </div>
         </form>
       </div>
@@ -182,13 +210,31 @@
           <div id="passwordErrorMsg" style="display: none; padding: 8px 12px; border-radius: 6px; background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; font-size: 0.8rem; margin-bottom: 12px;"></div>
           <div id="passwordSuccessMsg" style="display: none; padding: 8px 12px; border-radius: 6px; background: #dcfce7; border: 1px solid #86efac; color: #15803d; font-size: 0.8rem; margin-bottom: 12px;"></div>
 
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <button type="button" onclick="cambiarVistaModal('perfil')" style="background: transparent; border: none; color: #475569; font-size: 0.82rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0; display: inline-flex; align-items: center; gap: 4px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 6px;">
+            <button 
+              type="button" 
+              onclick="cambiarVistaModal('perfil')" 
+              style="background: transparent; border: none; color: #475569; font-size: 0.84rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0; display: inline-flex; align-items: center; gap: 4px;"
+            >
               ⬅ Volver a Mi Perfil
             </button>
             <div style="display: flex; gap: 10px;">
-              <button type="button" class="btn-modal-cancel" onclick="cerrarModalUniversal()">Cancelar</button>
-              <button type="submit" id="btnGuardarPassword" class="btn-modal-primary">Actualizar contraseña</button>
+              <button 
+                type="button" 
+                class="btn btn-modal-cancel" 
+                onclick="cerrarModalUniversal()"
+                style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 18px; font-size: 0.88rem; font-weight: 600; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer; transition: all 0.2s ease;"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit" 
+                id="btnGuardarPassword" 
+                class="btn btn-modal-primary"
+                style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 20px; font-size: 0.88rem; font-weight: 700; border-radius: 8px; border: 1px solid #1b2a41; background: #1b2a41; color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);"
+              >
+                Actualizar contraseña
+              </button>
             </div>
           </div>
         </form>
@@ -272,8 +318,22 @@
           <div id="ajustesSuccessMsg" style="display: none; padding: 8px 12px; border-radius: 6px; background: #dcfce7; border: 1px solid #86efac; color: #15803d; font-size: 0.8rem; margin-bottom: 12px;"></div>
 
           <div style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px;">
-            <button type="button" class="btn-modal-cancel" onclick="cerrarModalUniversal()">Cancelar</button>
-            <button type="submit" id="btnGuardarAjustes" class="btn-modal-primary">Guardar ajustes</button>
+            <button 
+              type="button" 
+              class="btn btn-modal-cancel" 
+              onclick="cerrarModalUniversal()"
+              style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 18px; font-size: 0.88rem; font-weight: 600; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer; transition: all 0.2s ease;"
+            >
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              id="btnGuardarAjustes" 
+              class="btn btn-modal-primary"
+              style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 20px; font-size: 0.88rem; font-weight: 700; border-radius: 8px; border: 1px solid #1b2a41; background: #1b2a41; color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);"
+            >
+              Guardar ajustes
+            </button>
           </div>
         </form>
       </div>

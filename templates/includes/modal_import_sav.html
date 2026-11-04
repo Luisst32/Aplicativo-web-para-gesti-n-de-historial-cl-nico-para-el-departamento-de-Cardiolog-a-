@@ -26,7 +26,7 @@
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
           </div>
           <p style="font-weight: 600; font-size: 1rem; color: var(--color-navy, #1e293b); margin: 0 0 16px;">Haz clic o arrastra aquí tu archivo <span style="color: var(--color-primary-blue, #3AA0FF); font-weight: 700;">.sav</span></p>
-          <button type="button" class="btn-modal-primary" onclick="document.getElementById('savFileInput').click()">
+          <button type="button" class="btn btn-modal-primary" onclick="document.getElementById('savFileInput').click()" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 24px; font-size: 0.88rem; font-weight: 700; border-radius: 8px; border: 1px solid #1b2a41; background: #1b2a41; color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
             Examinar archivo
           </button>
         </div>
@@ -177,13 +177,13 @@
 
     <!-- Pie del Modal (Acciones) -->
     <div class="modal-footer" style="padding: 14px 22px; background: var(--slate-50, #f8fafc); border-top: 1px solid var(--slate-200, #e2e8f0); display: flex; justify-content: flex-end; gap: 10px;">
-      <button type="button" class="btn-modal-cancel" onclick="cerrarModalImportarSav()" id="savBtnCancel">
+      <button type="button" class="btn btn-modal-cancel" onclick="cerrarModalImportarSav()" id="savBtnCancel" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 18px; font-size: 0.88rem; font-weight: 600; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer; transition: all 0.2s ease;">
         Cancelar
       </button>
-      <button type="button" class="btn-modal-primary" style="display: none;" onclick="ejecutarImportacionSav()" id="savBtnConfirm">
+      <button type="button" class="btn btn-modal-primary" style="display: none; align-items: center; justify-content: center; gap: 8px; padding: 8px 20px; font-size: 0.88rem; font-weight: 700; border-radius: 8px; border: 1px solid #1b2a41; background: #1b2a41; color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);" onclick="ejecutarImportacionSav()" id="savBtnConfirm">
         Confirmar e Importar
       </button>
-      <button type="button" class="btn-modal-primary" style="display: none;" onclick="irAListadoPacientes()" id="savBtnViewPatients">
+      <button type="button" class="btn btn-modal-primary" style="display: none; align-items: center; justify-content: center; gap: 8px; padding: 8px 20px; font-size: 0.88rem; font-weight: 700; border-radius: 8px; border: 1px solid #1b2a41; background: #1b2a41; color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);" onclick="irAListadoPacientes()" id="savBtnViewPatients">
         Ver Listado de Pacientes
       </button>
     </div>

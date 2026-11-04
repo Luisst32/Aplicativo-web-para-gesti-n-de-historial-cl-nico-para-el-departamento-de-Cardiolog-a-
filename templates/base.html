@@ -12,12 +12,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Estilos Globales (orden estricto de GEMINI.md) -->
-  <link rel="stylesheet" href="{% static 'css/global/variables.css' %}">
-  <link rel="stylesheet" href="{% static 'css/global/reset.css' %}">
-  <link rel="stylesheet" href="{% static 'css/global/typography.css' %}">
-  <link rel="stylesheet" href="{% static 'css/global/layout.css' %}">
-  <link rel="stylesheet" href="{% static 'css/global/components.css' %}">
-  <link rel="stylesheet" href="{% static 'css/global/utilities.css' %}">
+  <link rel="stylesheet" href="{% static 'css/global/variables.css' %}?v=20261104_02">
+  <link rel="stylesheet" href="{% static 'css/global/reset.css' %}?v=20261104_02">
+  <link rel="stylesheet" href="{% static 'css/global/typography.css' %}?v=20261104_02">
+  <link rel="stylesheet" href="{% static 'css/global/layout.css' %}?v=20261104_02">
+  <link rel="stylesheet" href="{% static 'css/global/components.css' %}?v=20261104_02">
+  <link rel="stylesheet" href="{% static 'css/global/utilities.css' %}?v=20261104_02">
 
   {% block extra_css %}{% endblock %}
 </head>
@@ -48,9 +48,9 @@
     window.CHATBOT_ENABLED = {{ chatbot_enabled|yesno:"true,false" }};
     {% endif %}
   </script>
-  <script src="{% static 'js/global/utils.js' %}"></script>
-  <script src="{% static 'js/global/api.js' %}"></script>
-  <script src="{% static 'js/global/ui.js' %}"></script>
+  <script src="{% static 'js/global/utils.js' %}?v=20261104_02"></script>
+  <script src="{% static 'js/global/api.js' %}?v=20261104_02"></script>
+  <script src="{% static 'js/global/ui.js' %}?v=20261104_02"></script>
   <script src="{% static 'js/global/sav_importer.js' %}?v=20261028_4"></script>
   <script src="{% static 'js/global/eliminar_ficha.js' %}?v=20261028_4"></script>
 
