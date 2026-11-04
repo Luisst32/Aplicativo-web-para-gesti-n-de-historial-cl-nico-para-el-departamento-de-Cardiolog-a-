@@ -713,14 +713,23 @@ def detect_column_typos(column_names):
 
 
 
+_CANTONS_CACHE = None
+
+def _get_cantons_cache():
+    global _CANTONS_CACHE
+    if _CANTONS_CACHE is None:
+        _CANTONS_CACHE = list(Canton.objects.select_related('province').all())
+    return _CANTONS_CACHE
+
+
 def _resolve_canton_safe(canton_name, province_name=None):
-    """Resuelve un cantón de Ecuador ignorando tildes y mayúsculas."""
+    """Resuelve un cantón de Ecuador ignorando tildes y mayúsculas de forma optimizada."""
     if not canton_name:
         return None
     raw_canton = str(canton_name).strip()
     norm_c = unicodedata.normalize('NFKD', raw_canton).encode('ASCII', 'ignore').decode('utf-8').upper()
 
-    cantons = Canton.objects.select_related('province').all()
+    cantons = _get_cantons_cache()
     for c in cantons:
         c_norm = unicodedata.normalize('NFKD', c.name).encode('ASCII', 'ignore').decode('utf-8').upper()
         if c_norm == norm_c:
@@ -732,7 +741,7 @@ def _resolve_canton_safe(canton_name, province_name=None):
         if c_norm in norm_c or norm_c in c_norm:
             return c
 
-    return Canton.objects.first()
+    return cantons[0] if cantons else None
 
 
 def _get_val_and_label(val, val_labels_dict):
@@ -763,8 +772,11 @@ def analyze_sav_file(file_obj, filename="archivo.sav"):
 
     # Guardar temporalmente el archivo subido
     with open(temp_path, "wb") as dest:
-        for chunk in file_obj.chunks():
-            dest.write(chunk)
+        if hasattr(file_obj, 'chunks'):
+            for chunk in file_obj.chunks():
+                dest.write(chunk)
+        else:
+            dest.write(file_obj.read())
 
     try:
         df_dict, meta = pyreadstat.read_sav(str(temp_path), output_format="dict")
@@ -943,8 +955,9 @@ def analyze_sav_file(file_obj, filename="archivo.sav"):
 
 def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="update"):
     """
-    Importa transaccionalmente todas las filas del archivo SPSS a PostgreSQL.
-    Crea Paciente, Visita, Antropometría, Signos Vitales, ECG, Eco, Lab y VisitAnswers.
+    Importa transaccionalmente todas las filas del archivo SPSS a PostgreSQL a máxima velocidad.
+    Crea/actualiza Paciente, Visita, Antropometría, Signos Vitales, ECG, Eco, Lab y VisitAnswers
+    utilizando bulk_create con ON CONFLICT y pre-indexación en memoria.
     """
     temp_dir = Path(settings.MEDIA_ROOT) / "temp_imports"
     temp_path = temp_dir / f"{temp_token}.sav"
@@ -979,16 +992,10 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
     sex_hombre = Sex.objects.filter(name__istartswith='H').first()
     sex_mujer = Sex.objects.filter(name__istartswith='M').first()
     ethnicity_default = Ethnicity.objects.filter(name__icontains='Mestizo').first() or Ethnicity.objects.first()
-    default_canton = Canton.objects.filter(name__icontains='Milagro').first() or Canton.objects.first()
+    default_canton = _resolve_canton_safe('Milagro') or Canton.objects.first()
     sections_by_code = {s.code: s for s in QuestionnaireSection.objects.all()}
     default_section = sections_by_code.get('MOD_3_FACTORES_MOD') or QuestionnaireSection.objects.first()
 
-    created_count = 0
-    updated_count = 0
-    skipped_count = 0
-    errors = []
-
-    # Mapas de conversión de textos a modelos de catálogo
     staff_map = {
         'PDI': StaffCategory.objects.filter(name__icontains='PDI').first(),
         'PAS': StaffCategory.objects.filter(name__icontains='PAS').first(),
@@ -1041,22 +1048,124 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
     }
     rhythm_default = EcgRhythm.objects.first()
 
-    for i in range(total_rows):
-        try:
-            with transaction.atomic():
-                # 1. Determinar Código de Estudio
-                raw_cod = None
-                if 'codigo' in field_to_col:
-                    raw_cod = df_dict[field_to_col['codigo']][i]
-                if raw_cod is not None and str(raw_cod).strip() != '':
-                    if isinstance(raw_cod, (int, float)):
-                        study_code = str(int(raw_cod))
-                    else:
-                        study_code = str(raw_cod).strip()
-                else:
-                    study_code = str(i + 1)
+    # Pre-cargar y preparar en memoria todas las Preguntas (Questions)
+    existing_questions = {q.code: q for q in Question.objects.all()}
+    col_code_map = {}
+    for col_name in col_names:
+        clean = normalize_var_name(col_name)
+        if clean:
+            clean_30 = clean[:30]
+            col_code_map[col_name] = clean_30
+            if clean_30 not in existing_questions:
+                target_sec_code = classify_spss_question_section(col_name)
+                target_sec = sections_by_code.get(target_sec_code, default_section)
+                var_label = meta.column_names_to_labels.get(col_name) or col_name
+                q = Question.objects.create(
+                    section=target_sec,
+                    code=clean_30,
+                    text=str(var_label)[:255],
+                    response_type=Question.ResponseType.TEXTO,
+                    display_order=999
+                )
+                existing_questions[clean_30] = q
 
-                # 2. Institución
+    for form_k in SPSS_QUESTION_ALIASES.keys():
+        if form_k not in existing_questions:
+            q_form = Question.objects.create(
+                section=default_section,
+                code=form_k,
+                text=f"Campo {form_k}",
+                response_type=Question.ResponseType.TEXTO,
+                display_order=999
+            )
+            existing_questions[form_k] = q_form
+
+    derived_keys = [
+        ('em_estres_trab', 'MOD_3_FACTORES_EMERG'),
+        ('em_estres_fam', 'MOD_3_FACTORES_EMERG'),
+        ('em_pers_a', 'MOD_3_FACTORES_EMERG'),
+        ('ant_padre_hta', 'MOD_3_ANTECEDENTES_FAM'),
+        ('ant_padre_dm', 'MOD_3_ANTECEDENTES_FAM'),
+        ('ant_padre_iam', 'MOD_3_ANTECEDENTES_FAM'),
+        ('ant_padre_ictus', 'MOD_3_ANTECEDENTES_FAM'),
+        ('ant_madre_hta', 'MOD_3_ANTECEDENTES_FAM'),
+        ('ant_madre_dm', 'MOD_3_ANTECEDENTES_FAM'),
+        ('ant_madre_iam', 'MOD_3_ANTECEDENTES_FAM'),
+        ('ant_madre_ictus', 'MOD_3_ANTECEDENTES_FAM'),
+        ('covid_paso', 'MOD_4_COVID'),
+        ('covid_ingreso', 'MOD_4_COVID'),
+        ('longcovid', 'MOD_4_COVID'),
+        ('pred_q1', 'MOD_6_PREDIMED'),
+        ('pred_q2', 'MOD_6_PREDIMED'),
+        ('act_realiza', 'MOD_6_ACTIVIDAD_FISICA'),
+        ('act_aerob', 'MOD_6_ACTIVIDAD_FISICA'),
+        ('act_anaerob', 'MOD_6_ACTIVIDAD_FISICA'),
+        ('act_deporte', 'MOD_6_ACTIVIDAD_FISICA')
+    ]
+    for d_k, s_cd in derived_keys:
+        if d_k not in existing_questions:
+            sec_obj = sections_by_code.get(s_cd, default_section)
+            q_d = Question.objects.create(
+                section=sec_obj,
+                code=d_k,
+                text=f"Campo {d_k}",
+                response_type=Question.ResponseType.TEXTO,
+                display_order=999
+            )
+            existing_questions[d_k] = q_d
+
+    # Pre-escanear identificadores de todas las filas
+    row_meta = []
+    for i in range(total_rows):
+        raw_cod = None
+        if 'codigo' in field_to_col:
+            raw_cod = df_dict[field_to_col['codigo']][i]
+        if raw_cod is not None and str(raw_cod).strip() != '':
+            if isinstance(raw_cod, (int, float)):
+                sc = str(int(raw_cod))
+            else:
+                sc = str(raw_cod).strip()
+        else:
+            sc = str(i + 1)
+
+        id_c = None
+        if 'cedula' in field_to_col:
+            v_ced = df_dict[field_to_col['cedula']][i]
+            if v_ced and str(v_ced).strip():
+                id_c = str(v_ced).strip()
+        if not id_c:
+            numeric_num = int(re.sub(r'[^0-9]', '', sc)) if any(c.isdigit() for c in sc) else (i + 1)
+            id_c = f"09{str(numeric_num).zfill(8)}"
+
+        row_meta.append((sc, id_c))
+
+    all_scs = [sc for sc, _ in row_meta]
+    all_ids = [id_c for _, id_c in row_meta]
+
+    # Pre-indexar visitas y pacientes existentes en memoria
+    existing_visits = {
+        v.study_code: v
+        for v in Visit.objects.filter(study_code__in=all_scs)
+        .select_related('patient', 'anthropometry', 'vital_signs', 'electrocardiogram', 'laboratory', 'echocardiogram')
+    }
+    existing_patients = {
+        p.id_card: p
+        for p in Patient.objects.filter(id_card__in=all_ids)
+        .select_related('visit', 'visit__anthropometry', 'visit__vital_signs', 'visit__electrocardiogram', 'visit__laboratory', 'visit__echocardiogram')
+    }
+
+    created_count = 0
+    updated_count = 0
+    skipped_count = 0
+    errors = []
+    answers_to_upsert = {}
+
+    with transaction.atomic():
+        for i in range(total_rows):
+            study_code, id_card = row_meta[i]
+
+            try:
+                # 1. Institución
                 inst = inst_unemi
                 if 'universidad' in field_to_col:
                     u_val = df_dict[field_to_col['universidad']][i]
@@ -1064,8 +1173,7 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                     if 'ESPOL' in u_lbl.upper() or u_val == 2.0:
                         inst = inst_espol
 
-                # 3. Datos Demográficos
-                # Nombres
+                # 2. Datos Demográficos
                 first_names = f"Participante {study_code}"
                 last_name1 = "Estudio UNEMI"
                 last_name2 = ""
@@ -1079,18 +1187,6 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                     v_ap2 = df_dict[field_to_col['apellido2']][i]
                     if v_ap2 and str(v_ap2).strip(): last_name2 = str(v_ap2).strip()
 
-                # Cédula
-                id_card = None
-                if 'cedula' in field_to_col:
-                    v_ced = df_dict[field_to_col['cedula']][i]
-                    if v_ced and str(v_ced).strip():
-                        id_card = str(v_ced).strip()
-                if not id_card:
-                    # Generar serie de 10 dígitos única
-                    numeric_num = int(re.sub(r'[^0-9]', '', study_code)) if any(c.isdigit() for c in study_code) else (i + 1)
-                    id_card = f"09{str(numeric_num).zfill(8)}"
-
-                # Sexo
                 sex = sex_hombre
                 if 'sexo' in field_to_col:
                     s_val = df_dict[field_to_col['sexo']][i]
@@ -1098,7 +1194,6 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                     if 'MUJER' in s_lbl.upper() or s_val == 2.0:
                         sex = sex_mujer
 
-                # Edad
                 edad_val = None
                 if 'edad' in field_to_col:
                     raw_edad = df_dict[field_to_col['edad']][i]
@@ -1106,7 +1201,6 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                         try: edad_val = int(float(raw_edad))
                         except Exception: pass
 
-                # Fecha de Nacimiento: conservar el dato exacto tal como está registrado en SPSS
                 birth_date = None
                 if 'fecha_nac' in field_to_col:
                     raw_dob = df_dict[field_to_col['fecha_nac']][i]
@@ -1120,30 +1214,23 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                     birth_year = (current_year - edad_val) if edad_val else 1980
                     birth_date = datetime.date(birth_year, 1, 1)
 
-                # Lugar de Nacimiento (Cantón)
                 birth_canton = default_canton
                 if 'ciudad_nac' in field_to_col:
                     val_cn = df_dict[field_to_col['ciudad_nac']][i]
                     _, lbl_cn = _get_val_and_label(val_cn, meta.variable_value_labels.get(field_to_col['ciudad_nac'], {}))
-                    resolved_cn = _resolve_canton_safe(lbl_cn or val_cn)
-                    if resolved_cn:
-                        birth_canton = resolved_cn
+                    rc = _resolve_canton_safe(lbl_cn or val_cn)
+                    if rc: birth_canton = rc
 
-                # Residencia (Cantón)
                 residence_canton = default_canton
                 if 'ciudad_res' in field_to_col:
                     val_cr = df_dict[field_to_col['ciudad_res']][i]
                     _, lbl_cr = _get_val_and_label(val_cr, meta.variable_value_labels.get(field_to_col['ciudad_res'], {}))
-                    resolved_cr = _resolve_canton_safe(lbl_cr or val_cr)
-                    if resolved_cr:
-                        residence_canton = resolved_cr
+                    rc = _resolve_canton_safe(lbl_cr or val_cr)
+                    if rc: residence_canton = rc
 
-                # Buscar paciente existente por código de visita o por cédula
-                patient = Patient.objects.filter(visit__study_code=study_code).first()
-                if not patient:
-                    patient = Patient.objects.filter(id_card=id_card).first()
+                # 3. Paciente
+                patient = existing_visits.get(study_code).patient if (study_code in existing_visits and existing_visits[study_code].patient) else existing_patients.get(id_card)
 
-                # Si el usuario eligió omitir duplicados y ya existe, saltar
                 if patient and duplicate_action == "skip":
                     skipped_count += 1
                     continue
@@ -1166,12 +1253,10 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                 patient.foreign_birth_place = None
                 patient.status = Patient.Status.ACTIVE
                 patient.save()
+                existing_patients[id_card] = patient
 
-                # 4. Crear / Actualizar Visita
-                visit = getattr(patient, 'visit', None)
-                if not visit:
-                    visit = Visit.objects.filter(study_code=study_code).first()
-
+                # 4. Visita
+                visit = getattr(patient, 'visit', None) or existing_visits.get(study_code)
                 if not visit:
                     visit = Visit(patient=patient, study_code=study_code)
                     created_count += 1
@@ -1181,7 +1266,6 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                 visit.evaluator = user
                 visit.residence_canton = residence_canton
 
-                # Fecha Visita
                 visit_date = datetime.date.today()
                 if 'fecha_visita' in field_to_col:
                     raw_fv = df_dict[field_to_col['fecha_visita']][i]
@@ -1192,7 +1276,6 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                         except Exception: pass
                 visit.visit_date = visit_date
 
-                # Estamento institucional
                 if 'estamento' in field_to_col:
                     st_val = df_dict[field_to_col['estamento']][i]
                     _, st_lbl = _get_val_and_label(st_val, meta.variable_value_labels.get(field_to_col['estamento'], {}))
@@ -1201,7 +1284,6 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                             visit.staff_category = sc_obj
                             break
 
-                # Hijos y convivientes
                 if 'hijos' in field_to_col:
                     raw_h = df_dict[field_to_col['hijos']][i]
                     if raw_h is not None:
@@ -1214,7 +1296,6 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                         try: visit.num_cohabitants = int(float(raw_cv))
                         except Exception: pass
 
-                # Mapeo de selectores sociodemográficos
                 if 'estado_civil' in field_to_col:
                     ec_val = df_dict[field_to_col['estado_civil']][i]
                     _, ec_lbl = _get_val_and_label(ec_val, meta.variable_value_labels.get(field_to_col['estado_civil'], {}))
@@ -1273,6 +1354,7 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
 
                 visit.status = Visit.Status.COMPLETED
                 visit.save()
+                existing_visits[study_code] = visit
 
                 # 5. Antropometría
                 peso_val = None
@@ -1288,15 +1370,15 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                     v_pm = df_dict[field_to_col['perimetro']][i]
                     if v_pm: perim_val = Decimal(str(round(float(v_pm), 1)))
 
-                ant, _ = Anthropometry.objects.get_or_create(visit=visit, defaults={
-                    "weight_kg": peso_val or Decimal("70.00"),
-                    "height_cm": talla_val or Decimal("170.0"),
-                    "waist_circumference_cm": perim_val or Decimal("85.0")
-                })
-                if peso_val: ant.weight_kg = peso_val
-                if talla_val: ant.height_cm = talla_val
-                if perim_val: ant.waist_circumference_cm = perim_val
+                ant = getattr(visit, 'anthropometry', None)
+                if not ant:
+                    ant = Anthropometry(visit=visit, weight_kg=peso_val or Decimal("70.00"), height_cm=talla_val or Decimal("170.0"), waist_circumference_cm=perim_val or Decimal("85.0"))
+                else:
+                    if peso_val: ant.weight_kg = peso_val
+                    if talla_val: ant.height_cm = talla_val
+                    if perim_val: ant.waist_circumference_cm = perim_val
                 ant.save()
+                visit.anthropometry = ant
 
                 # 6. Signos Vitales
                 tas_val = 120
@@ -1324,30 +1406,23 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                         try: fc_val = int(float(v_fc))
                         except Exception: pass
 
-                vs, _ = VitalSigns.objects.get_or_create(visit=visit, defaults={
-                    "systolic_bp": tas_val,
-                    "diastolic_bp": tad_val,
-                    "oxygen_saturation": sat_val,
-                    "heart_rate": fc_val
-                })
+                vs = getattr(visit, 'vital_signs', None)
+                if not vs:
+                    vs = VitalSigns(visit=visit)
                 vs.systolic_bp = tas_val
                 vs.diastolic_bp = tad_val
                 vs.oxygen_saturation = sat_val
                 vs.heart_rate = fc_val
 
-                # Soplos
                 if 'soplos' in field_to_col:
                     v_sop = df_dict[field_to_col['soplos']][i]
                     _, sop_lbl = _get_val_and_label(v_sop, meta.variable_value_labels.get(field_to_col['soplos'], {}))
                     sop_str = sop_lbl.lower()
                     vs.systolic_murmur = 'sist' in sop_str
                     vs.diastolic_murmur = 'diast' in sop_str
-                    # Grado
                     m_grade = re.search(r'grado\s*([1-4])', sop_str)
-                    if m_grade:
-                        vs.murmur_grade = int(m_grade.group(1))
+                    if m_grade: vs.murmur_grade = int(m_grade.group(1))
 
-                # Auscultaciones y pulsos
                 if 'resp_normal' in field_to_col:
                     v_rn = df_dict[field_to_col['resp_normal']][i]
                     vs.pulmonary_auscultation_normal = (v_rn == 1.0 or v_rn is None)
@@ -1358,10 +1433,14 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                     v_pu = df_dict[field_to_col['pulsos']][i]
                     vs.pedal_pulses_symmetric = (v_pu == 1.0 or v_pu is None)
                 vs.save()
+                visit.vital_signs = vs
 
                 # 7. ECG
-                ecg, _ = Electrocardiogram.objects.get_or_create(visit=visit, defaults={"rhythm": rhythm_default})
+                ecg = getattr(visit, 'electrocardiogram', None)
+                if not ecg:
+                    ecg = Electrocardiogram(visit=visit, rhythm=rhythm_default)
                 ecg.heart_rate = fc_val
+
                 if 'ecg_ritmo' in field_to_col:
                     v_r = df_dict[field_to_col['ecg_ritmo']][i]
                     _, r_lbl = _get_val_and_label(v_r, meta.variable_value_labels.get(field_to_col['ecg_ritmo'], {}))
@@ -1404,9 +1483,12 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                     _, bl_lbl = _get_val_and_label(v_bl, meta.variable_value_labels.get(field_to_col['ecg_bloqueo'], {}))
                     if bl_lbl: ecg.bundle_branch_block = bl_lbl[:50]
                 ecg.save()
+                visit.electrocardiogram = ecg
 
                 # 8. Laboratorio
-                lab, _ = Laboratory.objects.get_or_create(visit=visit)
+                lab = getattr(visit, 'laboratory', None)
+                if not lab:
+                    lab = Laboratory(visit=visit)
                 lab_mapping_keys = [
                     ('lab_hematies', 'rbc_millions'),
                     ('lab_hemoglobina', 'hemoglobin_g_dl'),
@@ -1434,9 +1516,12 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                             try: setattr(lab, model_attr, Decimal(str(round(float(val_l), 2))))
                             except Exception: pass
                 lab.save()
+                visit.laboratory = lab
 
                 # 9. Ecocardiograma
-                echo, _ = Echocardiogram.objects.get_or_create(visit=visit)
+                echo = getattr(visit, 'echocardiogram', None)
+                if not echo:
+                    echo = Echocardiogram(visit=visit)
                 if 'eco_ddvi' in field_to_col:
                     v_dd = df_dict[field_to_col['eco_ddvi']][i]
                     if v_dd:
@@ -1457,9 +1542,9 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                     v_calc = df_dict[field_to_col['eco_calcificacion']][i]
                     echo.aortic_valve_calcification = (v_calc == 1.0)
                 echo.save()
+                visit.echocardiogram = echo
 
-                # 10. Persistencia Universal e Inteligente de TODAS las variables SPSS en VisitAnswer
-                # Se asigna cada variable a su QuestionnaireSection exacta y se sincroniza bidireccionalmente con el formulario
+                # 10. Persistencia de respuestas de variables SPSS en memoria
                 for col_name in col_names:
                     val_raw = df_dict[col_name][i]
                     if val_raw is None or str(val_raw).strip() == '':
@@ -1469,27 +1554,13 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                     _, text_lbl = _get_val_and_label(val_raw, vlabels)
                     val_str = text_lbl if text_lbl else str(val_raw).strip()
 
-                    clean_code = normalize_var_name(col_name)
+                    clean_code = col_code_map.get(col_name)
                     if not clean_code:
                         continue
-                    clean_code = clean_code[:30]
 
-                    target_sec_code = classify_spss_question_section(col_name)
-                    target_sec = sections_by_code.get(target_sec_code, default_section)
-
-                    var_label = meta.column_names_to_labels.get(col_name) or col_name
-                    q = Question.objects.filter(code=clean_code).first()
+                    q = existing_questions.get(clean_code)
                     if not q:
-                        q = Question.objects.create(
-                            section=target_sec,
-                            code=clean_code,
-                            text=str(var_label)[:255],
-                            response_type=Question.ResponseType.TEXTO,
-                            display_order=999
-                        )
-                    elif q.section != target_sec and q.section == default_section:
-                        q.section = target_sec
-                        q.save(update_fields=['section'])
+                        continue
 
                     num_val = None
                     if isinstance(val_raw, (int, float)) and not text_lbl:
@@ -1503,130 +1574,99 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                         num_val = None
                         ans_text = val_str[:250]
 
-                    VisitAnswer.objects.update_or_create(
+                    answers_to_upsert[(visit.pk, q.pk)] = VisitAnswer(
                         visit=visit,
                         question=q,
-                        defaults={
-                            "text_value": ans_text,
-                            "numeric_value": num_val,
-                            "selected_option": None
-                        }
+                        text_value=ans_text,
+                        numeric_value=num_val,
+                        selected_option=None
                     )
 
-                    # Sincronización cruzada con identificadores del formulario HTML
+                    # Form aliases
                     for form_k, spss_k in SPSS_QUESTION_ALIASES.items():
                         if spss_k == clean_code:
-                            q_form = Question.objects.filter(code=form_k).first()
-                            if not q_form:
-                                q_form = Question.objects.create(
-                                    section=target_sec,
-                                    code=form_k,
-                                    text=f"Campo {form_k}",
-                                    response_type=Question.ResponseType.TEXTO,
-                                    display_order=999
+                            q_form = existing_questions.get(form_k)
+                            if q_form:
+                                answers_to_upsert[(visit.pk, q_form.pk)] = VisitAnswer(
+                                    visit=visit,
+                                    question=q_form,
+                                    text_value=ans_text,
+                                    numeric_value=num_val,
+                                    selected_option=None
                                 )
-                            VisitAnswer.objects.update_or_create(
-                                visit=visit,
-                                question=q_form,
-                                defaults={
-                                    "text_value": ans_text,
-                                    "numeric_value": num_val,
-                                    "selected_option": None
-                                }
-                            )
 
-                # Descomposición y derivación inteligente de preguntas compuestas para el formulario web:
-                def _set_derived_ans(q_code, q_val, sec_cd):
-                    sec_obj = sections_by_code.get(sec_cd, default_section)
-                    q_d = Question.objects.filter(code=q_code).first()
-                    if not q_d:
-                        q_d = Question.objects.create(
-                            section=sec_obj,
-                            code=q_code,
-                            text=f"Campo {q_code}",
-                            response_type=Question.ResponseType.TEXTO,
-                            display_order=999
+                # Derivaciones compuestas
+                def _set_ans(code, val):
+                    q_d = existing_questions.get(code)
+                    if q_d:
+                        answers_to_upsert[(visit.pk, q_d.pk)] = VisitAnswer(
+                            visit=visit,
+                            question=q_d,
+                            text_value=val,
+                            numeric_value=None,
+                            selected_option=None
                         )
-                    VisitAnswer.objects.update_or_create(
-                        visit=visit,
-                        question=q_d,
-                        defaults={"text_value": q_val, "numeric_value": None, "selected_option": None}
-                    )
 
-                # 1. Estrés laboral y familiar
                 estres_raw = str(df_dict.get('ESTRES', [None]*total_rows)[i] or '').upper()
-                if 'TRABAJO' in estres_raw:
-                    _set_derived_ans('em_estres_trab', 'Si', 'MOD_3_FACTORES_EMERG')
-                elif estres_raw and 'NO' in estres_raw:
-                    _set_derived_ans('em_estres_trab', 'No', 'MOD_3_FACTORES_EMERG')
-                if 'FAMILIAR' in estres_raw or 'FAMILIA' in estres_raw:
-                    _set_derived_ans('em_estres_fam', 'Si', 'MOD_3_FACTORES_EMERG')
-                elif estres_raw and 'NO' in estres_raw:
-                    _set_derived_ans('em_estres_fam', 'No', 'MOD_3_FACTORES_EMERG')
+                if 'TRABAJO' in estres_raw: _set_ans('em_estres_trab', 'Si')
+                elif estres_raw and 'NO' in estres_raw: _set_ans('em_estres_trab', 'No')
+                if 'FAMILIAR' in estres_raw or 'FAMILIA' in estres_raw: _set_ans('em_estres_fam', 'Si')
+                elif estres_raw and 'NO' in estres_raw: _set_ans('em_estres_fam', 'No')
 
-                # 2. Personalidad Tipo A
                 pers_raw = str(df_dict.get('PERSONALIDAD_TIPO_A', [None]*total_rows)[i] or '').upper()
-                if 'TIPO A' in pers_raw or 'SI' in pers_raw:
-                    _set_derived_ans('em_pers_a', 'Si', 'MOD_3_FACTORES_EMERG')
-                elif pers_raw and 'NO' in pers_raw:
-                    _set_derived_ans('em_pers_a', 'No', 'MOD_3_FACTORES_EMERG')
+                if 'TIPO A' in pers_raw or 'SI' in pers_raw: _set_ans('em_pers_a', 'Si')
+                elif pers_raw and 'NO' in pers_raw: _set_ans('em_pers_a', 'No')
 
-                # 3. Antecedentes Padres
                 padre_raw = str(df_dict.get('ANTECEDENTES_PADRES', [None]*total_rows)[i] or '').upper()
                 if padre_raw:
-                    _set_derived_ans('ant_padre_hta', 'Si' if 'HTA' in padre_raw else 'No', 'MOD_3_ANTECEDENTES_FAM')
-                    _set_derived_ans('ant_padre_dm', 'Si' if ('DIAB' in padre_raw or 'DM' in padre_raw) else 'No', 'MOD_3_ANTECEDENTES_FAM')
-                    _set_derived_ans('ant_padre_iam', 'Si' if ('INFARTO' in padre_raw or 'IAM' in padre_raw) else 'No', 'MOD_3_ANTECEDENTES_FAM')
-                    _set_derived_ans('ant_padre_ictus', 'Si' if ('ICTUS' in padre_raw or 'ACV' in padre_raw) else 'No', 'MOD_3_ANTECEDENTES_FAM')
+                    _set_ans('ant_padre_hta', 'Si' if 'HTA' in padre_raw else 'No')
+                    _set_ans('ant_padre_dm', 'Si' if ('DIAB' in padre_raw or 'DM' in padre_raw) else 'No')
+                    _set_ans('ant_padre_iam', 'Si' if ('INFARTO' in padre_raw or 'IAM' in padre_raw) else 'No')
+                    _set_ans('ant_padre_ictus', 'Si' if ('ICTUS' in padre_raw or 'ACV' in padre_raw) else 'No')
 
-                # 4. Antecedentes Madres
                 madre_raw = str(df_dict.get('ANTECEDENTES_MADRES', [None]*total_rows)[i] or '').upper()
                 if madre_raw:
-                    _set_derived_ans('ant_madre_hta', 'Si' if 'HTA' in madre_raw else 'No', 'MOD_3_ANTECEDENTES_FAM')
-                    _set_derived_ans('ant_madre_dm', 'Si' if ('DIAB' in madre_raw or 'DM' in madre_raw) else 'No', 'MOD_3_ANTECEDENTES_FAM')
-                    _set_derived_ans('ant_madre_iam', 'Si' if ('INFARTO' in madre_raw or 'IAM' in madre_raw) else 'No', 'MOD_3_ANTECEDENTES_FAM')
-                    _set_derived_ans('ant_madre_ictus', 'Si' if ('ICTUS' in madre_raw or 'ACV' in madre_raw) else 'No', 'MOD_3_ANTECEDENTES_FAM')
+                    _set_ans('ant_madre_hta', 'Si' if 'HTA' in madre_raw else 'No')
+                    _set_ans('ant_madre_dm', 'Si' if ('DIAB' in madre_raw or 'DM' in madre_raw) else 'No')
+                    _set_ans('ant_madre_iam', 'Si' if ('INFARTO' in madre_raw or 'IAM' in madre_raw) else 'No')
+                    _set_ans('ant_madre_ictus', 'Si' if ('ICTUS' in madre_raw or 'ACV' in madre_raw) else 'No')
 
-                # 5. COVID-19
                 covid_raw = str(df_dict.get('HISTORIA_COVID', [None]*total_rows)[i] or '').upper()
-                if covid_raw:
-                    _set_derived_ans('covid_paso', 'Si' if ('SI' in covid_raw or covid_raw == '1.0') else 'No', 'MOD_4_COVID')
+                if covid_raw: _set_ans('covid_paso', 'Si' if ('SI' in covid_raw or covid_raw == '1.0') else 'No')
                 hosp_raw = str(df_dict.get('AFECTACION_COVID', [None]*total_rows)[i] or '').upper()
-                if 'HOSPITAL' in hosp_raw or 'INGRESO' in hosp_raw:
-                    _set_derived_ans('covid_ingreso', 'Si', 'MOD_4_COVID')
+                if 'HOSPITAL' in hosp_raw or 'INGRESO' in hosp_raw: _set_ans('covid_ingreso', 'Si')
                 long_raw = str(df_dict.get('LONG_COVID', [None]*total_rows)[i] or '').upper()
-                if long_raw:
-                    _set_derived_ans('longcovid', 'Si' if ('SI' in long_raw or long_raw == '1.0') else 'No', 'MOD_4_COVID')
+                if long_raw: _set_ans('longcovid', 'Si' if ('SI' in long_raw or long_raw == '1.0') else 'No')
 
-                # 6. PREDIMED (Dieta Mediterránea)
                 oliva_raw = str(df_dict.get('USA_USTED_ACEITE_DE_OLIVA', [None]*total_rows)[i] or '').upper()
                 if oliva_raw:
                     is_ol = 'Si' if ('SI' in oliva_raw or oliva_raw == '1.0') else 'No'
-                    _set_derived_ans('pred_q1', is_ol, 'MOD_6_PREDIMED')
-                    _set_derived_ans('pred_q2', is_ol, 'MOD_6_PREDIMED')
+                    _set_ans('pred_q1', is_ol)
+                    _set_ans('pred_q2', is_ol)
 
-                # 7. Actividad Física
                 act_raw = str(df_dict.get('USTED_REALIZA_ACTIVIDAD_FISICA', [None]*total_rows)[i] or '').upper()
-                if act_raw:
-                    _set_derived_ans('act_realiza', 'Si' if ('SI' in act_raw or act_raw == '1.0') else 'No', 'MOD_6_ACTIVIDAD_FISICA')
-
+                if act_raw: _set_ans('act_realiza', 'Si' if ('SI' in act_raw or act_raw == '1.0') else 'No')
                 aer_raw = str(df_dict.get('USTED_REALIZA_EJERCICIOS_AEROBICOS', [None]*total_rows)[i] or '').upper()
-                if aer_raw:
-                    _set_derived_ans('act_aerob', 'Si' if ('SI' in aer_raw or aer_raw == '1.0') else 'No', 'MOD_6_ACTIVIDAD_FISICA')
-
+                if aer_raw: _set_ans('act_aerob', 'Si' if ('SI' in aer_raw or aer_raw == '1.0') else 'No')
                 ana_raw = str(df_dict.get('USTED_REALIZA_EJERCICIOS_ANAEROBICOS', [None]*total_rows)[i] or '').upper()
-                if ana_raw:
-                    _set_derived_ans('act_anaerob', 'Si' if ('SI' in ana_raw or ana_raw == '1.0') else 'No', 'MOD_6_ACTIVIDAD_FISICA')
-
+                if ana_raw: _set_ans('act_anaerob', 'Si' if ('SI' in ana_raw or ana_raw == '1.0') else 'No')
                 dep_raw = str(df_dict.get('HACE_DEPORTE', [None]*total_rows)[i] or '').upper()
-                if dep_raw:
-                    _set_derived_ans('act_deporte', 'Si' if ('SI' in dep_raw or dep_raw == '1.0') else 'No', 'MOD_6_ACTIVIDAD_FISICA')
+                if dep_raw: _set_ans('act_deporte', 'Si' if ('SI' in dep_raw or dep_raw == '1.0') else 'No')
 
+            except Exception as e:
+                errors.append(f"Fila {i + 1} (Código {study_code}): {str(e)}")
 
-        except Exception as e:
-            errors.append(f"Fila {i + 1} (Código {study_code if 'study_code' in locals() else i + 1}): {str(e)}")
+        # Bulk create de todas las respuestas acumuladas en PostgreSQL
+        if answers_to_upsert:
+            VisitAnswer.objects.bulk_create(
+                list(answers_to_upsert.values()),
+                update_conflicts=True,
+                unique_fields=['visit', 'question'],
+                update_fields=['text_value', 'numeric_value', 'selected_option'],
+                batch_size=2000
+            )
 
-        # Registrar auditoria global de la importacion
+        # Registrar auditoría única al finalizar la importación
         if ChangeLog and user:
             try:
                 import json
@@ -1641,6 +1681,7 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                         'total_rows': total_rows,
                         'created_patients': created_count,
                         'updated_patients': updated_count,
+                        'skipped_patients': skipped_count,
                         'error_count': len(errors)
                     }),
                     status=ChangeLog.Status.RECORDED

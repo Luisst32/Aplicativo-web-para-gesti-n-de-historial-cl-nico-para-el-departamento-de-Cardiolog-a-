@@ -1,6 +1,6 @@
-<!-- Modal de Importación Automática de Archivos SPSS (.sav) -->
+<!-- Modal de Importación Inteligente y Automática de Archivos SPSS (.sav) -->
 <div class="modal-overlay" id="modalImportarSav" style="display:none; align-items:center; justify-content:center;">
-  <div class="modal-card" style="max-width: 560px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28); background: #ffffff;">
+  <div class="modal-card" id="savModalCard" style="max-width: 560px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28); background: #ffffff; transition: max-width 0.3s ease;">
     
     <!-- Encabezado del Modal -->
     <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 22px; border-bottom: 1px solid var(--slate-200, #e2e8f0); background: #f8fafc;">
@@ -9,14 +9,14 @@
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         </div>
         <div>
-          <h3 class="modal-title" style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #1b2a41;">Importar archivo SPSS (.sav)</h3>
+          <h3 class="modal-title" style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #1b2a41;">Importación Inteligente SPSS (.sav)</h3>
         </div>
       </div>
       <button type="button" class="modal-close-btn" onclick="cerrarModalImportarSav()" title="Cerrar ventana">&times;</button>
     </div>
 
     <!-- Cuerpo del Modal -->
-    <div class="modal-body" style="padding: 24px 24px; overflow-y: auto; flex: 1;">
+    <div class="modal-body" style="padding: 22px 24px; overflow-y: auto; flex: 1;">
 
       <!-- FASE 1: Selección y Subida de Archivo -->
       <div id="savPhaseUpload">
@@ -33,8 +33,8 @@
       </div>
 
       <!-- FASE 2: Barra de Carga Dinámica (Importación Automática) -->
-      <div id="savPhaseLoading" style="display: none; text-align: center; padding: 32px 16px;">
-        <div style="width: 54px; height: 54px; margin: 0 auto 16px; background: #eff6ff; color: #3AA0FF; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+      <div id="savPhaseLoading" style="display: none; text-align: center; padding: 36px 16px;">
+        <div style="width: 56px; height: 56px; margin: 0 auto 16px; background: #eff6ff; color: #3AA0FF; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="animation: savSpin 0.9s linear infinite;">
             <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
           </svg>
@@ -56,15 +56,104 @@
         </div>
       </div>
 
-      <!-- FASE 3: Éxito -->
-      <div id="savPhaseSuccess" style="display: none; text-align: center; padding: 24px 16px;">
-        <div style="width: 58px; height: 58px; margin: 0 auto 16px; background: #dcfce7; color: #15803d; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-        </div>
-        <h3 style="font-size: 1.18rem; font-weight: 800; color: #0f172a; margin: 0 0 6px;">¡Importación Completada con Éxito!</h3>
-        <p id="savSuccessMessage" style="font-size: 0.88rem; color: #475569; margin: 0 0 16px;">Se han registrado los pacientes y datos clínicos en la base de datos.</p>
+      <!-- FASE 3: Diagnóstico Inteligente, Resumen de Correcciones y Resultados -->
+      <div id="savPhaseSuccess" style="display: none;">
         
-        <div id="savSuccessDetails" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; font-size: 0.84rem; color: #334155; text-align: left; max-width: 440px; margin: 0 auto;"></div>
+        <!-- Banner Superior de Éxito -->
+        <div style="display: flex; align-items: center; gap: 14px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 14px 18px; margin-bottom: 18px;">
+          <div style="width: 44px; height: 44px; background: #dcfce7; color: #15803d; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <div>
+            <h4 style="margin: 0 0 3px; font-size: 1.05rem; font-weight: 800; color: #065f46;">¡Importación Completada con Éxito!</h4>
+            <p id="savSuccessMessage" style="margin: 0; font-size: 0.84rem; color: #047857;">Se han procesado y guardado todos los pacientes y datos clínicos en la base de datos.</p>
+          </div>
+        </div>
+
+        <!-- Indicadores de Métricas Inteligentes -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px;">
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 10px; text-align: center;">
+            <div style="font-size: 1.35rem; font-weight: 800; color: #1b2a41;" id="savMetricRows">0</div>
+            <div style="font-size: 0.72rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Total Registros</div>
+          </div>
+          <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 10px; text-align: center;">
+            <div style="font-size: 1.35rem; font-weight: 800; color: #1e40af;" id="savMetricNew">0</div>
+            <div style="font-size: 0.72rem; font-weight: 600; color: #1d4ed8; text-transform: uppercase;">Nuevos Pacientes</div>
+          </div>
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 10px; text-align: center;">
+            <div style="font-size: 1.35rem; font-weight: 800; color: #15803d;" id="savMetricDups">0</div>
+            <div style="font-size: 0.72rem; font-weight: 600; color: #166534; text-transform: uppercase;">Actualizados en BD</div>
+          </div>
+          <div style="background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 8px; padding: 12px 10px; text-align: center;">
+            <div style="font-size: 1.35rem; font-weight: 800; color: #5b21b6;" id="savMetricTypos">0</div>
+            <div style="font-size: 0.72rem; font-weight: 600; color: #6d28d9; text-transform: uppercase;">Variables Corregidas</div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 1: Comprobación y Mapeo Inteligente de Columnas (Correcciones Ortográficas) -->
+        <div id="savMappingSection" style="margin-bottom: 16px;">
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-weight: 700; font-size: 0.88rem; color: #1b2a41;">Diagnóstico y Mapeo Inteligente de Variables</span>
+                <span style="font-size: 0.74rem; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 12px; font-weight: 600;" id="savTotalColsBadge">342 variables</span>
+              </div>
+              
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <button type="button" class="sav-tab-btn" id="savTabBtnErrors" onclick="filtrarMapeo('errors')" style="padding: 4px 10px; font-size: 0.75rem; font-weight: 600; border-radius: 6px; border: 1px solid #ddd6fe; background: #f5f3ff; color: #6d28d9; cursor: pointer;">
+                  Solo correcciones ortográficas (<span id="savErrorsTabCount">0</span>)
+                </button>
+                <button type="button" class="sav-tab-btn" id="savTabBtnAll" onclick="filtrarMapeo('all')" style="padding: 4px 10px; font-size: 0.75rem; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer;">
+                  Ver todas las variables
+                </button>
+                <input type="text" id="savColSearch" placeholder="Buscar variable o destino..." oninput="onBuscarColumna(this.value)" style="padding: 4px 10px; font-size: 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; width: 170px;">
+              </div>
+            </div>
+
+            <!-- Tabla de qué datos van en dónde -->
+            <div style="max-height: 190px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.76rem; text-align: left;" id="savMappingTable">
+                <thead>
+                  <tr style="background: #f8fafc; color: #475569; position: sticky; top: 0; border-bottom: 1px solid #e2e8f0;">
+                    <th style="padding: 7px 10px; width: 28%;">Columna en SPSS (.sav)</th>
+                    <th style="padding: 7px 10px; width: 30%;">Nombre Corregido Automáticamente</th>
+                    <th style="padding: 7px 10px; width: 42%;">Destino en Base de Datos (Módulo → Campo)</th>
+                  </tr>
+                </thead>
+                <tbody id="savMappingTbody">
+                  <!-- Se inyecta dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 2: Vista previa de registros analizados e importados -->
+        <div id="savPreviewSection" style="margin-bottom: 8px;">
+          <div style="font-size: 0.82rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: flex; justify-content: space-between;">
+            <span>Previsualización de pacientes importados</span>
+            <span style="font-weight: 500; color: #64748b;">(primeras filas del archivo sincronizado)</span>
+          </div>
+          <div style="max-height: 140px; overflow-x: auto; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem; text-align: left;" id="savPreviewTable">
+              <thead>
+                <tr style="background: #f1f5f9; color: #334155; position: sticky; top: 0;">
+                  <th style="padding: 6px 10px; border-bottom: 1px solid #cbd5e1;">Código</th>
+                  <th style="padding: 6px 10px; border-bottom: 1px solid #cbd5e1;">Universidad</th>
+                  <th style="padding: 6px 10px; border-bottom: 1px solid #cbd5e1;">Sexo</th>
+                  <th style="padding: 6px 10px; border-bottom: 1px solid #cbd5e1;">Edad</th>
+                  <th style="padding: 6px 10px; border-bottom: 1px solid #cbd5e1;">Ciudad</th>
+                  <th style="padding: 6px 10px; border-bottom: 1px solid #cbd5e1;">TAS / TAD</th>
+                  <th style="padding: 6px 10px; border-bottom: 1px solid #cbd5e1;">Peso (kg)</th>
+                </tr>
+              </thead>
+              <tbody id="savPreviewTbody">
+                <!-- Se inyecta dinámicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
 
     </div>
@@ -75,7 +164,7 @@
         Cancelar
       </button>
       <button type="button" class="btn btn-modal-primary" onclick="finalizarImportacionSav()" id="savBtnSuccessOk" style="display: none; align-items: center; justify-content: center; gap: 8px; padding: 8px 22px; font-size: 0.88rem; font-weight: 700; border-radius: 8px; border: 1px solid #1b2a41; background: #1b2a41; color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
-        Aceptar
+        Aceptar / Ver Listado de Pacientes
       </button>
     </div>
 
@@ -90,5 +179,8 @@
   @keyframes savShimmer {
     0% { transform: translateX(-100%); }
     100% { transform: translateX(100%); }
+  }
+  .sav-tab-btn {
+    transition: all 0.15s ease;
   }
 </style>
