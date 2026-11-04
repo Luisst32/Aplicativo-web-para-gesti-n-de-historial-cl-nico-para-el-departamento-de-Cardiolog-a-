@@ -107,7 +107,7 @@ function apexCountAndPctDataLabel(customTotal, extraOptions = {}) {
 
 // Configuración de Chart.js y DataLabels
 if (typeof Chart !== 'undefined') {
-  Chart.defaults.devicePixelRatio = Math.max(window.devicePixelRatio || 1, 2.5);
+  Chart.defaults.devicePixelRatio = Math.max(window.devicePixelRatio || 1, 2);
   if (typeof ChartDataLabels !== 'undefined') {
     Chart.register(ChartDataLabels);
     Chart.defaults.plugins.datalabels = {
@@ -1954,13 +1954,10 @@ async function exportImage(scope, setProgress) {
     const targetEl = document.getElementById('tab-' + tab.id);
     if (!targetEl) continue;
     const canvas = await h2c(targetEl, {
-      scale: 2.8,
+      scale: 2,
       useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#FFFFFF',
-      logging: false,
-      imageTimeout: 20000,
-      windowWidth: targetEl.scrollWidth || 1350
+      backgroundColor: '#F8FAFC',
+      logging: false
     });
 
     const link = document.createElement('a');
@@ -2011,14 +2008,11 @@ async function exportPdf(scope, setProgress) {
     const targetEl = document.getElementById('tab-' + tab.id);
     if (!targetEl) continue;
 
-    const canvas = await h2c(targetEl, {
-      scale:  2.8,
+    const canvas = await h2c(targetEl, {
+      scale: 2,
       useCORS: true,
-      allowTaint: true,
       backgroundColor: '#FFFFFF',
-      logging: false,
-      imageTimeout: 20000,
-      windowWidth: targetEl.scrollWidth || 1350
+      logging: false
     });
 
     const imgData = canvas.toDataURL('image/png');
@@ -2151,14 +2145,11 @@ async function exportPowerPoint(scope, setProgress) {
     const targetEl = document.getElementById('tab-' + tab.id);
     if (!targetEl) continue;
 
-    const canvas = await h2c(targetEl, {
-      scale:  2.8,
+    const canvas = await h2c(targetEl, {
+      scale: 2,
       useCORS: true,
-      allowTaint: true,
       backgroundColor: '#FFFFFF',
-      logging: false,
-      imageTimeout: 20000,
-      windowWidth: targetEl.scrollWidth || 1350
+      logging: false
     });
 
     const imgData = canvas.toDataURL('image/png');
