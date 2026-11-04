@@ -17,3 +17,4 @@ def global_system_settings(request):
             'chatbot_enabled': True,
             'gemini_model': 'gemini-3.5-flash-lite'
         }
+

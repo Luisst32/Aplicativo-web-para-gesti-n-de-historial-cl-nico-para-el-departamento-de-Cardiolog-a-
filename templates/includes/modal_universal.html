@@ -170,20 +170,9 @@
       </div>
 
       <!-- ===================================================================
-           VISTA 3: AJUSTES GLOBALES DEL SISTEMA (SWITCH CHATBOT + API KEY CIFRADA)
+           VISTA 3: AJUSTES GLOBALES DEL SISTEMA (SWITCH CHATBOT + API KEY)
            =================================================================== -->
       <div id="vistaModalAjustes" style="display: none;">
-        <!-- Banner de información de base de datos -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3aa0ff" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
-            <span style="font-size: 0.82rem; font-weight: 600; color: #1e293b;">Almacenamiento Global en Base de Datos</span>
-          </div>
-          <span style="font-size: 0.72rem; padding: 2px 8px; background: #ecfdf5; color: #047857; border-radius: 10px; font-weight: 700; border: 1px solid #a7f3d0;">
-            security.system_setting
-          </span>
-        </div>
-
         <form id="formAjustesSistema" onsubmit="guardarAjustesSistema(event)">
           <!-- Control 1: Switch de Activación del Chatbot -->
           <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 14px;">
@@ -206,52 +195,49 @@
             </label>
           </div>
 
-          <!-- Control 2: API Key de Google Gemini (Cifrada con Fernet) -->
-          <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1b2a41" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                <label for="inputAjusteApiKey" style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin: 0;">
-                  Clave de API de Gemini (Encriptada)
-                </label>
+          <!-- Contenedor dinámico: Si el chat está desactivado, NO se muestra la API ni el Modelo -->
+          <div id="seccionConfiguracionChatbot" style="display: none;">
+            <!-- Control 2: API Key de Google Gemini -->
+            <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1b2a41" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                  <label for="inputAjusteApiKey" style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin: 0;">
+                    Clave de API de Gemini
+                  </label>
+                </div>
               </div>
-              <span style="font-size: 0.7rem; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 7px; border-radius: 8px;">
-                🔒 AES-128 / Fernet
-              </span>
+
+              <div style="position: relative; margin-bottom: 6px;">
+                <input 
+                  type="password" 
+                  id="inputAjusteApiKey" 
+                  class="form-input" 
+                  placeholder="Pegue aquí su clave de Gemini..." 
+                  autocomplete="off"
+                  style="width: 100%; box-sizing: border-box; padding: 9px 36px 9px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-family: monospace; font-size: 0.85rem;"
+                >
+                <button type="button" onclick="togglePasswordVisibility('inputAjusteApiKey', this)" title="Ver / Ocultar clave" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 4px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+              </div>
+
+              <div style="display: flex; justify-content: flex-end; align-items: center;">
+                <button type="button" onclick="limpiarApiKeyAjustes()" style="background: transparent; border: none; color: #3aa0ff; font-size: 0.74rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">
+                  Cambiar / Ingresar nueva clave
+                </button>
+              </div>
             </div>
 
-            <div style="position: relative; margin-bottom: 6px;">
-              <input 
-                type="password" 
-                id="inputAjusteApiKey" 
-                class="form-input" 
-                placeholder="Pegue aquí su clave de Gemini..." 
-                autocomplete="off"
-                style="width: 100%; box-sizing: border-box; padding: 9px 36px 9px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-family: monospace; font-size: 0.85rem;"
-              >
-              <button type="button" onclick="togglePasswordVisibility('inputAjusteApiKey', this)" title="Ver / Ocultar clave" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 4px;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-              </button>
+            <!-- Control 3: Modelo Seleccionado -->
+            <div style="margin-bottom: 16px;">
+              <label for="selectAjusteModelo" style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Modelo de Gemini</label>
+              <select id="selectAjusteModelo" class="form-input" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 0.88rem; background: #ffffff;">
+                <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Recomendado: ultra rápido &lt; 2s)</option>
+                <option value="gemini-3.8-flash">gemini-3.8-flash (Estándar alto rendimiento)</option>
+                <option value="gemini-flash-latest">gemini-flash-latest (Versión estable previa)</option>
+              </select>
             </div>
-
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span id="lblApiKeyEstado" style="font-size: 0.74rem; color: #64748b;">
-                Cargando estado de la clave...
-              </span>
-              <button type="button" onclick="limpiarApiKeyAjustes()" style="background: transparent; border: none; color: #ef4444; font-size: 0.74rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">
-                Cambiar / Ingresar nueva clave
-              </button>
-            </div>
-          </div>
-
-          <!-- Control 3: Modelo Seleccionado -->
-          <div style="margin-bottom: 16px;">
-            <label for="selectAjusteModelo" style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Modelo de Gemini</label>
-            <select id="selectAjusteModelo" class="form-input" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 0.88rem; background: #ffffff;">
-              <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Recomendado: ultra rápido &lt; 2s)</option>
-              <option value="gemini-3.8-flash">gemini-3.8-flash (Estándar alto rendimiento)</option>
-              <option value="gemini-flash-latest">gemini-flash-latest (Versión estable previa)</option>
-            </select>
           </div>
 
           <!-- Mensajes de estado -->
@@ -269,3 +255,4 @@
 
   </div>
 </div>
+

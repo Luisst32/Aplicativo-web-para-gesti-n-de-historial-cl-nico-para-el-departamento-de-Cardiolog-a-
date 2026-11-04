@@ -148,7 +148,10 @@ function cambiarVistaModal(vista) {
   if (vista === 'perfil') {
     if (vPerfil) vPerfil.style.display = 'block';
     if (titulo) titulo.textContent = 'Mi Perfil';
-    if (subtitulo) subtitulo.textContent = 'Administración de cuenta de usuario';
+    if (subtitulo) {
+      subtitulo.textContent = 'Administración de cuenta de usuario';
+      subtitulo.style.display = 'block';
+    }
     if (icono) {
       icono.style.background = '#eff6ff';
       icono.style.color = '#3aa0ff';
@@ -158,7 +161,10 @@ function cambiarVistaModal(vista) {
   } else if (vista === 'password') {
     if (vPassword) vPassword.style.display = 'block';
     if (titulo) titulo.textContent = 'Cambiar Contraseña';
-    if (subtitulo) subtitulo.textContent = 'Actualización de credenciales de acceso';
+    if (subtitulo) {
+      subtitulo.textContent = 'Actualización de credenciales de acceso';
+      subtitulo.style.display = 'block';
+    }
     if (icono) {
       icono.style.background = '#f0fdf4';
       icono.style.color = '#10b981';
@@ -172,7 +178,10 @@ function cambiarVistaModal(vista) {
   } else if (vista === 'ajustes') {
     if (vAjustes) vAjustes.style.display = 'block';
     if (titulo) titulo.textContent = 'Ajustes del Sistema';
-    if (subtitulo) subtitulo.textContent = 'Configuración global y conexión con Inteligencia Artificial';
+    if (subtitulo) {
+      subtitulo.textContent = '';
+      subtitulo.style.display = 'none';
+    }
     if (icono) {
       icono.style.background = '#f1f5f9';
       icono.style.color = '#1e293b';
@@ -455,9 +464,6 @@ async function cargarAjustesSistema() {
   const switchChatbot = document.getElementById('switchChatbotActivo');
   const inputApiKey = document.getElementById('inputAjusteApiKey');
   const selectModelo = document.getElementById('selectAjusteModelo');
-  const lblEstado = document.getElementById('lblApiKeyEstado');
-
-  if (lblEstado) lblEstado.textContent = 'Consultando base de datos...';
 
   try {
     const res = await fetch('/security/api/settings/', {
@@ -466,9 +472,10 @@ async function cargarAjustesSistema() {
     const data = await res.json();
 
     if (res.ok && data.status === 'success') {
+      const activo = Boolean(data.chatbot_enabled);
       if (switchChatbot) {
-        switchChatbot.checked = Boolean(data.chatbot_enabled);
-        actualizarBadgeSwitchChatbot(switchChatbot.checked);
+        switchChatbot.checked = activo;
+        actualizarBadgeSwitchChatbot(activo);
       }
       if (selectModelo && data.gemini_model) {
         selectModelo.value = data.gemini_model;
@@ -476,15 +483,9 @@ async function cargarAjustesSistema() {
       if (inputApiKey) {
         inputApiKey.value = data.api_key_masked || '';
       }
-      if (lblEstado) {
-        lblEstado.textContent = data.api_key_configured 
-          ? `Clave guardada y cifrada en BD (${data.api_key_masked})` 
-          : 'Sin clave configurada. Ingrésela arriba.';
-      }
     }
   } catch (err) {
     console.error('Error cargando ajustes:', err);
-    if (lblEstado) lblEstado.textContent = 'No se pudo cargar el estado de la clave.';
   }
 }
 
@@ -492,6 +493,7 @@ function actualizarBadgeSwitchChatbot(activo) {
   const badge = document.getElementById('badgeChatbotEstado');
   const slider = document.getElementById('sliderSwitchChatbot');
   const circulo = document.getElementById('circuloSwitchChatbot');
+  const seccionIa = document.getElementById('seccionConfiguracionChatbot');
 
   if (badge) {
     badge.textContent = activo ? 'ACTIVO' : 'DESACTIVADO';
@@ -503,6 +505,9 @@ function actualizarBadgeSwitchChatbot(activo) {
   }
   if (circulo) {
     circulo.style.transform = activo ? 'translateX(22px)' : 'translateX(0)';
+  }
+  if (seccionIa) {
+    seccionIa.style.display = activo ? 'block' : 'none';
   }
 }
 
