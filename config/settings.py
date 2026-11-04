@@ -158,4 +158,4 @@ MAILERS = {
 }
 # Configuración Gemini AI (Asistente Clínico & Estadístico)
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '').strip()
-GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash').strip()
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-flash-latest').strip()
