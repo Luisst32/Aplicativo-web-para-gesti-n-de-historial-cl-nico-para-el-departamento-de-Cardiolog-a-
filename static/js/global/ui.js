@@ -72,10 +72,6 @@ function initUserMenu() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           Mi perfil
         </a>
-        <a href="#" class="user-menu-option" role="menuitem" onclick="abrirModalPassword(); return false;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-          Cambiar contraseña
-        </a>
         <a href="#" class="user-menu-option" role="menuitem" onclick="abrirModalAjustes(); return false;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           Ajustes
@@ -129,6 +125,7 @@ function cambiarVistaModal(vista) {
   const vPerfil = document.getElementById('vistaModalPerfil');
   const vPassword = document.getElementById('vistaModalPassword');
   const vAjustes = document.getElementById('vistaModalAjustes');
+  const vConfirmarPass = document.getElementById('vistaModalConfirmarPasswordPerfil');
 
   const titulo = document.getElementById('modalUniversalTitulo');
   const subtitulo = document.getElementById('modalUniversalSubtitulo');
@@ -138,6 +135,7 @@ function cambiarVistaModal(vista) {
   if (vPerfil) vPerfil.style.display = 'none';
   if (vPassword) vPassword.style.display = 'none';
   if (vAjustes) vAjustes.style.display = 'none';
+  if (vConfirmarPass) vConfirmarPass.style.display = 'none';
 
   // Limpiar mensajes previos
   ['perfilErrorMsg', 'perfilSuccessMsg', 'passwordErrorMsg', 'passwordSuccessMsg', 'ajustesErrorMsg', 'ajustesSuccessMsg'].forEach(id => {
@@ -268,33 +266,90 @@ function cargarDatosPerfilEnFormulario() {
 /**
  * Guardar edición de perfil con confirmación obligatoria de contraseña
  */
-async function guardarPerfilUsuario(event) {
+/**
+ * Paso 1: Al hacer clic en "Guardar cambios" en el perfil,
+ * valida los datos del formulario y solicita la contraseña actual.
+ */
+function solicitarConfirmacionPasswordPerfil(event) {
   if (event) event.preventDefault();
 
   const errEl = document.getElementById('perfilErrorMsg');
-  const succEl = document.getElementById('perfilSuccessMsg');
-  const btnGuardar = document.getElementById('btnGuardarPerfil');
-
   if (errEl) errEl.style.display = 'none';
-  if (succEl) succEl.style.display = 'none';
 
   const first_name = document.getElementById('perfilFirstName')?.value.trim();
   const last_name = document.getElementById('perfilLastName')?.value.trim();
-  const second_last_name = document.getElementById('perfilSecondLastName')?.value.trim();
   const email = document.getElementById('perfilEmail')?.value.trim();
-  const current_password = document.getElementById('perfilPasswordConfirm')?.value;
 
-  if (!current_password) {
+  if (!first_name || !last_name) {
     if (errEl) {
-      errEl.textContent = 'Debe ingresar su contraseña actual para confirmar los cambios.';
+      errEl.textContent = 'Por favor ingrese nombres y primer apellido obligatorios.';
       errEl.style.display = 'block';
     }
     return;
   }
 
-  if (btnGuardar) {
-    btnGuardar.disabled = true;
-    btnGuardar.textContent = 'Guardando...';
+  if (!email || !email.includes('@')) {
+    if (errEl) {
+      errEl.textContent = 'Ingrese un correo electrónico válido.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  // Transicionar al paso de confirmación de contraseña
+  const vPerfil = document.getElementById('vistaModalPerfil');
+  const vConfirmar = document.getElementById('vistaModalConfirmarPasswordPerfil');
+  const passInp = document.getElementById('perfilPasswordConfirmModal');
+  const errPass = document.getElementById('confirmPasswordErrorMsg');
+
+  if (vPerfil) vPerfil.style.display = 'none';
+  if (vConfirmar) vConfirmar.style.display = 'block';
+  if (errPass) errPass.style.display = 'none';
+  if (passInp) {
+    passInp.value = '';
+    setTimeout(() => passInp.focus(), 100);
+  }
+}
+
+/**
+ * Vuelve al formulario de perfil desde la pantalla de confirmación
+ */
+function volverAFormularioPerfil() {
+  const vPerfil = document.getElementById('vistaModalPerfil');
+  const vConfirmar = document.getElementById('vistaModalConfirmarPasswordPerfil');
+  if (vConfirmar) vConfirmar.style.display = 'none';
+  if (vPerfil) vPerfil.style.display = 'block';
+}
+
+/**
+ * Paso 2: Ejecuta el guardado enviando la contraseña actual
+ */
+async function ejecutarGuardadoPerfilConPassword(event) {
+  if (event) event.preventDefault();
+
+  const errPass = document.getElementById('confirmPasswordErrorMsg');
+  const btnEjecutar = document.getElementById('btnEjecutarGuardarPerfil');
+  const passInp = document.getElementById('perfilPasswordConfirmModal');
+  const current_password = passInp?.value;
+
+  if (errPass) errPass.style.display = 'none';
+
+  if (!current_password) {
+    if (errPass) {
+      errPass.textContent = 'Debe ingresar su contraseña actual para autorizar los cambios.';
+      errPass.style.display = 'block';
+    }
+    return;
+  }
+
+  const first_name = document.getElementById('perfilFirstName')?.value.trim();
+  const last_name = document.getElementById('perfilLastName')?.value.trim();
+  const second_last_name = document.getElementById('perfilSecondLastName')?.value.trim();
+  const email = document.getElementById('perfilEmail')?.value.trim();
+
+  if (btnEjecutar) {
+    btnEjecutar.disabled = true;
+    btnEjecutar.textContent = 'Verificando...';
   }
 
   try {
@@ -316,11 +371,6 @@ async function guardarPerfilUsuario(event) {
     const data = await res.json();
 
     if (res.ok && data.status === 'success') {
-      if (succEl) {
-        succEl.textContent = data.message || 'Perfil actualizado correctamente.';
-        succEl.style.display = 'block';
-      }
-
       // Actualizar estado en memoria y DOM
       if (window.CURRENT_USER && data.user) {
         window.CURRENT_USER.nombre = data.user.full_name;
@@ -334,28 +384,29 @@ async function guardarPerfilUsuario(event) {
       initUserMenu();
 
       showToast('Perfil actualizado correctamente.', 'success');
-      const passInp = document.getElementById('perfilPasswordConfirm');
       if (passInp) passInp.value = '';
 
-      setTimeout(() => {
-        cerrarModalUniversal();
-      }, 1200);
+      cerrarModalUniversal();
     } else {
-      if (errEl) {
-        errEl.textContent = data.message || 'Error al actualizar el perfil.';
-        errEl.style.display = 'block';
+      if (errPass) {
+        errPass.textContent = data.message || 'Contraseña incorrecta. Verifique sus credenciales.';
+        errPass.style.display = 'block';
+      }
+      if (passInp) {
+        passInp.select();
+        passInp.focus();
       }
     }
   } catch (err) {
     console.error('Error guardando perfil:', err);
-    if (errEl) {
-      errEl.textContent = 'Error de conexión con el servidor. Intente nuevamente.';
-      errEl.style.display = 'block';
+    if (errPass) {
+      errPass.textContent = 'Error de conexión al guardar los datos.';
+      errPass.style.display = 'block';
     }
   } finally {
-    if (btnGuardar) {
-      btnGuardar.disabled = false;
-      btnGuardar.textContent = 'Guardar cambios';
+    if (btnEjecutar) {
+      btnEjecutar.disabled = false;
+      btnEjecutar.textContent = 'Confirmar y Guardar';
     }
   }
 }
