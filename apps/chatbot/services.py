@@ -182,12 +182,12 @@ def generate_fallback_clinical_answer(question: str) -> str:
             "- **Alerta (Alto + Muy Alto):** **47,5 %** (28 casos)."
         )
 
-    if any(w in q for w in ['depre', 'ansiedad', 'mental', 'psico', 'trastorno']):
+    if any(w in q for w in ['depre', 'depor', 'deprec', 'ansiedad', 'mental', 'psico', 'trastorno', 'emocion']):
         return (
             "**Salud Mental (Ansiedad y Depresión):**\n"
             "- **Total con Depresión:** **3 casos (5,1 %)** (combinada con ansiedad: 3, depresión aislada: 0).\n"
             "- **Solo Ansiedad:** 3 casos (5,1 %).\n"
-            "- **Sin Trastorno:** 53 casos (89,8 %).\n"
+            "- **Sin Trastorno Mental:** 53 casos (89,8 %).\n"
             "- **Prevalencia global de afección mental:** 6 casos (10,2 %)."
         )
 
@@ -317,7 +317,7 @@ def query_gemini_assistant(
 
     if not api_key:
         fallback_answer = generate_fallback_clinical_answer(clean_question)
-        note = "\n\n> ℹ️ *(No se detectó `GEMINI_API_KEY` en el `.env`. Ingrésela para activar la IA)*"
+        note = "\n\n> ℹ️ *(No se detectó clave de Gemini configurada. Ingrésela en Ajustes del Sistema para activar la IA)*"
         final_answer = fallback_answer + note
         elapsed_ms = int((time.time() - start_time) * 1000)
 
@@ -356,7 +356,7 @@ def query_gemini_assistant(
                         system_instruction=SYSTEM_INSTRUCTION,
                         temperature=0.1,  # Ultra determinista y conciso
                         max_output_tokens=600,  # Ahorro de tokens
-                        http_options=types.HttpOptions(timeout=10000),
+                        http_options=types.HttpOptions(timeout=25000),
                     )
                 )
                 if response and response.text:
@@ -393,14 +393,18 @@ def query_gemini_assistant(
         fallback_answer = generate_fallback_clinical_answer(clean_question)
 
         # Notificación clara del estado de la API sin engañar al usuario
-        if '402' in err_msg or 'RESOURCE_EXHAUSTED' in err_msg or 'depleted' in err_msg:
+        if 'DEADLINE_EXCEEDED' in err_msg or 'deadline expired' in err_msg.lower() or 'timed out' in err_msg.lower():
+            status_note = "\n\n> ℹ️ *(Respuesta directa de la base de datos por latencia temporal de conexión con Gemini)*"
+        elif '503' in err_msg or 'UNAVAILABLE' in err_msg:
+            status_note = "\n\n> ℹ️ *(Servidores de Gemini con alta demanda momentánea; respuesta provista directamente de la base de datos)*"
+        elif '402' in err_msg or 'RESOURCE_EXHAUSTED' in err_msg or 'depleted' in err_msg:
             status_note = (
                 "\n\n> ⚠️ *Tu clave de Gemini fue detectada, pero Google indica que los créditos prepago de esa cuenta están agotados (Error 402).* "
                 "*Para usar Gemini gratis sin saldo, crea una clave en un proyecto nuevo sin facturación en [Google AI Studio](https://aistudio.google.com/). "
                 "Mientras tanto, los datos mostrados arriba provienen directamente de la base de datos de CARDIOUNEMI.*"
             )
-        elif '400' in err_msg or 'API_KEY_INVALID' in err_msg or 'expired' in err_msg:
-            status_note = "\n\n> ⚠️ *La clave GEMINI_API_KEY no es válida o expiró en Google AI Studio. Verifícala en tu `.env`.*"
+        elif 'API_KEY_INVALID' in err_msg or 'api key not valid' in err_msg.lower():
+            status_note = "\n\n> ⚠️ *La clave de API no es válida. Verifícala en Ajustes del Sistema.*"
         else:
             status_note = f"\n\n> ℹ️ *(Respuesta directa de la base de datos por contingencia de Gemini)*"
 
