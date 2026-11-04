@@ -7,7 +7,7 @@ DIRECTIVAS CRÍTICAS:
 1. ULTRA DIRECTO Y CONCISO: Respuestas directas al grano, sin rodeos ni saludos innecesarios para ahorrar tokens.
 2. SOLO CONSULTAS (READ-ONLY): Solo lectura analítica.
 3. PRIVACIDAD ABSOLUTA (ZERO PII): Bloqueo estricto de nombres, cédulas y datos identificables.
-4. MODELO ECONÓMICO: Google Gemini 2.5 Flash con límite de tokens optimizado.
+4. MODELO ECONÓMICO: Google Gemini Flash con límite de tokens optimizado y recarga en caliente de .env.
 """
 
 import os
@@ -132,7 +132,7 @@ def get_anonymized_cohort_context() -> str:
 
 
 def generate_fallback_clinical_answer(question: str) -> str:
-    """Respuestas directas y al grano sin rodeos."""
+    """Respuestas directas y al grano sin rodeos basadas en PostgreSQL."""
     q = question.lower()
 
     if any(w in q for w in ['total', 'evaluados', 'cuántos', 'cuantos', 'muestra', 'población']):
@@ -240,15 +240,21 @@ def query_gemini_assistant(
             "execution_time_ms": elapsed_ms
         }
 
-    # 3. Invocar Gemini Flash o Fallback
-    api_key = getattr(settings, 'GEMINI_API_KEY', '') or os.getenv('GEMINI_API_KEY', '')
-    model_name = getattr(settings, 'GEMINI_MODEL', 'gemini-flash-latest') or 'gemini-flash-latest'
+    # 3. Recargar en caliente el archivo .env para detectar claves pegadas en vivo
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(override=True)
+    except Exception:
+        pass
+
+    api_key = (os.getenv('GEMINI_API_KEY', '') or getattr(settings, 'GEMINI_API_KEY', '')).strip()
+    model_name = (os.getenv('GEMINI_MODEL', '') or getattr(settings, 'GEMINI_MODEL', '') or 'gemini-flash-latest').strip()
 
     cohort_context = get_anonymized_cohort_context()
 
     if not api_key:
         fallback_answer = generate_fallback_clinical_answer(clean_question)
-        note = "\n\n> ℹ️ *(Pegue su `GEMINI_API_KEY` en el `.env` para activar la IA)*"
+        note = "\n\n> ℹ️ *(No se detectó `GEMINI_API_KEY` en el `.env`. Ingrésela para activar la IA)*"
         final_answer = fallback_answer + note
         elapsed_ms = int((time.time() - start_time) * 1000)
 
@@ -269,17 +275,41 @@ def query_gemini_assistant(
 
         prompt = f"{cohort_context}\n\nPREGUNTA:\n{clean_question}\n\nRESPONDE DIRECTO AL GRANO:"
 
-        response = client.models.generate_content(
-            model=model_name,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTION,
-                temperature=0.1,  # Ultra determinista y conciso
-                max_output_tokens=600,  # Límite estricto para ahorro máximo de tokens
-            )
-        )
+        # Probar con el modelo configurado o fallback a modelos flash estándar de Google
+        models_to_try = [model_name, 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-1.5-flash']
+        # Eliminar duplicados preservando orden
+        seen = set()
+        models_to_try = [m for m in models_to_try if m and not (m in seen or seen.add(m))]
 
-        response_text = response.text if response and response.text else "Sin datos para esta consulta."
+        response = None
+        last_err = None
+
+        for m_name in models_to_try:
+            try:
+                response = client.models.generate_content(
+                    model=m_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_INSTRUCTION,
+                        temperature=0.1,  # Ultra determinista y conciso
+                        max_output_tokens=600,  # Ahorro de tokens
+                    )
+                )
+                if response and response.text:
+                    break
+            except Exception as model_err:
+                last_err = model_err
+                # Si es 402 créditos agotados, romper de inmediato para no reintentar en vano
+                if '402' in str(model_err) or 'RESOURCE_EXHAUSTED' in str(model_err):
+                    raise model_err
+
+        if not response or not response.text:
+            if last_err:
+                raise last_err
+            response_text = "Sin datos para esta consulta."
+        else:
+            response_text = response.text
+
         tokens = getattr(response.usage_metadata, 'total_token_count', 0) if hasattr(response, 'usage_metadata') else None
 
         elapsed_ms = int((time.time() - start_time) * 1000)
@@ -294,14 +324,29 @@ def query_gemini_assistant(
         }
 
     except Exception as e:
+        err_msg = str(e)
         logger.exception(f"Error Gemini API: {e}")
         fallback_answer = generate_fallback_clinical_answer(clean_question)
+
+        # Notificación clara del estado de la API sin engañar al usuario
+        if '402' in err_msg or 'RESOURCE_EXHAUSTED' in err_msg or 'depleted' in err_msg:
+            status_note = (
+                "\n\n> ⚠️ *Tu clave de Gemini fue detectada, pero Google indica que los créditos prepago de esa cuenta están agotados (Error 402).* "
+                "*Para usar Gemini gratis sin saldo, crea una clave en un proyecto nuevo sin facturación en [Google AI Studio](https://aistudio.google.com/). "
+                "Mientras tanto, los datos mostrados arriba provienen directamente de la base de datos de CARDIOUNEMI.*"
+            )
+        elif '400' in err_msg or 'API_KEY_INVALID' in err_msg or 'expired' in err_msg:
+            status_note = "\n\n> ⚠️ *La clave GEMINI_API_KEY no es válida o expiró en Google AI Studio. Verifícala en tu `.env`.*"
+        else:
+            status_note = f"\n\n> ℹ️ *(Respuesta directa de la base de datos por contingencia de Gemini)*"
+
+        final_answer = fallback_answer + status_note
         elapsed_ms = int((time.time() - start_time) * 1000)
-        _log_bot_query(user, clean_question, fallback_answer, tokens=0, execution_ms=elapsed_ms, status=BotQuery.Status.ERROR)
+        _log_bot_query(user, clean_question, final_answer, tokens=0, execution_ms=elapsed_ms, status=BotQuery.Status.ERROR)
 
         return {
             "status": "success",
-            "response": fallback_answer,
+            "response": final_answer,
             "tokens_used": 0,
             "execution_time_ms": elapsed_ms,
             "mode": "error_fallback"
