@@ -26,31 +26,64 @@ _SAV_TEMPLATE_CACHE = None
 
 def get_sav_template_metadata():
     """
-    Carga e indexa en memoria las 342 columnas y metadatos de la base SPSS de referencia.
+    Carga e indexa en memoria las 342 columnas y metadatos oficiales de CardioUNEMI.
+    Prioriza el archivo de especificación JSON empaquetado ('sav_columns_spec.json')
+    para no depender de archivos .sav externos en servidores de producción o EC2.
     """
     global _SAV_TEMPLATE_CACHE
     if _SAV_TEMPLATE_CACHE is not None:
         return _SAV_TEMPLATE_CACHE
 
-    template_path = Path(settings.BASE_DIR) / 'Base_datos_Unemi_CardioUnemi-ACTUALIZADO.sav'
-    if not template_path.exists():
-        # Buscar en rutas alternativas
-        for candidate in [
+    spec_json_path = Path(__file__).resolve().parent / 'sav_columns_spec.json'
+    
+    cols = []
+    col_dtypes = {}
+    col_value_labels = {}
+    col_names_to_labels = {}
+
+    if spec_json_path.exists():
+        import json
+        with open(spec_json_path, 'r', encoding='utf-8') as f:
+            spec = json.load(f)
+        cols = spec.get('columns', [])
+        col_names_to_labels = spec.get('column_labels', {})
+        raw_val_labels = spec.get('value_labels', {})
+        raw_dtypes = spec.get('dtypes', {})
+        col_dtypes = {col: str(dt) for col, dt in raw_dtypes.items()}
+
+        # Convertir llaves numéricas en value labels (JSON serializa int/float como str)
+        for col, vmap in raw_val_labels.items():
+            parsed_vmap = {}
+            for k, v in vmap.items():
+                try:
+                    num_k = float(k)
+                    if num_k.is_integer():
+                        num_k = int(num_k)
+                    parsed_vmap[num_k] = v
+                except (ValueError, TypeError):
+                    parsed_vmap[k] = v
+            col_value_labels[col] = parsed_vmap
+    else:
+        # Fallback si existiera el archivo binario .sav local
+        template_candidates = [
             Path(settings.BASE_DIR) / 'Base_datos_Unemi_CardioUnemi-ACTUALIZADO.sav',
             Path(settings.BASE_DIR) / 'media' / 'Base_datos_Unemi_CardioUnemi-ACTUALIZADO.sav',
-        ]:
+        ]
+        template_path = None
+        for candidate in template_candidates:
             if candidate.exists():
                 template_path = candidate
                 break
 
-    if not template_path.exists():
-        raise FileNotFoundError(f"No se encontró el archivo de referencia SPSS en {template_path}")
+        if template_path and template_path.exists():
+            df_orig, meta = pyreadstat.read_sav(str(template_path))
+            cols = meta.column_names
+            col_dtypes = {col: str(df_orig[col].dtype) for col in cols}
+            col_value_labels = meta.variable_value_labels or {}
+            col_names_to_labels = meta.column_names_to_labels or {}
 
-    df_orig, meta = pyreadstat.read_sav(str(template_path))
-    cols = meta.column_names
-    col_dtypes = {col: df_orig[col].dtype for col in cols}
-    col_value_labels = meta.variable_value_labels or {}
-    col_names_to_labels = meta.column_names_to_labels or {}
+    if not cols:
+        raise RuntimeError("No se pudieron cargar las especificaciones de las columnas del dataset SPSS.")
 
     # Construir mapa inverso de etiquetas a valores numéricos
     lbl_to_val_map = {}
@@ -274,7 +307,7 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
 
             # 4. Formatear y convertir al tipo de dato exacto de SPSS
             target_dtype = col_dtypes.get(col)
-            if target_dtype == 'float64':
+            if target_dtype and str(target_dtype).startswith('float'):
                 if val is None or str(val).strip() == '' or str(val).lower() == 'nan':
                     row[col] = np.nan
                 else:
