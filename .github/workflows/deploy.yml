@@ -7,6 +7,10 @@ on:
       - develop
   workflow_dispatch:
 
+concurrency:
+  group: deploy-ec2
+  cancel-in-progress: true
+
 jobs:
   deploy:
     name: Despliegue Automático en EC2
@@ -20,6 +24,8 @@ jobs:
           username: ${{ secrets.EC2_USER || secrets.USER || 'ec2-user' }}
           key: ${{ secrets.EC2_SSH_KEY || secrets.EC2_KEY || secrets.SSH_KEY || secrets.KEY }}
           port: ${{ secrets.EC2_PORT || 2222 }}
+          command_timeout: 15m
+          timeout: 60s
           script: |
             echo "=== INICIANDO DESPLIEGUE EN EC2 ==="
             cd /home/ec2-user/Aplicativo-web-para-gesti-n-de-historial-cl-nico-para-el-departamento-de-Cardiolog-a-
@@ -33,7 +39,7 @@ jobs:
             elif [ -d "env" ]; then
               source env/bin/activate
             fi
-            pip install -r requirements.txt --quiet
+            pip install --no-cache-dir --disable-pip-version-check -r requirements.txt || true
             
             echo "3. Migraciones y archivos estáticos..."
             python manage.py migrate --noinput
