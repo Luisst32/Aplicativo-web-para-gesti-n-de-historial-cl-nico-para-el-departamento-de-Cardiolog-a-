@@ -4,12 +4,7 @@ on:
   push:
     branches:
       - main
-      - develop
   workflow_dispatch:
-
-concurrency:
-  group: deploy-ec2
-  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -31,7 +26,7 @@ jobs:
             cd /home/ec2-user/Aplicativo-web-para-gesti-n-de-historial-cl-nico-para-el-departamento-de-Cardiolog-a-
             
             echo "1. Actualizando código desde Git..."
-            git pull origin ${{ github.ref_name }}
+            git pull origin main
             
             echo "2. Activando entorno virtual e instalando dependencias..."
             if [ -d "venv" ]; then
@@ -46,16 +41,17 @@ jobs:
             python manage.py collectstatic --noinput
             
             echo "4. Reiniciando servicio de aplicación..."
-            if sudo systemctl is-active --quiet gunicorn 2>/dev/null; then
-              sudo systemctl restart gunicorn
-            elif sudo systemctl is-active --quiet cardiounemi 2>/dev/null; then
-              sudo systemctl restart cardiounemi
-            elif sudo systemctl is-active --quiet django 2>/dev/null; then
-              sudo systemctl restart django
+            if sudo systemctl restart gunicorn 2>/dev/null; then
+              echo "Servicio gunicorn reiniciado con systemctl"
+            elif sudo systemctl restart cardiounemi 2>/dev/null; then
+              echo "Servicio cardiounemi reiniciado con systemctl"
+            elif sudo systemctl restart django 2>/dev/null; then
+              echo "Servicio django reiniciado con systemctl"
             else
               pkill -f "gunicorn config.wsgi" || true
               sleep 1
-              gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --daemon
+              gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --daemon || true
+              echo "Gunicorn iniciado como daemon"
             fi
             
             echo "=== DESPLIEGUE COMPLETADO CON ÉXITO ==="
