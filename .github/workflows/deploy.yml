@@ -19,40 +19,47 @@ jobs:
           username: ${{ secrets.EC2_USER || secrets.USER || 'ec2-user' }}
           key: ${{ secrets.EC2_SSH_KEY || secrets.EC2_KEY || secrets.SSH_KEY || secrets.KEY }}
           port: ${{ secrets.EC2_PORT || 2222 }}
-          command_timeout: 15m
+          command_timeout: 5m
           timeout: 60s
           script: |
-            echo "=== INICIANDO DESPLIEGUE EN EC2 ==="
+            echo "=== INICIANDO DESPLIEGUE RÁPIDO EN EC2 ==="
             cd /home/ec2-user/Aplicativo-web-para-gesti-n-de-historial-cl-nico-para-el-departamento-de-Cardiolog-a-
             
-            echo "1. Actualizando código desde Git..."
+            echo "1. Descargando últimos cambios desde Git..."
             git pull origin main
             
-            echo "2. Activando entorno virtual e instalando dependencias..."
+            echo "2. Verificando entorno virtual..."
             if [ -d "venv" ]; then
               source venv/bin/activate
             elif [ -d "env" ]; then
               source env/bin/activate
             fi
-            pip install --no-cache-dir --disable-pip-version-check -r requirements.txt || true
             
-            echo "3. Migraciones y archivos estáticos..."
+            # Solo instala librerías si requirements.txt cambió recientemente
+            if git diff HEAD@{1} --name-only 2>/dev/null | grep -q "requirements.txt"; then
+              echo "Detectado cambio en requirements.txt, actualizando librerías..."
+              pip install --no-cache-dir --disable-pip-version-check -r requirements.txt || true
+            else
+              echo "Dependencias sin cambios, omitiendo pip para despliegue ultra-rápido."
+            fi
+            
+            echo "3. Aplicando migraciones y estáticos..."
             python manage.py migrate --noinput
             python manage.py collectstatic --noinput
             
-            echo "4. Reiniciando servicio de aplicación..."
-            if sudo systemctl restart gunicorn 2>/dev/null; then
-              echo "Servicio gunicorn reiniciado con systemctl"
-            elif sudo systemctl restart cardiounemi 2>/dev/null; then
-              echo "Servicio cardiounemi reiniciado con systemctl"
-            elif sudo systemctl restart django 2>/dev/null; then
-              echo "Servicio django reiniciado con systemctl"
-            else
-              pkill -f "gunicorn config.wsgi" || true
-              sleep 1
-              gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --daemon || true
-              echo "Gunicorn iniciado como daemon"
+            echo "4. Recargando la aplicación..."
+            touch config/wsgi.py
+            
+            # Recarga suave de Gunicorn con señal SIGHUP (sin requerir sudo ni congelar la consola)
+            pkill -HUP -f gunicorn || true
+            
+            # Si el servicio está en systemd con permisos sudo sin contraseña
+            sudo -n systemctl reload gunicorn 2>/dev/null || sudo -n systemctl restart gunicorn 2>/dev/null || true
+            
+            # Si Gunicorn no estaba corriendo, lo levantamos en segundo plano desacoplado
+            if ! pgrep -f "gunicorn" > /dev/null; then
+              nohup gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 </dev/null >/dev/null 2>&1 &
+              echo "Gunicorn iniciado en segundo plano."
             fi
             
             echo "=== DESPLIEGUE COMPLETADO CON ÉXITO ==="
-
