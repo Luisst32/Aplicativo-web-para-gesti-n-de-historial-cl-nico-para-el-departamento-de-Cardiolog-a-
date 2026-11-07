@@ -3,7 +3,7 @@ name: Deploy to AWS EC2
 on:
   push:
     branches:
-      - main
+      - develop
   workflow_dispatch:
 
 jobs:
@@ -25,8 +25,10 @@ jobs:
             echo "=== INICIANDO DESPLIEGUE RÁPIDO EN EC2 ==="
             cd /home/ec2-user/Aplicativo-web-para-gesti-n-de-historial-cl-nico-para-el-departamento-de-Cardiolog-a-
             
-            echo "1. Descargando últimos cambios desde Git..."
-            git pull origin main
+            echo "1. Cambiando a rama develop y descargando últimos cambios..."
+            git fetch origin develop
+            git checkout develop 2>/dev/null || git checkout -b develop origin/develop
+            git pull origin develop
             
             echo "2. Verificando entorno virtual..."
             if [ -d "venv" ]; then
