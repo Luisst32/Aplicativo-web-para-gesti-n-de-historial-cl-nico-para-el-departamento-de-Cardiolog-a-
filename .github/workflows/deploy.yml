@@ -19,7 +19,7 @@ jobs:
           host: ${{ secrets.EC2_HOST || secrets.HOST }}
           username: ${{ secrets.EC2_USER || secrets.USER || 'ec2-user' }}
           key: ${{ secrets.EC2_SSH_KEY || secrets.EC2_KEY || secrets.SSH_KEY || secrets.KEY }}
-          port: 22
+          port: ${{ secrets.EC2_PORT || 2222 }}
           script: |
             echo "=== INICIANDO DESPLIEGUE EN EC2 ==="
             cd /home/ec2-user/Aplicativo-web-para-gesti-n-de-historial-cl-nico-para-el-departamento-de-Cardiolog-a-
