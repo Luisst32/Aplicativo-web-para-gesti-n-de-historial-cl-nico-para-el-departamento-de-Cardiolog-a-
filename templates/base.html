@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CARDIOUNEMI - Gestión Clínica{% endblock %}</title>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Estilos Globales (orden estricto de GEMINI.md) -->
+  <link rel="stylesheet" href="{% static 'css/global/variables.css' %}?v=20261104_02">
+  <link rel="stylesheet" href="{% static 'css/global/reset.css' %}?v=20261104_02">
+  <link rel="stylesheet" href="{% static 'css/global/typography.css' %}?v=20261104_02">
+  <link rel="stylesheet" href="{% static 'css/global/layout.css' %}?v=20261104_02">
+  <link rel="stylesheet" href="{% static 'css/global/components.css' %}?v=20261104_02">
+  <link rel="stylesheet" href="{% static 'css/global/utilities.css' %}?v=20261104_02">
+
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  {% block content %}{% endblock %}
+
+  {% if request.user.is_authenticated %}
+    {% include "includes/modal_universal.html" %}
+    {% include "includes/modal_import_sav.html" %}
+    {% include "includes/modal_eliminar_ficha.html" %}
+  {% endif %}
+
+  <!-- Scripts Globales -->
+  <script>
+    {% if request.user.is_authenticated %}
+    window.CURRENT_USER = {
+      id: {{ request.user.user_id|default:0 }},
+      username: "{{ request.user.username|escapejs }}",
+      first_name: "{{ request.user.first_name|escapejs }}",
+      last_name: "{{ request.user.last_name|escapejs }}",
+      second_last_name: "{{ request.user.second_last_name|default:''|escapejs }}",
+      nombre: "{{ request.user.full_name|default:request.user.username|escapejs }}",
+      rol: "{% if request.user.is_superuser %}Administrador{% elif request.user.roles.exists %}{{ request.user.roles.first.name|escapejs }}{% elif request.user.is_staff %}Médico Evaluador{% else %}Usuario{% endif %}",
+      correo: "{{ request.user.email|default:''|escapejs }}",
+      is_staff: {% if request.user.is_staff or request.user.is_superuser %}true{% else %}false{% endif %},
+      is_admin: {% if request.user.is_administrator %}true{% else %}false{% endif %}
+    };
+    window.CHATBOT_ENABLED = {{ chatbot_enabled|yesno:"true,false" }};
+    {% endif %}
+  </script>
+  <script src="{% static 'js/global/utils.js' %}?v=20261104_02"></script>
+  <script src="{% static 'js/global/api.js' %}?v=20261104_02"></script>
+  <script src="{% static 'js/global/ui.js' %}?v=20261104_02"></script>
+  <script src="{% static 'js/global/sav_importer.js' %}?v=20261104_20"></script>
+  <script src="{% static 'js/global/eliminar_ficha.js' %}?v=20261028_4"></script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
