@@ -15,11 +15,16 @@ document.addEventListener('DOMContentLoaded', function () {
   var btnEntrar = document.getElementById('btnEntrar');
 
   if (btnEye && inputPass) {
-    btnEye.addEventListener('click', function () {
+    btnEye.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
       var isPassword = inputPass.type === 'password';
       inputPass.type = isPassword ? 'text' : 'password';
       if (iconEye) iconEye.style.display = isPassword ? 'none' : 'block';
       if (iconEyeSlash) iconEyeSlash.style.display = isPassword ? 'block' : 'none';
+      btnEye.setAttribute('aria-label', isPassword ? 'Ocultar contraseña' : 'Ver contraseña');
+      btnEye.setAttribute('title', isPassword ? 'Ocultar contraseña' : 'Ver contraseña');
+      inputPass.focus();
     });
   }
 

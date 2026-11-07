@@ -143,6 +143,17 @@ h1 {
   padding-right: 42px;
 }
 
+/* Ocultar el icono nativo de ver contraseña de Microsoft Edge y navegadores Chromium */
+#password::-ms-reveal,
+#password::-ms-clear,
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  pointer-events: none !important;
+}
+
 .btn-toggle-eye {
   position: absolute;
   right: 6px;

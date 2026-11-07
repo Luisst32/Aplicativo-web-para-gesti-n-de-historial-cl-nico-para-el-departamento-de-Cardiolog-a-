@@ -43,6 +43,16 @@ def login_view(request):
             if user is not None:
                 if user.is_active:
                     login(request, user)
+
+                    # Gestión de persistencia de sesión (Mantener sesión activa)
+                    keep_session = request.POST.get('keep_session')
+                    if keep_session:
+                        # Conservar sesión durante 30 días continuos
+                        request.session.set_expiry(60 * 60 * 24 * 30)
+                    else:
+                        # Expira inmediatamente al cerrar el navegador
+                        request.session.set_expiry(0)
+
                     next_url = request.GET.get('next')
                     if not next_url or next_url in ('/', '/dashboard/'):
                         return redirect('clinical:list')
