@@ -16,9 +16,9 @@ jobs:
       - name: Conectar por SSH y Desplegar
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.EC2_HOST || secrets.HOST }}
+          username: ${{ secrets.EC2_USER || secrets.USER || 'ec2-user' }}
+          key: ${{ secrets.EC2_SSH_KEY || secrets.EC2_KEY || secrets.SSH_KEY || secrets.KEY }}
           port: 22
           script: |
             echo "=== INICIANDO DESPLIEGUE EN EC2 ==="
