@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - develop
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -50,3 +51,4 @@ jobs:
             fi
             
             echo "=== DESPLIEGUE COMPLETADO CON ÉXITO ==="
+
