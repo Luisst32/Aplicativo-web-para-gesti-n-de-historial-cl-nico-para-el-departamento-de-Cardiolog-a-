@@ -22,46 +22,44 @@ jobs:
           command_timeout: 5m
           timeout: 60s
           script: |
-            echo "=== INICIANDO DESPLIEGUE RÁPIDO EN EC2 ==="
+            echo "=== INICIANDO DESPLIEGUE EN EC2 ==="
             cd /home/ec2-user/Aplicativo-web-para-gesti-n-de-historial-cl-nico-para-el-departamento-de-Cardiolog-a-
             
-            echo "1. Cambiando a rama develop y descargando últimos cambios..."
+            echo "1. Descargando cambios de develop..."
             git fetch origin develop
             git checkout develop 2>/dev/null || git checkout -b develop origin/develop
             git pull origin develop
             
-            echo "2. Verificando entorno virtual..."
+            echo "2. Entorno virtual..."
             if [ -d "venv" ]; then
               source venv/bin/activate
             elif [ -d "env" ]; then
               source env/bin/activate
             fi
             
-            # Solo instala librerías si requirements.txt cambió recientemente
             if git diff HEAD@{1} --name-only 2>/dev/null | grep -q "requirements.txt"; then
-              echo "Detectado cambio en requirements.txt, actualizando librerías..."
+              echo "requirements.txt cambio, instalando..."
               pip install --no-cache-dir --disable-pip-version-check -r requirements.txt || true
             else
-              echo "Dependencias sin cambios, omitiendo pip para despliegue ultra-rápido."
+              echo "Sin cambios en dependencias, saltando pip."
             fi
             
-            echo "3. Aplicando migraciones y estáticos..."
+            echo "3. Migraciones y estaticos..."
             python manage.py migrate --noinput
             python manage.py collectstatic --noinput
             
-            echo "4. Recargando la aplicación..."
+            echo "4. Programando recarga de la app..."
             touch config/wsgi.py
             
-            # Recarga suave de Gunicorn con señal SIGHUP (sin requerir sudo ni congelar la consola)
-            pkill -HUP -f gunicorn || true
+            # Crear script de recarga externo y ejecutarlo desacoplado
+            # Asi la sesion SSH cierra LIMPIA y 2 segundos despues gunicorn se recarga
+            cat > /tmp/reload_app.sh << 'EOF'
+            #!/bin/bash
+            sleep 2
+            kill -HUP $(pgrep -o -x gunicorn 2>/dev/null) 2>/dev/null || true
+            EOF
+            chmod +x /tmp/reload_app.sh
+            nohup /tmp/reload_app.sh </dev/null >/dev/null 2>&1 &
+            disown 2>/dev/null || true
             
-            # Si el servicio está en systemd con permisos sudo sin contraseña
-            sudo -n systemctl reload gunicorn 2>/dev/null || sudo -n systemctl restart gunicorn 2>/dev/null || true
-            
-            # Si Gunicorn no estaba corriendo, lo levantamos en segundo plano desacoplado
-            if ! pgrep -f "gunicorn" > /dev/null; then
-              nohup gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 </dev/null >/dev/null 2>&1 &
-              echo "Gunicorn iniciado en segundo plano."
-            fi
-            
-            echo "=== DESPLIEGUE COMPLETADO CON ÉXITO ==="
+            echo "=== DESPLIEGUE COMPLETADO CON EXITO ==="
