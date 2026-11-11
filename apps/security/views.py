@@ -244,18 +244,54 @@ def api_settings_view(request):
     """
     Consulta o actualización de la configuración relacional del sistema (SystemSetting)
     vinculada exclusivamente al rol Administrador (security.role).
+    Gestiona credenciales cifradas y parámetros para Gemini, OpenAI, Claude y Gmail API.
     """
     cfg = SystemSetting.get_settings()
     is_admin = cfg.is_role_authorized(request.user)
 
     if request.method == "GET":
-        raw_key = SystemSetting.get_gemini_api_key(user=request.user) if is_admin else ""
+        raw_gemini = SystemSetting.get_gemini_api_key(user=request.user) if is_admin else ""
+        raw_openai = SystemSetting.get_openai_api_key(user=request.user) if is_admin else ""
+        raw_claude = SystemSetting.get_claude_api_key(user=request.user) if is_admin else ""
+        raw_gmail_secret = SystemSetting.get_gmail_client_secret(user=request.user) if is_admin else ""
+        raw_gmail_refresh = SystemSetting.get_gmail_refresh_token(user=request.user) if is_admin else ""
+
         return JsonResponse({
             "status": "success",
             "chatbot_enabled": cfg.chatbot_enabled,
-            "gemini_model": cfg.gemini_model if is_admin else "",
-            "api_key_configured": bool(raw_key) if is_admin else False,
-            "api_key_masked": _mask_api_key(raw_key) if is_admin else "",
+            "active_llm_provider": cfg.active_llm_provider or "gemini",
+
+            # Google Gemini
+            "gemini_enabled": cfg.gemini_enabled if is_admin else False,
+            "gemini_model": (cfg.gemini_model or "gemini-2.5-flash") if is_admin else "",
+            "gemini_api_key_configured": bool(raw_gemini) if is_admin else False,
+            "gemini_api_key_masked": _mask_api_key(raw_gemini) if is_admin else "",
+            "api_key_configured": bool(raw_gemini) if is_admin else False,
+            "api_key_masked": _mask_api_key(raw_gemini) if is_admin else "",
+
+            # OpenAI / ChatGPT
+            "openai_enabled": cfg.openai_enabled if is_admin else False,
+            "openai_model": (cfg.openai_model or "gpt-4o-mini") if is_admin else "",
+            "openai_api_key_configured": bool(raw_openai) if is_admin else False,
+            "openai_api_key_masked": _mask_api_key(raw_openai) if is_admin else "",
+
+            # Anthropic Claude
+            "claude_enabled": cfg.claude_enabled if is_admin else False,
+            "claude_model": (cfg.claude_model or "claude-3-5-sonnet-20241022") if is_admin else "",
+            "claude_api_key_configured": bool(raw_claude) if is_admin else False,
+            "claude_api_key_masked": _mask_api_key(raw_claude) if is_admin else "",
+
+            # Google Gmail REST API
+            "gmail_api_enabled": cfg.gmail_api_enabled if is_admin else False,
+            "gmail_client_id": (cfg.gmail_client_id or "") if is_admin else "",
+            "gmail_sender_email": (cfg.gmail_sender_email or "") if is_admin else "",
+            "gmail_redirect_uri": (cfg.gmail_redirect_uri or "http://127.0.0.1:8000/security/oauth2/gmail/callback/") if is_admin else "",
+            "gmail_secret_configured": bool(raw_gmail_secret) if is_admin else False,
+            "gmail_secret_masked": _mask_api_key(raw_gmail_secret) if is_admin else "",
+            "gmail_refresh_configured": bool(raw_gmail_refresh) if is_admin else False,
+            "gmail_refresh_masked": _mask_api_key(raw_gmail_refresh) if is_admin else "",
+            "last_token_refresh": (cfg.last_token_refresh.strftime("%d/%m/%Y %H:%M") if cfg.last_token_refresh else "") if is_admin else "",
+
             "is_admin": is_admin,
             "role_name": cfg.role.name if cfg.role_id else "",
             "updated_at": cfg.updated_at_utc.strftime("%d/%m/%Y %H:%M") if cfg.updated_at_utc else ""
@@ -274,32 +310,84 @@ def api_settings_view(request):
         else:
             data = request.POST
 
-        chatbot_enabled = data.get('chatbot_enabled')
-        if isinstance(chatbot_enabled, str):
-            chatbot_enabled = chatbot_enabled.lower() in ('true', '1', 'on', 'yes')
-        elif chatbot_enabled is None:
-            chatbot_enabled = True
+        def _to_bool(val, default=None):
+            if val is None: return default
+            if isinstance(val, bool): return val
+            return str(val).lower() in ('true', '1', 'on', 'yes')
 
-        raw_api_key = data.get('gemini_api_key')
-        if raw_api_key and '***' in raw_api_key:
-            raw_api_key = None
-        gemini_model = (data.get('gemini_model') or 'gemini-3.5-flash-lite').strip()
+        chatbot_enabled = _to_bool(data.get('chatbot_enabled'), default=cfg.chatbot_enabled)
+        active_llm_provider = data.get('active_llm_provider', cfg.active_llm_provider)
+
+        # Gemini
+        raw_gemini_key = data.get('gemini_api_key')
+        if raw_gemini_key and '***' in raw_gemini_key:
+            raw_gemini_key = None
+        gemini_model = data.get('gemini_model')
+        gemini_enabled = _to_bool(data.get('gemini_enabled'), default=None)
+
+        # OpenAI
+        raw_openai_key = data.get('openai_api_key')
+        if raw_openai_key and '***' in raw_openai_key:
+            raw_openai_key = None
+        openai_model = data.get('openai_model')
+        openai_enabled = _to_bool(data.get('openai_enabled'), default=None)
+
+        # Claude
+        raw_claude_key = data.get('claude_api_key')
+        if raw_claude_key and '***' in raw_claude_key:
+            raw_claude_key = None
+        claude_model = data.get('claude_model')
+        claude_enabled = _to_bool(data.get('claude_enabled'), default=None)
+
+        # Gmail
+        gmail_client_id = data.get('gmail_client_id')
+        raw_gmail_secret = data.get('gmail_client_secret')
+        if raw_gmail_secret and '***' in raw_gmail_secret:
+            raw_gmail_secret = None
+        raw_gmail_refresh = data.get('gmail_refresh_token')
+        if raw_gmail_refresh and '***' in raw_gmail_refresh:
+            raw_gmail_refresh = None
+        gmail_sender_email = data.get('gmail_sender_email')
+        gmail_api_enabled = _to_bool(data.get('gmail_api_enabled'), default=None)
+        gmail_redirect_uri = data.get('gmail_redirect_uri')
 
         cfg = SystemSetting.set_settings(
             chatbot_enabled=chatbot_enabled,
-            raw_api_key=raw_api_key,
+            active_llm_provider=active_llm_provider,
+            raw_api_key=raw_gemini_key,
             model=gemini_model,
+            gemini_enabled=gemini_enabled,
+            raw_openai_key=raw_openai_key,
+            openai_model=openai_model,
+            openai_enabled=openai_enabled,
+            raw_claude_key=raw_claude_key,
+            claude_model=claude_model,
+            claude_enabled=claude_enabled,
+            gmail_client_id=gmail_client_id,
+            raw_gmail_secret=raw_gmail_secret,
+            raw_gmail_refresh_token=raw_gmail_refresh,
+            gmail_sender_email=gmail_sender_email,
+            gmail_api_enabled=gmail_api_enabled,
+            gmail_redirect_uri=gmail_redirect_uri,
             user=request.user
         )
 
-        raw_key = SystemSetting.get_gemini_api_key(user=request.user)
+        raw_gemini = SystemSetting.get_gemini_api_key(user=request.user)
+        raw_openai = SystemSetting.get_openai_api_key(user=request.user)
+        raw_claude = SystemSetting.get_claude_api_key(user=request.user)
+
         return JsonResponse({
             "status": "success",
-            "message": "Ajustes del sistema guardados correctamente.",
+            "message": "Ajustes del sistema y credenciales de APIs guardados correctamente.",
             "chatbot_enabled": cfg.chatbot_enabled,
+            "active_llm_provider": cfg.active_llm_provider,
             "gemini_model": cfg.gemini_model,
-            "api_key_configured": bool(raw_key),
-            "api_key_masked": _mask_api_key(raw_key),
+            "gemini_api_key_configured": bool(raw_gemini),
+            "gemini_api_key_masked": _mask_api_key(raw_gemini),
+            "openai_api_key_configured": bool(raw_openai),
+            "openai_api_key_masked": _mask_api_key(raw_openai),
+            "claude_api_key_configured": bool(raw_claude),
+            "claude_api_key_masked": _mask_api_key(raw_claude),
             "is_admin": True
         })
     except PermissionDenied as e:

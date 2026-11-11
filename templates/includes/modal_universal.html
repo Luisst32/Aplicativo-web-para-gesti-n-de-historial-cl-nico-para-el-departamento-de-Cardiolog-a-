@@ -3,7 +3,7 @@
      Arquitectura unificada de componente modal reutilizable para toda la aplicación.
      ========================================================================= -->
 <div class="modal-overlay" id="modalUniversal" style="display: none; align-items: center; justify-content: center; z-index: 9999;" role="dialog" aria-modal="true" aria-labelledby="modalUniversalTitulo">
-  <div class="modal-card" style="max-width: 540px; width: 94%; max-height: 90vh; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);">
+  <div class="modal-card" id="modalUniversalCard" style="max-width: 540px; width: 94%; max-height: 90vh; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25); transition: max-width 0.3s ease;">
     
     <!-- Encabezado Universal Dinámico -->
     <div class="modal-header" style="padding: 16px 22px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
@@ -246,93 +246,498 @@
       </div>
 
       <!-- ===================================================================
-           VISTA 3: AJUSTES GLOBALES DEL SISTEMA (SWITCH CHATBOT + API KEY)
+           VISTA 3: AJUSTES GLOBALES DEL SISTEMA (PANORÁMICO: GENERALES + APIS)
            =================================================================== -->
       <div id="vistaModalAjustes" style="display: none;">
-        <form id="formAjustesSistema" autocomplete="off" onsubmit="guardarAjustesSistema(event)">
-          <!-- Control 1: Switch de Activación del Chatbot -->
-          <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 14px;">
-            <div style="flex: 1;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1b2a41" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
-                <span style="font-size: 0.9rem; font-weight: 700; color: #0f172a;">Asistente Clínico Inteligente (Chatbot)</span>
-                <span id="badgeChatbotEstado" style="font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 10px; background: #dcfce7; color: #15803d;">ACTIVO</span>
-              </div>
-              <p style="margin: 4px 0 0; font-size: 0.78rem; color: #64748b; line-height: 1.35;">
-                Controla la visibilidad del botón flotante y el acceso a consultas estadísticas por IA.
-              </p>
-            </div>
-            <!-- Switch toggle interactivo -->
-            <label style="position: relative; display: inline-block; width: 48px; height: 26px; flex-shrink: 0; cursor: pointer;">
-              <input type="checkbox" id="switchChatbotActivo" onchange="actualizarBadgeSwitchChatbot(this.checked)" style="opacity: 0; width: 0; height: 0;">
-              <span id="sliderSwitchChatbot" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .25s ease; border-radius: 26px;">
-                <span id="circuloSwitchChatbot" style="position: absolute; content: ''; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .25s ease; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
-              </span>
-            </label>
-          </div>
+        <!-- Pestañas de Navegación Interna de Ajustes -->
+        <div style="display: flex; gap: 8px; border-bottom: 2px solid #e2e8f0; margin-bottom: 18px; padding-bottom: 6px;">
+          <button 
+            type="button" 
+            id="tabBtnAjustesGeneral" 
+            onclick="cambiarSubpestanaAjustes('general')" 
+            style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 8px; border: 1.5px solid #1b2a41; background: #1b2a41; color: #ffffff; font-size: 0.86rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease;"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Ajustes Generales
+          </button>
+          <button 
+            type="button" 
+            id="tabBtnAjustesApis" 
+            onclick="cambiarSubpestanaAjustes('apis')" 
+            style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #64748b; font-size: 0.86rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+            Gestión de APIs & Cloud
+            <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 10px; background: #e0f2fe; color: #0284c7; font-weight: 700;">4 APIs</span>
+          </button>
+        </div>
 
-          <!-- Contenedor dinámico: Solo visible si el usuario es Administrador y el chatbot está activo -->
-          {% if request.user.is_administrator %}
-          <div id="seccionConfiguracionChatbot" style="display: none;">
-            <!-- Control 2: API Key de Google Gemini -->
-            <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1b2a41" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                  <label for="inputAjusteApiKey" style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin: 0;">
-                    Clave de API de Gemini
-                  </label>
+        <form id="formAjustesSistema" autocomplete="off" onsubmit="guardarAjustesSistema(event)">
+          <!-- =========================================================
+               SUB-SECCIÓN 1: AJUSTES GENERALES (CHATBOT & PROVEEDOR IA)
+               ========================================================= -->
+          <div id="subseccionAjustesGeneral">
+            <!-- Control Master: Switch de Activación del Chatbot Clínico -->
+            <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+              <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 32px; height: 32px; border-radius: 8px; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: #1b2a41;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+                  </div>
+                  <span style="font-size: 0.95rem; font-weight: 700; color: #0f172a;">Asistente Clínico Inteligente (Chatbot)</span>
+                  <span id="badgeChatbotEstado" style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #dcfce7; color: #15803d;">ACTIVO</span>
+                </div>
+                <p style="margin: 6px 0 0 40px; font-size: 0.8rem; color: #64748b; line-height: 1.4;">
+                  Controla la visibilidad del botón flotante en todo el sistema y permite a los especialistas realizar consultas estadísticas y resúmenes clínicos mediante IA.
+                </p>
+              </div>
+              <!-- Switch toggle interactivo -->
+              <label style="position: relative; display: inline-block; width: 50px; height: 28px; flex-shrink: 0; cursor: pointer;">
+                <input type="checkbox" id="switchChatbotActivo" onchange="actualizarBadgeSwitchChatbot(this.checked)" style="opacity: 0; width: 0; height: 0;">
+                <span id="sliderSwitchChatbot" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .25s ease; border-radius: 28px;">
+                  <span id="circuloSwitchChatbot" style="position: absolute; content: ''; height: 22px; width: 22px; left: 3px; bottom: 3px; background-color: white; transition: .25s ease; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
+                </span>
+              </label>
+            </div>
+
+            <!-- Selector de Proveedor Principal de IA (Active LLM Provider) -->
+            <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 32px; height: 32px; border-radius: 8px; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: #1b2a41;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                  </div>
+                  <div>
+                    <span style="font-size: 0.95rem; font-weight: 700; color: #0f172a;">Motor de IA Predeterminado</span>
+                    <p style="margin: 2px 0 0; font-size: 0.78rem; color: #64748b;">
+                      Seleccione el proveedor de IA activo que procesará las consultas del Asistente Clínico.
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div style="position: relative; margin-bottom: 6px;">
-                <input 
-                  type="text" 
-                  id="inputAjusteApiKey" 
-                  name="gemini_api_token_field"
-                  class="form-input masked-secret-input" 
-                  data-secret-input="true"
-                  placeholder="Pegue aquí su clave de Gemini..." 
-                  autocomplete="off"
-                  autocorrect="off"
-                  autocapitalize="off"
-                  spellcheck="false"
-                  style="width: 100%; box-sizing: border-box; padding: 9px 36px 9px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-family: monospace; font-size: 0.85rem;"
+              <!-- Tarjetas selectoras de proveedor -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 14px;">
+                <!-- Provider 1: Gemini -->
+                <div 
+                  id="cardSelectorGemini" 
+                  onclick="seleccionarProveedorIA('gemini')"
+                  style="border: 2px solid #1b2a41; background: #f8fafc; border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.2s ease; position: relative;"
                 >
-                <button type="button" onclick="togglePasswordVisibility('inputAjusteApiKey', this)" title="Ver / Ocultar clave" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 4px;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                </button>
-              </div>
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <input type="radio" name="radioActiveProvider" id="radioProviderGemini" value="gemini" checked style="accent-color: #1b2a41; cursor: pointer;">
+                      <span style="font-weight: 700; font-size: 0.9rem; color: #0f172a;">Google Gemini</span>
+                    </div>
+                    <span style="font-size: 0.68rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: #dbeafe; color: #1e40af;">RECOMENDADO</span>
+                  </div>
+                  <p style="margin: 0; font-size: 0.76rem; color: #64748b; line-height: 1.35;">
+                    Respuesta rápida &lt; 2s con modelos Flash multimodal de Google.
+                  </p>
+                </div>
 
-              <div style="display: flex; justify-content: flex-end; align-items: center;">
-                <button type="button" onclick="limpiarApiKeyAjustes()" style="background: transparent; border: none; color: #1b2a41; font-size: 0.74rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">
-                  Cambiar / Ingresar nueva clave
-                </button>
-              </div>
-            </div>
+                <!-- Provider 2: OpenAI -->
+                <div 
+                  id="cardSelectorOpenAI" 
+                  onclick="seleccionarProveedorIA('openai')"
+                  style="border: 2px solid #e2e8f0; background: #ffffff; border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.2s ease; position: relative;"
+                >
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <input type="radio" name="radioActiveProvider" id="radioProviderOpenAI" value="openai" style="accent-color: #1b2a41; cursor: pointer;">
+                      <span style="font-weight: 700; font-size: 0.9rem; color: #0f172a;">OpenAI (ChatGPT)</span>
+                    </div>
+                    <span style="font-size: 0.68rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: #dcfce7; color: #15803d;">GPT-4o</span>
+                  </div>
+                  <p style="margin: 0; font-size: 0.76rem; color: #64748b; line-height: 1.35;">
+                    Excelente estructuración de diagnósticos y resúmenes clínicos complejos.
+                  </p>
+                </div>
 
-            <!-- Control 3: Modelo Seleccionado -->
-            <div style="margin-bottom: 16px;">
-              <label for="selectAjusteModelo" style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Modelo de Gemini</label>
-              <select id="selectAjusteModelo" class="form-input" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 0.88rem; background: #ffffff;">
-                <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Recomendado: ultra rápido &lt; 2s)</option>
-                <option value="gemini-3.8-flash">gemini-3.8-flash (Estándar alto rendimiento)</option>
-                <option value="gemini-flash-latest">gemini-flash-latest (Versión estable previa)</option>
-              </select>
+                <!-- Provider 3: Claude -->
+                <div 
+                  id="cardSelectorClaude" 
+                  onclick="seleccionarProveedorIA('claude')"
+                  style="border: 2px solid #e2e8f0; background: #ffffff; border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.2s ease; position: relative;"
+                >
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <input type="radio" name="radioActiveProvider" id="radioProviderClaude" value="claude" style="accent-color: #1b2a41; cursor: pointer;">
+                      <span style="font-weight: 700; font-size: 0.9rem; color: #0f172a;">Anthropic Claude</span>
+                    </div>
+                    <span style="font-size: 0.68rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: #ffedd5; color: #c2410c;">CLAUDE 3.5</span>
+                  </div>
+                  <p style="margin: 0; font-size: 0.76rem; color: #64748b; line-height: 1.35;">
+                    Capacidad analítica profunda y riguroso apego a guías cardiológicas.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-          {% endif %}
+
+          <!-- =========================================================
+               SUB-SECCIÓN 2: GESTIÓN DE APIS EN TARJETAS (4 SERVICIOS)
+               ========================================================= -->
+          <div id="subseccionAjustesApis" style="display: none;">
+            <!-- Barra de Filtro / Selección de API a Configurar -->
+            <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;">
+              <span style="font-size: 0.82rem; font-weight: 700; color: #334155; display: inline-flex; align-items: center; gap: 6px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                Filtrar o seleccionar API:
+              </span>
+              <div style="display: flex; flex-wrap: wrap; gap: 6px;" id="contenedorFiltrosApis">
+                <button type="button" class="btn-filtro-api active" onclick="filtrarTarjetasApi('todas', this)" style="padding: 5px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; border: 1.5px solid #1b2a41; background: #1b2a41; color: #ffffff; cursor: pointer; transition: all 0.2s;">
+                  Todas (4)
+                </button>
+                <button type="button" class="btn-filtro-api" onclick="filtrarTarjetasApi('gemini', this)" style="padding: 5px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; border: 1.5px solid #cbd5e1; background: #ffffff; color: #334155; cursor: pointer; transition: all 0.2s;">
+                  🔹 Gemini
+                </button>
+                <button type="button" class="btn-filtro-api" onclick="filtrarTarjetasApi('openai', this)" style="padding: 5px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; border: 1.5px solid #cbd5e1; background: #ffffff; color: #334155; cursor: pointer; transition: all 0.2s;">
+                  🟢 OpenAI
+                </button>
+                <button type="button" class="btn-filtro-api" onclick="filtrarTarjetasApi('claude', this)" style="padding: 5px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; border: 1.5px solid #cbd5e1; background: #ffffff; color: #334155; cursor: pointer; transition: all 0.2s;">
+                  🟠 Claude
+                </button>
+                <button type="button" class="btn-filtro-api" onclick="filtrarTarjetasApi('gmail', this)" style="padding: 5px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; border: 1.5px solid #cbd5e1; background: #ffffff; color: #334155; cursor: pointer; transition: all 0.2s;">
+                  🔴 Gmail
+                </button>
+              </div>
+            </div>
+
+            <!-- Contenedor Grid de Tarjetas de APIs -->
+            <div id="gridTarjetasApis" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 14px; margin-bottom: 16px;">
+              
+              <!-- ==============================================
+                   TARJETA 1: GOOGLE GEMINI API
+                   ============================================== -->
+              <div id="cardApiGemini" class="tarjeta-api-config" style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <div style="width: 32px; height: 32px; border-radius: 8px; background: #e0f2fe; display: flex; align-items: center; justify-content: center; color: #0284c7; font-weight: 700; font-size: 0.95rem;">
+                        G
+                      </div>
+                      <div>
+                        <span style="font-weight: 700; font-size: 0.92rem; color: #0f172a; display: block;">Google Gemini</span>
+                        <span id="badgeEstadoGemini" style="font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 8px; background: #f1f5f9; color: #64748b;">SIN CONFIGURAR</span>
+                      </div>
+                    </div>
+                    <label title="Habilitar o pausar Gemini" style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <span style="font-size: 0.75rem; font-weight: 600; color: #64748b;">Habilitado</span>
+                      <input type="checkbox" id="switchGeminiEnabled" checked style="accent-color: #1b2a41; cursor: pointer; width: 16px; height: 16px;">
+                    </label>
+                  </div>
+
+                  <p style="margin: 0 0 12px; font-size: 0.76rem; color: #64748b; line-height: 1.35;">
+                    API de Google para procesamiento multimodal, transcripción clínica y chat inteligente.
+                  </p>
+
+                  <!-- API Key -->
+                  <div style="margin-bottom: 10px;">
+                    <label for="inputAjusteApiKey" style="display: block; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                      API Key de Gemini
+                    </label>
+                    <div style="position: relative;">
+                      <input 
+                        type="text" 
+                        id="inputAjusteApiKey" 
+                        name="gemini_api_token_field"
+                        class="form-input masked-secret-input" 
+                        data-secret-input="true"
+                        placeholder="AIzaSy..." 
+                        autocomplete="off"
+                        style="width: 100%; box-sizing: border-box; padding: 7px 34px 7px 10px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-family: monospace; font-size: 0.8rem;"
+                      >
+                      <button type="button" onclick="togglePasswordVisibility('inputAjusteApiKey', this)" title="Ver / Ocultar clave" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 2px;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      </button>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; margin-top: 3px;">
+                      <button type="button" onclick="limpiarApiKeyAjustes()" style="background: transparent; border: none; color: #1b2a41; font-size: 0.72rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">
+                        Cambiar clave
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Modelo -->
+                  <div style="margin-bottom: 6px;">
+                    <label for="selectAjusteModelo" style="display: block; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                      Modelo de Gemini
+                    </label>
+                    <select id="selectAjusteModelo" class="form-input" style="width: 100%; box-sizing: border-box; padding: 6px 10px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 0.8rem; background: #ffffff;">
+                      <option value="gemini-2.5-flash">gemini-2.5-flash (Ultra rápido &lt; 2s - Recomendado)</option>
+                      <option value="gemini-1.5-flash">gemini-1.5-flash (Estándar de alto rendimiento)</option>
+                      <option value="gemini-1.5-pro">gemini-1.5-pro (Máxima capacidad de razonamiento)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ==============================================
+                   TARJETA 2: OPENAI (CHATGPT) API
+                   ============================================== -->
+              <div id="cardApiOpenAI" class="tarjeta-api-config" style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <div style="width: 32px; height: 32px; border-radius: 8px; background: #dcfce7; display: flex; align-items: center; justify-content: center; color: #15803d; font-weight: 700; font-size: 0.95rem;">
+                        O
+                      </div>
+                      <div>
+                        <span style="font-weight: 700; font-size: 0.92rem; color: #0f172a; display: block;">OpenAI (ChatGPT)</span>
+                        <span id="badgeEstadoOpenAI" style="font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 8px; background: #f1f5f9; color: #64748b;">SIN CONFIGURAR</span>
+                      </div>
+                    </div>
+                    <label title="Habilitar o pausar OpenAI" style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <span style="font-size: 0.75rem; font-weight: 600; color: #64748b;">Habilitado</span>
+                      <input type="checkbox" id="switchOpenAIEnabled" checked style="accent-color: #1b2a41; cursor: pointer; width: 16px; height: 16px;">
+                    </label>
+                  </div>
+
+                  <p style="margin: 0 0 12px; font-size: 0.76rem; color: #64748b; line-height: 1.35;">
+                    Modelos GPT para síntesis de historiales clínicos y respuestas conversacionales.
+                  </p>
+
+                  <!-- API Key -->
+                  <div style="margin-bottom: 10px;">
+                    <label for="inputOpenAIApiKey" style="display: block; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                      API Key de OpenAI
+                    </label>
+                    <div style="position: relative;">
+                      <input 
+                        type="text" 
+                        id="inputOpenAIApiKey" 
+                        name="openai_api_token_field"
+                        class="form-input masked-secret-input" 
+                        data-secret-input="true"
+                        placeholder="sk-proj-..." 
+                        autocomplete="off"
+                        style="width: 100%; box-sizing: border-box; padding: 7px 34px 7px 10px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-family: monospace; font-size: 0.8rem;"
+                      >
+                      <button type="button" onclick="togglePasswordVisibility('inputOpenAIApiKey', this)" title="Ver / Ocultar clave" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 2px;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      </button>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; margin-top: 3px;">
+                      <button type="button" onclick="limpiarOpenAIApiKey()" style="background: transparent; border: none; color: #1b2a41; font-size: 0.72rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">
+                        Cambiar clave
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Modelo -->
+                  <div style="margin-bottom: 6px;">
+                    <label for="selectOpenAIModelo" style="display: block; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                      Modelo de OpenAI
+                    </label>
+                    <select id="selectOpenAIModelo" class="form-input" style="width: 100%; box-sizing: border-box; padding: 6px 10px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 0.8rem; background: #ffffff;">
+                      <option value="gpt-4o-mini">gpt-4o-mini (Recomendado - balance óptimo velocidad/costo)</option>
+                      <option value="gpt-4o">gpt-4o (Máxima precisión multimodal)</option>
+                      <option value="gpt-3.5-turbo">gpt-3.5-turbo (Económico estándar)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ==============================================
+                   TARJETA 3: ANTHROPIC CLAUDE API
+                   ============================================== -->
+              <div id="cardApiClaude" class="tarjeta-api-config" style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <div style="width: 32px; height: 32px; border-radius: 8px; background: #ffedd5; display: flex; align-items: center; justify-content: center; color: #c2410c; font-weight: 700; font-size: 0.95rem;">
+                        C
+                      </div>
+                      <div>
+                        <span style="font-weight: 700; font-size: 0.92rem; color: #0f172a; display: block;">Anthropic Claude</span>
+                        <span id="badgeEstadoClaude" style="font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 8px; background: #f1f5f9; color: #64748b;">SIN CONFIGURAR</span>
+                      </div>
+                    </div>
+                    <label title="Habilitar o pausar Claude" style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <span style="font-size: 0.75rem; font-weight: 600; color: #64748b;">Habilitado</span>
+                      <input type="checkbox" id="switchClaudeEnabled" checked style="accent-color: #1b2a41; cursor: pointer; width: 16px; height: 16px;">
+                    </label>
+                  </div>
+
+                  <p style="margin: 0 0 12px; font-size: 0.76rem; color: #64748b; line-height: 1.35;">
+                    Modelos Claude reconocidos por alta precisión lógica y lectura contextual clínica.
+                  </p>
+
+                  <!-- API Key -->
+                  <div style="margin-bottom: 10px;">
+                    <label for="inputClaudeApiKey" style="display: block; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                      API Key de Claude
+                    </label>
+                    <div style="position: relative;">
+                      <input 
+                        type="text" 
+                        id="inputClaudeApiKey" 
+                        name="claude_api_token_field"
+                        class="form-input masked-secret-input" 
+                        data-secret-input="true"
+                        placeholder="sk-ant-api03-..." 
+                        autocomplete="off"
+                        style="width: 100%; box-sizing: border-box; padding: 7px 34px 7px 10px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-family: monospace; font-size: 0.8rem;"
+                      >
+                      <button type="button" onclick="togglePasswordVisibility('inputClaudeApiKey', this)" title="Ver / Ocultar clave" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 2px;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      </button>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; margin-top: 3px;">
+                      <button type="button" onclick="limpiarClaudeApiKey()" style="background: transparent; border: none; color: #1b2a41; font-size: 0.72rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">
+                        Cambiar clave
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Modelo -->
+                  <div style="margin-bottom: 6px;">
+                    <label for="selectClaudeModelo" style="display: block; font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                      Modelo de Claude
+                    </label>
+                    <select id="selectClaudeModelo" class="form-input" style="width: 100%; box-sizing: border-box; padding: 6px 10px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 0.8rem; background: #ffffff;">
+                      <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet (Recomendado - razonamiento superior)</option>
+                      <option value="claude-3-5-haiku-20241022">claude-3-5-haiku (Ultra veloz y eficiente)</option>
+                      <option value="claude-3-opus-20240229">claude-3-opus (Análisis médico exhaustivo)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ==============================================
+                   TARJETA 4: GOOGLE GMAIL REST API
+                   ============================================== -->
+              <div id="cardApiGmail" class="tarjeta-api-config" style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <div style="width: 32px; height: 32px; border-radius: 8px; background: #fee2e2; display: flex; align-items: center; justify-content: center; color: #dc2626; font-weight: 700; font-size: 0.95rem;">
+                        ✉️
+                      </div>
+                      <div>
+                        <span style="font-weight: 700; font-size: 0.92rem; color: #0f172a; display: block;">Google Gmail REST API</span>
+                        <span id="badgeEstadoGmail" style="font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 8px; background: #f1f5f9; color: #64748b;">SIN CONFIGURAR</span>
+                      </div>
+                    </div>
+                    <label title="Habilitar envío por Gmail API" style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <span style="font-size: 0.75rem; font-weight: 600; color: #64748b;">Habilitado</span>
+                      <input type="checkbox" id="switchGmailEnabled" style="accent-color: #1b2a41; cursor: pointer; width: 16px; height: 16px;">
+                    </label>
+                  </div>
+
+                  <p style="margin: 0 0 12px; font-size: 0.76rem; color: #64748b; line-height: 1.35;">
+                    Envío seguro de notificaciones, restablecimiento y reportes clínicos vía OAuth2 de Gmail.
+                  </p>
+
+                  <!-- Sender Email & Client ID en 2 columnas -->
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                    <div>
+                      <label for="inputGmailSenderEmail" style="display: block; font-size: 0.74rem; font-weight: 700; color: #334155; margin-bottom: 3px;">
+                        Correo Remitente
+                      </label>
+                      <input 
+                        type="email" 
+                        id="inputGmailSenderEmail" 
+                        placeholder="notificaciones@cardioclinica.ec" 
+                        class="form-input"
+                        style="width: 100%; box-sizing: border-box; padding: 6px 8px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 0.78rem;"
+                      >
+                    </div>
+                    <div>
+                      <label for="inputGmailClientId" style="display: block; font-size: 0.74rem; font-weight: 700; color: #334155; margin-bottom: 3px;">
+                        Client ID (OAuth2)
+                      </label>
+                      <input 
+                        type="text" 
+                        id="inputGmailClientId" 
+                        placeholder="...apps.googleusercontent.com" 
+                        class="form-input"
+                        style="width: 100%; box-sizing: border-box; padding: 6px 8px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 0.78rem;"
+                      >
+                    </div>
+                  </div>
+
+                  <!-- Client Secret & Refresh Token en 2 columnas -->
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px;">
+                    <div>
+                      <label for="inputGmailClientSecret" style="display: block; font-size: 0.74rem; font-weight: 700; color: #334155; margin-bottom: 3px;">
+                        Client Secret
+                      </label>
+                      <div style="position: relative;">
+                        <input 
+                          type="text" 
+                          id="inputGmailClientSecret" 
+                          class="form-input masked-secret-input" 
+                          data-secret-input="true"
+                          placeholder="GOCSPX-..." 
+                          style="width: 100%; box-sizing: border-box; padding: 6px 28px 6px 8px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-family: monospace; font-size: 0.76rem;"
+                        >
+                        <button type="button" onclick="togglePasswordVisibility('inputGmailClientSecret', this)" style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 1px;">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                      </div>
+                      <div style="display: flex; justify-content: flex-end; margin-top: 2px;">
+                        <button type="button" onclick="limpiarGmailSecret()" style="background: transparent; border: none; color: #1b2a41; font-size: 0.68rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">
+                          Cambiar
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label for="inputGmailRefreshToken" style="display: block; font-size: 0.74rem; font-weight: 700; color: #334155; margin-bottom: 3px;">
+                        Refresh Token
+                      </label>
+                      <div style="position: relative;">
+                        <input 
+                          type="text" 
+                          id="inputGmailRefreshToken" 
+                          class="form-input masked-secret-input" 
+                          data-secret-input="true"
+                          placeholder="1//04..." 
+                          style="width: 100%; box-sizing: border-box; padding: 6px 28px 6px 8px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-family: monospace; font-size: 0.76rem;"
+                        >
+                        <button type="button" onclick="togglePasswordVisibility('inputGmailRefreshToken', this)" style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 1px;">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                      </div>
+                      <div style="display: flex; justify-content: flex-end; margin-top: 2px;">
+                        <button type="button" onclick="limpiarGmailRefresh()" style="background: transparent; border: none; color: #1b2a41; font-size: 0.68rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">
+                          Cambiar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Redirect URI informativa -->
+                  <div>
+                    <label for="inputGmailRedirectUri" style="display: block; font-size: 0.72rem; font-weight: 600; color: #64748b; margin-bottom: 2px;">
+                      URI de Redirección Autorizada (OAuth2)
+                    </label>
+                    <input 
+                      type="text" 
+                      id="inputGmailRedirectUri" 
+                      readonly 
+                      value="http://127.0.0.1:8000/security/oauth2/gmail/callback/" 
+                      style="width: 100%; box-sizing: border-box; padding: 5px 8px; border-radius: 5px; border: 1px solid #e2e8f0; font-family: monospace; font-size: 0.72rem; background: #f8fafc; color: #475569;"
+                    >
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
 
           <!-- Mensajes de estado -->
-          <div id="ajustesErrorMsg" style="display: none; padding: 8px 12px; border-radius: 6px; background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; font-size: 0.8rem; margin-bottom: 12px;"></div>
-          <div id="ajustesSuccessMsg" style="display: none; padding: 8px 12px; border-radius: 6px; background: #dcfce7; border: 1px solid #86efac; color: #15803d; font-size: 0.8rem; margin-bottom: 12px;"></div>
+          <div id="ajustesErrorMsg" style="display: none; padding: 10px 14px; border-radius: 8px; background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; font-size: 0.82rem; margin-bottom: 14px;"></div>
+          <div id="ajustesSuccessMsg" style="display: none; padding: 10px 14px; border-radius: 8px; background: #dcfce7; border: 1px solid #86efac; color: #15803d; font-size: 0.82rem; margin-bottom: 14px;"></div>
 
-          <div style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px;">
+          <!-- Botones de Acción -->
+          <div style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 6px; border-top: 1.5px solid #f1f5f9; margin-top: 10px;">
             <button 
               type="button" 
               class="btn btn-modal-cancel" 
               onclick="cerrarModalUniversal()"
-              style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 18px; font-size: 0.88rem; font-weight: 600; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer; transition: all 0.2s ease;"
+              style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 20px; font-size: 0.88rem; font-weight: 600; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer; transition: all 0.2s ease;"
             >
               Cancelar
             </button>
@@ -340,9 +745,10 @@
               type="submit" 
               id="btnGuardarAjustes" 
               class="btn btn-modal-primary"
-              style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 20px; font-size: 0.88rem; font-weight: 700; border-radius: 8px; border: 1px solid #1b2a41; background: #1b2a41; color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);"
+              style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 24px; font-size: 0.88rem; font-weight: 700; border-radius: 8px; border: 1px solid #1b2a41; background: #1b2a41; color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);"
             >
-              Guardar ajustes
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+              Guardar todos los ajustes
             </button>
           </div>
         </form>

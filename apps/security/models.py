@@ -13,7 +13,9 @@ logger = logging.getLogger(__name__)
 
 ADMIN_ROLE_NAME = 'Administrador'
 SYSTEM_SETTING_CACHE_KEY = 'security:system_setting:admin'
-DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash-lite'
+DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash'
+DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
+DEFAULT_CLAUDE_MODEL = 'claude-3-5-sonnet-20241022'
 
 
 class Role(models.Model):
@@ -262,6 +264,14 @@ class SystemSetting(models.Model):
         db_column='chatbot_enabled',
         help_text='Interruptor global para activar o desactivar el Asistente Clínico con IA',
     )
+    active_llm_provider = models.CharField(
+        max_length=30,
+        default='gemini',
+        db_column='active_llm_provider',
+        help_text='Proveedor LLM activo para el asistente clínico: gemini, openai, claude',
+    )
+
+    # 1. Google Gemini Generative AI
     gemini_api_key_encrypted = models.TextField(
         blank=True,
         null=True,
@@ -273,6 +283,96 @@ class SystemSetting(models.Model):
         default=DEFAULT_GEMINI_MODEL,
         db_column='gemini_model',
         help_text="Modelo por defecto de Gemini Flash",
+    )
+    gemini_enabled = models.BooleanField(
+        default=True,
+        db_column='gemini_enabled',
+        help_text="Interruptor de activación de Google Gemini",
+    )
+
+    # 2. OpenAI / ChatGPT
+    openai_api_key_encrypted = models.TextField(
+        blank=True,
+        null=True,
+        db_column='openai_api_key_encrypted',
+        help_text="Clave de API de OpenAI (ChatGPT) encriptada con Fernet",
+    )
+    openai_model = models.CharField(
+        max_length=60,
+        default=DEFAULT_OPENAI_MODEL,
+        db_column='openai_model',
+        help_text="Modelo activo de OpenAI (ej. gpt-4o, gpt-4o-mini)",
+    )
+    openai_enabled = models.BooleanField(
+        default=False,
+        db_column='openai_enabled',
+        help_text="Interruptor de activación de OpenAI",
+    )
+
+    # 3. Anthropic Claude
+    claude_api_key_encrypted = models.TextField(
+        blank=True,
+        null=True,
+        db_column='claude_api_key_encrypted',
+        help_text="Clave de API de Anthropic Claude encriptada con Fernet",
+    )
+    claude_model = models.CharField(
+        max_length=60,
+        default=DEFAULT_CLAUDE_MODEL,
+        db_column='claude_model',
+        help_text="Modelo activo de Anthropic Claude (ej. claude-3-5-sonnet, claude-3-5-haiku)",
+    )
+    claude_enabled = models.BooleanField(
+        default=False,
+        db_column='claude_enabled',
+        help_text="Interruptor de activación de Anthropic Claude",
+    )
+
+    # 4. Google Gmail REST API
+    gmail_client_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        db_column='gmail_client_id',
+        help_text="Google Cloud Platform OAuth2 Client ID",
+    )
+    gmail_client_secret_encrypted = models.TextField(
+        blank=True,
+        null=True,
+        db_column='gmail_client_secret_encrypted',
+        help_text="Google OAuth2 Client Secret encriptado con Fernet",
+    )
+    gmail_refresh_token_encrypted = models.TextField(
+        blank=True,
+        null=True,
+        db_column='gmail_refresh_token_encrypted',
+        help_text="Google OAuth2 Offline Refresh Token encriptado con Fernet",
+    )
+    gmail_sender_email = models.CharField(
+        max_length=254,
+        blank=True,
+        null=True,
+        db_column='gmail_sender_email',
+        help_text="Correo remitente institucional autorizado para despachos",
+    )
+    gmail_api_enabled = models.BooleanField(
+        default=False,
+        db_column='gmail_api_enabled',
+        help_text="Interruptor de integración de Gmail API",
+    )
+    gmail_redirect_uri = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        default='http://127.0.0.1:8000/security/oauth2/gmail/callback/',
+        db_column='gmail_redirect_uri',
+        help_text="OAuth2 Redirect URI callback",
+    )
+    last_token_refresh = models.DateTimeField(
+        blank=True,
+        null=True,
+        db_column='last_token_refresh',
+        help_text="Timestamp de la última renovación del token de acceso",
     )
     updated_at_utc = models.DateTimeField(auto_now=True, db_column='updated_at_utc')
     updated_by = models.ForeignKey(
@@ -346,8 +446,21 @@ class SystemSetting(models.Model):
             role=admin_role,
             defaults={
                 'chatbot_enabled': True,
+                'active_llm_provider': 'gemini',
                 'gemini_api_key_encrypted': '',
                 'gemini_model': DEFAULT_GEMINI_MODEL,
+                'gemini_enabled': True,
+                'openai_api_key_encrypted': '',
+                'openai_model': DEFAULT_OPENAI_MODEL,
+                'openai_enabled': False,
+                'claude_api_key_encrypted': '',
+                'claude_model': DEFAULT_CLAUDE_MODEL,
+                'claude_enabled': False,
+                'gmail_client_id': '',
+                'gmail_client_secret_encrypted': '',
+                'gmail_refresh_token_encrypted': '',
+                'gmail_sender_email': '',
+                'gmail_api_enabled': False,
             },
         )
         cache.set(SYSTEM_SETTING_CACHE_KEY, obj, timeout=300)
@@ -368,9 +481,7 @@ class SystemSetting(models.Model):
     @classmethod
     def get_gemini_api_key(cls, user=None) -> str:
         """
-        Retorna la clave API descifrada únicamente desde la base de datos.
-        ADVERTENCIA: `user=None` es solo para tareas internas del servidor o pruebas;
-        las vistas y servicios orientados al usuario DEBEN pasar siempre `request.user`.
+        Retorna la clave API descifrada de Google Gemini.
         """
         try:
             cfg = cls.get_settings()
@@ -381,11 +492,99 @@ class SystemSetting(models.Model):
             if cfg.gemini_api_key_encrypted:
                 return decrypt_api_key(cfg.gemini_api_key_encrypted)
         except Exception:
-            logger.exception("Error obteniendo la API key desde SystemSetting.")
+            logger.exception("Error obteniendo la Gemini API key desde SystemSetting.")
         return ''
 
     @classmethod
-    def set_settings(cls, chatbot_enabled: bool, raw_api_key: str = None, model: str = None, user=None):
+    def get_openai_api_key(cls, user=None) -> str:
+        """
+        Retorna la clave API descifrada de OpenAI (ChatGPT).
+        """
+        try:
+            cfg = cls.get_settings()
+            if not cfg.role_id or cfg.role.status != Role.Status.ACTIVE:
+                return ''
+            if user is not None and not cfg.is_role_authorized(user):
+                return ''
+            if cfg.openai_api_key_encrypted:
+                return decrypt_api_key(cfg.openai_api_key_encrypted)
+        except Exception:
+            logger.exception("Error obteniendo la OpenAI API key desde SystemSetting.")
+        return ''
+
+    @classmethod
+    def get_claude_api_key(cls, user=None) -> str:
+        """
+        Retorna la clave API descifrada de Anthropic Claude.
+        """
+        try:
+            cfg = cls.get_settings()
+            if not cfg.role_id or cfg.role.status != Role.Status.ACTIVE:
+                return ''
+            if user is not None and not cfg.is_role_authorized(user):
+                return ''
+            if cfg.claude_api_key_encrypted:
+                return decrypt_api_key(cfg.claude_api_key_encrypted)
+        except Exception:
+            logger.exception("Error obteniendo la Claude API key desde SystemSetting.")
+        return ''
+
+    @classmethod
+    def get_gmail_client_secret(cls, user=None) -> str:
+        """
+        Retorna el client secret descifrado de Gmail OAuth2.
+        """
+        try:
+            cfg = cls.get_settings()
+            if not cfg.role_id or cfg.role.status != Role.Status.ACTIVE:
+                return ''
+            if user is not None and not cfg.is_role_authorized(user):
+                return ''
+            if cfg.gmail_client_secret_encrypted:
+                return decrypt_api_key(cfg.gmail_client_secret_encrypted)
+        except Exception:
+            logger.exception("Error obteniendo Gmail client secret desde SystemSetting.")
+        return ''
+
+    @classmethod
+    def get_gmail_refresh_token(cls, user=None) -> str:
+        """
+        Retorna el refresh token descifrado de Gmail OAuth2.
+        """
+        try:
+            cfg = cls.get_settings()
+            if not cfg.role_id or cfg.role.status != Role.Status.ACTIVE:
+                return ''
+            if user is not None and not cfg.is_role_authorized(user):
+                return ''
+            if cfg.gmail_refresh_token_encrypted:
+                return decrypt_api_key(cfg.gmail_refresh_token_encrypted)
+        except Exception:
+            logger.exception("Error obteniendo Gmail refresh token desde SystemSetting.")
+        return ''
+
+    @classmethod
+    def set_settings(
+        cls,
+        chatbot_enabled: bool = None,
+        active_llm_provider: str = None,
+        raw_api_key: str = None,
+        model: str = None,
+        gemini_enabled: bool = None,
+        raw_openai_key: str = None,
+        openai_model: str = None,
+        openai_enabled: bool = None,
+        raw_claude_key: str = None,
+        claude_model: str = None,
+        claude_enabled: bool = None,
+        gmail_client_id: str = None,
+        raw_gmail_secret: str = None,
+        raw_gmail_refresh_token: str = None,
+        gmail_sender_email: str = None,
+        gmail_api_enabled: bool = None,
+        gmail_redirect_uri: str = None,
+        user=None
+    ):
         """
         Actualiza la configuración del sistema validando autorización del rol Administrador.
         Lanza PermissionDenied si un usuario sin autorización intenta modificarla.
@@ -394,12 +593,51 @@ class SystemSetting(models.Model):
         if user is not None and not cfg.is_role_authorized(user):
             raise PermissionDenied("Solo el rol Administrador puede modificar la configuración del sistema.")
 
-        cfg.chatbot_enabled = bool(chatbot_enabled)
+        if chatbot_enabled is not None:
+            cfg.chatbot_enabled = bool(chatbot_enabled)
+        if active_llm_provider is not None:
+            cfg.active_llm_provider = active_llm_provider.strip().lower()
+
+        # Google Gemini
         if raw_api_key is not None:
             cfg.gemini_api_key_encrypted = encrypt_api_key(raw_api_key)
         if model:
             cfg.gemini_model = model.strip()
+        if gemini_enabled is not None:
+            cfg.gemini_enabled = bool(gemini_enabled)
+
+        # OpenAI / ChatGPT
+        if raw_openai_key is not None:
+            cfg.openai_api_key_encrypted = encrypt_api_key(raw_openai_key)
+        if openai_model:
+            cfg.openai_model = openai_model.strip()
+        if openai_enabled is not None:
+            cfg.openai_enabled = bool(openai_enabled)
+
+        # Anthropic Claude
+        if raw_claude_key is not None:
+            cfg.claude_api_key_encrypted = encrypt_api_key(raw_claude_key)
+        if claude_model:
+            cfg.claude_model = claude_model.strip()
+        if claude_enabled is not None:
+            cfg.claude_enabled = bool(claude_enabled)
+
+        # Gmail REST API
+        if gmail_client_id is not None:
+            cfg.gmail_client_id = gmail_client_id.strip()
+        if raw_gmail_secret is not None:
+            cfg.gmail_client_secret_encrypted = encrypt_api_key(raw_gmail_secret)
+        if raw_gmail_refresh_token is not None:
+            cfg.gmail_refresh_token_encrypted = encrypt_api_key(raw_gmail_refresh_token)
+        if gmail_sender_email is not None:
+            cfg.gmail_sender_email = gmail_sender_email.strip()
+        if gmail_api_enabled is not None:
+            cfg.gmail_api_enabled = bool(gmail_api_enabled)
+        if gmail_redirect_uri is not None:
+            cfg.gmail_redirect_uri = gmail_redirect_uri.strip()
+
         if user and getattr(user, 'is_authenticated', False):
             cfg.updated_by = user
+
         cfg.save()
         return cfg

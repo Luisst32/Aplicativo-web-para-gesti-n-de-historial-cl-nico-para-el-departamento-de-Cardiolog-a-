@@ -296,6 +296,77 @@ class SecurityApiEndpointsTests(TestCase):
         self.assertEqual(post_data['status'], 'success')
         self.assertEqual(SystemSetting.get_gemini_api_key(), 'AIzaSy_ADMIN_NEW_KEY_999')
 
+    def test_settings_api_admin_can_configure_multiple_apis(self):
+        self.client.login(username='admin_test', password='AdminPassword123!')
+
+        # POST multiple APIs settings
+        payload = {
+            'chatbot_enabled': True,
+            'active_llm_provider': 'claude',
+            'gemini_api_key': 'AIzaSy_GEMINI_SECRET_123',
+            'gemini_model': 'gemini-2.5-flash',
+            'gemini_enabled': True,
+            'openai_api_key': 'sk-proj-OPENAI_SECRET_KEY_456',
+            'openai_model': 'gpt-4o',
+            'openai_enabled': True,
+            'claude_api_key': 'sk-ant-CLAUDE_SECRET_KEY_789',
+            'claude_model': 'claude-3-5-sonnet-20241022',
+            'claude_enabled': True,
+            'gmail_sender_email': 'cardio@unemi.edu.ec',
+            'gmail_client_id': 'google-client-id-abc.apps.googleusercontent.com',
+            'gmail_client_secret': 'GOCSPX-SECRET-999',
+            'gmail_refresh_token': '1//04REFRESH-TOKEN-XYZ',
+            'gmail_redirect_uri': 'http://127.0.0.1:8000/security/oauth2/gmail/callback/',
+            'gmail_api_enabled': True
+        }
+        res = self.client.post(
+            '/security/api/settings/',
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        self.assertEqual(res.status_code, 200)
+
+        # Verify decrypted values on model
+        self.assertEqual(SystemSetting.get_gemini_api_key(), 'AIzaSy_GEMINI_SECRET_123')
+        self.assertEqual(SystemSetting.get_openai_api_key(), 'sk-proj-OPENAI_SECRET_KEY_456')
+        self.assertEqual(SystemSetting.get_claude_api_key(), 'sk-ant-CLAUDE_SECRET_KEY_789')
+        self.assertEqual(SystemSetting.get_gmail_client_secret(), 'GOCSPX-SECRET-999')
+        self.assertEqual(SystemSetting.get_gmail_refresh_token(), '1//04REFRESH-TOKEN-XYZ')
+
+        cfg = SystemSetting.get_settings()
+        self.assertEqual(cfg.active_llm_provider, 'claude')
+        self.assertEqual(cfg.openai_model, 'gpt-4o')
+        self.assertEqual(cfg.gmail_sender_email, 'cardio@unemi.edu.ec')
+
+        # GET settings and verify masked values returned
+        get_res = self.client.get('/security/api/settings/')
+        self.assertEqual(get_res.status_code, 200)
+        get_data = get_res.json()
+        self.assertTrue(get_data['gemini_api_key_configured'])
+        self.assertTrue(get_data['openai_api_key_configured'])
+        self.assertTrue(get_data['claude_api_key_configured'])
+        self.assertTrue(get_data['gmail_secret_configured'])
+        self.assertTrue(get_data['gmail_refresh_configured'])
+        self.assertIn('***', get_data['openai_api_key_masked'])
+        self.assertIn('***', get_data['claude_api_key_masked'])
+
+        # Submitting masked tokens with '***' must NOT overwrite existing secrets
+        preserve_payload = {
+            'chatbot_enabled': True,
+            'active_llm_provider': 'openai',
+            'openai_api_key': get_data['openai_api_key_masked'],  # sending masked
+            'claude_api_key': get_data['claude_api_key_masked']    # sending masked
+        }
+        preserve_res = self.client.post(
+            '/security/api/settings/',
+            data=json.dumps(preserve_payload),
+            content_type='application/json'
+        )
+        self.assertEqual(preserve_res.status_code, 200)
+        self.assertEqual(SystemSetting.get_openai_api_key(), 'sk-proj-OPENAI_SECRET_KEY_456')
+        self.assertEqual(SystemSetting.get_claude_api_key(), 'sk-ant-CLAUDE_SECRET_KEY_789')
+        self.assertEqual(SystemSetting.get_settings().active_llm_provider, 'openai')
+
     def test_settings_api_non_admin_cannot_view_or_update_api_key(self):
         # Seed an existing key
         SystemSetting.set_settings(chatbot_enabled=True, raw_api_key='ORIGINAL_SECRET_KEY')

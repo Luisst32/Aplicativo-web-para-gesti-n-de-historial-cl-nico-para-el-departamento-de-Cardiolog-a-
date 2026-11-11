@@ -115,9 +115,13 @@ function initUserMenu() {
 
 function cerrarModalUniversal() {
   const modal = document.getElementById('modalUniversal');
+  const card = document.getElementById('modalUniversalCard');
   if (modal) {
     modal.style.display = 'none';
     modal.classList.remove('active');
+  }
+  if (card) {
+    card.style.maxWidth = '540px';
   }
 }
 
@@ -130,6 +134,12 @@ function cambiarVistaModal(vista) {
   const titulo = document.getElementById('modalUniversalTitulo');
   const subtitulo = document.getElementById('modalUniversalSubtitulo');
   const icono = document.getElementById('modalUniversalIcono');
+  const card = document.getElementById('modalUniversalCard');
+
+  // Ajustar ancho panorámico para Ajustes y compacto para Perfil / Password
+  if (card) {
+    card.style.maxWidth = (vista === 'ajustes') ? '920px' : '540px';
+  }
 
   // Ocultar todas las vistas
   if (vPerfil) vPerfil.style.display = 'none';
@@ -178,16 +188,17 @@ function cambiarVistaModal(vista) {
     });
   } else if (vista === 'ajustes') {
     if (vAjustes) vAjustes.style.display = 'block';
-    if (titulo) titulo.textContent = 'Ajustes del Sistema';
+    if (titulo) titulo.textContent = 'Ajustes del Sistema & Credenciales de APIs';
     if (subtitulo) {
-      subtitulo.textContent = '';
-      subtitulo.style.display = 'none';
+      subtitulo.textContent = 'Configuración general de IA, parámetros clínicos e integraciones cloud.';
+      subtitulo.style.display = 'block';
     }
     if (icono) {
       icono.style.background = '#f1f5f9';
       icono.style.color = '#1b2a41';
       icono.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`;
     }
+    cambiarSubpestanaAjustes('general');
     cargarAjustesSistema();
   }
 }
@@ -513,12 +524,161 @@ async function guardarNuevaPassword(event) {
 }
 
 /**
- * Cargar configuración global del sistema (Ajustes)
+ * =========================================================================
+ * AJUSTES GLOBALES DEL SISTEMA & GESTIÓN DE APIS (PANORÁMICO)
+ * =========================================================================
+ */
+
+function cambiarSubpestanaAjustes(subpestana) {
+  const btnGeneral = document.getElementById('tabBtnAjustesGeneral');
+  const btnApis = document.getElementById('tabBtnAjustesApis');
+  const secGeneral = document.getElementById('subseccionAjustesGeneral');
+  const secApis = document.getElementById('subseccionAjustesApis');
+
+  if (subpestana === 'general') {
+    if (btnGeneral) {
+      btnGeneral.style.background = '#1b2a41';
+      btnGeneral.style.color = '#ffffff';
+      btnGeneral.style.borderColor = '#1b2a41';
+      btnGeneral.style.fontWeight = '700';
+    }
+    if (btnApis) {
+      btnApis.style.background = '#ffffff';
+      btnApis.style.color = '#64748b';
+      btnApis.style.borderColor = '#cbd5e1';
+      btnApis.style.fontWeight = '600';
+    }
+    if (secGeneral) secGeneral.style.display = 'block';
+    if (secApis) secApis.style.display = 'none';
+  } else if (subpestana === 'apis') {
+    if (btnApis) {
+      btnApis.style.background = '#1b2a41';
+      btnApis.style.color = '#ffffff';
+      btnApis.style.borderColor = '#1b2a41';
+      btnApis.style.fontWeight = '700';
+    }
+    if (btnGeneral) {
+      btnGeneral.style.background = '#ffffff';
+      btnGeneral.style.color = '#64748b';
+      btnGeneral.style.borderColor = '#cbd5e1';
+      btnGeneral.style.fontWeight = '600';
+    }
+    if (secGeneral) secGeneral.style.display = 'none';
+    if (secApis) secApis.style.display = 'block';
+  }
+}
+
+function seleccionarProveedorIA(provider) {
+  const radioGemini = document.getElementById('radioProviderGemini');
+  const radioOpenAI = document.getElementById('radioProviderOpenAI');
+  const radioClaude = document.getElementById('radioProviderClaude');
+
+  const cardGemini = document.getElementById('cardSelectorGemini');
+  const cardOpenAI = document.getElementById('cardSelectorOpenAI');
+  const cardClaude = document.getElementById('cardSelectorClaude');
+
+  const items = [
+    { key: 'gemini', radio: radioGemini, card: cardGemini },
+    { key: 'openai', radio: radioOpenAI, card: cardOpenAI },
+    { key: 'claude', radio: radioClaude, card: cardClaude }
+  ];
+
+  items.forEach(item => {
+    if (item.key === provider) {
+      if (item.radio) item.radio.checked = true;
+      if (item.card) {
+        item.card.style.border = '2px solid #1b2a41';
+        item.card.style.background = '#eff6ff';
+        item.card.style.boxShadow = '0 2px 6px rgba(27, 42, 65, 0.12)';
+      }
+    } else {
+      if (item.radio) item.radio.checked = false;
+      if (item.card) {
+        item.card.style.border = '2px solid #e2e8f0';
+        item.card.style.background = '#ffffff';
+        item.card.style.boxShadow = 'none';
+      }
+    }
+  });
+}
+
+function filtrarTarjetasApi(apiFiltro, btnEl) {
+  const contenedorFiltros = document.getElementById('contenedorFiltrosApis');
+  if (contenedorFiltros) {
+    contenedorFiltros.querySelectorAll('.btn-filtro-api').forEach(btn => {
+      btn.style.background = '#ffffff';
+      btn.style.color = '#334155';
+      btn.style.borderColor = '#cbd5e1';
+      btn.style.fontWeight = '600';
+    });
+  }
+  if (btnEl) {
+    btnEl.style.background = '#1b2a41';
+    btnEl.style.color = '#ffffff';
+    btnEl.style.borderColor = '#1b2a41';
+    btnEl.style.fontWeight = '700';
+  }
+
+  const mapa = {
+    gemini: document.getElementById('cardApiGemini'),
+    openai: document.getElementById('cardApiOpenAI'),
+    claude: document.getElementById('cardApiClaude'),
+    gmail: document.getElementById('cardApiGmail')
+  };
+
+  Object.keys(mapa).forEach(k => {
+    const el = mapa[k];
+    if (!el) return;
+    if (apiFiltro === 'todas' || apiFiltro === k) {
+      el.style.display = 'flex';
+    } else {
+      el.style.display = 'none';
+    }
+  });
+}
+
+function actualizarBadgeEstadoApi(badgeId, configurada) {
+  const badge = document.getElementById(badgeId);
+  if (!badge) return;
+  if (configurada) {
+    badge.textContent = 'CONFIGURADA';
+    badge.style.background = '#dcfce7';
+    badge.style.color = '#15803d';
+  } else {
+    badge.textContent = 'SIN CONFIGURAR';
+    badge.style.background = '#fef3c7';
+    badge.style.color = '#b45309';
+  }
+}
+
+/**
+ * Cargar configuración global del sistema y credenciales de APIs
  */
 async function cargarAjustesSistema() {
   const switchChatbot = document.getElementById('switchChatbotActivo');
-  const inputApiKey = document.getElementById('inputAjusteApiKey');
-  const selectModelo = document.getElementById('selectAjusteModelo');
+
+  // Gemini
+  const inputGeminiKey = document.getElementById('inputAjusteApiKey');
+  const selectGeminiModel = document.getElementById('selectAjusteModelo');
+  const switchGeminiEnabled = document.getElementById('switchGeminiEnabled');
+
+  // OpenAI
+  const inputOpenAIKey = document.getElementById('inputOpenAIApiKey');
+  const selectOpenAIModel = document.getElementById('selectOpenAIModelo');
+  const switchOpenAIEnabled = document.getElementById('switchOpenAIEnabled');
+
+  // Claude
+  const inputClaudeKey = document.getElementById('inputClaudeApiKey');
+  const selectClaudeModel = document.getElementById('selectClaudeModelo');
+  const switchClaudeEnabled = document.getElementById('switchClaudeEnabled');
+
+  // Gmail
+  const inputGmailSender = document.getElementById('inputGmailSenderEmail');
+  const inputGmailClientId = document.getElementById('inputGmailClientId');
+  const inputGmailSecret = document.getElementById('inputGmailClientSecret');
+  const inputGmailRefresh = document.getElementById('inputGmailRefreshToken');
+  const inputGmailRedirect = document.getElementById('inputGmailRedirectUri');
+  const switchGmailEnabled = document.getElementById('switchGmailEnabled');
 
   try {
     const res = await fetch('/security/api/settings/', {
@@ -527,17 +687,64 @@ async function cargarAjustesSistema() {
     const data = await res.json();
 
     if (res.ok && data.status === 'success') {
+      // 1. Chatbot Master
       const activo = Boolean(data.chatbot_enabled);
       if (switchChatbot) {
         switchChatbot.checked = activo;
         actualizarBadgeSwitchChatbot(activo);
       }
-      if (selectModelo && data.gemini_model) {
-        selectModelo.value = data.gemini_model;
+
+      // 2. Active LLM Provider
+      const activeProvider = data.active_llm_provider || 'gemini';
+      seleccionarProveedorIA(activeProvider);
+
+      // 3. Gemini
+      if (selectGeminiModel && data.gemini_model) {
+        selectGeminiModel.value = data.gemini_model;
       }
-      if (inputApiKey) {
-        inputApiKey.value = data.api_key_masked || '';
+      if (inputGeminiKey) {
+        inputGeminiKey.value = data.gemini_api_key_masked || data.api_key_masked || '';
       }
+      if (switchGeminiEnabled) {
+        switchGeminiEnabled.checked = data.gemini_enabled !== false;
+      }
+      actualizarBadgeEstadoApi('badgeEstadoGemini', Boolean(data.gemini_api_key_configured));
+
+      // 4. OpenAI
+      if (selectOpenAIModel && data.openai_model) {
+        selectOpenAIModel.value = data.openai_model;
+      }
+      if (inputOpenAIKey) {
+        inputOpenAIKey.value = data.openai_api_key_masked || '';
+      }
+      if (switchOpenAIEnabled) {
+        switchOpenAIEnabled.checked = data.openai_enabled !== false;
+      }
+      actualizarBadgeEstadoApi('badgeEstadoOpenAI', Boolean(data.openai_api_key_configured));
+
+      // 5. Claude
+      if (selectClaudeModel && data.claude_model) {
+        selectClaudeModel.value = data.claude_model;
+      }
+      if (inputClaudeKey) {
+        inputClaudeKey.value = data.claude_api_key_masked || '';
+      }
+      if (switchClaudeEnabled) {
+        switchClaudeEnabled.checked = data.claude_enabled !== false;
+      }
+      actualizarBadgeEstadoApi('badgeEstadoClaude', Boolean(data.claude_api_key_configured));
+
+      // 6. Gmail REST API
+      if (inputGmailSender) inputGmailSender.value = data.gmail_sender_email || '';
+      if (inputGmailClientId) inputGmailClientId.value = data.gmail_client_id || '';
+      if (inputGmailSecret) inputGmailSecret.value = data.gmail_secret_masked || '';
+      if (inputGmailRefresh) inputGmailRefresh.value = data.gmail_refresh_masked || '';
+      if (inputGmailRedirect && data.gmail_redirect_uri) inputGmailRedirect.value = data.gmail_redirect_uri;
+      if (switchGmailEnabled) {
+        switchGmailEnabled.checked = Boolean(data.gmail_api_enabled);
+      }
+      const gmailConfigurada = Boolean(data.gmail_secret_configured && data.gmail_refresh_configured);
+      actualizarBadgeEstadoApi('badgeEstadoGmail', gmailConfigurada);
     }
   } catch (err) {
     console.error('Error cargando ajustes:', err);
@@ -548,10 +755,6 @@ function actualizarBadgeSwitchChatbot(activo) {
   const badge = document.getElementById('badgeChatbotEstado');
   const slider = document.getElementById('sliderSwitchChatbot');
   const circulo = document.getElementById('circuloSwitchChatbot');
-  const seccionIa = document.getElementById('seccionConfiguracionChatbot');
-  const esAdmin = (window.CURRENT_USER && typeof window.CURRENT_USER.is_admin !== 'undefined') 
-    ? Boolean(window.CURRENT_USER.is_admin) 
-    : true;
 
   if (badge) {
     badge.textContent = activo ? 'ACTIVO' : 'DESACTIVADO';
@@ -564,9 +767,6 @@ function actualizarBadgeSwitchChatbot(activo) {
   if (circulo) {
     circulo.style.transform = activo ? 'translateX(22px)' : 'translateX(0)';
   }
-  if (seccionIa) {
-    seccionIa.style.display = (activo && esAdmin) ? 'block' : 'none';
-  }
 }
 
 function limpiarApiKeyAjustes() {
@@ -578,8 +778,44 @@ function limpiarApiKeyAjustes() {
   }
 }
 
+function limpiarOpenAIApiKey() {
+  const input = document.getElementById('inputOpenAIApiKey');
+  if (input) {
+    input.value = '';
+    input.placeholder = 'sk-proj-...';
+    input.focus();
+  }
+}
+
+function limpiarClaudeApiKey() {
+  const input = document.getElementById('inputClaudeApiKey');
+  if (input) {
+    input.value = '';
+    input.placeholder = 'sk-ant-api03-...';
+    input.focus();
+  }
+}
+
+function limpiarGmailSecret() {
+  const input = document.getElementById('inputGmailClientSecret');
+  if (input) {
+    input.value = '';
+    input.placeholder = 'GOCSPX-...';
+    input.focus();
+  }
+}
+
+function limpiarGmailRefresh() {
+  const input = document.getElementById('inputGmailRefreshToken');
+  if (input) {
+    input.value = '';
+    input.placeholder = '1//04...';
+    input.focus();
+  }
+}
+
 /**
- * Guardar ajustes del sistema (switch chatbot + API Key encriptada)
+ * Guardar todos los ajustes del sistema y credenciales de APIs
  */
 async function guardarAjustesSistema(event) {
   if (event) event.preventDefault();
@@ -591,65 +827,121 @@ async function guardarAjustesSistema(event) {
   if (errEl) errEl.style.display = 'none';
   if (succEl) succEl.style.display = 'none';
 
+  // Recopilar valores
   const chatbot_enabled = document.getElementById('switchChatbotActivo')?.checked;
+  const active_llm_provider = document.querySelector('input[name="radioActiveProvider"]:checked')?.value || 'gemini';
+
+  // Gemini
   const gemini_api_key = document.getElementById('inputAjusteApiKey')?.value.trim();
   const gemini_model = document.getElementById('selectAjusteModelo')?.value;
+  const gemini_enabled = document.getElementById('switchGeminiEnabled')?.checked;
+
+  // OpenAI
+  const openai_api_key = document.getElementById('inputOpenAIApiKey')?.value.trim();
+  const openai_model = document.getElementById('selectOpenAIModelo')?.value;
+  const openai_enabled = document.getElementById('switchOpenAIEnabled')?.checked;
+
+  // Claude
+  const claude_api_key = document.getElementById('inputClaudeApiKey')?.value.trim();
+  const claude_model = document.getElementById('selectClaudeModelo')?.value;
+  const claude_enabled = document.getElementById('switchClaudeEnabled')?.checked;
+
+  // Gmail
+  const gmail_sender_email = document.getElementById('inputGmailSenderEmail')?.value.trim();
+  const gmail_client_id = document.getElementById('inputGmailClientId')?.value.trim();
+  const gmail_client_secret = document.getElementById('inputGmailClientSecret')?.value.trim();
+  const gmail_refresh_token = document.getElementById('inputGmailRefreshToken')?.value.trim();
+  const gmail_redirect_uri = document.getElementById('inputGmailRedirectUri')?.value.trim();
+  const gmail_api_enabled = document.getElementById('switchGmailEnabled')?.checked;
 
   if (btnGuardar) {
     btnGuardar.disabled = true;
-    btnGuardar.textContent = 'Guardando...';
+    btnGuardar.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon" style="animation: spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
+      Guardando ajustes...
+    `;
   }
 
   try {
+    const payload = {
+      chatbot_enabled,
+      active_llm_provider,
+      gemini_api_key,
+      gemini_model,
+      gemini_enabled,
+      openai_api_key,
+      openai_model,
+      openai_enabled,
+      claude_api_key,
+      claude_model,
+      claude_enabled,
+      gmail_sender_email,
+      gmail_client_id,
+      gmail_client_secret,
+      gmail_refresh_token,
+      gmail_redirect_uri,
+      gmail_api_enabled
+    };
+
     const res = await fetch('/security/api/settings/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': getCsrfToken()
       },
-      body: JSON.stringify({
-        chatbot_enabled,
-        gemini_api_key,
-        gemini_model
-      })
+      body: JSON.stringify(payload)
     });
 
     const data = await res.json();
 
     if (res.ok && data.status === 'success') {
       if (succEl) {
-        succEl.textContent = data.message || 'Ajustes guardados correctamente.';
+        succEl.textContent = data.message || 'Ajustes del sistema y credenciales guardados correctamente.';
         succEl.style.display = 'block';
       }
 
-      // Actualizar estado en tiempo real en la página
+      // Actualizar estado en tiempo real en la interfaz
       window.CHATBOT_ENABLED = Boolean(data.chatbot_enabled);
       const btnFlotante = document.getElementById('btn-flotante-chat');
       if (btnFlotante) {
         btnFlotante.style.display = data.chatbot_enabled ? 'flex' : 'none';
       }
 
-      showToast('Ajustes del sistema actualizados en base de datos.', 'success');
+      // Actualizar badges
+      if (typeof data.gemini_api_key_configured !== 'undefined') {
+        actualizarBadgeEstadoApi('badgeEstadoGemini', Boolean(data.gemini_api_key_configured));
+      }
+      if (typeof data.openai_api_key_configured !== 'undefined') {
+        actualizarBadgeEstadoApi('badgeEstadoOpenAI', Boolean(data.openai_api_key_configured));
+      }
+      if (typeof data.claude_api_key_configured !== 'undefined') {
+        actualizarBadgeEstadoApi('badgeEstadoClaude', Boolean(data.claude_api_key_configured));
+      }
+
+      showToast('Ajustes y credenciales de APIs actualizados en el servidor.', 'success');
 
       setTimeout(() => {
         cerrarModalUniversal();
       }, 1200);
     } else {
       if (errEl) {
-        errEl.textContent = data.message || 'Error al guardar ajustes.';
+        errEl.textContent = data.message || 'Error al guardar los ajustes.';
         errEl.style.display = 'block';
       }
     }
   } catch (err) {
     console.error('Error guardando ajustes:', err);
     if (errEl) {
-      errEl.textContent = 'Error de conexión con el servidor.';
+      errEl.textContent = 'Error de conexión con el servidor al guardar ajustes.';
       errEl.style.display = 'block';
     }
   } finally {
     if (btnGuardar) {
       btnGuardar.disabled = false;
-      btnGuardar.textContent = 'Guardar ajustes';
+      btnGuardar.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        Guardar todos los ajustes
+      `;
     }
   }
 }

@@ -61,12 +61,26 @@ Table t_system_settings {
   id uuid [pk, note: 'Configuration row UUID']
   authorized_role_id int [unique, not null, ref: - m_roles.id, note: 'Restricted strictly to Administrador']
   
-  // Google Gemini Generative AI Configuration
-  gemini_api_key_encrypted text [note: 'Multi-Fernet encrypted Gemini API secret key']
-  gemini_model varchar(100) [not null, default: 'gemini-2.5-flash', note: 'Active LLM model version']
+  // General System AI Assistant
   chatbot_enabled boolean [not null, default: true, note: 'Global AI clinical assistant toggle']
+  active_llm_provider varchar(30) [not null, default: 'gemini', note: 'Active engine: gemini | openai | claude']
 
-  // Google Gmail REST API Configuration
+  // 1. Google Gemini Generative AI Configuration
+  gemini_api_key_encrypted text [note: 'Multi-Fernet encrypted Gemini API secret key']
+  gemini_model varchar(100) [not null, default: 'gemini-2.5-flash', note: 'Active Gemini model version']
+  gemini_enabled boolean [not null, default: true, note: 'Gemini integration toggle']
+
+  // 2. OpenAI / ChatGPT Configuration
+  openai_api_key_encrypted text [note: 'Multi-Fernet encrypted OpenAI secret key']
+  openai_model varchar(100) [not null, default: 'gpt-4o-mini', note: 'Active OpenAI model version']
+  openai_enabled boolean [not null, default: false, note: 'OpenAI integration toggle']
+
+  // 3. Anthropic Claude Configuration
+  claude_api_key_encrypted text [note: 'Multi-Fernet encrypted Claude secret key']
+  claude_model varchar(100) [not null, default: 'claude-3-5-sonnet-20241022', note: 'Active Claude model version']
+  claude_enabled boolean [not null, default: false, note: 'Claude integration toggle']
+
+  // 4. Google Gmail REST API Configuration
   gmail_client_id varchar(255) [note: 'Google Cloud Platform OAuth2 Client ID']
   gmail_client_secret_encrypted text [note: 'Multi-Fernet encrypted OAuth2 Client Secret']
   gmail_refresh_token_encrypted text [note: 'Multi-Fernet encrypted offline refresh token']
@@ -78,7 +92,7 @@ Table t_system_settings {
   updated_by_id uuid [ref: > m_users.id, note: 'Admin who last saved credentials']
   updated_at timestamptz [default: `now()`, note: 'Last modification timestamp']
 
-  Note: 'Secure configuration table storing encrypted credentials for Gemini and Gmail APIs'
+  Note: 'Secure configuration table storing encrypted credentials for Gemini, OpenAI, Claude and Gmail APIs'
 }
 
 Table t_audit_change_logs {
