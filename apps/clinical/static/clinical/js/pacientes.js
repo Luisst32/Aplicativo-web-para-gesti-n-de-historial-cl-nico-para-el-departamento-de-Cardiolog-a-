@@ -18,6 +18,9 @@ async function cargarPacientesDesdeServidor(filtros = {}) {
     const data = await resp.json();
     if (data.success && Array.isArray(data.pacientes)) {
       pacientes = data.pacientes;
+      if (typeof actualizarOpcionesFiltrosDinamicos === 'function') {
+        actualizarOpcionesFiltrosDinamicos();
+      }
       return pacientes;
     }
     return [];
@@ -78,12 +81,20 @@ function anioDePaciente(p) {
   if (!p) return new Date().getFullYear();
   if (p.historiales && p.historiales.length > 0) {
     const ult = p.historiales[0];
-    if (ult.fechaVisita) {
+    if (ult && ult.fechaVisita) {
+      const parsedYear = parseInt(String(ult.fechaVisita).substring(0, 4), 10);
+      if (!isNaN(parsedYear) && parsedYear > 1900 && parsedYear < 2200) {
+        return parsedYear;
+      }
       return new Date(ult.fechaVisita).getFullYear();
     }
   }
   if (p.codigo && p.codigo.includes('/')) {
-    return parseInt(p.codigo.split('/')[1], 10);
+    const parts = p.codigo.split('/');
+    const y = parseInt(parts[1], 10);
+    if (!isNaN(y) && y > 1900 && y < 2200) {
+      return y;
+    }
   }
   return new Date().getFullYear();
 }
@@ -223,6 +234,7 @@ function montarModalAgregarPaciente(onListo) {
             <select class="form-select" id="m_estamento" name="m_estamento">
               <option value="PDI">PDI (Profesor)</option>
               <option value="AD">AD (Administrativo)</option>
+              <option value="PAS">PAS (Personal de Adm. y Servicios)</option>
               <option value="SERVICIO">SERVICIO (Mantenimiento / Apoyo)</option>
               <option value="ESTUDIANTES">ESTUDIANTES</option>
             </select>
@@ -358,6 +370,9 @@ async function guardarPacienteDelModal() {
     if (data.success && data.paciente) {
       const nuevo = data.paciente;
       pacientes.unshift(nuevo);
+      if (typeof actualizarOpcionesFiltrosDinamicos === 'function') {
+        actualizarOpcionesFiltrosDinamicos();
+      }
       cerrarModalAgregarPaciente();
       if (typeof alTerminarModalPaciente === 'function') {
         alTerminarModalPaciente(nuevo);

@@ -44,12 +44,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Modal compartido "Nuevo Paciente"
   montarModalAgregarPaciente((nuevoPaciente) => {
+    actualizarOpcionesFiltrosDinamicos();
     renderPacientesTabla();
     abrirHistorialesPaciente(nuevoPaciente.id);
   });
 
   // Cargar cohorte real desde base de datos PostgreSQL (HU-15)
   await cargarPacientesDesdeServidor();
+  actualizarOpcionesFiltrosDinamicos();
 
   // Si la URL contiene ?paciente=<id>, abrir directamente la vista de su expediente (sin modal)
   const params = new URLSearchParams(window.location.search);
@@ -77,11 +79,139 @@ document.addEventListener('DOMContentLoaded', async () => {
 // FILTRADO Y ORDENAMIENTO DE PACIENTES
 // =========================================================================
 
+/**
+ * Detecta dinámicamente los años, estamentos y opciones presentes en la cohorte
+ * y en el formulario clínico, asegurando que años futuros (ej. 2027) o años
+ * agregados aparezcan automáticamente en los desplegables de filtrado.
+ */
+function actualizarOpcionesFiltrosDinamicos() {
+  const selAnio = document.getElementById('filtroAnio');
+  const selEstamento = document.getElementById('filtroEstamento');
+  if (!selAnio && !selEstamento) return;
+
+  // 1. DINAMISMO PARA FILTRO DE AÑO
+  if (selAnio) {
+    const anioSeleccionado = selAnio.value || 'all';
+    const aniosSet = new Set();
+
+    // Años estándar base: año actual y año siguiente (ej. 2026, 2027)
+    const curYear = new Date().getFullYear();
+    aniosSet.add(curYear);
+    aniosSet.add(curYear + 1);
+
+    // Leer opciones ya precargadas en el DOM
+    Array.from(selAnio.options).forEach(opt => {
+      const valInt = parseInt(opt.value, 10);
+      if (!isNaN(valInt) && valInt > 1900 && valInt < 2200) {
+        aniosSet.add(valInt);
+      }
+    });
+
+    // Detectar años existentes en la cohorte de pacientes
+    if (Array.isArray(pacientes)) {
+      pacientes.forEach(p => {
+        const yP = anioDePaciente(p);
+        if (yP && !isNaN(yP) && yP > 1900 && yP < 2200) {
+          aniosSet.add(yP);
+        }
+        if (Array.isArray(p.historiales)) {
+          p.historiales.forEach(h => {
+            if (h && h.fechaVisita) {
+              const yH = parseInt(String(h.fechaVisita).substring(0, 4), 10);
+              if (!isNaN(yH) && yH > 1900 && yH < 2200) {
+                aniosSet.add(yH);
+              }
+            }
+          });
+        }
+        if (p.codigo && p.codigo.includes('/')) {
+          const yCod = parseInt(p.codigo.split('/')[1], 10);
+          if (!isNaN(yCod) && yCod > 1900 && yCod < 2200) {
+            aniosSet.add(yCod);
+          }
+        }
+      });
+    }
+
+    const aniosOrdenados = Array.from(aniosSet).sort((a, b) => b - a);
+
+    selAnio.innerHTML = '<option value="all">Todos los Años</option>';
+    aniosOrdenados.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = String(a);
+      opt.textContent = String(a);
+      selAnio.appendChild(opt);
+    });
+
+    if (anioSeleccionado && Array.from(selAnio.options).some(o => o.value === anioSeleccionado)) {
+      selAnio.value = anioSeleccionado;
+    } else {
+      selAnio.value = 'all';
+    }
+  }
+
+  // 2. DINAMISMO PARA FILTRO DE ESTAMENTO
+  if (selEstamento) {
+    const estamentoSeleccionado = (selEstamento.value || 'all').toUpperCase();
+    const estamentosMap = new Map();
+
+    const labelsConocidos = {
+      'PDI': 'PDI (Docentes)',
+      'AD': 'AD (Administrativos)',
+      'PAS': 'PAS (Personal de Adm. y Servicios)',
+      'SERVICIO': 'SERVICIO (Apoyo)',
+      'ESTUDIANTES': 'ESTUDIANTES'
+    };
+
+    ['PDI', 'AD', 'PAS', 'SERVICIO', 'ESTUDIANTES'].forEach(code => {
+      estamentosMap.set(code, labelsConocidos[code] || code);
+    });
+
+    // Leer opciones ya precargadas en el DOM
+    Array.from(selEstamento.options).forEach(opt => {
+      if (opt.value && opt.value !== 'all') {
+        const cod = opt.value.trim().toUpperCase();
+        if (!estamentosMap.has(cod)) {
+          estamentosMap.set(cod, opt.textContent.trim() || cod);
+        }
+      }
+    });
+
+    // Detectar estamentos presentes en los pacientes cargados
+    if (Array.isArray(pacientes)) {
+      pacientes.forEach(p => {
+        if (p && p.estamento && typeof p.estamento === 'string') {
+          const cod = p.estamento.trim().toUpperCase();
+          if (cod && !estamentosMap.has(cod)) {
+            estamentosMap.set(cod, labelsConocidos[cod] || cod);
+          }
+        }
+      });
+    }
+
+    const sortedCodes = Array.from(estamentosMap.keys()).sort();
+
+    selEstamento.innerHTML = '<option value="all">Todos los Estamentos</option>';
+    sortedCodes.forEach(code => {
+      const opt = document.createElement('option');
+      opt.value = code;
+      opt.textContent = estamentosMap.get(code) || code;
+      selEstamento.appendChild(opt);
+    });
+
+    if (estamentoSeleccionado && Array.from(selEstamento.options).some(o => o.value.toUpperCase() === estamentoSeleccionado)) {
+      selEstamento.value = estamentoSeleccionado;
+    } else {
+      selEstamento.value = 'all';
+    }
+  }
+}
+
 function obtenerPacientesFiltrados() {
   const q = document.getElementById('filtroBusqueda').value.trim().toLowerCase();
   const anio = document.getElementById('filtroAnio').value;
-  const estamento = document.getElementById('filtroEstamento').value;
-  const sexo = document.getElementById('filtroSexo').value;
+  const estamento = (document.getElementById('filtroEstamento').value || 'all').toUpperCase();
+  const sexo = (document.getElementById('filtroSexo').value || 'all').toUpperCase();
 
   const filtrados = pacientes.filter(p => {
     const cedula = (p.cedula || '').toLowerCase();
@@ -95,8 +225,11 @@ function obtenerPacientesFiltrados() {
     const historiales = p.historiales || [];
     const matchAnio = anio === 'all' || anioPac === anio || historiales.some(h => (h.fechaVisita || '').startsWith(anio));
 
-    const matchEstamento = estamento === 'all' || p.estamento === estamento;
-    const matchSexo = sexo === 'all' || p.sexo === sexo;
+    const pEstamento = (p.estamento || '').trim().toUpperCase();
+    const matchEstamento = estamento === 'all' || pEstamento === estamento;
+
+    const pSexo = (p.sexo || '').trim().toUpperCase();
+    const matchSexo = sexo === 'all' || pSexo === sexo;
 
     return matchQuery && matchAnio && matchEstamento && matchSexo;
   });

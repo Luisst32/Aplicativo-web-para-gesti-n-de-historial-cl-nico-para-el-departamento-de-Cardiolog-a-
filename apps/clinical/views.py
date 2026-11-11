@@ -158,10 +158,49 @@ def form_view(request):
 def list_view(request):
     """
     Renders the patients directory and medical evaluations list.
+    Populates dynamic filters for available years and staff categories (HU-15, HU-16).
     """
     total_pacientes = Patient.objects.filter(status=Patient.Status.ACTIVE).count()
+
+    from django.utils import timezone
+    from django.db.models.functions import ExtractYear
+    from catalog.models import StaffCategory
+
+    # Detección dinámica de años existentes en visitas registradas
+    years_qs = Visit.objects.filter(visit_date__isnull=False).annotate(
+        v_year=ExtractYear('visit_date')
+    ).values_list('v_year', flat=True).distinct()
+
+    years_set = {int(y) for y in years_qs if y is not None}
+    cur_year = timezone.now().year
+    years_set.add(cur_year)
+    years_set.add(cur_year + 1) # Asegurar cohorte futura inmediata (ej. 2027)
+    available_years = sorted(list(years_set), reverse=True)
+
+    # Estamentos institucionales del catálogo activo
+    estamentos_qs = list(
+        StaffCategory.objects.filter(status=StaffCategory.Status.ACTIVE)
+        .values_list('name', flat=True).order_by('name')
+    )
+    if not estamentos_qs:
+        estamentos_qs = ['PDI', 'AD', 'PAS', 'SERVICIO', 'ESTUDIANTES']
+
+    labels_map = {
+        'PDI': 'PDI (Docentes)',
+        'AD': 'AD (Administrativos)',
+        'PAS': 'PAS (Personal de Adm. y Servicios)',
+        'SERVICIO': 'SERVICIO (Apoyo)',
+        'ESTUDIANTES': 'ESTUDIANTES',
+    }
+    available_estamentos = [
+        {'code': name, 'label': labels_map.get(name.upper(), name)}
+        for name in estamentos_qs
+    ]
+
     return render(request, 'clinical/list.html', {
-        'total_pacientes': total_pacientes
+        'total_pacientes': total_pacientes,
+        'available_years': available_years,
+        'available_estamentos': available_estamentos,
     })
 
 

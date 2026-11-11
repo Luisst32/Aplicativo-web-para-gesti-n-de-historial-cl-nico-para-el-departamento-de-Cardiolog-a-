@@ -1,5 +1,6 @@
 import datetime
 from decimal import Decimal
+from django.urls import reverse
 from django.test import TestCase, SimpleTestCase
 from django.contrib.auth import get_user_model
 
@@ -134,6 +135,36 @@ class ClinicalCRUDAndIntegrationTests(TestCase):
         pdf_bytes = generate_clinical_sheet_pdf(visit)
         self.assertGreater(len(pdf_bytes), 1000)
         self.assertTrue(pdf_bytes.startswith(b'%PDF'))
+
+    def test_list_view_dynamic_filters(self):
+        self.client.force_login(self.user)
+        # Crear un paciente con visita en 2027
+        patient_2027 = Patient.objects.create(
+            institution=self.institution,
+            id_card='0928374651',
+            first_names='Ana',
+            last_name1='López',
+            birth_date=datetime.date(1990, 5, 12),
+            sex=self.sex,
+            ethnicity=self.ethnicity,
+            birth_canton=self.canton,
+            created_by=self.user,
+        )
+        Visit.objects.create(
+            patient=patient_2027,
+            evaluator=self.user,
+            study_code='0099/2027',
+            visit_date=datetime.date(2027, 3, 15),
+            residence_canton=self.canton,
+            staff_category=self.staff_cat,
+        )
+        resp = self.client.get(reverse('clinical:list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('available_years', resp.context)
+        self.assertIn(2027, resp.context['available_years'])
+        self.assertIn('available_estamentos', resp.context)
+        est_codes = [e['code'] for e in resp.context['available_estamentos']]
+        self.assertIn('PDI', est_codes)
 
 
 class SavImporterTests(TestCase):
