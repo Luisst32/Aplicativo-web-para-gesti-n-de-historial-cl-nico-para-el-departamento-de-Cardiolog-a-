@@ -798,6 +798,24 @@ def _get_val_and_label(val, val_labels_dict):
     return val, lbl_str
 
 
+def _clean_decimal(val, max_digits=5, decimal_places=2):
+    """Convierte con seguridad un valor numérico a Decimal respetando max_digits y decimal_places para evitar overflow."""
+    if val is None or str(val).strip() == '':
+        return None
+    try:
+        import math
+        f = float(val)
+        if math.isnan(f) or math.isinf(f):
+            return None
+        max_int = max_digits - decimal_places
+        limit = (10 ** max_int) - (10 ** -decimal_places)
+        if -limit <= f <= limit:
+            return Decimal(str(round(f, decimal_places)))
+        return None
+    except Exception:
+        return None
+
+
 # -----------------------------------------------------------------------------
 # 1. ANÁLISIS INTELIGENTE DEL ARCHIVO .SAV
 # -----------------------------------------------------------------------------
@@ -1130,6 +1148,8 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
         '2000': IncomeRange.objects.filter(name__icontains='2000').first(),
     }
     rhythm_default = EcgRhythm.objects.first()
+    if not rhythm_default:
+        rhythm_default = EcgRhythm.objects.create(name='Sinusal', status=EcgRhythm.Status.ACTIVE)
 
     # Pre-cargar y preparar en memoria todas las Preguntas (Questions)
     existing_questions = {q.code: q for q in Question.objects.all()}
@@ -1264,615 +1284,661 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
     with transaction.atomic():
         for i in range(total_rows):
             study_code, id_card, inst = row_meta[i]
+            row_answers = {}
 
             try:
+                with transaction.atomic():
 
-                # 2. Datos Demográficos
-                first_names = f"Participante {study_code}"
-                last_name1 = "Estudio UNEMI"
-                last_name2 = ""
-                if 'nombres' in field_to_col:
-                    v_nom = df_dict[field_to_col['nombres']][i]
-                    if v_nom and str(v_nom).strip(): first_names = str(v_nom).strip()
-                if 'apellido1' in field_to_col:
-                    v_ap1 = df_dict[field_to_col['apellido1']][i]
-                    if v_ap1 and str(v_ap1).strip(): last_name1 = str(v_ap1).strip()
-                if 'apellido2' in field_to_col:
-                    v_ap2 = df_dict[field_to_col['apellido2']][i]
-                    if v_ap2 and str(v_ap2).strip(): last_name2 = str(v_ap2).strip()
+                    # 2. Datos Demográficos
+                    first_names = f"Participante {study_code}"
+                    last_name1 = "Estudio UNEMI"
+                    last_name2 = ""
+                    if 'nombres' in field_to_col:
+                        v_nom = df_dict[field_to_col['nombres']][i]
+                        if v_nom and str(v_nom).strip(): first_names = str(v_nom).strip()
+                    if 'apellido1' in field_to_col:
+                        v_ap1 = df_dict[field_to_col['apellido1']][i]
+                        if v_ap1 and str(v_ap1).strip(): last_name1 = str(v_ap1).strip()
+                    if 'apellido2' in field_to_col:
+                        v_ap2 = df_dict[field_to_col['apellido2']][i]
+                        if v_ap2 and str(v_ap2).strip(): last_name2 = str(v_ap2).strip()
 
-                sex = sex_hombre
-                if 'sexo' in field_to_col:
-                    s_val = df_dict[field_to_col['sexo']][i]
-                    _, s_lbl = _get_val_and_label(s_val, meta.variable_value_labels.get(field_to_col['sexo'], {}))
-                    if 'MUJER' in s_lbl.upper() or s_val == 2.0:
-                        sex = sex_mujer
+                    sex = sex_hombre
+                    if 'sexo' in field_to_col:
+                        s_val = df_dict[field_to_col['sexo']][i]
+                        _, s_lbl = _get_val_and_label(s_val, meta.variable_value_labels.get(field_to_col['sexo'], {}))
+                        if 'MUJER' in s_lbl.upper() or s_val == 2.0:
+                            sex = sex_mujer
 
-                edad_val = None
-                if 'edad' in field_to_col:
-                    raw_edad = df_dict[field_to_col['edad']][i]
-                    if raw_edad is not None:
-                        try: edad_val = int(float(raw_edad))
-                        except Exception: pass
+                    edad_val = None
+                    if 'edad' in field_to_col:
+                        raw_edad = df_dict[field_to_col['edad']][i]
+                        if raw_edad is not None:
+                            try: edad_val = int(float(raw_edad))
+                            except Exception: pass
 
-                birth_date = None
-                if 'fecha_nac' in field_to_col:
-                    raw_dob = df_dict[field_to_col['fecha_nac']][i]
-                    if hasattr(raw_dob, 'year'):
-                        birth_date = raw_dob.date() if hasattr(raw_dob, 'date') else raw_dob
-                    elif isinstance(raw_dob, str) and raw_dob.strip():
-                        try: birth_date = datetime.date.fromisoformat(raw_dob.strip())
-                        except Exception: pass
+                    birth_date = None
+                    if 'fecha_nac' in field_to_col:
+                        raw_dob = df_dict[field_to_col['fecha_nac']][i]
+                        if hasattr(raw_dob, 'year'):
+                            birth_date = raw_dob.date() if hasattr(raw_dob, 'date') else raw_dob
+                        elif isinstance(raw_dob, str) and raw_dob.strip():
+                            try: birth_date = datetime.date.fromisoformat(raw_dob.strip())
+                            except Exception: pass
 
-                if not birth_date:
-                    birth_year = (current_year - edad_val) if edad_val else 1980
-                    birth_date = datetime.date(birth_year, 1, 1)
+                    if not birth_date:
+                        birth_year = (current_year - edad_val) if edad_val else 1980
+                        birth_date = datetime.date(birth_year, 1, 1)
 
-                birth_canton = default_canton
-                if 'ciudad_nac' in field_to_col:
-                    val_cn = df_dict[field_to_col['ciudad_nac']][i]
-                    _, lbl_cn = _get_val_and_label(val_cn, meta.variable_value_labels.get(field_to_col['ciudad_nac'], {}))
-                    rc = _resolve_canton_safe(lbl_cn or val_cn)
-                    if rc: birth_canton = rc
+                    birth_canton = default_canton
+                    if 'ciudad_nac' in field_to_col:
+                        val_cn = df_dict[field_to_col['ciudad_nac']][i]
+                        _, lbl_cn = _get_val_and_label(val_cn, meta.variable_value_labels.get(field_to_col['ciudad_nac'], {}))
+                        rc = _resolve_canton_safe(lbl_cn or val_cn)
+                        if rc: birth_canton = rc
 
-                residence_canton = default_canton
-                if 'ciudad_res' in field_to_col:
-                    val_cr = df_dict[field_to_col['ciudad_res']][i]
-                    _, lbl_cr = _get_val_and_label(val_cr, meta.variable_value_labels.get(field_to_col['ciudad_res'], {}))
-                    rc = _resolve_canton_safe(lbl_cr or val_cr)
-                    if rc: residence_canton = rc
+                    residence_canton = default_canton
+                    if 'ciudad_res' in field_to_col:
+                        val_cr = df_dict[field_to_col['ciudad_res']][i]
+                        _, lbl_cr = _get_val_and_label(val_cr, meta.variable_value_labels.get(field_to_col['ciudad_res'], {}))
+                        rc = _resolve_canton_safe(lbl_cr or val_cr)
+                        if rc: residence_canton = rc
 
-                # 3. Paciente
-                existing_v = existing_visits.get((inst.institution_id, study_code))
-                patient = existing_v.patient if (existing_v and existing_v.patient) else existing_patients.get(id_card)
-                is_duplicate_case = bool(patient or existing_v)
+                    # 3. Paciente
+                    existing_v = existing_visits.get((inst.institution_id, study_code))
+                    patient = existing_v.patient if (existing_v and existing_v.patient) else existing_patients.get(id_card)
+                    is_duplicate_case = bool(patient or existing_v)
 
-                if patient and duplicate_action == "skip":
-                    skipped_count += 1
-                    duplicate_records.append({
-                        "row": i + 1,
-                        "code": study_code,
-                        "institution": inst.acronym if inst else "UNEMI",
-                        "patient_name": patient.full_name or f"Participante {study_code}",
-                        "id_card": patient.id_card,
-                        "action": "Omitido"
-                    })
-                    continue
-
-                is_new_patient = False
-                if not patient:
-                    is_new_patient = True
-                    patient = Patient(id_card=id_card, created_by=user)
-
-                patient.institution = inst
-                if is_new_patient or first_names != f"Participante {study_code}":
-                    patient.first_names = first_names
-                    patient.last_name1 = last_name1
-                    patient.last_name2 = last_name2
-                patient.birth_date = birth_date
-                patient.sex = sex
-                patient.ethnicity = ethnicity_default
-                patient.birth_canton = birth_canton
-                patient.birth_country = None
-                patient.foreign_birth_place = None
-                patient.status = Patient.Status.ACTIVE
-                patient.save()
-                existing_patients[id_card] = patient
-
-                # 4. Visita
-                visit = getattr(patient, 'visit', None) or existing_v
-                if not visit:
-                    visit = Visit(patient=patient, study_code=study_code)
-                    created_count += 1
-                else:
-                    updated_count += 1
-                    if is_duplicate_case:
+                    if patient and duplicate_action == "skip":
+                        skipped_count += 1
                         duplicate_records.append({
                             "row": i + 1,
                             "code": study_code,
                             "institution": inst.acronym if inst else "UNEMI",
                             "patient_name": patient.full_name or f"Participante {study_code}",
                             "id_card": patient.id_card,
-                            "action": "Actualizado en BD"
+                            "action": "Omitido"
                         })
+                        continue
 
-                visit.evaluator = user
-                visit.residence_canton = residence_canton
+                    is_new_patient = False
+                    if not patient:
+                        is_new_patient = True
+                        patient = Patient(id_card=id_card, created_by=user)
 
-                visit_date = datetime.date.today()
-                if 'fecha_visita' in field_to_col:
-                    raw_fv = df_dict[field_to_col['fecha_visita']][i]
-                    if hasattr(raw_fv, 'year'):
-                        visit_date = raw_fv
-                    elif isinstance(raw_fv, str) and raw_fv.strip():
-                        try: visit_date = datetime.date.fromisoformat(raw_fv.strip())
-                        except Exception: pass
-                visit.visit_date = visit_date
+                    patient.institution = inst
+                    if is_new_patient or first_names != f"Participante {study_code}":
+                        patient.first_names = first_names
+                        patient.last_name1 = last_name1
+                        patient.last_name2 = last_name2
+                    patient.birth_date = birth_date
+                    patient.sex = sex
+                    patient.ethnicity = ethnicity_default
+                    patient.birth_canton = birth_canton
+                    patient.birth_country = None
+                    patient.foreign_birth_place = None
+                    patient.status = Patient.Status.ACTIVE
+                    patient.save()
+                    existing_patients[id_card] = patient
 
-                if 'estamento' in field_to_col:
-                    st_val = df_dict[field_to_col['estamento']][i]
-                    _, st_lbl = _get_val_and_label(st_val, meta.variable_value_labels.get(field_to_col['estamento'], {}))
-                    for k_st, sc_obj in staff_map.items():
-                        if k_st in st_lbl.upper():
-                            visit.staff_category = sc_obj
-                            break
+                    # 4. Visita
+                    visit = getattr(patient, 'visit', None) or existing_v
+                    if not visit:
+                        visit = Visit(patient=patient, study_code=study_code)
+                        created_count += 1
+                    else:
+                        updated_count += 1
+                        if is_duplicate_case:
+                            duplicate_records.append({
+                                "row": i + 1,
+                                "code": study_code,
+                                "institution": inst.acronym if inst else "UNEMI",
+                                "patient_name": patient.full_name or f"Participante {study_code}",
+                                "id_card": patient.id_card,
+                                "action": "Actualizado en BD"
+                            })
 
-                if 'hijos' in field_to_col:
-                    raw_h = df_dict[field_to_col['hijos']][i]
-                    if raw_h is not None:
-                        try: visit.num_children = int(float(raw_h))
-                        except Exception: pass
+                    visit.evaluator = user
+                    visit.residence_canton = residence_canton
 
-                if 'convivientes' in field_to_col:
-                    raw_cv = df_dict[field_to_col['convivientes']][i]
-                    if raw_cv is not None:
-                        try: visit.num_cohabitants = int(float(raw_cv))
-                        except Exception: pass
-
-                if 'estado_civil' in field_to_col:
-                    ec_val = df_dict[field_to_col['estado_civil']][i]
-                    _, ec_lbl = _get_val_and_label(ec_val, meta.variable_value_labels.get(field_to_col['estado_civil'], {}))
-                    for k_ec, ms_obj in marital_map.items():
-                        if k_ec in ec_lbl.upper():
-                            visit.marital_status = ms_obj
-                            break
-
-                if 'convive_con' in field_to_col:
-                    cc_val = df_dict[field_to_col['convive_con']][i]
-                    _, cc_lbl = _get_val_and_label(cc_val, meta.variable_value_labels.get(field_to_col['convive_con'], {}))
-                    for k_cc, ls_obj in living_map.items():
-                        if k_cc in cc_lbl.upper():
-                            visit.living_situation = ls_obj
-                            break
-
-                if 'estudios' in field_to_col:
-                    ed_val = df_dict[field_to_col['estudios']][i]
-                    _, ed_lbl = _get_val_and_label(ed_val, meta.variable_value_labels.get(field_to_col['estudios'], {}))
-                    for k_ed, ed_obj in education_map.items():
-                        if k_ed in ed_lbl.upper():
-                            visit.education_level = ed_obj
-                            break
-
-                if 'horario' in field_to_col:
-                    ho_val = df_dict[field_to_col['horario']][i]
-                    _, ho_lbl = _get_val_and_label(ho_val, meta.variable_value_labels.get(field_to_col['horario'], {}))
-                    for k_ho, ws_obj in work_map.items():
-                        if k_ho in ho_lbl.upper():
-                            visit.work_schedule = ws_obj
-                            break
-
-                if 'profesion' in field_to_col:
-                    pr_val = df_dict[field_to_col['profesion']][i]
-                    _, pr_lbl = _get_val_and_label(pr_val, meta.variable_value_labels.get(field_to_col['profesion'], {}))
-                    for k_pr, pf_obj in prof_map.items():
-                        if k_pr in pr_lbl.upper():
-                            visit.professional_category = pf_obj
-                            break
-
-                if 'vivienda' in field_to_col:
-                    vi_val = df_dict[field_to_col['vivienda']][i]
-                    _, vi_lbl = _get_val_and_label(vi_val, meta.variable_value_labels.get(field_to_col['vivienda'], {}))
-                    for k_vi, vi_obj in housing_map.items():
-                        if k_vi in vi_lbl.upper():
-                            visit.housing_type = vi_obj
-                            break
-
-                if 'ingresos' in field_to_col:
-                    in_val = df_dict[field_to_col['ingresos']][i]
-                    _, in_lbl = _get_val_and_label(in_val, meta.variable_value_labels.get(field_to_col['ingresos'], {}))
-                    for k_in, in_obj in income_map.items():
-                        if k_in in in_lbl.upper():
-                            visit.income_range = in_obj
-                            break
-
-                visit.status = Visit.Status.COMPLETED
-                visit.save()
-                existing_visits[(inst.institution_id, study_code)] = visit
-
-                # 5. Antropometría
-                peso_val = None
-                talla_val = None
-                perim_val = None
-                if 'peso' in field_to_col:
-                    v_p = df_dict[field_to_col['peso']][i]
-                    if v_p: peso_val = Decimal(str(round(float(v_p), 2)))
-                if 'talla' in field_to_col:
-                    v_t = df_dict[field_to_col['talla']][i]
-                    if v_t: talla_val = Decimal(str(round(float(v_t), 1)))
-                if 'perimetro' in field_to_col:
-                    v_pm = df_dict[field_to_col['perimetro']][i]
-                    if v_pm: perim_val = Decimal(str(round(float(v_pm), 1)))
-
-                ant = getattr(visit, 'anthropometry', None)
-                if not ant:
-                    ant = Anthropometry(visit=visit, weight_kg=peso_val or Decimal("70.00"), height_cm=talla_val or Decimal("170.0"), waist_circumference_cm=perim_val or Decimal("85.0"))
-                else:
-                    if peso_val: ant.weight_kg = peso_val
-                    if talla_val: ant.height_cm = talla_val
-                    if perim_val: ant.waist_circumference_cm = perim_val
-                ant.save()
-                visit.anthropometry = ant
-
-                # 6. Signos Vitales
-                tas_val = 120
-                tad_val = 80
-                sat_val = 98
-                fc_val = 72
-                if 'tas' in field_to_col:
-                    v_tas = df_dict[field_to_col['tas']][i]
-                    if v_tas:
-                        try: tas_val = int(float(v_tas))
-                        except Exception: pass
-                if 'tad' in field_to_col:
-                    v_tad = df_dict[field_to_col['tad']][i]
-                    if v_tad:
-                        try: tad_val = int(float(v_tad))
-                        except Exception: pass
-                if 'sat_o2' in field_to_col:
-                    v_sat = df_dict[field_to_col['sat_o2']][i]
-                    if v_sat:
-                        try: sat_val = int(float(v_sat))
-                        except Exception: pass
-                if 'fc' in field_to_col:
-                    v_fc = df_dict[field_to_col['fc']][i]
-                    if v_fc:
-                        try: fc_val = int(float(v_fc))
-                        except Exception: pass
-
-                vs = getattr(visit, 'vital_signs', None)
-                if not vs:
-                    vs = VitalSigns(visit=visit)
-                vs.systolic_bp = tas_val
-                vs.diastolic_bp = tad_val
-                vs.oxygen_saturation = sat_val
-                vs.heart_rate = fc_val
-
-                if 'soplos' in field_to_col:
-                    v_sop = df_dict[field_to_col['soplos']][i]
-                    _, sop_lbl = _get_val_and_label(v_sop, meta.variable_value_labels.get(field_to_col['soplos'], {}))
-                    sop_str = sop_lbl.lower()
-                    vs.systolic_murmur = 'sist' in sop_str
-                    vs.diastolic_murmur = 'diast' in sop_str
-                    m_grade = re.search(r'grado\s*([1-4])', sop_str)
-                    if m_grade: vs.murmur_grade = int(m_grade.group(1))
-
-                if 'resp_normal' in field_to_col:
-                    v_rn = df_dict[field_to_col['resp_normal']][i]
-                    vs.pulmonary_auscultation_normal = (v_rn == 1.0 or v_rn is None)
-                if 'abdom_normal' in field_to_col:
-                    v_an = df_dict[field_to_col['abdom_normal']][i]
-                    vs.abdominal_auscultation_normal = (v_an == 1.0 or v_an is None)
-                if 'pulsos' in field_to_col:
-                    v_pu = df_dict[field_to_col['pulsos']][i]
-                    vs.pedal_pulses_symmetric = (v_pu == 1.0 or v_pu is None)
-                vs.save()
-                visit.vital_signs = vs
-
-                # 7. ECG
-                ecg = getattr(visit, 'electrocardiogram', None)
-                if not ecg:
-                    ecg = Electrocardiogram(visit=visit, rhythm=rhythm_default)
-                ecg.heart_rate = fc_val
-
-                if 'ecg_ritmo' in field_to_col:
-                    v_r = df_dict[field_to_col['ecg_ritmo']][i]
-                    _, r_lbl = _get_val_and_label(v_r, meta.variable_value_labels.get(field_to_col['ecg_ritmo'], {}))
-                    if r_lbl:
-                        r_obj = EcgRhythm.objects.filter(name__icontains=r_lbl[:10]).first()
-                        if r_obj: ecg.rhythm = r_obj
-
-                if 'ecg_pr' in field_to_col:
-                    v_pr = df_dict[field_to_col['ecg_pr']][i]
-                    if v_pr:
-                        val_num = float(v_pr)
-                        ecg.pr_interval_ms = int(val_num * 1000) if val_num < 1.0 else int(val_num)
-
-                if 'ecg_qrs' in field_to_col:
-                    v_qrs = df_dict[field_to_col['ecg_qrs']][i]
-                    if v_qrs:
-                        val_num = float(v_qrs)
-                        ecg.qrs_duration_ms = int(val_num * 1000) if val_num < 1.0 else int(val_num)
-
-                if 'ecg_qt' in field_to_col:
-                    v_qt = df_dict[field_to_col['ecg_qt']][i]
-                    if v_qt:
-                        val_num = float(v_qt)
-                        ecg.qt_interval_ms = int(val_num * 1000) if val_num < 1.0 else int(val_num)
-
-                if 'ecg_qtc' in field_to_col:
-                    v_qtc = df_dict[field_to_col['ecg_qtc']][i]
-                    if v_qtc: ecg.qtc_bazett_ms = int(float(v_qtc))
-
-                if 'ecg_eje' in field_to_col:
-                    v_eje = df_dict[field_to_col['ecg_eje']][i]
-                    if v_eje: ecg.qrs_axis_degrees = int(float(v_eje))
-
-                if 'ecg_hvi' in field_to_col:
-                    v_hvi = df_dict[field_to_col['ecg_hvi']][i]
-                    ecg.left_ventricular_hypertrophy = (v_hvi == 1.0)
-
-                if 'ecg_bloqueo' in field_to_col:
-                    v_bl = df_dict[field_to_col['ecg_bloqueo']][i]
-                    _, bl_lbl = _get_val_and_label(v_bl, meta.variable_value_labels.get(field_to_col['ecg_bloqueo'], {}))
-                    if bl_lbl:
-                        ecg.bundle_branch_block = bl_lbl[:50]
-                        ecg.has_bundle_branch_block = True
-
-                if 'ecg_rr' in field_to_col:
-                    v_rr = df_dict[field_to_col['ecg_rr']][i]
-                    if v_rr:
-                        try:
-                            val_rr = float(v_rr)
-                            ecg.rr_interval_sec = Decimal(str(round(val_rr / 1000.0, 3))) if val_rr > 50 else Decimal(str(round(val_rr, 3)))
-                        except Exception: pass
-
-                if 'ecg_onda_p' in field_to_col:
-                    v_op = df_dict[field_to_col['ecg_onda_p']][i]
-                    if v_op:
-                        try: ecg.p_wave_mm = Decimal(str(round(float(v_op), 1)))
-                        except Exception: pass
-
-                if 'ecg_bloqueo_av' in field_to_col:
-                    v_bav = df_dict[field_to_col['ecg_bloqueo_av']][i]
-                    _, bav_lbl = _get_val_and_label(v_bav, meta.variable_value_labels.get(field_to_col['ecg_bloqueo_av'], {}))
-                    if v_bav in [1.0, 2.0, 3.0, '1', '2', '3'] or 'SI' in bav_lbl.upper():
-                        ecg.av_block = True
-                        ecg.av_block_grade = bav_lbl[:50] if bav_lbl else 'Bloqueo AV'
-
-                if 'ecg_hemibloqueo' in field_to_col:
-                    v_hb = df_dict[field_to_col['ecg_hemibloqueo']][i]
-                    _, hb_lbl = _get_val_and_label(v_hb, meta.variable_value_labels.get(field_to_col['ecg_hemibloqueo'], {}))
-                    if v_hb in [1.0, '1'] or 'SÍ' in hb_lbl.upper() or 'SI' in hb_lbl.upper():
-                        ecg.hemiblock = True
-                        ecg.hemiblock_detail = hb_lbl[:100] if hb_lbl else 'Hemibloqueo'
-
-                if 'ecg_onda_delta' in field_to_col:
-                    v_od = df_dict[field_to_col['ecg_onda_delta']][i]
-                    ecg.delta_wave = (v_od == 1.0 or v_od == '1')
-
-                if 'ecg_cubeta' in field_to_col:
-                    v_cub = df_dict[field_to_col['ecg_cubeta']][i]
-                    ecg.digitalis_effect = (v_cub == 1.0 or v_cub == '1')
-
-                if 'ecg_onda_q' in field_to_col:
-                    v_oq = df_dict[field_to_col['ecg_onda_q']][i]
-                    ecg.pathological_q_wave = (v_oq == 1.0 or v_oq == '1' or str(v_oq).strip().upper() == 'SI')
-
-                if 'ecg_t_negativa' in field_to_col:
-                    v_tn = df_dict[field_to_col['ecg_t_negativa']][i]
-                    ecg.negative_t_wave = (v_tn == 1.0 or v_tn == '1' or str(v_tn).strip().upper() == 'SI')
-
-                if 'ecg_st_ascenso' in field_to_col:
-                    v_sta = df_dict[field_to_col['ecg_st_ascenso']][i]
-                    ecg.st_elevation_pathological = (v_sta == 1.0 or v_sta == '1' or str(v_sta).strip().upper() == 'SI')
-
-                if 'ecg_st_descenso' in field_to_col:
-                    v_std = df_dict[field_to_col['ecg_st_descenso']][i]
-                    ecg.st_depression = (v_std == 1.0 or v_std == '1' or str(v_std).strip().upper() == 'SI')
-
-                if 'ecg_normal' in field_to_col:
-                    v_norm = df_dict[field_to_col['ecg_normal']][i]
-                    ecg.is_normal = (v_norm == 1.0 or v_norm == '1')
-
-                ecg.save()
-                visit.electrocardiogram = ecg
-
-                # 8. Laboratorio
-                lab = getattr(visit, 'laboratory', None)
-                if not lab:
-                    lab = Laboratory(visit=visit)
-                lab_mapping_keys = [
-                    ('lab_hematies', 'rbc_millions'),
-                    ('lab_hemoglobina', 'hemoglobin_g_dl'),
-                    ('lab_hematocrito', 'hematocrit_percentage'),
-                    ('lab_vcm', 'mcv_fl'),
-                    ('lab_leucocitos', 'wbc_thousands'),
-                    ('lab_plaquetas', 'platelets_thousands'),
-                    ('lab_tiempo_protombina', 'prothrombin_time_sec'),
-                    ('lab_glucosa', 'glucose_mg_dl'),
-                    ('lab_urea', 'urea_mg_dl'),
-                    ('lab_creatinina', 'creatinine_mg_dl'),
-                    ('lab_colesterol', 'total_cholesterol_mg_dl'),
-                    ('lab_hdl', 'hdl_mg_dl'),
-                    ('lab_ldl', 'ldl_mg_dl'),
-                    ('lab_trigliceridos', 'triglycerides_mg_dl'),
-                    ('lab_got', 'ast_got_u_l'),
-                    ('lab_gpt', 'alt_gpt_u_l'),
-                    ('lab_ggt', 'ggt_u_l'),
-                    ('lab_tsh', 'tsh_u_iu_ml'),
-                ]
-                for f_lab, model_attr in lab_mapping_keys:
-                    if f_lab in field_to_col:
-                        val_l = df_dict[field_to_col[f_lab]][i]
-                        if val_l is not None:
-                            try: setattr(lab, model_attr, Decimal(str(round(float(val_l), 2))))
+                    visit_date = datetime.date.today()
+                    if 'fecha_visita' in field_to_col:
+                        raw_fv = df_dict[field_to_col['fecha_visita']][i]
+                        if hasattr(raw_fv, 'year'):
+                            visit_date = raw_fv
+                        elif isinstance(raw_fv, str) and raw_fv.strip():
+                            try: visit_date = datetime.date.fromisoformat(raw_fv.strip())
                             except Exception: pass
-                lab.save()
-                visit.laboratory = lab
+                    visit.visit_date = visit_date
 
-                # 9. Ecocardiograma
-                echo = getattr(visit, 'echocardiogram', None)
-                if not echo:
-                    echo = Echocardiogram(visit=visit)
-                if 'eco_ddvi' in field_to_col:
-                    v_dd = df_dict[field_to_col['eco_ddvi']][i]
-                    if v_dd:
-                        try: echo.lv_dimension_mm = Decimal(str(round(float(v_dd), 1)))
-                        except Exception: pass
-                if 'eco_fey' in field_to_col:
-                    v_fy = df_dict[field_to_col['eco_fey']][i]
-                    if v_fy:
-                        try: echo.lvef_percentage = Decimal(str(round(float(v_fy), 1)))
-                        except Exception: pass
-                if 'eco_hvi' in field_to_col:
-                    v_ehvi = df_dict[field_to_col['eco_hvi']][i]
-                    echo.ventricular_hypertrophy = (v_ehvi == 1.0)
-                if 'eco_disfuncion' in field_to_col:
-                    v_dis = df_dict[field_to_col['eco_disfuncion']][i]
-                    echo.diastolic_dysfunction = (v_dis == 1.0)
-                if 'eco_calcificacion' in field_to_col:
-                    v_calc = df_dict[field_to_col['eco_calcificacion']][i]
-                    echo.aortic_valve_calcification = (v_calc == 1.0)
-                echo.save()
-                visit.echocardiogram = echo
+                    if 'estamento' in field_to_col:
+                        st_val = df_dict[field_to_col['estamento']][i]
+                        _, st_lbl = _get_val_and_label(st_val, meta.variable_value_labels.get(field_to_col['estamento'], {}))
+                        for k_st, sc_obj in staff_map.items():
+                            if k_st in st_lbl.upper():
+                                visit.staff_category = sc_obj
+                                break
 
-                # 9.5. Estudios Solicitados al Paciente (OrderedStudies)
-                ordered = getattr(visit, 'ordered_studies', None)
-                if not ordered:
-                    ordered = OrderedStudies(visit=visit)
+                    if 'hijos' in field_to_col:
+                        raw_h = df_dict[field_to_col['hijos']][i]
+                        if raw_h is not None:
+                            try: visit.num_children = int(float(raw_h))
+                            except Exception: pass
 
-                def _eval_bool_val(field_key):
-                    if field_key in field_to_col:
-                        val = df_dict[field_to_col[field_key]][i]
-                        if val is not None and str(val).strip() != '':
-                            return val in [1.0, 1, '1', '1.0', 'Si', 'SI', 'Sí', True]
-                    return False
+                    if 'convivientes' in field_to_col:
+                        raw_cv = df_dict[field_to_col['convivientes']][i]
+                        if raw_cv is not None:
+                            try: visit.num_cohabitants = int(float(raw_cv))
+                            except Exception: pass
 
-                ordered.clinical_analysis = _eval_bool_val('est_analisis_clinicos')
-                ordered.ergometry_spect = _eval_bool_val('est_ergometria_spect')
-                ordered.cardiac_ct = _eval_bool_val('est_tac_cardiaco')
-                ordered.cardiac_mri = _eval_bool_val('est_rnm_cardiaco')
-                ordered.electrophysiology = _eval_bool_val('est_electrofisiologia')
-                ordered.echocardiogram_ordered = _eval_bool_val('est_ecocardiograma')
-                ordered.holter_ordered = _eval_bool_val('est_holter')
-                ordered.mapa_ordered = _eval_bool_val('est_mapa')
-                ordered.save()
-                visit.ordered_studies = ordered
+                    if 'estado_civil' in field_to_col:
+                        ec_val = df_dict[field_to_col['estado_civil']][i]
+                        _, ec_lbl = _get_val_and_label(ec_val, meta.variable_value_labels.get(field_to_col['estado_civil'], {}))
+                        for k_ec, ms_obj in marital_map.items():
+                            if k_ec in ec_lbl.upper():
+                                visit.marital_status = ms_obj
+                                break
 
-                # 10. Persistencia de respuestas de variables SPSS en memoria
-                for col_name in col_names:
-                    val_raw = df_dict[col_name][i]
-                    if val_raw is None or str(val_raw).strip() == '':
-                        continue
+                    if 'convive_con' in field_to_col:
+                        cc_val = df_dict[field_to_col['convive_con']][i]
+                        _, cc_lbl = _get_val_and_label(cc_val, meta.variable_value_labels.get(field_to_col['convive_con'], {}))
+                        for k_cc, ls_obj in living_map.items():
+                            if k_cc in cc_lbl.upper():
+                                visit.living_situation = ls_obj
+                                break
 
-                    vlabels = meta.variable_value_labels.get(col_name, {})
-                    _, text_lbl = _get_val_and_label(val_raw, vlabels)
-                    val_str = text_lbl if text_lbl else str(val_raw).strip()
+                    if 'estudios' in field_to_col:
+                        ed_val = df_dict[field_to_col['estudios']][i]
+                        _, ed_lbl = _get_val_and_label(ed_val, meta.variable_value_labels.get(field_to_col['estudios'], {}))
+                        for k_ed, ed_obj in education_map.items():
+                            if k_ed in ed_lbl.upper():
+                                visit.education_level = ed_obj
+                                break
 
-                    clean_code = col_code_map.get(col_name)
-                    if not clean_code:
-                        continue
+                    if 'horario' in field_to_col:
+                        ho_val = df_dict[field_to_col['horario']][i]
+                        _, ho_lbl = _get_val_and_label(ho_val, meta.variable_value_labels.get(field_to_col['horario'], {}))
+                        for k_ho, ws_obj in work_map.items():
+                            if k_ho in ho_lbl.upper():
+                                visit.work_schedule = ws_obj
+                                break
 
-                    q = existing_questions.get(clean_code)
-                    if not q:
-                        continue
+                    if 'profesion' in field_to_col:
+                        pr_val = df_dict[field_to_col['profesion']][i]
+                        _, pr_lbl = _get_val_and_label(pr_val, meta.variable_value_labels.get(field_to_col['profesion'], {}))
+                        for k_pr, pf_obj in prof_map.items():
+                            if k_pr in pr_lbl.upper():
+                                visit.professional_category = pf_obj
+                                break
 
-                    num_val = None
-                    if isinstance(val_raw, (int, float)) and not text_lbl:
-                        try:
-                            num_val = Decimal(str(round(float(val_raw), 3)))
-                            ans_text = None
-                        except Exception:
+                    if 'vivienda' in field_to_col:
+                        vi_val = df_dict[field_to_col['vivienda']][i]
+                        _, vi_lbl = _get_val_and_label(vi_val, meta.variable_value_labels.get(field_to_col['vivienda'], {}))
+                        for k_vi, vi_obj in housing_map.items():
+                            if k_vi in vi_lbl.upper():
+                                visit.housing_type = vi_obj
+                                break
+
+                    if 'ingresos' in field_to_col:
+                        in_val = df_dict[field_to_col['ingresos']][i]
+                        _, in_lbl = _get_val_and_label(in_val, meta.variable_value_labels.get(field_to_col['ingresos'], {}))
+                        for k_in, in_obj in income_map.items():
+                            if k_in in in_lbl.upper():
+                                visit.income_range = in_obj
+                                break
+
+                    visit.status = Visit.Status.COMPLETED
+                    visit.save()
+                    existing_visits[(inst.institution_id, study_code)] = visit
+
+                    # 5. Antropometría
+                    peso_val = None
+                    talla_val = None
+                    perim_val = None
+                    if 'peso' in field_to_col:
+                        v_p = df_dict[field_to_col['peso']][i]
+                        if v_p:
+                            p_c = _clean_decimal(v_p, 5, 2)
+                            if p_c is not None: peso_val = p_c
+                    if 'talla' in field_to_col:
+                        v_t = df_dict[field_to_col['talla']][i]
+                        if v_t:
+                            t_c = _clean_decimal(v_t, 5, 1)
+                            if t_c is not None: talla_val = t_c
+                    if 'perimetro' in field_to_col:
+                        v_pm = df_dict[field_to_col['perimetro']][i]
+                        if v_pm:
+                            pm_c = _clean_decimal(v_pm, 5, 1)
+                            if pm_c is not None: perim_val = pm_c
+
+                    ant = getattr(visit, 'anthropometry', None)
+                    if not ant:
+                        ant = Anthropometry(visit=visit, weight_kg=peso_val or Decimal("70.00"), height_cm=talla_val or Decimal("170.0"), waist_circumference_cm=perim_val or Decimal("85.0"))
+                    else:
+                        if peso_val: ant.weight_kg = peso_val
+                        if talla_val: ant.height_cm = talla_val
+                        if perim_val: ant.waist_circumference_cm = perim_val
+                    ant.save()
+                    visit.anthropometry = ant
+
+                    # 6. Signos Vitales
+                    tas_val = 120
+                    tad_val = 80
+                    sat_val = 98
+                    fc_val = 72
+                    if 'tas' in field_to_col:
+                        v_tas = df_dict[field_to_col['tas']][i]
+                        if v_tas:
+                            try: tas_val = int(float(v_tas))
+                            except Exception: pass
+                    if 'tad' in field_to_col:
+                        v_tad = df_dict[field_to_col['tad']][i]
+                        if v_tad:
+                            try: tad_val = int(float(v_tad))
+                            except Exception: pass
+                    if 'sat_o2' in field_to_col:
+                        v_sat = df_dict[field_to_col['sat_o2']][i]
+                        if v_sat:
+                            try: sat_val = int(float(v_sat))
+                            except Exception: pass
+                    if 'fc' in field_to_col:
+                        v_fc = df_dict[field_to_col['fc']][i]
+                        if v_fc:
+                            try: fc_val = int(float(v_fc))
+                            except Exception: pass
+
+                    vs = getattr(visit, 'vital_signs', None)
+                    if not vs:
+                        vs = VitalSigns(visit=visit)
+                    vs.systolic_bp = tas_val
+                    vs.diastolic_bp = tad_val
+                    vs.oxygen_saturation = sat_val
+                    vs.heart_rate = fc_val
+
+                    if 'soplos' in field_to_col:
+                        v_sop = df_dict[field_to_col['soplos']][i]
+                        _, sop_lbl = _get_val_and_label(v_sop, meta.variable_value_labels.get(field_to_col['soplos'], {}))
+                        sop_str = sop_lbl.lower()
+                        vs.systolic_murmur = 'sist' in sop_str
+                        vs.diastolic_murmur = 'diast' in sop_str
+                        m_grade = re.search(r'grado\s*([1-4])', sop_str)
+                        if m_grade: vs.murmur_grade = int(m_grade.group(1))
+
+                    if 'resp_normal' in field_to_col:
+                        v_rn = df_dict[field_to_col['resp_normal']][i]
+                        vs.pulmonary_auscultation_normal = (v_rn == 1.0 or v_rn is None)
+                    if 'abdom_normal' in field_to_col:
+                        v_an = df_dict[field_to_col['abdom_normal']][i]
+                        vs.abdominal_auscultation_normal = (v_an == 1.0 or v_an is None)
+                    if 'pulsos' in field_to_col:
+                        v_pu = df_dict[field_to_col['pulsos']][i]
+                        vs.pedal_pulses_symmetric = (v_pu == 1.0 or v_pu is None)
+                    vs.save()
+                    visit.vital_signs = vs
+
+                    # 7. ECG
+                    ecg = getattr(visit, 'electrocardiogram', None)
+                    if not ecg:
+                        ecg = Electrocardiogram(visit=visit, rhythm=rhythm_default)
+                    ecg.heart_rate = fc_val
+
+                    if 'ecg_ritmo' in field_to_col:
+                        v_r = df_dict[field_to_col['ecg_ritmo']][i]
+                        _, r_lbl = _get_val_and_label(v_r, meta.variable_value_labels.get(field_to_col['ecg_ritmo'], {}))
+                        if r_lbl:
+                            r_obj = EcgRhythm.objects.filter(name__icontains=r_lbl[:10]).first()
+                            if r_obj: ecg.rhythm = r_obj
+
+                    if 'ecg_pr' in field_to_col:
+                        v_pr = df_dict[field_to_col['ecg_pr']][i]
+                        if v_pr:
+                            val_num = float(v_pr)
+                            ecg.pr_interval_ms = int(val_num * 1000) if val_num < 1.0 else int(val_num)
+
+                    if 'ecg_qrs' in field_to_col:
+                        v_qrs = df_dict[field_to_col['ecg_qrs']][i]
+                        if v_qrs:
+                            val_num = float(v_qrs)
+                            ecg.qrs_duration_ms = int(val_num * 1000) if val_num < 1.0 else int(val_num)
+
+                    if 'ecg_qt' in field_to_col:
+                        v_qt = df_dict[field_to_col['ecg_qt']][i]
+                        if v_qt:
+                            val_num = float(v_qt)
+                            ecg.qt_interval_ms = int(val_num * 1000) if val_num < 1.0 else int(val_num)
+
+                    if 'ecg_qtc' in field_to_col:
+                        v_qtc = df_dict[field_to_col['ecg_qtc']][i]
+                        if v_qtc: ecg.qtc_bazett_ms = int(float(v_qtc))
+
+                    if 'ecg_eje' in field_to_col:
+                        v_eje = df_dict[field_to_col['ecg_eje']][i]
+                        if v_eje: ecg.qrs_axis_degrees = int(float(v_eje))
+
+                    if 'ecg_hvi' in field_to_col:
+                        v_hvi = df_dict[field_to_col['ecg_hvi']][i]
+                        ecg.left_ventricular_hypertrophy = (v_hvi == 1.0)
+
+                    if 'ecg_bloqueo' in field_to_col:
+                        v_bl = df_dict[field_to_col['ecg_bloqueo']][i]
+                        _, bl_lbl = _get_val_and_label(v_bl, meta.variable_value_labels.get(field_to_col['ecg_bloqueo'], {}))
+                        if bl_lbl:
+                            ecg.bundle_branch_block = bl_lbl[:50]
+                            ecg.has_bundle_branch_block = True
+
+                    if 'ecg_rr' in field_to_col:
+                        v_rr = df_dict[field_to_col['ecg_rr']][i]
+                        if v_rr is not None and str(v_rr).strip() != '':
+                            try:
+                                val_rr = float(v_rr)
+                                if val_rr > 50:
+                                    val_rr = val_rr / 1000.0
+                                rr_dec = _clean_decimal(val_rr, 5, 3)
+                                if rr_dec is not None:
+                                    ecg.rr_interval_sec = rr_dec
+                            except Exception: pass
+
+                    if 'ecg_onda_p' in field_to_col:
+                        v_op = df_dict[field_to_col['ecg_onda_p']][i]
+                        if v_op is not None and str(v_op).strip() != '':
+                            try:
+                                val_op = float(v_op)
+                                # En SPSS suele registrarse en ms (ej. 80-140 ms). 1 mm = 40 ms a 25 mm/s
+                                if val_op > 25.0:
+                                    val_op = val_op / 40.0
+                                p_dec = _clean_decimal(val_op, 4, 2)
+                                if p_dec is not None:
+                                    ecg.p_wave_mm = p_dec
+                            except Exception: pass
+
+                    if 'ecg_bloqueo_av' in field_to_col:
+                        v_bav = df_dict[field_to_col['ecg_bloqueo_av']][i]
+                        _, bav_lbl = _get_val_and_label(v_bav, meta.variable_value_labels.get(field_to_col['ecg_bloqueo_av'], {}))
+                        if v_bav in [1.0, 2.0, 3.0, '1', '2', '3'] or 'SI' in bav_lbl.upper():
+                            ecg.av_block = True
+                            ecg.av_block_grade = bav_lbl[:50] if bav_lbl else 'Bloqueo AV'
+
+                    if 'ecg_hemibloqueo' in field_to_col:
+                        v_hb = df_dict[field_to_col['ecg_hemibloqueo']][i]
+                        _, hb_lbl = _get_val_and_label(v_hb, meta.variable_value_labels.get(field_to_col['ecg_hemibloqueo'], {}))
+                        if v_hb in [1.0, '1'] or 'SÍ' in hb_lbl.upper() or 'SI' in hb_lbl.upper():
+                            ecg.hemiblock = True
+                            ecg.hemiblock_detail = hb_lbl[:100] if hb_lbl else 'Hemibloqueo'
+
+                    if 'ecg_onda_delta' in field_to_col:
+                        v_od = df_dict[field_to_col['ecg_onda_delta']][i]
+                        ecg.delta_wave = (v_od == 1.0 or v_od == '1')
+
+                    if 'ecg_cubeta' in field_to_col:
+                        v_cub = df_dict[field_to_col['ecg_cubeta']][i]
+                        ecg.digitalis_effect = (v_cub == 1.0 or v_cub == '1')
+
+                    if 'ecg_onda_q' in field_to_col:
+                        v_oq = df_dict[field_to_col['ecg_onda_q']][i]
+                        ecg.pathological_q_wave = (v_oq == 1.0 or v_oq == '1' or str(v_oq).strip().upper() == 'SI')
+
+                    if 'ecg_t_negativa' in field_to_col:
+                        v_tn = df_dict[field_to_col['ecg_t_negativa']][i]
+                        ecg.negative_t_wave = (v_tn == 1.0 or v_tn == '1' or str(v_tn).strip().upper() == 'SI')
+
+                    if 'ecg_st_ascenso' in field_to_col:
+                        v_sta = df_dict[field_to_col['ecg_st_ascenso']][i]
+                        ecg.st_elevation_pathological = (v_sta == 1.0 or v_sta == '1' or str(v_sta).strip().upper() == 'SI')
+
+                    if 'ecg_st_descenso' in field_to_col:
+                        v_std = df_dict[field_to_col['ecg_st_descenso']][i]
+                        ecg.st_depression = (v_std == 1.0 or v_std == '1' or str(v_std).strip().upper() == 'SI')
+
+                    if 'ecg_normal' in field_to_col:
+                        v_norm = df_dict[field_to_col['ecg_normal']][i]
+                        ecg.is_normal = (v_norm == 1.0 or v_norm == '1')
+
+                    ecg.save()
+                    visit.electrocardiogram = ecg
+
+                    # 8. Laboratorio
+                    lab = getattr(visit, 'laboratory', None)
+                    if not lab:
+                        lab = Laboratory(visit=visit)
+                    lab_mapping_keys = [
+                        ('lab_hematies', 'rbc_millions'),
+                        ('lab_hemoglobina', 'hemoglobin_g_dl'),
+                        ('lab_hematocrito', 'hematocrit_percentage'),
+                        ('lab_vcm', 'mcv_fl'),
+                        ('lab_leucocitos', 'wbc_thousands'),
+                        ('lab_plaquetas', 'platelets_thousands'),
+                        ('lab_tiempo_protombina', 'prothrombin_time_sec'),
+                        ('lab_glucosa', 'glucose_mg_dl'),
+                        ('lab_urea', 'urea_mg_dl'),
+                        ('lab_creatinina', 'creatinine_mg_dl'),
+                        ('lab_colesterol', 'total_cholesterol_mg_dl'),
+                        ('lab_hdl', 'hdl_mg_dl'),
+                        ('lab_ldl', 'ldl_mg_dl'),
+                        ('lab_trigliceridos', 'triglycerides_mg_dl'),
+                        ('lab_got', 'ast_got_u_l'),
+                        ('lab_gpt', 'alt_gpt_u_l'),
+                        ('lab_ggt', 'ggt_u_l'),
+                        ('lab_tsh', 'tsh_u_iu_ml'),
+                    ]
+                    lab_field_specs = {
+                        'rbc_millions': (4, 2),
+                        'hemoglobin_g_dl': (4, 2),
+                        'hematocrit_percentage': (4, 1),
+                        'mcv_fl': (5, 2),
+                        'wbc_thousands': (6, 2),
+                        'platelets_thousands': (6, 1),
+                        'prothrombin_time_sec': (4, 1),
+                        'glucose_mg_dl': (5, 2),
+                        'urea_mg_dl': (5, 2),
+                        'creatinine_mg_dl': (4, 2),
+                        'total_cholesterol_mg_dl': (5, 2),
+                        'hdl_mg_dl': (5, 2),
+                        'ldl_mg_dl': (5, 2),
+                        'triglycerides_mg_dl': (6, 2),
+                        'ast_got_u_l': (6, 2),
+                        'alt_gpt_u_l': (6, 2),
+                        'ggt_u_l': (6, 2),
+                        'tsh_u_iu_ml': (6, 2),
+                    }
+                    for f_lab, model_attr in lab_mapping_keys:
+                        if f_lab in field_to_col:
+                            val_l = df_dict[field_to_col[f_lab]][i]
+                            if val_l is not None:
+                                max_d, dec_p = lab_field_specs.get(model_attr, (5, 2))
+                                clean_l = _clean_decimal(val_l, max_d, dec_p)
+                                if clean_l is not None:
+                                    setattr(lab, model_attr, clean_l)
+                    lab.save()
+                    visit.laboratory = lab
+
+                    # 9. Ecocardiograma
+                    echo = getattr(visit, 'echocardiogram', None)
+                    if not echo:
+                        echo = Echocardiogram(visit=visit)
+                    if 'eco_ddvi' in field_to_col:
+                        v_dd = df_dict[field_to_col['eco_ddvi']][i]
+                        if v_dd:
+                            dd_clean = _clean_decimal(v_dd, 5, 1)
+                            if dd_clean is not None:
+                                echo.lv_dimension_mm = dd_clean
+                    if 'eco_fey' in field_to_col:
+                        v_fy = df_dict[field_to_col['eco_fey']][i]
+                        if v_fy:
+                            fy_clean = _clean_decimal(v_fy, 5, 1)
+                            if fy_clean is not None:
+                                echo.lvef_percentage = fy_clean
+                    if 'eco_hvi' in field_to_col:
+                        v_ehvi = df_dict[field_to_col['eco_hvi']][i]
+                        echo.ventricular_hypertrophy = (v_ehvi == 1.0)
+                    if 'eco_disfuncion' in field_to_col:
+                        v_dis = df_dict[field_to_col['eco_disfuncion']][i]
+                        echo.diastolic_dysfunction = (v_dis == 1.0)
+                    if 'eco_calcificacion' in field_to_col:
+                        v_calc = df_dict[field_to_col['eco_calcificacion']][i]
+                        echo.aortic_valve_calcification = (v_calc == 1.0)
+                    echo.save()
+                    visit.echocardiogram = echo
+
+                    # 9.5. Estudios Solicitados al Paciente (OrderedStudies)
+                    ordered = getattr(visit, 'ordered_studies', None)
+                    if not ordered:
+                        ordered = OrderedStudies(visit=visit)
+
+                    def _eval_bool_val(field_key):
+                        if field_key in field_to_col:
+                            val = df_dict[field_to_col[field_key]][i]
+                            if val is not None and str(val).strip() != '':
+                                return val in [1.0, 1, '1', '1.0', 'Si', 'SI', 'Sí', True]
+                        return False
+
+                    ordered.clinical_analysis = _eval_bool_val('est_analisis_clinicos')
+                    ordered.ergometry_spect = _eval_bool_val('est_ergometria_spect')
+                    ordered.cardiac_ct = _eval_bool_val('est_tac_cardiaco')
+                    ordered.cardiac_mri = _eval_bool_val('est_rnm_cardiaco')
+                    ordered.electrophysiology = _eval_bool_val('est_electrofisiologia')
+                    ordered.echocardiogram_ordered = _eval_bool_val('est_ecocardiograma')
+                    ordered.holter_ordered = _eval_bool_val('est_holter')
+                    ordered.mapa_ordered = _eval_bool_val('est_mapa')
+                    ordered.save()
+                    visit.ordered_studies = ordered
+
+                    # 10. Persistencia de respuestas de variables SPSS en memoria
+                    for col_name in col_names:
+                        val_raw = df_dict[col_name][i]
+                        if val_raw is None or str(val_raw).strip() == '':
+                            continue
+
+                        vlabels = meta.variable_value_labels.get(col_name, {})
+                        _, text_lbl = _get_val_and_label(val_raw, vlabels)
+                        val_str = text_lbl if text_lbl else str(val_raw).strip()
+
+                        clean_code = col_code_map.get(col_name)
+                        if not clean_code:
+                            continue
+
+                        q = existing_questions.get(clean_code)
+                        if not q:
+                            continue
+
+                        num_val = None
+                        if isinstance(val_raw, (int, float)) and not text_lbl:
+                            try:
+                                num_val = Decimal(str(round(float(val_raw), 3)))
+                                ans_text = None
+                            except Exception:
+                                num_val = None
+                                ans_text = val_str[:250]
+                        else:
                             num_val = None
                             ans_text = val_str[:250]
-                    else:
-                        num_val = None
-                        ans_text = val_str[:250]
 
-                    answers_to_upsert[(visit.pk, q.pk)] = VisitAnswer(
-                        visit=visit,
-                        question=q,
-                        text_value=ans_text,
-                        numeric_value=num_val,
-                        selected_option=None
-                    )
-
-                    # Form aliases
-                    for form_k, spss_k in SPSS_QUESTION_ALIASES.items():
-                        if spss_k == clean_code:
-                            q_form = existing_questions.get(form_k)
-                            if q_form:
-                                answers_to_upsert[(visit.pk, q_form.pk)] = VisitAnswer(
-                                    visit=visit,
-                                    question=q_form,
-                                    text_value=ans_text,
-                                    numeric_value=num_val,
-                                    selected_option=None
-                                )
-
-                # Derivaciones compuestas
-                def _set_ans(code, val):
-                    q_d = existing_questions.get(code)
-                    if q_d:
-                        answers_to_upsert[(visit.pk, q_d.pk)] = VisitAnswer(
+                        row_answers[(visit.pk, q.pk)] = VisitAnswer(
                             visit=visit,
-                            question=q_d,
-                            text_value=val,
-                            numeric_value=None,
+                            question=q,
+                            text_value=ans_text,
+                            numeric_value=num_val,
                             selected_option=None
                         )
 
-                estres_raw = str(df_dict.get('ESTRES', [None]*total_rows)[i] or '').upper()
-                if 'TRABAJO' in estres_raw: _set_ans('em_estres_trab', 'Si')
-                elif estres_raw and 'NO' in estres_raw: _set_ans('em_estres_trab', 'No')
-                if 'FAMILIAR' in estres_raw or 'FAMILIA' in estres_raw: _set_ans('em_estres_fam', 'Si')
-                elif estres_raw and 'NO' in estres_raw: _set_ans('em_estres_fam', 'No')
+                        # Form aliases
+                        for form_k, spss_k in SPSS_QUESTION_ALIASES.items():
+                            if spss_k == clean_code:
+                                q_form = existing_questions.get(form_k)
+                                if q_form:
+                                    row_answers[(visit.pk, q_form.pk)] = VisitAnswer(
+                                        visit=visit,
+                                        question=q_form,
+                                        text_value=ans_text,
+                                        numeric_value=num_val,
+                                        selected_option=None
+                                    )
 
-                pers_raw = str(df_dict.get('PERSONALIDAD_TIPO_A', [None]*total_rows)[i] or '').upper()
-                if 'TIPO A' in pers_raw or 'SI' in pers_raw: _set_ans('em_pers_a', 'Si')
-                elif pers_raw and 'NO' in pers_raw: _set_ans('em_pers_a', 'No')
+                    # Derivaciones compuestas
+                    def _set_ans(code, val):
+                        q_d = existing_questions.get(code)
+                        if q_d:
+                            row_answers[(visit.pk, q_d.pk)] = VisitAnswer(
+                                visit=visit,
+                                question=q_d,
+                                text_value=val,
+                                numeric_value=None,
+                                selected_option=None
+                            )
 
-                padre_raw = str(df_dict.get('ANTECEDENTES_PADRES', [None]*total_rows)[i] or '').upper()
-                if padre_raw:
-                    _set_ans('ant_padre_hta', 'Si' if 'HTA' in padre_raw else 'No')
-                    _set_ans('ant_padre_dm', 'Si' if ('DIAB' in padre_raw or 'DM' in padre_raw) else 'No')
-                    _set_ans('ant_padre_iam', 'Si' if ('INFARTO' in padre_raw or 'IAM' in padre_raw) else 'No')
-                    _set_ans('ant_padre_ictus', 'Si' if ('ICTUS' in padre_raw or 'ACV' in padre_raw) else 'No')
+                    estres_raw = str(df_dict.get('ESTRES', [None]*total_rows)[i] or '').upper()
+                    if 'TRABAJO' in estres_raw: _set_ans('em_estres_trab', 'Si')
+                    elif estres_raw and 'NO' in estres_raw: _set_ans('em_estres_trab', 'No')
+                    if 'FAMILIAR' in estres_raw or 'FAMILIA' in estres_raw: _set_ans('em_estres_fam', 'Si')
+                    elif estres_raw and 'NO' in estres_raw: _set_ans('em_estres_fam', 'No')
 
-                madre_raw = str(df_dict.get('ANTECEDENTES_MADRES', [None]*total_rows)[i] or '').upper()
-                if madre_raw:
-                    _set_ans('ant_madre_hta', 'Si' if 'HTA' in madre_raw else 'No')
-                    _set_ans('ant_madre_dm', 'Si' if ('DIAB' in madre_raw or 'DM' in madre_raw) else 'No')
-                    _set_ans('ant_madre_iam', 'Si' if ('INFARTO' in madre_raw or 'IAM' in madre_raw) else 'No')
-                    _set_ans('ant_madre_ictus', 'Si' if ('ICTUS' in madre_raw or 'ACV' in madre_raw) else 'No')
+                    pers_raw = str(df_dict.get('PERSONALIDAD_TIPO_A', [None]*total_rows)[i] or '').upper()
+                    if 'TIPO A' in pers_raw or 'SI' in pers_raw: _set_ans('em_pers_a', 'Si')
+                    elif pers_raw and 'NO' in pers_raw: _set_ans('em_pers_a', 'No')
 
-                covid_raw = str(df_dict.get('HISTORIA_COVID', [None]*total_rows)[i] or '').upper()
-                if covid_raw: _set_ans('covid_paso', 'Si' if ('SI' in covid_raw or covid_raw == '1.0') else 'No')
-                hosp_raw = str(df_dict.get('AFECTACION_COVID', [None]*total_rows)[i] or '').upper()
-                if 'HOSPITAL' in hosp_raw or 'INGRESO' in hosp_raw: _set_ans('covid_ingreso', 'Si')
-                long_raw = str(df_dict.get('LONG_COVID', [None]*total_rows)[i] or '').upper()
-                if long_raw: _set_ans('longcovid', 'Si' if ('SI' in long_raw or long_raw == '1.0') else 'No')
+                    padre_raw = str(df_dict.get('ANTECEDENTES_PADRES', [None]*total_rows)[i] or '').upper()
+                    if padre_raw:
+                        _set_ans('ant_padre_hta', 'Si' if 'HTA' in padre_raw else 'No')
+                        _set_ans('ant_padre_dm', 'Si' if ('DIAB' in padre_raw or 'DM' in padre_raw) else 'No')
+                        _set_ans('ant_padre_iam', 'Si' if ('INFARTO' in padre_raw or 'IAM' in padre_raw) else 'No')
+                        _set_ans('ant_padre_ictus', 'Si' if ('ICTUS' in padre_raw or 'ACV' in padre_raw) else 'No')
 
-                oliva_raw = str(df_dict.get('USA_USTED_ACEITE_DE_OLIVA', [None]*total_rows)[i] or '').upper()
-                if oliva_raw:
-                    is_ol = 'Si' if ('SI' in oliva_raw or oliva_raw == '1.0') else 'No'
-                    _set_ans('pred_q1', is_ol)
-                    _set_ans('pred_q2', is_ol)
+                    madre_raw = str(df_dict.get('ANTECEDENTES_MADRES', [None]*total_rows)[i] or '').upper()
+                    if madre_raw:
+                        _set_ans('ant_madre_hta', 'Si' if 'HTA' in madre_raw else 'No')
+                        _set_ans('ant_madre_dm', 'Si' if ('DIAB' in madre_raw or 'DM' in madre_raw) else 'No')
+                        _set_ans('ant_madre_iam', 'Si' if ('INFARTO' in madre_raw or 'IAM' in madre_raw) else 'No')
+                        _set_ans('ant_madre_ictus', 'Si' if ('ICTUS' in madre_raw or 'ACV' in madre_raw) else 'No')
 
-                act_raw = str(df_dict.get('USTED_REALIZA_ACTIVIDAD_FISICA', [None]*total_rows)[i] or '').upper()
-                if act_raw: _set_ans('act_realiza', 'Si' if ('SI' in act_raw or act_raw == '1.0') else 'No')
-                aer_raw = str(df_dict.get('USTED_REALIZA_EJERCICIOS_AEROBICOS', [None]*total_rows)[i] or '').upper()
-                if aer_raw: _set_ans('act_aerob', 'Si' if ('SI' in aer_raw or aer_raw == '1.0') else 'No')
-                ana_raw = str(df_dict.get('USTED_REALIZA_EJERCICIOS_ANAEROBICOS', [None]*total_rows)[i] or '').upper()
-                if ana_raw: _set_ans('act_anaerob', 'Si' if ('SI' in ana_raw or ana_raw == '1.0') else 'No')
-                dep_raw = str(df_dict.get('HACE_DEPORTE', [None]*total_rows)[i] or '').upper()
-                if dep_raw: _set_ans('act_deporte', 'Si' if ('SI' in dep_raw or dep_raw == '1.0') else 'No')
+                    covid_raw = str(df_dict.get('HISTORIA_COVID', [None]*total_rows)[i] or '').upper()
+                    if covid_raw: _set_ans('covid_paso', 'Si' if ('SI' in covid_raw or covid_raw == '1.0') else 'No')
+                    hosp_raw = str(df_dict.get('AFECTACION_COVID', [None]*total_rows)[i] or '').upper()
+                    if 'HOSPITAL' in hosp_raw or 'INGRESO' in hosp_raw: _set_ans('covid_ingreso', 'Si')
+                    long_raw = str(df_dict.get('LONG_COVID', [None]*total_rows)[i] or '').upper()
+                    if long_raw: _set_ans('longcovid', 'Si' if ('SI' in long_raw or long_raw == '1.0') else 'No')
 
-                # Factores de riesgo modificables sincronizados con el formulario
-                hta_raw = df_dict.get('HIPERTENSION', [None]*total_rows)[i]
-                if hta_raw is not None and str(hta_raw).strip() != '':
-                    _set_ans('r_hta', 'Si' if hta_raw in [1.0, 2.0, '1', '2', '1.0', '2.0'] else 'No')
-                    _set_ans('r_hta_farmacos', 'Si' if hta_raw in [2.0, '2', '2.0'] else 'No')
+                    oliva_raw = str(df_dict.get('USA_USTED_ACEITE_DE_OLIVA', [None]*total_rows)[i] or '').upper()
+                    if oliva_raw:
+                        is_ol = 'Si' if ('SI' in oliva_raw or oliva_raw == '1.0') else 'No'
+                        _set_ans('pred_q1', is_ol)
+                        _set_ans('pred_q2', is_ol)
 
-                dislip_raw = df_dict.get('DISLIPEMIA', [None]*total_rows)[i]
-                if dislip_raw is not None and str(dislip_raw).strip() != '':
-                    _set_ans('r_dislipemia', 'Si' if dislip_raw in [1.0, 2.0, '1', '2', '1.0', '2.0'] else 'No')
-                    _set_ans('r_dislip_farmacos', 'Si' if dislip_raw in [2.0, '2', '2.0'] else 'No')
+                    act_raw = str(df_dict.get('USTED_REALIZA_ACTIVIDAD_FISICA', [None]*total_rows)[i] or '').upper()
+                    if act_raw: _set_ans('act_realiza', 'Si' if ('SI' in act_raw or act_raw == '1.0') else 'No')
+                    aer_raw = str(df_dict.get('USTED_REALIZA_EJERCICIOS_AEROBICOS', [None]*total_rows)[i] or '').upper()
+                    if aer_raw: _set_ans('act_aerob', 'Si' if ('SI' in aer_raw or aer_raw == '1.0') else 'No')
+                    ana_raw = str(df_dict.get('USTED_REALIZA_EJERCICIOS_ANAEROBICOS', [None]*total_rows)[i] or '').upper()
+                    if ana_raw: _set_ans('act_anaerob', 'Si' if ('SI' in ana_raw or ana_raw == '1.0') else 'No')
+                    dep_raw = str(df_dict.get('HACE_DEPORTE', [None]*total_rows)[i] or '').upper()
+                    if dep_raw: _set_ans('act_deporte', 'Si' if ('SI' in dep_raw or dep_raw == '1.0') else 'No')
 
-                vasc_raw = df_dict.get('VASCULOPATÍA', [None]*total_rows)[i]
-                if vasc_raw is not None and str(vasc_raw).strip() != '':
-                    _set_ans('r_vasculopatia', 'Si' if vasc_raw in [1.0, 2.0, 3.0, '1', '2', '3'] else 'No')
-                    _set_ans('r_vasc_femoral', 'Si' if vasc_raw in [3.0, '3', '3.0'] else 'No')
+                    # Factores de riesgo modificables sincronizados con el formulario
+                    hta_raw = df_dict.get('HIPERTENSION', [None]*total_rows)[i]
+                    if hta_raw is not None and str(hta_raw).strip() != '':
+                        _set_ans('r_hta', 'Si' if hta_raw in [1.0, 2.0, '1', '2', '1.0', '2.0'] else 'No')
+                        _set_ans('r_hta_farmacos', 'Si' if hta_raw in [2.0, '2', '2.0'] else 'No')
 
-                holter_raw = df_dict.get('PRUEBA_HOLTER', [None]*total_rows)[i]
-                if holter_raw is not None and str(holter_raw).strip() != '':
-                    is_h_si = holter_raw in [1.0, 3.0, 4.0, '1', '3', '4', 'SI', 'NORMAL', 'ALTERADA']
-                    _set_ans('r_holter', 'Si' if is_h_si else 'No')
-                    _set_ans('holter_resultado', 'Alterada' if holter_raw in [4.0, '4', 'ALTERADA'] else 'Normal')
+                    dislip_raw = df_dict.get('DISLIPEMIA', [None]*total_rows)[i]
+                    if dislip_raw is not None and str(dislip_raw).strip() != '':
+                        _set_ans('r_dislipemia', 'Si' if dislip_raw in [1.0, 2.0, '1', '2', '1.0', '2.0'] else 'No')
+                        _set_ans('r_dislip_farmacos', 'Si' if dislip_raw in [2.0, '2', '2.0'] else 'No')
 
-                mapa_raw = df_dict.get('USTED_SE_HA_REALIZADO_ESTUDIOS_DE_MAPA', [None]*total_rows)[i]
-                if mapa_raw is not None and str(mapa_raw).strip() != '':
-                    _set_ans('r_mapa', 'Si' if mapa_raw in [1.0, '1', '1.0', 'SI', 'Si', 'Sí'] else 'No')
+                    vasc_raw = df_dict.get('VASCULOPATÍA', [None]*total_rows)[i]
+                    if vasc_raw is not None and str(vasc_raw).strip() != '':
+                        _set_ans('r_vasculopatia', 'Si' if vasc_raw in [1.0, 2.0, 3.0, '1', '2', '3'] else 'No')
+                        _set_ans('r_vasc_femoral', 'Si' if vasc_raw in [3.0, '3', '3.0'] else 'No')
+
+                    holter_raw = df_dict.get('PRUEBA_HOLTER', [None]*total_rows)[i]
+                    if holter_raw is not None and str(holter_raw).strip() != '':
+                        is_h_si = holter_raw in [1.0, 3.0, 4.0, '1', '3', '4', 'SI', 'NORMAL', 'ALTERADA']
+                        _set_ans('r_holter', 'Si' if is_h_si else 'No')
+                        _set_ans('holter_resultado', 'Alterada' if holter_raw in [4.0, '4', 'ALTERADA'] else 'Normal')
+
+                    mapa_raw = df_dict.get('USTED_SE_HA_REALIZADO_ESTUDIOS_DE_MAPA', [None]*total_rows)[i]
+                    if mapa_raw is not None and str(mapa_raw).strip() != '':
+                        _set_ans('r_mapa', 'Si' if mapa_raw in [1.0, '1', '1.0', 'SI', 'Si', 'Sí'] else 'No')
+
+                    # Confirmar lote de respuestas de la fila actual
+                    answers_to_upsert.update(row_answers)
 
             except Exception as e:
                 errors.append(f"Fila {i + 1} (Código {study_code}): {str(e)}")
