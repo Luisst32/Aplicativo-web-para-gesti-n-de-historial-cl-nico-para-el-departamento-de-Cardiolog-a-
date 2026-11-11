@@ -25,7 +25,8 @@ from catalog.models import (
 )
 from clinical.models import (
     Patient, Visit, Anthropometry, VitalSigns,
-    Electrocardiogram, Echocardiogram, Laboratory, VisitAnswer
+    Electrocardiogram, Echocardiogram, Laboratory, VisitAnswer,
+    OrderedStudies
 )
 
 try:
@@ -440,6 +441,16 @@ STANDARD_FIELD_ALIASES = {
     'ecg_st_descenso': ['descenso_st_patologico'],
     'ecg_normal': ['ecg_normal'],
 
+    # Estudios Solicitados al Paciente
+    'est_analisis_clinicos': ['usted_se_ha_realizado_estudios_clinicos', 'estudios_clinicos', 'estudios_analisis_clinicos'],
+    'est_ergometria_spect': ['usted_se_ha_realizado_estudios_de_ergonometria', 'ergometria_spect', 'estudios_ergometria'],
+    'est_tac_cardiaco': ['usted_se_ha_realizado_estudios_de_tac_cardiaco', 'tac_cardiaco', 'estudios_tac_cardiaco'],
+    'est_rnm_cardiaco': ['usted_se_ha_realizado_estudios_de_rnm_ccardiaco', 'rnm_cardiaco', 'estudios_rnm_cardiaco'],
+    'est_electrofisiologia': ['usted_se_ha_realizado_estudios_de_electrofisiologia', 'electrofisiologia', 'estudios_electrofisiologia'],
+    'est_ecocardiograma': ['usted_se_ha_realizado_estudios_ecocardiofrafia', 'estudios_ecocardiograma'],
+    'est_holter': ['usted_se_ha_realizado_estudios_holter_ecg', 'estudios_holter_ecg', 'estudios_holter'],
+    'est_mapa': ['usted_se_ha_realizado_estudios_de_mapa', 'estudios_mapa'],
+
     # Laboratorio
     'lab_hematies': ['hematies', 'globulos_rojos'],
     'lab_hemoglobina': ['hemoglobina', 'hb'],
@@ -569,6 +580,14 @@ FIELD_DESTINATIONS = {
     'ecg_st_ascenso': ('Electrocardiograma', 'Ascenso ST Patológico'),
     'ecg_st_descenso': ('Electrocardiograma', 'Descenso ST Patológico'),
     'ecg_normal': ('Electrocardiograma', 'ECG Normal / Patológico'),
+    'est_analisis_clinicos': ('Estudios Solicitados', '1.- Análisis clínicos'),
+    'est_ergometria_spect': ('Estudios Solicitados', '2.- Ergometría con SPECT'),
+    'est_tac_cardiaco': ('Estudios Solicitados', '3.- TAC Cardíaco'),
+    'est_rnm_cardiaco': ('Estudios Solicitados', '4.- RNM Cardíaco'),
+    'est_electrofisiologia': ('Estudios Solicitados', '5.- Electrofisiología'),
+    'est_ecocardiograma': ('Estudios Solicitados', '6.- Ecocardiografía'),
+    'est_holter': ('Estudios Solicitados', '7.- Holter ECG'),
+    'est_mapa': ('Estudios Solicitados', '8.- MAPA'),
     'lab_hematies': ('Laboratorio Clínico', 'Hematíes (millones/µL)'),
     'lab_hemoglobina': ('Laboratorio Clínico', 'Hemoglobina (g/dL)'),
     'lab_hematocrito': ('Laboratorio Clínico', 'Hematocrito (%)'),
@@ -655,6 +674,10 @@ def get_column_destination(col_name):
         return FIELD_DESTINATIONS[matched_field]
 
     norm = normalize_var_name(col_name)
+
+    # 0. Estudios Solicitados
+    if any(k in norm for k in ['usted_se_ha_realizado_estudios', 'estudios_de_mapa', 'estudios_holter_ecg', 'estudios_clinicos', 'estudios_de_ergonometria', 'estudios_de_tac', 'estudios_de_rnm', 'estudios_de_electrofisiologia']):
+        return ('Estudios Solicitados', f'Estudio Indicado al Paciente ({col_name})')
 
     # 1. Ecocardiograma
     if any(k in norm for k in ['eco', 'mitral', 'aortic', 'tritusp', 'tricusp', 'pulmonar', 'pulmunar', 'ventricul', 'auricul', 'onda_e', 'onda_a', 'onda_s', 'llenado', 'regurgit', 'valvul', 'estenosis', 'esternosis', 'gradiente', 'gradiante', 'tapse', 'mapse', 'dopler', 'biplanar', 'subcostal', 'cayado', 'engrados', 'movilidad', 'prolapso', 'velocidad', 'thp', 'jet_color', 'derrame', 'contractilidad', 'presiones_llenado', 'araesternal', 'area_sistolica', 'area_valvular', 'itv_de_tsvi', 'funcion_sistolica']):
@@ -1119,7 +1142,16 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
         ('act_realiza', 'MOD_6_ACTIVIDAD_FISICA'),
         ('act_aerob', 'MOD_6_ACTIVIDAD_FISICA'),
         ('act_anaerob', 'MOD_6_ACTIVIDAD_FISICA'),
-        ('act_deporte', 'MOD_6_ACTIVIDAD_FISICA')
+        ('act_deporte', 'MOD_6_ACTIVIDAD_FISICA'),
+        ('r_hta', 'MOD_3_FACTORES_MOD'),
+        ('r_hta_farmacos', 'MOD_3_FACTORES_MOD'),
+        ('r_dislipemia', 'MOD_3_FACTORES_MOD'),
+        ('r_dislip_farmacos', 'MOD_3_FACTORES_MOD'),
+        ('r_vasculopatia', 'MOD_3_FACTORES_MOD'),
+        ('r_vasc_femoral', 'MOD_3_FACTORES_MOD'),
+        ('r_holter', 'MOD_3_FACTORES_MOD'),
+        ('holter_resultado', 'MOD_3_FACTORES_MOD'),
+        ('r_mapa', 'MOD_3_FACTORES_MOD')
     ]
     for d_k, s_cd in derived_keys:
         if d_k not in existing_questions:
@@ -1165,12 +1197,12 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
     existing_visits = {
         v.study_code: v
         for v in Visit.objects.filter(study_code__in=all_scs)
-        .select_related('patient', 'anthropometry', 'vital_signs', 'electrocardiogram', 'laboratory', 'echocardiogram')
+        .select_related('patient', 'anthropometry', 'vital_signs', 'electrocardiogram', 'laboratory', 'echocardiogram', 'ordered_studies')
     }
     existing_patients = {
         p.id_card: p
         for p in Patient.objects.filter(id_card__in=all_ids)
-        .select_related('visit', 'visit__anthropometry', 'visit__vital_signs', 'visit__electrocardiogram', 'visit__laboratory', 'visit__echocardiogram')
+        .select_related('visit', 'visit__anthropometry', 'visit__vital_signs', 'visit__electrocardiogram', 'visit__laboratory', 'visit__echocardiogram', 'visit__ordered_studies')
     }
 
     created_count = 0
@@ -1500,7 +1532,66 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                 if 'ecg_bloqueo' in field_to_col:
                     v_bl = df_dict[field_to_col['ecg_bloqueo']][i]
                     _, bl_lbl = _get_val_and_label(v_bl, meta.variable_value_labels.get(field_to_col['ecg_bloqueo'], {}))
-                    if bl_lbl: ecg.bundle_branch_block = bl_lbl[:50]
+                    if bl_lbl:
+                        ecg.bundle_branch_block = bl_lbl[:50]
+                        ecg.has_bundle_branch_block = True
+
+                if 'ecg_rr' in field_to_col:
+                    v_rr = df_dict[field_to_col['ecg_rr']][i]
+                    if v_rr:
+                        try:
+                            val_rr = float(v_rr)
+                            ecg.rr_interval_sec = Decimal(str(round(val_rr / 1000.0, 3))) if val_rr > 50 else Decimal(str(round(val_rr, 3)))
+                        except Exception: pass
+
+                if 'ecg_onda_p' in field_to_col:
+                    v_op = df_dict[field_to_col['ecg_onda_p']][i]
+                    if v_op:
+                        try: ecg.p_wave_mm = Decimal(str(round(float(v_op), 1)))
+                        except Exception: pass
+
+                if 'ecg_bloqueo_av' in field_to_col:
+                    v_bav = df_dict[field_to_col['ecg_bloqueo_av']][i]
+                    _, bav_lbl = _get_val_and_label(v_bav, meta.variable_value_labels.get(field_to_col['ecg_bloqueo_av'], {}))
+                    if v_bav in [1.0, 2.0, 3.0, '1', '2', '3'] or 'SI' in bav_lbl.upper():
+                        ecg.av_block = True
+                        ecg.av_block_grade = bav_lbl[:50] if bav_lbl else 'Bloqueo AV'
+
+                if 'ecg_hemibloqueo' in field_to_col:
+                    v_hb = df_dict[field_to_col['ecg_hemibloqueo']][i]
+                    _, hb_lbl = _get_val_and_label(v_hb, meta.variable_value_labels.get(field_to_col['ecg_hemibloqueo'], {}))
+                    if v_hb in [1.0, '1'] or 'SÍ' in hb_lbl.upper() or 'SI' in hb_lbl.upper():
+                        ecg.hemiblock = True
+                        ecg.hemiblock_detail = hb_lbl[:100] if hb_lbl else 'Hemibloqueo'
+
+                if 'ecg_onda_delta' in field_to_col:
+                    v_od = df_dict[field_to_col['ecg_onda_delta']][i]
+                    ecg.delta_wave = (v_od == 1.0 or v_od == '1')
+
+                if 'ecg_cubeta' in field_to_col:
+                    v_cub = df_dict[field_to_col['ecg_cubeta']][i]
+                    ecg.digitalis_effect = (v_cub == 1.0 or v_cub == '1')
+
+                if 'ecg_onda_q' in field_to_col:
+                    v_oq = df_dict[field_to_col['ecg_onda_q']][i]
+                    ecg.pathological_q_wave = (v_oq == 1.0 or v_oq == '1' or str(v_oq).strip().upper() == 'SI')
+
+                if 'ecg_t_negativa' in field_to_col:
+                    v_tn = df_dict[field_to_col['ecg_t_negativa']][i]
+                    ecg.negative_t_wave = (v_tn == 1.0 or v_tn == '1' or str(v_tn).strip().upper() == 'SI')
+
+                if 'ecg_st_ascenso' in field_to_col:
+                    v_sta = df_dict[field_to_col['ecg_st_ascenso']][i]
+                    ecg.st_elevation_pathological = (v_sta == 1.0 or v_sta == '1' or str(v_sta).strip().upper() == 'SI')
+
+                if 'ecg_st_descenso' in field_to_col:
+                    v_std = df_dict[field_to_col['ecg_st_descenso']][i]
+                    ecg.st_depression = (v_std == 1.0 or v_std == '1' or str(v_std).strip().upper() == 'SI')
+
+                if 'ecg_normal' in field_to_col:
+                    v_norm = df_dict[field_to_col['ecg_normal']][i]
+                    ecg.is_normal = (v_norm == 1.0 or v_norm == '1')
+
                 ecg.save()
                 visit.electrocardiogram = ecg
 
@@ -1562,6 +1653,29 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                     echo.aortic_valve_calcification = (v_calc == 1.0)
                 echo.save()
                 visit.echocardiogram = echo
+
+                # 9.5. Estudios Solicitados al Paciente (OrderedStudies)
+                ordered = getattr(visit, 'ordered_studies', None)
+                if not ordered:
+                    ordered = OrderedStudies(visit=visit)
+
+                def _eval_bool_val(field_key):
+                    if field_key in field_to_col:
+                        val = df_dict[field_to_col[field_key]][i]
+                        if val is not None and str(val).strip() != '':
+                            return val in [1.0, 1, '1', '1.0', 'Si', 'SI', 'Sí', True]
+                    return False
+
+                ordered.clinical_analysis = _eval_bool_val('est_analisis_clinicos')
+                ordered.ergometry_spect = _eval_bool_val('est_ergometria_spect')
+                ordered.cardiac_ct = _eval_bool_val('est_tac_cardiaco')
+                ordered.cardiac_mri = _eval_bool_val('est_rnm_cardiaco')
+                ordered.electrophysiology = _eval_bool_val('est_electrofisiologia')
+                ordered.echocardiogram_ordered = _eval_bool_val('est_ecocardiograma')
+                ordered.holter_ordered = _eval_bool_val('est_holter')
+                ordered.mapa_ordered = _eval_bool_val('est_mapa')
+                ordered.save()
+                visit.ordered_studies = ordered
 
                 # 10. Persistencia de respuestas de variables SPSS en memoria
                 for col_name in col_names:
@@ -1671,6 +1785,32 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                 if ana_raw: _set_ans('act_anaerob', 'Si' if ('SI' in ana_raw or ana_raw == '1.0') else 'No')
                 dep_raw = str(df_dict.get('HACE_DEPORTE', [None]*total_rows)[i] or '').upper()
                 if dep_raw: _set_ans('act_deporte', 'Si' if ('SI' in dep_raw or dep_raw == '1.0') else 'No')
+
+                # Factores de riesgo modificables sincronizados con el formulario
+                hta_raw = df_dict.get('HIPERTENSION', [None]*total_rows)[i]
+                if hta_raw is not None and str(hta_raw).strip() != '':
+                    _set_ans('r_hta', 'Si' if hta_raw in [1.0, 2.0, '1', '2', '1.0', '2.0'] else 'No')
+                    _set_ans('r_hta_farmacos', 'Si' if hta_raw in [2.0, '2', '2.0'] else 'No')
+
+                dislip_raw = df_dict.get('DISLIPEMIA', [None]*total_rows)[i]
+                if dislip_raw is not None and str(dislip_raw).strip() != '':
+                    _set_ans('r_dislipemia', 'Si' if dislip_raw in [1.0, 2.0, '1', '2', '1.0', '2.0'] else 'No')
+                    _set_ans('r_dislip_farmacos', 'Si' if dislip_raw in [2.0, '2', '2.0'] else 'No')
+
+                vasc_raw = df_dict.get('VASCULOPATÍA', [None]*total_rows)[i]
+                if vasc_raw is not None and str(vasc_raw).strip() != '':
+                    _set_ans('r_vasculopatia', 'Si' if vasc_raw in [1.0, 2.0, 3.0, '1', '2', '3'] else 'No')
+                    _set_ans('r_vasc_femoral', 'Si' if vasc_raw in [3.0, '3', '3.0'] else 'No')
+
+                holter_raw = df_dict.get('PRUEBA_HOLTER', [None]*total_rows)[i]
+                if holter_raw is not None and str(holter_raw).strip() != '':
+                    is_h_si = holter_raw in [1.0, 3.0, 4.0, '1', '3', '4', 'SI', 'NORMAL', 'ALTERADA']
+                    _set_ans('r_holter', 'Si' if is_h_si else 'No')
+                    _set_ans('holter_resultado', 'Alterada' if holter_raw in [4.0, '4', 'ALTERADA'] else 'Normal')
+
+                mapa_raw = df_dict.get('USTED_SE_HA_REALIZADO_ESTUDIOS_DE_MAPA', [None]*total_rows)[i]
+                if mapa_raw is not None and str(mapa_raw).strip() != '':
+                    _set_ans('r_mapa', 'Si' if mapa_raw in [1.0, '1', '1.0', 'SI', 'Si', 'Sí'] else 'No')
 
             except Exception as e:
                 errors.append(f"Fila {i + 1} (Código {study_code}): {str(e)}")

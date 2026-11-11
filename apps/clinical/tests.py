@@ -312,6 +312,12 @@ class SavImporterColumnMappingTests(SimpleTestCase):
         mod_medas, _ = get_column_destination('ACEITE_DE_OLIVA_CONSUMO')
         self.assertEqual(mod_medas, 'Cuestionario Dieta MEDAS')
 
+        mod_est, _ = get_column_destination('USTED_SE_HA_REALIZADO_ESTUDIOS_CLINICOS')
+        self.assertEqual(mod_est, 'Estudios Solicitados')
+
+        mod_mapa, _ = get_column_destination('USTED_SE_HA_REALIZADO_ESTUDIOS_DE_MAPA')
+        self.assertEqual(mod_mapa, 'Estudios Solicitados')
+
 
 class PatientCreateApiTests(TestCase):
     def setUp(self):
