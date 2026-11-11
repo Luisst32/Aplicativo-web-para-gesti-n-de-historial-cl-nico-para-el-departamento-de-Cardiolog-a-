@@ -21,7 +21,7 @@ Project cardiounemi_ehr {
 // 1. SECURITY & INTEGRATION APIS (m_ & t_)
 // ============================================================================
 
-Table m_users [headercolor: #1E293B] {
+Table m_users {
   id uuid [pk, note: 'Supabase Auth UUID or internal identifier']
   username varchar(150) [unique, not null, note: 'Unique login handle']
   email varchar(254) [unique, not null, note: 'Electronic mail address']
@@ -36,7 +36,7 @@ Table m_users [headercolor: #1E293B] {
   Note: 'Master user accounts for clinicians, specialists and administrative staff'
 }
 
-Table m_roles [headercolor: #1E293B] {
+Table m_roles {
   id int [pk, increment, note: 'Serial identifier']
   code varchar(50) [unique, not null, note: 'Role code: Administrador | Medico']
   name varchar(100) [not null, note: 'Display title of security role']
@@ -46,7 +46,7 @@ Table m_roles [headercolor: #1E293B] {
   Note: 'Master role-based access control roles'
 }
 
-Table t_user_roles [headercolor: #334155] {
+Table t_user_roles {
   id uuid [pk, note: 'Assignment UUID']
   user_id uuid [not null, ref: > m_users.id, note: 'Associated user']
   role_id int [not null, ref: > m_roles.id, note: 'Assigned role']
@@ -57,7 +57,7 @@ Table t_user_roles [headercolor: #334155] {
   Note: 'Transactional mapping linking user accounts to operational roles'
 }
 
-Table t_system_settings [headercolor: #0F172A] {
+Table t_system_settings {
   id uuid [pk, note: 'Configuration row UUID']
   authorized_role_id int [unique, not null, ref: - m_roles.id, note: 'Restricted strictly to Administrador']
   
@@ -81,7 +81,7 @@ Table t_system_settings [headercolor: #0F172A] {
   Note: 'Secure configuration table storing encrypted credentials for Gemini and Gmail APIs'
 }
 
-Table t_audit_change_logs [headercolor: #475569] {
+Table t_audit_change_logs {
   change_log_id bigint [pk, increment, note: 'Audit sequence identifier']
   timestamp timestamptz [default: `now()`, note: 'UTC moment of mutation']
   schema_name varchar(50) [not null, note: 'Target PostgreSQL schema']
@@ -99,7 +99,7 @@ Table t_audit_change_logs [headercolor: #475569] {
   Note: 'Row-level and column-level forensic audit trail for institutional review boards'
 }
 
-Table t_bot_queries [headercolor: #475569] {
+Table t_bot_queries {
   bot_query_id bigint [pk, increment, note: 'Interaction sequence identifier']
   user_id uuid [not null, ref: > m_users.id, note: 'Clinician submitting question']
   user_question text [not null, note: 'Clinical question in natural language']
@@ -117,7 +117,7 @@ Table t_bot_queries [headercolor: #475569] {
 // 2. GEOGRAPHICAL & INSTITUTIONAL TAXONOMY (m_)
 // ============================================================================
 
-Table m_countries [headercolor: #0369A1] {
+Table m_countries {
   id int [pk, increment]
   code varchar(3) [unique, not null, note: 'ISO 3166-1 alpha-3 code (e.g. ECU)']
   name varchar(100) [not null, note: 'Full national country name']
@@ -125,7 +125,7 @@ Table m_countries [headercolor: #0369A1] {
   Note: 'Master country catalog'
 }
 
-Table m_provinces [headercolor: #0369A1] {
+Table m_provinces {
   id int [pk, increment]
   code varchar(10) [unique, not null, note: 'INEC provincial geographic code']
   name varchar(100) [not null, note: 'Province territory name']
@@ -134,7 +134,7 @@ Table m_provinces [headercolor: #0369A1] {
   Note: 'Master provincial territorial catalog'
 }
 
-Table m_cantons [headercolor: #0369A1] {
+Table m_cantons {
   id int [pk, increment]
   code varchar(10) [unique, not null, note: 'INEC canton municipality code']
   name varchar(100) [not null, note: 'Canton / municipality name']
@@ -143,7 +143,7 @@ Table m_cantons [headercolor: #0369A1] {
   Note: 'Master municipality and canton catalog'
 }
 
-Table m_institutions [headercolor: #0284C7] {
+Table m_institutions {
   id int [pk, increment]
   code varchar(50) [unique, not null, note: 'UNEMI | ESPOL']
   name varchar(150) [not null, note: 'University / Healthcare Institution Name']
@@ -157,67 +157,67 @@ Table m_institutions [headercolor: #0284C7] {
 // 3. DEMOGRAPHIC & SOCIOECONOMIC CATALOGS (m_)
 // ============================================================================
 
-Table m_sexes [headercolor: #0891B2] {
+Table m_sexes {
   id int [pk, increment]
   code varchar(10) [unique, not null, note: 'H | M']
   name varchar(50) [not null, note: 'Hombre | Mujer']
 }
 
-Table m_ethnicities [headercolor: #0891B2] {
+Table m_ethnicities {
   id int [pk, increment]
   code varchar(50) [unique, not null]
   name varchar(100) [not null, note: 'Mestizo | Afroecuatoriano | Blanco | Montubio | Indigena']
 }
 
-Table m_staff_categories [headercolor: #0891B2] {
+Table m_staff_categories {
   id int [pk, increment]
   code varchar(50) [unique, not null, note: 'PDI | AD | PAS | SERVICIO | ESTUDIANTES']
   name varchar(150) [not null]
 }
 
-Table m_professional_categories [headercolor: #0891B2] {
+Table m_professional_categories {
   id int [pk, increment]
   code varchar(50) [unique, not null]
   name varchar(150) [not null, note: 'Docente Titular | Auxiliar | Servidor Publico']
 }
 
-Table m_education_levels [headercolor: #0891B2] {
+Table m_education_levels {
   id int [pk, increment]
   code varchar(50) [unique, not null]
   name varchar(100) [not null, note: 'Primaria | Secundaria | Superior | Postgrado']
 }
 
-Table m_income_ranges [headercolor: #0891B2] {
+Table m_income_ranges {
   id int [pk, increment]
   code varchar(50) [unique, not null]
   name varchar(100) [not null, note: 'Monthly income range in USD']
 }
 
-Table m_marital_statuses [headercolor: #0891B2] {
+Table m_marital_statuses {
   id int [pk, increment]
   code varchar(50) [unique, not null]
   name varchar(100) [not null, note: 'Soltero | Casado | Divorciado | Viudo | Union de hecho']
 }
 
-Table m_living_situations [headercolor: #0891B2] {
+Table m_living_situations {
   id int [pk, increment]
   code varchar(50) [unique, not null]
   name varchar(100) [not null, note: 'Solo | Pareja | Pareja e hijos | Familiares']
 }
 
-Table m_housing_types [headercolor: #0891B2] {
+Table m_housing_types {
   id int [pk, increment]
   code varchar(50) [unique, not null]
   name varchar(100) [not null, note: 'Propia | Arrendada | Familiar | Prestada']
 }
 
-Table m_work_schedules [headercolor: #0891B2] {
+Table m_work_schedules {
   id int [pk, increment]
   code varchar(50) [unique, not null]
   name varchar(100) [not null, note: 'Jornada Partida | Continua | Turnos']
 }
 
-Table m_ecg_rhythms [headercolor: #0891B2] {
+Table m_ecg_rhythms {
   id int [pk, increment]
   code varchar(50) [unique, not null, note: 'RS | RL | SIUNSAL | ACXFA | OTRO']
   name varchar(100) [not null, note: 'Clinical diagnosis of heart rhythm']
@@ -227,7 +227,7 @@ Table m_ecg_rhythms [headercolor: #0891B2] {
 // 4. PATIENT & CLINICAL ENCOUNTER (t_)
 // ============================================================================
 
-Table t_patients [headercolor: #15803D] {
+Table t_patients {
   patient_id uuid [pk, note: 'Surrogate UUID primary key']
   institution_id int [not null, ref: > m_institutions.id, note: 'Affiliated institution (UNEMI / ESPOL)']
   id_card varchar(13) [unique, not null, note: 'National identity card (Cedula)']
@@ -249,7 +249,7 @@ Table t_patients [headercolor: #15803D] {
   Note: 'Master demographic identity for all patients and participants'
 }
 
-Table t_visits [headercolor: #166534] {
+Table t_visits {
   visit_id uuid [pk, note: 'Unique clinical encounter UUID']
   patient_id uuid [unique, not null, ref: - t_patients.patient_id, note: '1:1 relation to Patient']
   evaluator_id uuid [not null, ref: > m_users.id, note: 'Attending physician']
@@ -277,7 +277,7 @@ Table t_visits [headercolor: #166534] {
 // 5. SPECIALIZED CARDIOVASCULAR CLINICAL MODULES (t_)
 // ============================================================================
 
-Table t_anthropometries [headercolor: #DC2626] {
+Table t_anthropometries {
   anthropometry_id uuid [pk]
   visit_id uuid [unique, not null, ref: - t_visits.visit_id]
   weight_kg decimal(5,2) [note: 'Body weight in kilograms']
@@ -292,7 +292,7 @@ Table t_anthropometries [headercolor: #DC2626] {
   Note: 'Biometric and anthropometric evaluation parameters'
 }
 
-Table t_vital_signs [headercolor: #DC2626] {
+Table t_vital_signs {
   vital_signs_id uuid [pk]
   visit_id uuid [unique, not null, ref: - t_visits.visit_id]
   systolic_bp smallint [note: 'Systolic Blood Pressure (mmHg)']
@@ -305,7 +305,7 @@ Table t_vital_signs [headercolor: #DC2626] {
   Note: 'Hemodynamic vital signs recorded during encounter'
 }
 
-Table t_electrocardiograms [headercolor: #B91C1C] {
+Table t_electrocardiograms {
   ecg_id uuid [pk]
   visit_id uuid [unique, not null, ref: - t_visits.visit_id]
   
@@ -360,7 +360,7 @@ Table t_electrocardiograms [headercolor: #B91C1C] {
   Note: 'Comprehensive 12-lead Electrocardiogram evaluation with all 27 protocol items'
 }
 
-Table t_echocardiograms [headercolor: #991B1B] {
+Table t_echocardiograms {
   echo_id uuid [pk]
   visit_id uuid [unique, not null, ref: - t_visits.visit_id]
   lv_diastolic_diameter_mm decimal(5,2) [note: 'LVEDD in mm']
@@ -380,7 +380,7 @@ Table t_echocardiograms [headercolor: #991B1B] {
   Note: 'Transthoracic 2D and Doppler Echocardiography measurements'
 }
 
-Table t_laboratories [headercolor: #991B1B] {
+Table t_laboratories {
   lab_id uuid [pk]
   visit_id uuid [unique, not null, ref: - t_visits.visit_id]
   
@@ -414,7 +414,7 @@ Table t_laboratories [headercolor: #991B1B] {
   Note: 'Clinical laboratory blood panel and biomarkers'
 }
 
-Table t_ordered_studies [headercolor: #7F1D1D] {
+Table t_ordered_studies {
   study_id uuid [pk, note: 'Prescription surrogate UUID']
   visit_id uuid [unique, not null, ref: - t_visits.visit_id, note: '1:1 relation to Visit']
   
@@ -437,7 +437,7 @@ Table t_ordered_studies [headercolor: #7F1D1D] {
 // 6. QUESTIONNAIRE & MODULAR SURVEY RESPONSES (m_ & t_)
 // ============================================================================
 
-Table m_questionnaire_sections [headercolor: #D97706] {
+Table m_questionnaire_sections {
   id int [pk, increment]
   code varchar(50) [unique, not null, note: 'MOD_1_SOCIO | MOD_3_FACTORES_MOD | etc.']
   title varchar(150) [not null, note: 'Section clinical heading title']
@@ -446,7 +446,7 @@ Table m_questionnaire_sections [headercolor: #D97706] {
   Note: 'Master questionnaire module chapters'
 }
 
-Table m_questions [headercolor: #D97706] {
+Table m_questions {
   id int [pk, increment]
   section_id int [not null, ref: > m_questionnaire_sections.id]
   code varchar(50) [unique, not null, note: 'Standard variable code (e.g. r_hta, r_mapa)']
@@ -457,7 +457,7 @@ Table m_questions [headercolor: #D97706] {
   Note: 'Master items and survey questions'
 }
 
-Table m_question_options [headercolor: #D97706] {
+Table m_question_options {
   id int [pk, increment]
   question_id int [not null, ref: > m_questions.id]
   option_code varchar(50) [not null, note: 'Coded choice identifier']
@@ -468,7 +468,7 @@ Table m_question_options [headercolor: #D97706] {
   Note: 'Master categorical options for discrete questions'
 }
 
-Table t_visit_answers [headercolor: #B45309] {
+Table t_visit_answers {
   answer_id bigint [pk, increment, note: 'Serial primary key']
   visit_id uuid [not null, ref: > t_visits.visit_id, note: 'Encounter relation']
   question_id int [not null, ref: > m_questions.id, note: 'Questionnaire item']
@@ -478,59 +478,4 @@ Table t_visit_answers [headercolor: #B45309] {
   created_at timestamptz [default: `now()`]
 
   Note: 'EAV survey repository persisting all questionnaire observations'
-}
-
-// ============================================================================
-// TABLE GROUPS FOR VISUAL CLUSTERING IN dbdiagram.io
-// ============================================================================
-
-TableGroup security_and_governance {
-  m_users
-  m_roles
-  t_user_roles
-  t_system_settings
-  t_audit_change_logs
-  t_bot_queries
-}
-
-TableGroup geographic_and_academic_master {
-  m_countries
-  m_provinces
-  m_cantons
-  m_institutions
-}
-
-TableGroup demographic_catalogs {
-  m_sexes
-  m_ethnicities
-  m_staff_categories
-  m_professional_categories
-  m_education_levels
-  m_income_ranges
-  m_marital_statuses
-  m_living_situations
-  m_housing_types
-  m_work_schedules
-  m_ecg_rhythms
-}
-
-TableGroup patient_and_encounter_core {
-  t_patients
-  t_visits
-}
-
-TableGroup clinical_specialized_exams {
-  t_anthropometries
-  t_vital_signs
-  t_electrocardiograms
-  t_echocardiograms
-  t_laboratories
-  t_ordered_studies
-}
-
-TableGroup questionnaire_survey_framework {
-  m_questionnaire_sections
-  m_questions
-  m_question_options
-  t_visit_answers
 }
