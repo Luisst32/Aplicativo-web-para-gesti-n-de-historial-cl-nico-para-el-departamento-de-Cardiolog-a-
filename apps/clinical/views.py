@@ -1272,7 +1272,11 @@ def form_save_api(request):
 
             # Campos exhaustivos del ECG
             if raw_data.get('ecg_rr'):
-                try: ecg.rr_interval_sec = Decimal(str(raw_data['ecg_rr']))
+                try:
+                    val_rr = float(raw_data['ecg_rr'])
+                    if val_rr > 10.0:  # Ingresado en milisegundos (ej. 800 ms -> 0.800 s)
+                        val_rr = val_rr / 1000.0
+                    ecg.rr_interval_sec = Decimal(str(round(val_rr, 3)))
                 except Exception: pass
             if raw_data.get('ecg_p_mm'):
                 try: ecg.p_wave_mm = Decimal(str(raw_data['ecg_p_mm']))
@@ -1292,7 +1296,11 @@ def form_save_api(request):
             ecg.systolic_overload = (raw_data.get('ecg_sobrecarga_sistolica') == 'Si')
             ecg.systolic_overload_complexes = raw_data.get('ecg_sobrecarga_complejos') or ''
             if raw_data.get('ecg_deflexion_intrinsicoide'):
-                try: ecg.intrinsicoid_deflection_sec = Decimal(str(raw_data['ecg_deflexion_intrinsicoide']))
+                try:
+                    val_def = float(raw_data['ecg_deflexion_intrinsicoide'])
+                    if val_def > 5.0:  # Ingresado en milisegundos (ej. 45 ms -> 0.045 s)
+                        val_def = val_def / 1000.0
+                    ecg.intrinsicoid_deflection_sec = Decimal(str(round(val_def, 3)))
                 except Exception: pass
             ecg.right_ventricular_hypertrophy = (raw_data.get('ecg_hvd') == 'Si')
             ecg.delta_wave = (raw_data.get('ecg_onda_delta') == 'Si')
