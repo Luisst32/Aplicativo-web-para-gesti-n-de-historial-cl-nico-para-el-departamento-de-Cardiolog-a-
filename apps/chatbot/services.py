@@ -7,16 +7,14 @@ DIRECTIVAS CRÍTICAS:
 1. ULTRA DIRECTO Y CONCISO: Respuestas directas al grano, sin rodeos ni saludos innecesarios para ahorrar tokens.
 2. SOLO CONSULTAS (READ-ONLY): Solo lectura analítica.
 3. PRIVACIDAD ABSOLUTA (ZERO PII): Bloqueo estricto de nombres, cédulas y datos identificables.
-4. MODELO ECONÓMICO: Google Gemini Flash con límite de tokens optimizado y recarga en caliente de .env.
+4. MODELO ECONÓMICO: Google Gemini Flash con credenciales almacenadas en BD (relacional por rol Administrador).
 """
 
-import os
 import re
 import time
 import logging
 from typing import Dict, Any, Optional
 
-from django.conf import settings
 from chatbot.models import BotQuery
 from dashboard.services import get_dashboard_evaluation_data
 
@@ -290,34 +288,34 @@ def query_gemini_assistant(
             "execution_time_ms": elapsed_ms
         }
 
-    # 3. Recargar en caliente el archivo .env para detectar claves pegadas en vivo
-    try:
-        from dotenv import load_dotenv
-        load_dotenv(override=True)
-    except Exception:
-        pass
-
-    # Leer clave de API encriptada desde la tabla global SystemSetting con fallback a .env
+    # 3. Leer clave de API encriptada únicamente desde security.system_setting (asociada al rol Administrador)
     db_key = ""
-    db_model = ""
+    db_model = "gemini-3.5-flash-lite"
+    has_admin_access = False
+    key_configured = False
     try:
         from security.models import SystemSetting
-        db_key = SystemSetting.get_gemini_api_key()
         cfg = SystemSetting.get_settings()
         if cfg:
-            db_model = cfg.gemini_model
+            db_model = cfg.gemini_model or 'gemini-3.5-flash-lite'
+            key_configured = bool(cfg.gemini_api_key_encrypted)
+            has_admin_access = cfg.is_role_authorized(user)
+            if has_admin_access:
+                db_key = SystemSetting.get_gemini_api_key(user=user)
     except Exception as e:
         logger.warning(f"Error consultando SystemSetting: {e}")
 
-    env_key = os.getenv('GEMINI_API_KEY')
-    api_key = (db_key or (env_key if env_key is not None else getattr(settings, 'GEMINI_API_KEY', ''))).strip()
-    model_name = (db_model or os.getenv('GEMINI_MODEL', '') or getattr(settings, 'GEMINI_MODEL', '') or 'gemini-3.5-flash-lite').strip()
+    api_key = db_key.strip()
+    model_name = db_model.strip()
 
     cohort_context = get_anonymized_cohort_context()
 
     if not api_key:
         fallback_answer = generate_fallback_clinical_answer(clean_question)
-        note = "\n\n> ℹ️ *(No se detectó clave de Gemini configurada. Ingrésela en Ajustes del Sistema para activar la IA)*"
+        if key_configured and not has_admin_access:
+            note = "\n\n> 🔒 *(Modo estadístico local: el uso de credenciales de Gemini AI está restringido al rol Administrador)*"
+        else:
+            note = "\n\n> ℹ️ *(No se detectó clave de Gemini configurada en la base de datos. Un Administrador puede configurarla en Ajustes del Sistema)*"
         final_answer = fallback_answer + note
         elapsed_ms = int((time.time() - start_time) * 1000)
 

@@ -646,7 +646,8 @@ function seleccionarPaciente(p, h) {
 function scrollToModule(modId) {
   const el = document.getElementById(modId);
   if (el) {
-    const headerOffset = 80;
+    const header = document.querySelector('.top-header');
+    const headerOffset = (header ? header.offsetHeight : 66) + 14;
     const elementPosition = el.getBoundingClientRect().top;
     const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
     window.scrollTo({
@@ -656,10 +657,11 @@ function scrollToModule(modId) {
   }
 }
 
-// Actualizar sección activa en el sidebar según el scroll
+// Actualizar sección activa en el sidebar y pills móviles según el scroll
 window.addEventListener('scroll', () => {
   const sections = ['mod-sociodemo', 'mod-exploracion', 'mod-cardio', 'mod-nocardio', 'mod-laboratorio', 'mod-estilovida'];
-  const scrollPos = window.scrollY + 120;
+  const header = document.querySelector('.top-header');
+  const scrollPos = window.scrollY + (header ? header.offsetHeight : 66) + 50;
 
   for (let i = sections.length - 1; i >= 0; i--) {
     const sec = document.getElementById(sections[i]);
@@ -667,6 +669,10 @@ window.addEventListener('scroll', () => {
       document.querySelectorAll('.sidebar-nav .nav-btn').forEach(b => b.classList.remove('active'));
       const btn = document.getElementById('sideBtn-mod' + (i + 1));
       if (btn) btn.classList.add('active');
+
+      document.querySelectorAll('.mobile-module-nav .mobile-mod-pill').forEach(b => b.classList.remove('active'));
+      const mobileBtn = document.getElementById('mobileBtn-mod' + (i + 1));
+      if (mobileBtn) mobileBtn.classList.add('active');
       break;
     }
   }

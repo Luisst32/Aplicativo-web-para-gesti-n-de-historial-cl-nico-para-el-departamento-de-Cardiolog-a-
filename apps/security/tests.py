@@ -1,5 +1,10 @@
+import os
 import json
-from django.test import SimpleTestCase, TestCase, Client
+from unittest.mock import patch
+from cryptography.fernet import Fernet
+from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
+from django.test import SimpleTestCase, TestCase, Client, override_settings
 from django.urls import reverse
 from security.models import (
     User,
@@ -56,9 +61,90 @@ class SystemSettingEncryptionTests(TestCase):
         SystemSetting.set_settings(chatbot_enabled=True)
         self.assertTrue(SystemSetting.is_chatbot_enabled())
 
+    def test_system_setting_is_relational_to_admin_role_only(self):
+        setting = SystemSetting.set_settings(chatbot_enabled=True, raw_api_key='AIzaSy_ROLE_ONLY_123')
+        self.assertIsNotNone(setting.role)
+        self.assertEqual(setting.role.name, 'Administrador')
+
+        medico_role = Role.objects.create(name='Médico Evaluador')
+        medico_user = User.objects.create_user(
+            username='medico_normal',
+            email='medico_normal@cardiounemi.edu.ec',
+            first_name='Pedro',
+            last_name='Ruiz',
+            password='Password123!',
+        )
+        UserRole.objects.create(user=medico_user, role=medico_role, status=UserRole.Status.ACTIVE)
+
+        self.assertFalse(setting.is_role_authorized(medico_user))
+        self.assertEqual(SystemSetting.get_gemini_api_key(user=medico_user), '')
+
+        role_admin_user = User.objects.create_user(
+            username='admin_por_rol',
+            email='adminrol@cardiounemi.edu.ec',
+            first_name='Laura',
+            last_name='Mora',
+            password='Password123!',
+        )
+        UserRole.objects.create(user=role_admin_user, role=setting.role, status=UserRole.Status.ACTIVE)
+
+        self.assertTrue(setting.is_role_authorized(role_admin_user))
+        self.assertEqual(SystemSetting.get_gemini_api_key(user=role_admin_user), 'AIzaSy_ROLE_ONLY_123')
+
+    def test_api_key_never_reads_from_env(self):
+        cache.clear()
+        SystemSetting.set_settings(chatbot_enabled=True, raw_api_key='')
+        with patch.dict(os.environ, {'GEMINI_API_KEY': 'ENV_KEY_SHOULD_BE_IGNORED'}):
+            self.assertEqual(SystemSetting.get_gemini_api_key(), '')
+
+    def test_invalid_fernet_token_returns_empty_not_ciphertext(self):
+        self.assertEqual(decrypt_api_key('texto-corrupto-no-fernet'), '')
+
+    def test_multifernet_rotation_with_field_encryption_keys(self):
+        cache.clear()
+        old_key = Fernet.generate_key().decode('utf-8')
+        new_key = Fernet.generate_key().decode('utf-8')
+        with override_settings(FIELD_ENCRYPTION_KEYS=[old_key]):
+            SystemSetting.set_settings(chatbot_enabled=True, raw_api_key='ROTATED_API_KEY_SECRET')
+        with override_settings(FIELD_ENCRYPTION_KEYS=[new_key, old_key]):
+            self.assertEqual(SystemSetting.get_gemini_api_key(), 'ROTATED_API_KEY_SECRET')
+
+    def test_is_administrator_strict_role_and_is_active_sync(self):
+        cache.clear()
+        setting = SystemSetting.get_settings()
+
+        # Usuario con username 'admin', is_staff=True y rol similar 'Administrativo' NO debe ser admin
+        fake_admin_role = Role.objects.create(name='Administrativo')
+        tricky_user = User.objects.create_user(
+            username='admin',
+            email='tricky@cardiounemi.edu.ec',
+            first_name='Fake',
+            last_name='Admin',
+            password='Password123!',
+            is_staff=True,
+        )
+        UserRole.objects.create(user=tricky_user, role=fake_admin_role, status=UserRole.Status.ACTIVE)
+
+        self.assertFalse(tricky_user.is_administrator)
+        self.assertFalse(setting.is_role_authorized(tricky_user))
+        with self.assertRaises(PermissionDenied):
+            SystemSetting.set_settings(chatbot_enabled=False, user=tricky_user)
+
+        # Sincronización status <-> is_active
+        tricky_user.status = User.Status.SUSPENDED
+        tricky_user.save()
+        tricky_user.refresh_from_db()
+        self.assertFalse(tricky_user.is_active)
+
+    def test_is_chatbot_enabled_fails_closed_on_error(self):
+        cache.clear()
+        with patch.object(SystemSetting, 'get_settings', side_effect=RuntimeError('DB offline')):
+            self.assertFalse(SystemSetting.is_chatbot_enabled())
+
 
 class SecurityApiEndpointsTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = Client()
         self.user = User.objects.create_user(
             username='doctor_test',
@@ -75,6 +161,8 @@ class SecurityApiEndpointsTests(TestCase):
             password='AdminPassword123!',
             is_staff=True
         )
+        admin_role = SystemSetting.get_admin_role()
+        UserRole.objects.create(user=self.admin_user, role=admin_role, status=UserRole.Status.ACTIVE)
 
     def test_profile_api_requires_login(self):
         response = self.client.get('/security/api/profile/')
@@ -223,7 +311,7 @@ class SecurityApiEndpointsTests(TestCase):
         self.assertEqual(get_data['api_key_masked'], '')
         self.assertEqual(get_data['gemini_model'], '')
 
-        # POST should NOT update key or model
+        # POST should be rejected with 403 Forbidden and modify NOTHING
         post_payload = {
             'chatbot_enabled': False,
             'gemini_api_key': 'MALICIOUS_KEY_ATTEMPT',
@@ -234,8 +322,87 @@ class SecurityApiEndpointsTests(TestCase):
             data=json.dumps(post_payload),
             content_type='application/json'
         )
-        self.assertEqual(post_res.status_code, 200)
+        self.assertEqual(post_res.status_code, 403)
 
-        # Chatbot toggled, but key was NOT modified
-        self.assertFalse(SystemSetting.is_chatbot_enabled())
+        # Neither chatbot_enabled nor API key was modified
+        self.assertTrue(SystemSetting.is_chatbot_enabled())
         self.assertEqual(SystemSetting.get_gemini_api_key(), 'ORIGINAL_SECRET_KEY')
+
+
+class GlobalLoginRedirectTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='doctor_redirect',
+            email='redirect@cardiounemi.edu.ec',
+            first_name='Ana',
+            last_name='López',
+            password='Password123!'
+        )
+
+    def test_all_unauthenticated_urls_redirect_to_login_never_404(self):
+        login_url = reverse('security:login')
+        test_paths = [
+            '/',
+            '/dashboard/',
+            '/clinical/',
+            '/clinical/listado/',
+            '/clinical/formulario/',
+            '/chatbot/',
+            '/security/',
+            '/login/',
+            '/accounts/login/',
+            '/admin/',
+            '/cualquier-ruta-inexistente/',
+            '/clinical/pagina-que-no-existe/',
+        ]
+        for path in test_paths:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 302)
+                self.assertTrue(response['Location'].startswith(login_url))
+
+    def test_login_page_accessible_without_auth(self):
+        response = self.client.get(reverse('security:login'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_authenticated_root_aliases_redirect_cleanly(self):
+        self.client.login(username='doctor_redirect', password='Password123!')
+        home_res = self.client.get(reverse('home'))
+        self.assertEqual(home_res.status_code, 200)
+        self.assertIn('Directorio de Pacientes', home_res.content.decode('utf-8'))
+
+        dash_res = self.client.get(reverse('dashboard:index'))
+        self.assertEqual(dash_res.status_code, 200)
+        self.assertEqual(reverse('dashboard:index'), '/dashboard/')
+
+        clinical_res = self.client.get('/clinical/')
+        self.assertEqual(clinical_res.status_code, 302)
+        self.assertEqual(clinical_res['Location'], reverse('clinical:list'))
+
+        sec_res = self.client.get('/security/')
+        self.assertEqual(sec_res.status_code, 302)
+
+    def test_invalid_or_external_next_param_redirects_safely_after_login(self):
+        response = self.client.post(
+            f"{reverse('security:login')}?next=/ruta-inexistente/",
+            data={'email': 'doctor_redirect', 'password': 'Password123!'}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response['Location'], reverse('home'))
+
+        response_ext = self.client.post(
+            f"{reverse('security:login')}?next=https://evil.example.com/",
+            data={'email': 'doctor_redirect', 'password': 'Password123!'}
+        )
+        self.assertEqual(response_ext.status_code, 302)
+        self.assertEqual(response_ext['Location'], reverse('home'))
+
+    def test_valid_next_param_preserved_after_login(self):
+        target = reverse('clinical:form')
+        response = self.client.post(
+            reverse('security:login'),
+            data={'email': 'doctor_redirect', 'password': 'Password123!', 'next': target}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response['Location'], target)

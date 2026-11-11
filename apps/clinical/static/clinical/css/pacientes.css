@@ -6,7 +6,7 @@
 
 /* Grid exclusivo de 2 columnas para campos de paciente */
 .form-grid-2 {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px 22px;
 }
 
@@ -83,7 +83,7 @@
 
 #modalAdd .form-grid-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px 20px;
 }
 
@@ -93,4 +93,17 @@
 
 #modalAdd .form-select {
   text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+  .form-grid-2,
+  #modalAdd .form-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #modalAdd .modal-header,
+  #modalAdd .modal-body,
+  #modalAdd .modal-footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
 }

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import Role, User, UserRole
+from .models import Role, User, UserRole, SystemSetting
 
 
 @admin.register(Role)
@@ -31,3 +31,9 @@ class UserAdmin(BaseUserAdmin):
         ('Important Dates', {'fields': ('last_login', 'created_at_utc')}),
     )
     readonly_fields = ('created_at_utc', 'last_login')
+
+
+@admin.register(SystemSetting)
+class SystemSettingAdmin(admin.ModelAdmin):
+    list_display = ('setting_id', 'role', 'chatbot_enabled', 'gemini_model', 'updated_by', 'updated_at_utc')
+    readonly_fields = ('updated_at_utc', 'updated_by')

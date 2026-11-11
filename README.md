@@ -1,4 +1,4 @@
-﻿# Guía de Instalación y Despliegue en Producción
+# Guía de Instalación y Despliegue en Producción
 **Sistema Web para Gestión de Historial Clínico - Cardiología (CardioUNEMI)**
 
 Esta guía detalla el paso a paso completo para desplegar la aplicación desde cero en un servidor **AWS EC2 con Amazon Linux 2023**, configurando **Python 3.12**, **PostgreSQL 16**, **Gunicorn**, **Nginx** y **Cloudflare**.
@@ -117,12 +117,10 @@ DB_USER=postgres
 DB_PASSWORD=
 DB_HOST=localhost
 DB_PORT=5432
-
-# Gemini AI Configuration (Chatbot & Asistente Clínico)
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-3.5-flash-lite
 EOF
 ```
+
+> **Nota:** La clave API de Gemini y el modelo se configuran directamente desde el panel **Ajustes del Sistema** en la interfaz web (almacenados encriptados en `security.system_setting` asociados al rol **Administrador**).
 
 > **Nota:** Reemplaza `milanesa.sbs` por tu dominio correspondiente.
 

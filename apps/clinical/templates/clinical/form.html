@@ -4,8 +4,8 @@
 {% block title %}UNEMI - Estudio Cardiovascular (Ficha Clínica){% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'clinical/css/pacientes.css' %}">
-  <link rel="stylesheet" href="{% static 'clinical/css/form.css' %}">
+  <link rel="stylesheet" href="{% static 'clinical/css/pacientes.css' %}?v=20261110_02">
+  <link rel="stylesheet" href="{% static 'clinical/css/form.css' %}?v=20261110_02">
 {% endblock %}
 
 {% block content %}
@@ -51,7 +51,7 @@
       </button>
     </div>
 
-    <a href="{% url 'clinical:list' %}" class="nav-back" id="btnVolverListado" title="Regresar al expediente del paciente">
+    <a href="{% url 'home' %}" class="nav-back" id="btnVolverListado" title="Regresar al expediente del paciente">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
       <span>Volver al Expediente</span>
     </a>
@@ -70,8 +70,8 @@
         </div>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <a class="btn" id="btnVolverListado" href="{% url 'clinical:list' %}" title="Volver al Expediente">
+      <div class="header-actions">
+        <a class="btn" id="btnVolverListado" href="{% url 'home' %}" title="Volver al Expediente">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           <span>Expediente</span>
         </a>
@@ -151,6 +151,16 @@
         </div>
       </div>
     </div>
+
+    <!-- NAVEGACIÓN MÓVIL DE MÓDULOS -->
+    <nav class="mobile-module-nav" aria-label="Módulos del formulario">
+      <button type="button" class="mobile-mod-pill active" id="mobileBtn-mod1" onclick="scrollToModule('mod-sociodemo')">1. Ficha</button>
+      <button type="button" class="mobile-mod-pill" id="mobileBtn-mod2" onclick="scrollToModule('mod-exploracion')">2. Exploración</button>
+      <button type="button" class="mobile-mod-pill" id="mobileBtn-mod3" onclick="scrollToModule('mod-cardio')">3. Cardio</button>
+      <button type="button" class="mobile-mod-pill" id="mobileBtn-mod4" onclick="scrollToModule('mod-nocardio')">4. No Cardio</button>
+      <button type="button" class="mobile-mod-pill" id="mobileBtn-mod5" onclick="scrollToModule('mod-laboratorio')">5. Lab y ECG</button>
+      <button type="button" class="mobile-mod-pill" id="mobileBtn-mod6" onclick="scrollToModule('mod-estilovida')">6. Estilo de Vida</button>
+    </nav>
 
     <!-- MAIN FORM BODY -->
     <main class="content-area">
@@ -1500,7 +1510,7 @@
                   <text x="382" y="350">9</text>
                 </g>
               </svg>
-              <div class="grid" style="grid-template-columns: repeat(3, 1fr); gap:8px 20px;">
+              <div class="grid" style="grid-template-columns: repeat(3, minmax(0, 1fr)); gap:8px 16px;">
                 <label class="field-label"><input type="checkbox" name="rose_zona_1"> Zona 1</label>
                 <label class="field-label"><input type="checkbox" name="rose_zona_2"> Zona 2</label>
                 <label class="field-label"><input type="checkbox" name="rose_zona_3"> Zona 3</label>
@@ -2549,6 +2559,6 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261031_03"></script>
-  <script src="{% static 'clinical/js/form.js' %}?v=20261031_03"></script>
+  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261110_02"></script>
+  <script src="{% static 'clinical/js/form.js' %}?v=20261110_02"></script>
 {% endblock %}

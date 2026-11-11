@@ -409,7 +409,8 @@ function abrirHistorialesPaciente(pacienteId) {
 
   // 4. Actualizar URL de forma limpia en el historial del navegador
   try {
-    history.replaceState(null, '', `/clinical/listado/?paciente=${encodeURIComponent(p.id)}`);
+    const baseListPath = window.location.pathname === '/' ? '/' : '/clinical/listado/';
+    history.replaceState(null, '', `${baseListPath}?paciente=${encodeURIComponent(p.id)}`);
   } catch (err) {}
 
   // Scroll suave al inicio
@@ -434,7 +435,8 @@ function volverAListadoPacientes() {
   pacienteActivoExpediente = null;
 
   try {
-    history.replaceState(null, '', '/clinical/listado/');
+    const baseListPath = window.location.pathname === '/' ? '/' : '/clinical/listado/';
+    history.replaceState(null, '', baseListPath);
   } catch (err) {}
 
   renderPacientesTabla();

@@ -54,6 +54,7 @@
 
     <form id="loginForm" method="post" action="{% url 'security:login' %}" novalidate>
       {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.GET.next|default:'' }}"/>
 
       <div class="field">
         <label for="email">Correo o Usuario</label>

@@ -373,11 +373,11 @@ function renderMappingTable() {
 function finalizarImportacionSav() {
   cerrarModalImportarSav();
   // Si estamos en el listado de pacientes, recargar para mostrar los nuevos registros
-  if (window.location.pathname.includes('/clinical/listado/')) {
+  if (window.location.pathname === '/' || window.location.pathname.includes('/clinical/listado/')) {
     window.location.reload();
   } else {
-    // Si estamos en el dashboard o inicio, redirigir al listado de pacientes
-    window.location.href = '/clinical/listado/';
+    // Si estamos en otra vista, redirigir a la raíz (listado de pacientes)
+    window.location.href = '/';
   }
 }
 

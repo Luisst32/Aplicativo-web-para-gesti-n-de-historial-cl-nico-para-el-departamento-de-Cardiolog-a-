@@ -1,20 +1,24 @@
-from security.models import SystemSetting
+import logging
+
+from security.models import DEFAULT_GEMINI_MODEL, SystemSetting
+
+logger = logging.getLogger(__name__)
 
 
 def global_system_settings(request):
     """
-    Context processor para exponer el estado del chatbot y la configuración
-    global en todas las plantillas del aplicativo.
+    Context processor para exponer el estado del chatbot en las plantillas.
+    Falla cerrado (chatbot_enabled=False) si ocurre un error al consultar BD.
     """
     try:
         cfg = SystemSetting.get_settings()
         return {
             'chatbot_enabled': cfg.chatbot_enabled,
-            'gemini_model': cfg.gemini_model
+            'gemini_model': cfg.gemini_model,
         }
     except Exception:
+        logger.exception("Error cargando SystemSetting en context_processor; fallando cerrado.")
         return {
-            'chatbot_enabled': True,
-            'gemini_model': 'gemini-3.5-flash-lite'
+            'chatbot_enabled': False,
+            'gemini_model': DEFAULT_GEMINI_MODEL,
         }
-

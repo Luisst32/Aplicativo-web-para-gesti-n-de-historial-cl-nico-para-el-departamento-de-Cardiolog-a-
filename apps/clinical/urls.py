@@ -1,10 +1,12 @@
 from django.urls import path
+from django.views.generic import RedirectView
 from . import views
 
 app_name = 'clinical'
 
 urlpatterns = [
     # Páginas HTML principales
+    path('', RedirectView.as_view(pattern_name='clinical:list', permanent=False), name='root'),
     path('formulario/', views.form_view, name='form'),
     path('listado/', views.list_view, name='list'),
 

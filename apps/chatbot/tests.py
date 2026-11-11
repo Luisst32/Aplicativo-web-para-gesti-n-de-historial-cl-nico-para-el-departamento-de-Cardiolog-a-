@@ -1,6 +1,4 @@
-import os
 import json
-from unittest.mock import patch
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -73,13 +71,11 @@ class ChatbotSecurityAndPrivacyTests(TestCase):
         self.assertNotIn("primer_apellido", context.lower())
         self.assertIn("N =", context)
 
-    @patch('dotenv.load_dotenv', lambda override=True: None)
     def test_deterministic_fallback_mode_without_api_key(self):
-        with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
-            res = query_gemini_assistant("¿Cuál es la prevalencia de hipertensión arterial?", user=self.user)
-            self.assertEqual(res['status'], 'success')
-            self.assertIn("Hipertensión", res['response'])
-            self.assertIn("30,5", res['response'])
+        res = query_gemini_assistant("¿Cuál es la prevalencia de hipertensión arterial?", user=self.user)
+        self.assertEqual(res['status'], 'success')
+        self.assertIn("Hipertensión", res['response'])
+        self.assertIn("30,5", res['response'])
 
     def test_bot_query_logging_in_db(self):
         initial_count = BotQuery.objects.count()

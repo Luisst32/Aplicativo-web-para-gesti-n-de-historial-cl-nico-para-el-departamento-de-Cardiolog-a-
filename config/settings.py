@@ -58,6 +58,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'security.middleware.RequireLoginMiddleware',
     'audit.middleware.PostgreSQLAuditMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -145,7 +146,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Authentication URLs
 LOGIN_URL = 'security:login'
-LOGIN_REDIRECT_URL = 'clinical:list'
+LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'security:login'
 
 
@@ -157,6 +158,8 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
-# Configuración Gemini AI (Asistente Clínico & Estadístico)
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '').strip()
-GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-3.5-flash-lite').strip()
+
+# Claves dedicadas para cifrado simétrico en BD (Fernet / MultiFernet).
+# Permite rotación agregando claves separadas por coma en FIELD_ENCRYPTION_KEYS.
+_raw_enc_keys = os.getenv('FIELD_ENCRYPTION_KEYS') or os.getenv('FIELD_ENCRYPTION_KEY', '')
+FIELD_ENCRYPTION_KEYS = [k.strip() for k in _raw_enc_keys.split(',') if k.strip()]

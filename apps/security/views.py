@@ -3,12 +3,38 @@ import logging
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
+from django.urls import Resolver404, resolve
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods, require_POST
 
 from .models import User, SystemSetting
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_redirect_target(request):
+    """Retorna una URL de destino segura y existente tras autenticar al usuario."""
+    next_url = request.POST.get('next') or request.GET.get('next')
+    if not next_url:
+        return 'home'
+    if not url_has_allowed_host_and_scheme(
+        url=next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return 'home'
+
+    path_only = next_url.split('?', 1)[0]
+    if path_only in ('/', '/security/login/', '/security/logout/'):
+        return 'home'
+
+    try:
+        resolve(path_only)
+        return next_url
+    except Resolver404:
+        return 'home'
 
 
 def login_view(request):
@@ -17,10 +43,7 @@ def login_view(request):
     Permite el inicio de sesión con correo electrónico o nombre de usuario.
     """
     if request.user.is_authenticated:
-        next_url = request.GET.get('next')
-        if not next_url or next_url in ('/', '/dashboard/'):
-            return redirect('clinical:list')
-        return redirect(next_url)
+        return redirect(_safe_redirect_target(request))
 
     error_message = None
 
@@ -53,10 +76,7 @@ def login_view(request):
                         # Expira inmediatamente al cerrar el navegador
                         request.session.set_expiry(0)
 
-                    next_url = request.GET.get('next')
-                    if not next_url or next_url in ('/', '/dashboard/'):
-                        return redirect('clinical:list')
-                    return redirect(next_url)
+                    return redirect(_safe_redirect_target(request))
                 else:
                     error_message = 'Tu cuenta de usuario se encuentra inactiva.'
             else:
@@ -212,37 +232,42 @@ def api_change_password_view(request):
         return JsonResponse({"status": "error", "message": f"Error al cambiar contraseña: {str(e)}"}, status=500)
 
 
+def _mask_api_key(raw_key: str) -> str:
+    if raw_key and len(raw_key) > 8:
+        return f"{raw_key[:6]}...{'*' * 8}...{raw_key[-4:]}"
+    return "********" if raw_key else ""
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def api_settings_view(request):
     """
-    Consulta o actualización de la configuración global del sistema (SystemSetting).
-    Permite activar/desactivar el chatbot y configurar la clave de API de Gemini (encriptada).
-    Solo usuarios con rol Administrador pueden visualizar y modificar la API key y el modelo.
+    Consulta o actualización de la configuración relacional del sistema (SystemSetting)
+    vinculada exclusivamente al rol Administrador (security.role).
     """
-    is_admin = getattr(request.user, 'is_administrator', False)
     cfg = SystemSetting.get_settings()
+    is_admin = cfg.is_role_authorized(request.user)
 
     if request.method == "GET":
-        raw_key = SystemSetting.get_gemini_api_key() if is_admin else ""
-        if raw_key and len(raw_key) > 8:
-            masked = f"{raw_key[:6]}...{'*' * 8}...{raw_key[-4:]}"
-        elif raw_key:
-            masked = "********"
-        else:
-            masked = ""
-
+        raw_key = SystemSetting.get_gemini_api_key(user=request.user) if is_admin else ""
         return JsonResponse({
             "status": "success",
             "chatbot_enabled": cfg.chatbot_enabled,
             "gemini_model": cfg.gemini_model if is_admin else "",
             "api_key_configured": bool(raw_key) if is_admin else False,
-            "api_key_masked": masked if is_admin else "",
+            "api_key_masked": _mask_api_key(raw_key) if is_admin else "",
             "is_admin": is_admin,
+            "role_name": cfg.role.name if cfg.role_id else "",
             "updated_at": cfg.updated_at_utc.strftime("%d/%m/%Y %H:%M") if cfg.updated_at_utc else ""
         })
 
-    # POST: Guardar ajustes
+    if not is_admin:
+        return JsonResponse({
+            "status": "error",
+            "message": "Acceso denegado: solo el rol Administrador puede modificar la configuración del sistema."
+        }, status=403)
+
+    # POST: Guardar ajustes (solo rol Administrador)
     try:
         if request.content_type == 'application/json':
             data = json.loads(request.body.decode('utf-8'))
@@ -255,15 +280,10 @@ def api_settings_view(request):
         elif chatbot_enabled is None:
             chatbot_enabled = True
 
-        # Solo el Administrador puede modificar la API key y el modelo
-        if is_admin:
-            raw_api_key = data.get('gemini_api_key')
-            if raw_api_key and '***' in raw_api_key:
-                raw_api_key = None
-            gemini_model = (data.get('gemini_model') or 'gemini-3.5-flash-lite').strip()
-        else:
+        raw_api_key = data.get('gemini_api_key')
+        if raw_api_key and '***' in raw_api_key:
             raw_api_key = None
-            gemini_model = None
+        gemini_model = (data.get('gemini_model') or 'gemini-3.5-flash-lite').strip()
 
         cfg = SystemSetting.set_settings(
             chatbot_enabled=chatbot_enabled,
@@ -272,23 +292,18 @@ def api_settings_view(request):
             user=request.user
         )
 
-        raw_key = SystemSetting.get_gemini_api_key() if is_admin else ""
-        if raw_key and len(raw_key) > 8:
-            masked = f"{raw_key[:6]}...{'*' * 8}...{raw_key[-4:]}"
-        elif raw_key:
-            masked = "********"
-        else:
-            masked = ""
-
+        raw_key = SystemSetting.get_gemini_api_key(user=request.user)
         return JsonResponse({
             "status": "success",
             "message": "Ajustes del sistema guardados correctamente.",
             "chatbot_enabled": cfg.chatbot_enabled,
-            "gemini_model": cfg.gemini_model if is_admin else "",
-            "api_key_configured": bool(raw_key) if is_admin else False,
-            "api_key_masked": masked if is_admin else "",
-            "is_admin": is_admin
+            "gemini_model": cfg.gemini_model,
+            "api_key_configured": bool(raw_key),
+            "api_key_masked": _mask_api_key(raw_key),
+            "is_admin": True
         })
+    except PermissionDenied as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=403)
     except Exception as e:
         logger.exception(f"Error guardando ajustes: {e}")
         return JsonResponse({"status": "error", "message": f"Error al guardar ajustes: {str(e)}"}, status=500)
