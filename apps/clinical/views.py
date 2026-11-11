@@ -18,7 +18,7 @@ from catalog.models import (
 )
 from clinical.models import (
     Patient, Visit, Anthropometry, VitalSigns,
-    Electrocardiogram, Echocardiogram, Laboratory, VisitAnswer
+    Electrocardiogram, Echocardiogram, Laboratory, OrderedStudies, VisitAnswer
 )
 from clinical.validators import validate_ecuadorian_id, validate_clinical_ranges
 from clinical.pdf import generate_clinical_sheet_pdf
@@ -506,16 +506,50 @@ def _build_form_datos(patient, visit):
         "f_auscultacion_pulmonar": "Normal" if (vs and vs.pulmonary_auscultation_normal) else "Alterada",
         "f_auscultacion_abdominal": "Normal" if (vs and vs.abdominal_auscultation_normal) else "Alterada",
 
-        # Modulo 5: ECG
+        # Modulo 5: ECG Completo (27 ítems del Cuestionario UNEMI 2026 + normal + comentarios)
         "ecg_ritmo": ecg_ritmo_val,
-        "ecg_normal": "No" if (ecg and (ecg.left_ventricular_hypertrophy or ecg.bundle_branch_block or ecg.repolarization_abnormalities)) else "Si",
-        "ecg_fc": str(ecg.heart_rate) if (ecg and ecg.heart_rate) else "",
-        "ecg_pr": str(ecg.pr_interval_ms) if (ecg and ecg.pr_interval_ms) else "",
-        "ecg_qrs": str(ecg.qrs_duration_ms) if (ecg and ecg.qrs_duration_ms) else "",
-        "ecg_qt": str(ecg.qt_interval_ms) if (ecg and ecg.qt_interval_ms) else "",
-        "ecg_qtc": str(ecg.qtc_bazett_ms) if (ecg and ecg.qtc_bazett_ms) else "",
-        "ecg_eje": str(ecg.qrs_axis_degrees) if (ecg and ecg.qrs_axis_degrees) else "",
+        "ecg_normal": "Si" if (ecg and ecg.is_normal) else ("No" if ecg else "Si"),
+        "ecg_fc": str(ecg.heart_rate) if (ecg and ecg.heart_rate is not None) else "",
+        "ecg_eje": str(ecg.qrs_axis_degrees) if (ecg and ecg.qrs_axis_degrees is not None) else "",
+        "ecg_rr": str(ecg.rr_interval_sec) if (ecg and ecg.rr_interval_sec is not None) else "",
+        "ecg_p_mm": str(ecg.p_wave_mm) if (ecg and ecg.p_wave_mm is not None) else "",
+        "ecg_pr": str(ecg.pr_interval_ms) if (ecg and ecg.pr_interval_ms is not None) else "",
+        "ecg_qrs": str(ecg.qrs_duration_ms) if (ecg and ecg.qrs_duration_ms is not None) else "",
+        "ecg_qt": str(ecg.qt_interval_ms) if (ecg and ecg.qt_interval_ms is not None) else "",
+        "ecg_qtc": str(ecg.qtc_bazett_ms) if (ecg and ecg.qtc_bazett_ms is not None) else "",
+        "ecg_p_mitral": "Si" if (ecg and ecg.p_mitrale) else "No",
+        "ecg_bloqueo_av": "Si" if (ecg and ecg.av_block) else "No",
+        "ecg_bloqueo_av_grado": ecg.av_block_grade if (ecg and ecg.av_block_grade) else "",
+        "ecg_bloqueo_sa": "Si" if (ecg and ecg.sa_block) else "No",
+        "ecg_bloqueo_ia": "Si" if (ecg and ecg.interatrial_block) else "No",
+        "ecg_hemibloqueo": "Si" if (ecg and ecg.hemiblock) else "No",
+        "ecg_hemibloqueo_cual": ecg.hemiblock_detail if (ecg and ecg.hemiblock_detail) else "",
+        "ecg_bloqueo_rama_sn": "Si" if (ecg and (ecg.has_bundle_branch_block or ecg.bundle_branch_block)) else "No",
+        "ecg_bloqueo_rama": ecg.bundle_branch_block if (ecg and ecg.bundle_branch_block) else "",
+        "ecg_brugada": "Si" if (ecg and ecg.brugada_pattern) else "No",
+        "ecg_repolarizacion_precoz": "Si" if (ecg and ecg.early_repolarization) else "No",
         "ecg_hvi": "Si" if (ecg and ecg.left_ventricular_hypertrophy) else "No",
+        "ecg_sobrecarga_sistolica": "Si" if (ecg and ecg.systolic_overload) else "No",
+        "ecg_sobrecarga_complejos": ecg.systolic_overload_complexes if (ecg and ecg.systolic_overload_complexes) else "",
+        "ecg_deflexion_intrinsicoide": str(ecg.intrinsicoid_deflection_sec) if (ecg and ecg.intrinsicoid_deflection_sec is not None) else "",
+        "ecg_hvd": "Si" if (ecg and ecg.right_ventricular_hypertrophy) else "No",
+        "ecg_onda_delta": "Si" if (ecg and ecg.delta_wave) else "No",
+        "ecg_cubeta_digitalica": "Si" if (ecg and ecg.digitalis_effect) else "No",
+        "ecg_onda_q": "Si" if (ecg and ecg.pathological_q_wave) else "No",
+        "ecg_onda_q_amplitud": ecg.q_wave_amplitude if (ecg and ecg.q_wave_amplitude) else "",
+        "ecg_onda_q_voltaje": str(ecg.q_wave_voltage_mv) if (ecg and ecg.q_wave_voltage_mv is not None) else "",
+        "ecg_onda_q_complejos": ecg.q_wave_complexes if (ecg and ecg.q_wave_complexes) else "",
+        "ecg_t_negativa": "Si" if (ecg and ecg.negative_t_wave) else "No",
+        "ecg_t_negativa_complejos": ecg.negative_t_complexes if (ecg and ecg.negative_t_complexes) else "",
+        "ecg_t_simetrica": "Si" if (ecg and ecg.negative_t_symmetric) else "No",
+        "ecg_t_asimetrica": "Si" if (ecg and ecg.negative_t_asymmetric) else "No",
+        "ecg_st_ascenso": "Si" if (ecg and ecg.st_elevation_pathological) else "No",
+        "ecg_st_ascenso_mm": str(ecg.st_elevation_mm) if (ecg and ecg.st_elevation_mm is not None) else "",
+        "ecg_st_ascenso_complejos": ecg.st_elevation_complexes if (ecg and ecg.st_elevation_complexes) else "",
+        "ecg_st_descenso": "Si" if (ecg and ecg.st_depression) else "No",
+        "ecg_st_descenso_mm": str(ecg.st_depression_mm) if (ecg and ecg.st_depression_mm is not None) else "",
+        "ecg_st_descenso_complejos": ecg.st_depression_complexes if (ecg and ecg.st_depression_complexes) else "",
+        "ecg_alt_repolarizacion": "Si" if (ecg and (ecg.repolarization_abnormalities or ecg.early_repolarization)) else "No",
         "ecg_comentario": ecg.ecg_comments if (ecg and ecg.ecg_comments) else "",
 
         # Modulo 4: Ecocardiograma
@@ -583,7 +617,26 @@ def _build_form_datos(patient, visit):
         "ip_ancho_chorro": "",
         "ip_grado": "",
         "ip_tipo_especificar": "",
-    
+
+        # Factores modificables adicionales (Pág. 3 Cuestionario UNEMI 2026)
+        "r_mapa": "No",
+        "mapa_resultado": "Normal",
+        "r_holter": "No",
+        "holter_resultado": "Normal",
+        "r_vasc_fem": "No",
+        "hta_medicamentos": "",
+        "dislip_farmacos": "",
+
+        # Estudios que se le han mandado al paciente (Pág. 19 Cuestionario UNEMI 2026)
+        "est_analisis_clinicos": "No",
+        "est_ergometria_spect": "No",
+        "est_tac_cardiaco": "No",
+        "est_rnm_cardiaco": "No",
+        "est_electrofisiologia": "No",
+        "est_ecocardiograma": "No",
+        "est_holter": "No",
+        "est_mapa": "No",
+        "est_otros_detalle": "",
     }
 
     if visit:
@@ -609,6 +662,19 @@ def _build_form_datos(patient, visit):
             ir_val_map = {'Menos de $500': '1', '$500 - $1000': '2', '$1001 - $2000': '3', 'Más de $2000': '5'}
             datos['f_ingresos'] = ir_val_map.get(visit.income_range.name, '')
 
+        # Cargar estudios mandados al paciente desde PostgreSQL
+        ordered = getattr(visit, 'ordered_studies', None)
+        if ordered:
+            datos['est_analisis_clinicos'] = "Si" if ordered.clinical_analysis else "No"
+            datos['est_ergometria_spect'] = "Si" if ordered.ergometry_spect else "No"
+            datos['est_tac_cardiaco'] = "Si" if ordered.cardiac_ct else "No"
+            datos['est_rnm_cardiaco'] = "Si" if ordered.cardiac_mri else "No"
+            datos['est_electrofisiologia'] = "Si" if ordered.electrophysiology else "No"
+            datos['est_ecocardiograma'] = "Si" if ordered.echocardiogram_ordered else "No"
+            datos['est_holter'] = "Si" if ordered.holter_ordered else "No"
+            datos['est_mapa'] = "Si" if ordered.mapa_ordered else "No"
+            datos['est_otros_detalle'] = ordered.other_studies or ""
+
         # Cargar todas las respuestas guardadas en VisitAnswer
         ans_dict = {}
         for ans in visit.answers.select_related('question').all():
@@ -629,9 +695,9 @@ def _build_form_datos(patient, visit):
                 datos[q_code] = val
                 # Sincronizar bidireccionalmente con los identificadores del formulario HTML
                 for form_k, spss_k in QUESTION_ALIASES.items():
-                    if q_code == spss_k and form_k not in datos:
+                    if q_code.lower() == spss_k.lower():
                         datos[form_k] = val
-                    elif q_code == form_k and spss_k not in datos:
+                    elif q_code.lower() == form_k.lower():
                         datos[spss_k] = val
 
         # Inyecciones y deducciones inteligentes para compatibilidad total con SPSS:
@@ -1186,26 +1252,73 @@ def form_save_api(request):
             vs.pedal_pulses_symmetric = (raw_data.get('f_pulsos_pedios') != 'No' and raw_data.get('pulsos_sim') != 'No')
             vs.save()
 
-            # 5. Electrocardiograma (Módulo 5 - HU-13)
+            # 5. Electrocardiograma (Módulo 5 - HU-13 y Cuestionario UNEMI 2026 Completo)
             ecg_ritmo_nom = raw_data.get('ecg_ritmo', 'Ritmo Sinusal (RS)')
             rhythm_obj = EcgRhythm.objects.filter(name__icontains=ecg_ritmo_nom[:10]).first() or EcgRhythm.objects.first()
             ecg, _ = Electrocardiogram.objects.get_or_create(visit=visit, defaults={"rhythm": rhythm_obj})
             ecg.rhythm = rhythm_obj
-            if raw_data.get('ecg_fc') and raw_data.get('ecg_fc').isdigit():
+            if raw_data.get('ecg_fc') and str(raw_data.get('ecg_fc')).isdigit():
                 ecg.heart_rate = int(raw_data.get('ecg_fc'))
-            if raw_data.get('ecg_pr') and raw_data.get('ecg_pr').isdigit():
+            if raw_data.get('ecg_pr') and str(raw_data.get('ecg_pr')).isdigit():
                 ecg.pr_interval_ms = int(raw_data.get('ecg_pr'))
-            if raw_data.get('ecg_qrs') and raw_data.get('ecg_qrs').isdigit():
+            if raw_data.get('ecg_qrs') and str(raw_data.get('ecg_qrs')).isdigit():
                 ecg.qrs_duration_ms = int(raw_data.get('ecg_qrs'))
-            if raw_data.get('ecg_qt') and raw_data.get('ecg_qt').isdigit():
+            if raw_data.get('ecg_qt') and str(raw_data.get('ecg_qt')).isdigit():
                 ecg.qt_interval_ms = int(raw_data.get('ecg_qt'))
-            if raw_data.get('ecg_qtc') and raw_data.get('ecg_qtc').isdigit():
+            if raw_data.get('ecg_qtc') and str(raw_data.get('ecg_qtc')).isdigit():
                 ecg.qtc_bazett_ms = int(raw_data.get('ecg_qtc'))
-            if raw_data.get('ecg_eje') and raw_data.get('ecg_eje').replace('-', '').isdigit():
+            if raw_data.get('ecg_eje') and str(raw_data.get('ecg_eje')).replace('-', '').isdigit():
                 ecg.qrs_axis_degrees = int(raw_data.get('ecg_eje'))
-            ecg.left_ventricular_hypertrophy = (raw_data.get('ecg_hvi') == 'Si')
+
+            # Campos exhaustivos del ECG
+            if raw_data.get('ecg_rr'):
+                try: ecg.rr_interval_sec = Decimal(str(raw_data['ecg_rr']))
+                except Exception: pass
+            if raw_data.get('ecg_p_mm'):
+                try: ecg.p_wave_mm = Decimal(str(raw_data['ecg_p_mm']))
+                except Exception: pass
+            ecg.p_mitrale = (raw_data.get('ecg_p_mitral') == 'Si')
+            ecg.av_block = (raw_data.get('ecg_bloqueo_av') == 'Si')
+            ecg.av_block_grade = raw_data.get('ecg_bloqueo_av_grado') or ''
+            ecg.sa_block = (raw_data.get('ecg_bloqueo_sa') == 'Si')
+            ecg.interatrial_block = (raw_data.get('ecg_bloqueo_ia') == 'Si')
+            ecg.hemiblock = (raw_data.get('ecg_hemibloqueo') == 'Si')
+            ecg.hemiblock_detail = raw_data.get('ecg_hemibloqueo_cual') or ''
+            ecg.has_bundle_branch_block = (raw_data.get('ecg_bloqueo_rama_sn') == 'Si')
             ecg.bundle_branch_block = raw_data.get('ecg_bloqueo_rama', '')
-            ecg.repolarization_abnormalities = (raw_data.get('ecg_alt_repolarizacion') == 'Si')
+            ecg.brugada_pattern = (raw_data.get('ecg_brugada') == 'Si')
+            ecg.early_repolarization = (raw_data.get('ecg_repolarizacion_precoz') == 'Si')
+            ecg.left_ventricular_hypertrophy = (raw_data.get('ecg_hvi') == 'Si')
+            ecg.systolic_overload = (raw_data.get('ecg_sobrecarga_sistolica') == 'Si')
+            ecg.systolic_overload_complexes = raw_data.get('ecg_sobrecarga_complejos') or ''
+            if raw_data.get('ecg_deflexion_intrinsicoide'):
+                try: ecg.intrinsicoid_deflection_sec = Decimal(str(raw_data['ecg_deflexion_intrinsicoide']))
+                except Exception: pass
+            ecg.right_ventricular_hypertrophy = (raw_data.get('ecg_hvd') == 'Si')
+            ecg.delta_wave = (raw_data.get('ecg_onda_delta') == 'Si')
+            ecg.digitalis_effect = (raw_data.get('ecg_cubeta_digitalica') == 'Si')
+            ecg.pathological_q_wave = (raw_data.get('ecg_onda_q') == 'Si')
+            ecg.q_wave_amplitude = raw_data.get('ecg_onda_q_amplitud') or ''
+            if raw_data.get('ecg_onda_q_voltaje'):
+                try: ecg.q_wave_voltage_mv = Decimal(str(raw_data['ecg_onda_q_voltaje']))
+                except Exception: pass
+            ecg.q_wave_complexes = raw_data.get('ecg_onda_q_complejos') or ''
+            ecg.negative_t_wave = (raw_data.get('ecg_t_negativa') == 'Si')
+            ecg.negative_t_complexes = raw_data.get('ecg_t_negativa_complejos') or ''
+            ecg.negative_t_symmetric = (raw_data.get('ecg_t_simetrica') == 'Si')
+            ecg.negative_t_asymmetric = (raw_data.get('ecg_t_asimetrica') == 'Si')
+            ecg.st_elevation_pathological = (raw_data.get('ecg_st_ascenso') == 'Si')
+            if raw_data.get('ecg_st_ascenso_mm'):
+                try: ecg.st_elevation_mm = Decimal(str(raw_data['ecg_st_ascenso_mm']))
+                except Exception: pass
+            ecg.st_elevation_complexes = raw_data.get('ecg_st_ascenso_complejos') or ''
+            ecg.st_depression = (raw_data.get('ecg_st_descenso') == 'Si')
+            if raw_data.get('ecg_st_descenso_mm'):
+                try: ecg.st_depression_mm = Decimal(str(raw_data['ecg_st_descenso_mm']))
+                except Exception: pass
+            ecg.st_depression_complexes = raw_data.get('ecg_st_descenso_complejos') or ''
+            ecg.is_normal = (raw_data.get('ecg_normal') != 'No')
+            ecg.repolarization_abnormalities = (raw_data.get('ecg_alt_repolarizacion') == 'Si' or ecg.early_repolarization)
             ecg.ecg_comments = raw_data.get('ecg_comentario', '')
             ecg.save()
 
@@ -1255,6 +1368,19 @@ def form_save_api(request):
                     except Exception:
                         pass
             lab.save()
+
+            # 7.5. Estudios Solicitados / Mandados al Paciente (Pág. 19 Cuestionario UNEMI 2026)
+            ordered, _ = OrderedStudies.objects.get_or_create(visit=visit)
+            ordered.clinical_analysis = (raw_data.get('est_analisis_clinicos') == 'Si')
+            ordered.ergometry_spect = (raw_data.get('est_ergometria_spect') == 'Si')
+            ordered.cardiac_ct = (raw_data.get('est_tac_cardiaco') == 'Si')
+            ordered.cardiac_mri = (raw_data.get('est_rnm_cardiaco') == 'Si')
+            ordered.electrophysiology = (raw_data.get('est_electrofisiologia') == 'Si')
+            ordered.echocardiogram_ordered = (raw_data.get('est_ecocardiograma') == 'Si')
+            ordered.holter_ordered = (raw_data.get('est_holter') == 'Si')
+            ordered.mapa_ordered = (raw_data.get('est_mapa') == 'Si')
+            ordered.other_studies = (raw_data.get('est_otros_detalle') or '')[:300]
+            ordered.save()
 
             # 8. Persistencia Universal y Bidireccional de Todos los Campos del Formulario (VisitAnswer)
             ignore_keys = {'csrfmiddlewaretoken', 'idPaciente', 'paciente_id', 'f_codigo'}

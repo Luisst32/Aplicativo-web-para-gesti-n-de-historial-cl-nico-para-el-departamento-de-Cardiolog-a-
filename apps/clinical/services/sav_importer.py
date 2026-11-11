@@ -153,6 +153,25 @@ SPSS_QUESTION_ALIASES = {
     'r_disfunc': 'disfuncion_erectil',
     'r_vasc_perif': 'vasculopatia',
     'r_vasc_carot': 'vasculopatia',
+    'r_mapa': 'prueba_mapa',
+    'r_mapa_spss': 'usted_se_ha_realizado_estudios_de_mapa',
+    'mapa_resultado': 'resultado_mapa',
+    'r_holter': 'prueba_holter',
+    'holter_resultado': 'resultado_holter',
+    'r_vasc_fem': 'vasculopatia_femoral',
+    'hta_medicamentos': 'hta_medicamentos',
+    'dislip_farmacos': 'dislip_farmacos',
+
+    # Estudios que se le han mandado al paciente
+    'est_analisis_clinicos': 'estudios_clinicos',
+    'est_ergometria_spect': 'estudios_ergometria',
+    'est_tac_cardiaco': 'estudios_tac',
+    'est_rnm_cardiaco': 'estudios_rnm',
+    'est_electrofisiologia': 'estudios_electrofisiologia',
+    'est_ecocardiograma': 'estudios_ecocardiograma',
+    'est_holter': 'estudios_holter',
+    'est_mapa': 'estudios_mapa',
+    'est_otros_detalle': 'estudios_otros',
 
     # Módulo 3: Factores Emergentes
     'sueno_cantidad': 'cantidad_sueno',

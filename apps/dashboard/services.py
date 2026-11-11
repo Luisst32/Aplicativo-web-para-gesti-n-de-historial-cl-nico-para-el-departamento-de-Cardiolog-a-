@@ -643,6 +643,9 @@ def get_dashboard_evaluation_data():
             # Identificación y Filtros Transversales
             'id': v.visit_id,
             'study_code': v.study_code,
+            'patient_id': p.patient_id if p else None,
+            'id_card': p.id_card if p else '',
+            'nombre': f"{p.first_names} {p.last_name1}" if p else '',
             'ano': ano,
             'institucion': inst_name,
             'sexo': sexo,

@@ -7,6 +7,7 @@ from .models import (
     Electrocardiogram,
     Echocardiogram,
     Laboratory,
+    OrderedStudies,
     VisitAnswer,
 )
 
@@ -207,3 +208,10 @@ class VisitAnswerAdmin(admin.ModelAdmin):
     list_display = ('answer_id', 'visit', 'question', 'selected_option', 'numeric_value', 'text_value')
     search_fields = ('visit__study_code', 'question__code', 'text_value')
     list_filter = ('question__section',)
+
+
+@admin.register(OrderedStudies)
+class OrderedStudiesAdmin(admin.ModelAdmin):
+    list_display = ('visit', 'clinical_analysis', 'ergometry_spect', 'cardiac_ct', 'cardiac_mri', 'electrophysiology')
+    search_fields = ('visit__study_code', 'visit__patient__id_card')
+

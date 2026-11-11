@@ -6,6 +6,7 @@ from .exams import (
     Electrocardiogram,
     Echocardiogram,
     Laboratory,
+    OrderedStudies,
 )
 from .answers import VisitAnswer
 
@@ -17,5 +18,6 @@ __all__ = [
     'Electrocardiogram',
     'Echocardiogram',
     'Laboratory',
+    'OrderedStudies',
     'VisitAnswer',
 ]

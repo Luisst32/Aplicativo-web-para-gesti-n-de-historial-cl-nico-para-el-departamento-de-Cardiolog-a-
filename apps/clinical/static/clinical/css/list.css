@@ -1065,7 +1065,7 @@ body {
   gap: 10px;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .export-radio-grid {
     grid-template-columns: 1fr;
   }
@@ -1358,7 +1358,7 @@ body {
   .historial-acciones-derecha { align-self: flex-end; }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   /* Contenedor principal sin desbordes */
   .main-wrapper {
     margin-left: 0;
