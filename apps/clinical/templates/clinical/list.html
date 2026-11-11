@@ -76,7 +76,7 @@
       <div class="slicers-container" id="slicersFiltros">
         <div class="slicer-group">
           <label for="filtroBusqueda">Buscar</label>
-          <input type="text" class="form-input" id="filtroBusqueda" placeholder="Nombre o cédula del paciente...">
+          <input type="search" class="form-input" id="filtroBusqueda" name="buscar_paciente_q" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly');" onmousedown="this.removeAttribute('readonly');" placeholder="Nombre o cédula del paciente...">
         </div>
 
         <div class="slicer-group">
@@ -237,80 +237,6 @@
   </div>
 
   <!-- =========================================================================
-       MODAL MÍNIMO: REGISTRAR NUEVO HISTORIAL CLÍNICO
-       ========================================================================= -->
-  <div class="modal-overlay" id="modalNuevoHistorial">
-    <div class="modal-card modal-nuevo-historial-card">
-      <div class="modal-header">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:6px; background:var(--color-ice-blue); color:var(--color-primary-blue);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-          </span>
-          <span class="modal-title">Nuevo Historial Clínico</span>
-        </div>
-        <button class="modal-close-btn" onclick="cerrarModalNuevoHistorial()">&times;</button>
-      </div>
-
-      <div class="modal-body">
-        <p style="font-size:0.84rem; color:var(--color-text-muted); margin:0 0 8px 0;">
-          Se creará un nuevo registro de evaluación cardiológica para <strong id="nh_nombrePaciente" style="color:var(--color-navy);">--</strong>.
-        </p>
-
-        <div class="grid form-grid-2">
-          <div class="form-field">
-            <label class="field-label">Fecha de la Consulta *</label>
-            <input type="date" class="form-input" id="nh_fecha">
-          </div>
-          <div class="form-field">
-            <label class="field-label">Tipo de Evaluación *</label>
-            <select class="form-select" id="nh_tipo">
-              <option value="Control de Seguimiento">Control de Seguimiento</option>
-              <option value="Evaluación Periódica Anual">Evaluación Periódica Anual</option>
-              <option value="Consulta Cardiológica">Consulta Cardiológica</option>
-              <option value="Evaluación Inicial">Evaluación Inicial</option>
-              <option value="Monitoreo Antihipertensivo">Monitoreo Antihipertensivo</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-field">
-          <label class="field-label">Motivo de la Atención / Consulta</label>
-          <input type="text" class="form-input" id="nh_motivo" placeholder="Ej: Control de hipertensión y riesgo cardiovascular">
-        </div>
-
-        <div class="form-field">
-          <label class="field-label">Médico o Especialista Evaluador</label>
-          <input type="text" class="form-input" id="nh_medico" value="Dra. María Pérez - Cardiología UNEMI">
-        </div>
-
-        <div class="grid form-grid-2">
-          <div class="form-field">
-            <label class="field-label">Presión Arterial (TAS/TSI)</label>
-            <div style="display:flex; gap:6px; align-items:center;">
-              <input type="number" class="form-input" id="nh_tas" placeholder="TAS (120)">
-              <span>/</span>
-              <input type="number" class="form-input" id="nh_tsi" placeholder="TSI (80)">
-            </div>
-          </div>
-          <div class="form-field">
-            <label class="field-label">Peso (kg) / Talla (cm)</label>
-            <div style="display:flex; gap:6px; align-items:center;">
-              <input type="number" step="0.1" class="form-input" id="nh_peso" placeholder="Peso">
-              <span>/</span>
-              <input type="number" step="0.5" class="form-input" id="nh_talla" placeholder="Talla">
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn" onclick="cerrarModalNuevoHistorial()">Cancelar</button>
-        <button class="btn btn-primary" onclick="confirmarNuevoHistorial()">Continuar a Ficha Clínica &rarr;</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- =========================================================================
        MODAL: SISTEMA DE EXPORTACIÓN INTELIGENTE (CSV, SPSS SAV, JSON)
        Permite exportar todos los pacientes, filtrados o seleccionados, con
        elección de estructura longitudinal o consolidada.
@@ -438,6 +364,6 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261031_03"></script>
-  <script src="{% static 'clinical/js/list.js' %}?v=20261104_05"></script>
+  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261110_01"></script>
+  <script src="{% static 'clinical/js/list.js' %}?v=20261110_01"></script>
 {% endblock %}

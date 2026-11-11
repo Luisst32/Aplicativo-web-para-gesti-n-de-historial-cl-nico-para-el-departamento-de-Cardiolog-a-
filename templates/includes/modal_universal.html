@@ -41,7 +41,7 @@
         </div>
 
         <!-- Formulario de Edición de Perfil -->
-        <form id="formEditarPerfil" onsubmit="solicitarConfirmacionPasswordPerfil(event)">
+        <form id="formEditarPerfil" autocomplete="off" onsubmit="solicitarConfirmacionPasswordPerfil(event)">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
             <div>
               <label for="perfilFirstName" style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Nombres *</label>
@@ -123,17 +123,22 @@
           </p>
         </div>
 
-        <form id="formConfirmarGuardadoPerfil" onsubmit="ejecutarGuardadoPerfilConPassword(event)">
+        <form id="formConfirmarGuardadoPerfil" autocomplete="off" onsubmit="ejecutarGuardadoPerfilConPassword(event)">
           <div style="margin-bottom: 16px;">
             <label for="perfilPasswordConfirmModal" style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Contraseña actual *</label>
             <div style="position: relative;">
               <input 
-                type="password" 
+                type="text" 
                 id="perfilPasswordConfirmModal" 
-                class="form-input" 
+                name="confirm_profile_auth"
+                class="form-input masked-secret-input" 
+                data-secret-input="true"
                 required 
                 placeholder="Ingrese su contraseña actual..." 
-                autocomplete="current-password"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
                 style="width: 100%; box-sizing: border-box; padding: 10px 38px 10px 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;"
               >
               <button type="button" onclick="togglePasswordVisibility('perfilPasswordConfirmModal', this)" title="Ver / Ocultar" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 4px;">
@@ -175,11 +180,11 @@
           <span>La nueva contraseña debe tener un mínimo de <strong>8 caracteres</strong> y ser diferente a la anterior.</span>
         </div>
 
-        <form id="formCambiarPassword" onsubmit="guardarNuevaPassword(event)">
+        <form id="formCambiarPassword" autocomplete="off" onsubmit="guardarNuevaPassword(event)">
           <div style="margin-bottom: 12px;">
             <label for="passActual" style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Contraseña actual *</label>
             <div style="position: relative;">
-              <input type="password" id="passActual" class="form-input" required placeholder="Su contraseña actual..." autocomplete="current-password" style="width: 100%; box-sizing: border-box; padding: 8px 36px 8px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
+              <input type="text" id="passActual" name="change_pass_current" class="form-input masked-secret-input" data-secret-input="true" required placeholder="Su contraseña actual..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width: 100%; box-sizing: border-box; padding: 8px 36px 8px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
               <button type="button" onclick="togglePasswordVisibility('passActual', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 4px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
               </button>
@@ -189,7 +194,7 @@
           <div style="margin-bottom: 12px;">
             <label for="passNueva" style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Nueva contraseña *</label>
             <div style="position: relative;">
-              <input type="password" id="passNueva" class="form-input" required minlength="8" placeholder="Mínimo 8 caracteres..." autocomplete="new-password" style="width: 100%; box-sizing: border-box; padding: 8px 36px 8px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
+              <input type="text" id="passNueva" name="change_pass_new" class="form-input masked-secret-input" data-secret-input="true" required minlength="8" placeholder="Mínimo 8 caracteres..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width: 100%; box-sizing: border-box; padding: 8px 36px 8px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
               <button type="button" onclick="togglePasswordVisibility('passNueva', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 4px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
               </button>
@@ -199,7 +204,7 @@
           <div style="margin-bottom: 16px;">
             <label for="passConfirmar" style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Confirmar nueva contraseña *</label>
             <div style="position: relative;">
-              <input type="password" id="passConfirmar" class="form-input" required minlength="8" placeholder="Repita la nueva contraseña..." autocomplete="new-password" style="width: 100%; box-sizing: border-box; padding: 8px 36px 8px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
+              <input type="text" id="passConfirmar" name="change_pass_confirm" class="form-input masked-secret-input" data-secret-input="true" required minlength="8" placeholder="Repita la nueva contraseña..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width: 100%; box-sizing: border-box; padding: 8px 36px 8px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
               <button type="button" onclick="togglePasswordVisibility('passConfirmar', this)" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 4px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
               </button>
@@ -244,7 +249,7 @@
            VISTA 3: AJUSTES GLOBALES DEL SISTEMA (SWITCH CHATBOT + API KEY)
            =================================================================== -->
       <div id="vistaModalAjustes" style="display: none;">
-        <form id="formAjustesSistema" onsubmit="guardarAjustesSistema(event)">
+        <form id="formAjustesSistema" autocomplete="off" onsubmit="guardarAjustesSistema(event)">
           <!-- Control 1: Switch de Activación del Chatbot -->
           <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 14px;">
             <div style="flex: 1;">
@@ -282,11 +287,16 @@
 
               <div style="position: relative; margin-bottom: 6px;">
                 <input 
-                  type="password" 
+                  type="text" 
                   id="inputAjusteApiKey" 
-                  class="form-input" 
+                  name="gemini_api_token_field"
+                  class="form-input masked-secret-input" 
+                  data-secret-input="true"
                   placeholder="Pegue aquí su clave de Gemini..." 
                   autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
                   style="width: 100%; box-sizing: border-box; padding: 9px 36px 9px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-family: monospace; font-size: 0.85rem;"
                 >
                 <button type="button" onclick="togglePasswordVisibility('inputAjusteApiKey', this)" title="Ver / Ocultar clave" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 4px;">

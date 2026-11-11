@@ -384,3 +384,9 @@
   color: var(--color-white);
   border-color: var(--color-primary-blue);
 }
+
+/* ---------- Enmascarado visual sin activar Password Manager ---------- */
+.masked-secret-input {
+  -webkit-text-security: disc;
+  text-security: disc;
+}

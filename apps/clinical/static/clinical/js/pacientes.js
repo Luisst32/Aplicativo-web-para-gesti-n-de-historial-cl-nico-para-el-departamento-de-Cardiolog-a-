@@ -42,7 +42,7 @@ function obtenerHistorialesPaciente(p) {
       fechaVisita: `${anioDePaciente(p)}-01-15`,
       tipo: "Historial Clínico",
       motivo: "Control Anual Cardiovascular & Dieta Mediterránea",
-      medico: "Dra. María Pérez - Cardiología UNEMI",
+      medico: "Médico Especialista",
       estado: "Completada",
       peso: p.peso || 70,
       talla: p.talla || 170,

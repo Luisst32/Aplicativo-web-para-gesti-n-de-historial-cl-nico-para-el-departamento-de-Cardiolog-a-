@@ -68,7 +68,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Cerrar modales con Escape
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      cerrarModalNuevoHistorial();
       cerrarModalExportar();
     }
   });
@@ -386,7 +385,7 @@ function abrirHistorialesPaciente(pacienteId) {
         </div>
 
         <div class="historial-evaluador-linea">
-          <span><strong>Evaluador:</strong> ${h.medico || 'Dra. María Pérez - Cardiología UNEMI'}</span>
+          <span><strong>Evaluador:</strong> ${h.medico || 'Médico Especialista'}</span>
         </div>
       </div>
 
@@ -440,28 +439,6 @@ function volverAListadoPacientes() {
 
   renderPacientesTabla();
   window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// Al atender al paciente se navega directamente a su ficha clínica para consultar antecedentes
-function abrirModalNuevoHistorial(pacienteId) {
-  const p = pacienteId ? pacientes.find(item => item.id === pacienteId) : pacienteActivoExpediente;
-  if (!p) {
-    alert('Por favor seleccione un paciente.');
-    return;
-  }
-  window.location.href = `/clinical/formulario/?paciente=${encodeURIComponent(p.id)}`;
-}
-
-function cerrarModalNuevoHistorial() {
-  const modal = document.getElementById('modalNuevoHistorial');
-  if (modal) {
-    modal.classList.remove('active');
-  }
-}
-
-function confirmarNuevoHistorial() {
-  if (!pacienteActivoExpediente) return;
-  window.location.href = `/clinical/formulario/?paciente=${encodeURIComponent(pacienteActivoExpediente.id)}`;
 }
 
 // =========================================================================
