@@ -611,16 +611,16 @@ function filtrarTarjetasApi(apiFiltro, btnEl) {
   if (contenedorFiltros) {
     contenedorFiltros.querySelectorAll('.btn-filtro-api').forEach(btn => {
       btn.style.background = '#ffffff';
-      btn.style.color = '#334155';
-      btn.style.borderColor = '#cbd5e1';
-      btn.style.fontWeight = '600';
+      btn.style.color = '#475569';
+      btn.style.borderColor = '#e2e8f0';
+      btn.style.fontWeight = '500';
     });
   }
   if (btnEl) {
     btnEl.style.background = '#1b2a41';
     btnEl.style.color = '#ffffff';
     btnEl.style.borderColor = '#1b2a41';
-    btnEl.style.fontWeight = '700';
+    btnEl.style.fontWeight = '600';
   }
 
   const mapa = {
@@ -645,13 +645,17 @@ function actualizarBadgeEstadoApi(badgeId, configurada) {
   const badge = document.getElementById(badgeId);
   if (!badge) return;
   if (configurada) {
-    badge.textContent = 'CONFIGURADA';
-    badge.style.background = '#dcfce7';
-    badge.style.color = '#15803d';
+    badge.innerHTML = '<span style="width: 6px; height: 6px; border-radius: 50%; background: #16a34a; display: inline-block;"></span>Configurada';
+    badge.style.background = '#f0fdf4';
+    badge.style.color = '#166534';
+    badge.style.border = '1px solid #bbf7d0';
+    badge.style.fontWeight = '600';
   } else {
-    badge.textContent = 'SIN CONFIGURAR';
-    badge.style.background = '#fef3c7';
-    badge.style.color = '#b45309';
+    badge.innerHTML = '<span style="width: 6px; height: 6px; border-radius: 50%; background: #94a3b8; display: inline-block;"></span>Sin configurar';
+    badge.style.background = '#f8fafc';
+    badge.style.color = '#64748b';
+    badge.style.border = '1px solid #e2e8f0';
+    badge.style.fontWeight = '500';
   }
 }
 
