@@ -1,15 +1,19 @@
 import json
 import logging
 from django.shortcuts import render, redirect
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
-from django.urls import Resolver404, resolve
-from django.utils.http import url_has_allowed_host_and_scheme
+from django.urls import Resolver404, resolve, reverse
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.http import require_http_methods, require_POST
 
 from .models import User, SystemSetting
+from security.services.email_service import send_password_reset_email
 
 logger = logging.getLogger(__name__)
 
@@ -395,3 +399,116 @@ def api_settings_view(request):
     except Exception as e:
         logger.exception(f"Error guardando ajustes: {e}")
         return JsonResponse({"status": "error", "message": f"Error al guardar ajustes: {str(e)}"}, status=500)
+
+
+@require_POST
+def password_reset_request_view(request):
+    """
+    Solicitud institucional de restablecimiento de contraseña.
+    Busca al usuario por correo electrónico o nombre de usuario y le envía
+    un enlace con token criptográfico válido por 24 horas.
+    """
+    try:
+        if request.content_type == 'application/json':
+            data = json.loads(request.body.decode('utf-8'))
+        else:
+            data = request.POST
+
+        identifier = (data.get('email') or data.get('identifier') or '').strip()
+
+        if not identifier:
+            return JsonResponse({
+                "status": "error",
+                "message": "Por favor ingresa tu correo electrónico institucional o nombre de usuario."
+            }, status=400)
+
+        user = None
+        if '@' in identifier:
+            user = User.objects.filter(email__iexact=identifier).first()
+        if not user:
+            user = User.objects.filter(username__iexact=identifier).first()
+
+        reset_url = ""
+        if user and user.is_active:
+            uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            reset_url = request.build_absolute_uri(
+                reverse('security:password_reset_confirm', kwargs={'uidb64': uidb64, 'token': token})
+            )
+            send_password_reset_email(user, reset_url)
+
+        resp = {
+            "status": "success",
+            "message": "Si los datos ingresados corresponden a un usuario registrado, hemos enviado las instrucciones de restablecimiento a su correo electrónico institucional."
+        }
+        if settings.DEBUG and reset_url:
+            resp["debug_reset_url"] = reset_url
+
+        return JsonResponse(resp)
+    except Exception as e:
+        logger.exception(f"Error procesando solicitud de restablecimiento de contraseña: {e}")
+        return JsonResponse({
+            "status": "error",
+            "message": "Ocurrió un error al procesar tu solicitud. Intenta nuevamente más tarde."
+        }, status=500)
+
+
+def password_reset_confirm_view(request, uidb64, token):
+    """
+    Validación de token criptográfico y definición de la nueva contraseña.
+    Permite acceder mediante GET (formulario) y POST (actualización de credencial).
+    """
+    user = None
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.filter(pk=uid, is_active=True).first()
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    valid_link = bool(user and default_token_generator.check_token(user, token))
+
+    if request.method == "POST":
+        if not valid_link:
+            return JsonResponse({
+                "status": "error",
+                "message": "El enlace de restablecimiento es inválido o ha caducado. Por favor solicita uno nuevo."
+            }, status=400)
+
+        try:
+            if request.content_type == 'application/json':
+                data = json.loads(request.body.decode('utf-8'))
+            else:
+                data = request.POST
+
+            new_password = data.get('new_password', '')
+            confirm_password = data.get('confirm_password', '')
+
+            if not new_password:
+                return JsonResponse({"status": "error", "message": "Debe ingresar una nueva contraseña."}, status=400)
+            if len(new_password) < 8:
+                return JsonResponse({"status": "error", "message": "La nueva contraseña debe tener al menos 8 caracteres."}, status=400)
+            if new_password != confirm_password:
+                return JsonResponse({"status": "error", "message": "Las contraseñas ingresadas no coinciden."}, status=400)
+
+            user.set_password(new_password)
+            user.save()
+
+            logger.info(f"Contraseña restablecida exitosamente para usuario {user.username}.")
+            return JsonResponse({
+                "status": "success",
+                "message": "¡Contraseña actualizada exitosamente! Ya puedes iniciar sesión con tu nueva credencial."
+            })
+        except Exception as e:
+            logger.exception(f"Error confirmando restablecimiento de contraseña: {e}")
+            return JsonResponse({"status": "error", "message": f"Error al actualizar la contraseña: {str(e)}"}, status=500)
+
+    # GET request: Renderizar formulario institucional
+    context = {
+        'valid_link': valid_link,
+        'uidb64': uidb64,
+        'token': token,
+        'username': user.username if valid_link else '',
+        'user_email': user.email if valid_link else '',
+    }
+    return render(request, 'security/password_reset_confirm.html', context)
+

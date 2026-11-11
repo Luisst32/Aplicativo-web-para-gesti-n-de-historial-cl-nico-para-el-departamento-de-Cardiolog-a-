@@ -477,3 +477,86 @@ class GlobalLoginRedirectTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response['Location'], target)
+
+
+class PasswordResetFlowTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='doctor_reset',
+            email='doctor_reset@cardiounemi.edu.ec',
+            first_name='Dr. Carlos',
+            last_name='Mendoza',
+            password='OldPassword123!',
+        )
+
+    def test_password_reset_endpoints_accessible_unauthenticated(self):
+        from django.contrib.auth.tokens import default_token_generator
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+
+        uidb64 = urlsafe_base64_encode(force_bytes(self.user.pk))
+        token = default_token_generator.make_token(self.user)
+
+        confirm_url = reverse('security:password_reset_confirm', kwargs={'uidb64': uidb64, 'token': token})
+        response = self.client.get(confirm_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Nueva Contraseña', response.content.decode('utf-8'))
+
+    def test_password_reset_request_view_with_valid_email(self):
+        from django.core import mail
+        response = self.client.post(
+            reverse('security:password_reset_request'),
+            data=json.dumps({'email': 'doctor_reset@cardiounemi.edu.ec'}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['status'], 'success')
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('CARDIOUNEMI - Restablecimiento de Contraseña', mail.outbox[0].subject)
+        self.assertIn(self.user.email, mail.outbox[0].to)
+
+    def test_password_reset_request_view_with_username(self):
+        from django.core import mail
+        response = self.client.post(
+            reverse('security:password_reset_request'),
+            data=json.dumps({'email': 'doctor_reset'}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['status'], 'success')
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_password_reset_confirm_view_updates_password(self):
+        from django.contrib.auth.tokens import default_token_generator
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+
+        uidb64 = urlsafe_base64_encode(force_bytes(self.user.pk))
+        token = default_token_generator.make_token(self.user)
+        confirm_url = reverse('security:password_reset_confirm', kwargs={'uidb64': uidb64, 'token': token})
+
+        # Mismatch passwords
+        res_mismatch = self.client.post(
+            confirm_url,
+            data=json.dumps({'new_password': 'NewPassword123!', 'confirm_password': 'Mismatch123!'}),
+            content_type='application/json'
+        )
+        self.assertEqual(res_mismatch.status_code, 400)
+
+        # Successful update
+        res_ok = self.client.post(
+            confirm_url,
+            data=json.dumps({'new_password': 'NewPassword123!', 'confirm_password': 'NewPassword123!'}),
+            content_type='application/json'
+        )
+        self.assertEqual(res_ok.status_code, 200)
+        self.assertEqual(res_ok.json()['status'], 'success')
+
+        # Verify old password no longer works
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.check_password('OldPassword123!'))
+        self.assertTrue(self.user.check_password('NewPassword123!'))
+

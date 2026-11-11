@@ -45,47 +45,87 @@
   </div>
 
   <div class="form-panel">
-    <h1><span class="title-accent"></span>CARDIOUNEMI</h1>
-    <p class="subtitle">Inicia sesión para acceder al panel de tus pacientes</p>
+    <!-- SECCIÓN 1: INICIO DE SESIÓN -->
+    <div id="loginSection">
+      <h1><span class="title-accent"></span>CARDIOUNEMI</h1>
+      <p class="subtitle">Inicia sesión para acceder al panel de tus pacientes</p>
 
-    <div class="alert-box {% if error_message %}error{% endif %}" id="alertBox">
-      {% if error_message %}{{ error_message }}{% endif %}
+      <div class="alert-box {% if error_message %}error{% endif %}" id="alertBox">
+        {% if error_message %}{{ error_message }}{% endif %}
+      </div>
+
+      <form id="loginForm" method="post" action="{% url 'security:login' %}" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.GET.next|default:'' }}"/>
+
+        <div class="field">
+          <label for="email">Correo o Usuario</label>
+          <div class="input-wrap">
+            <input type="text" id="email" name="email" placeholder="tu@correo.com o usuario" autocomplete="username" autofocus required/>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="password">Contraseña</label>
+          <div class="input-wrap">
+            <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required/>
+            <button type="button" class="btn btn-toggle-eye" id="btnEye" aria-label="Mostrar u ocultar contraseña" title="Mostrar u ocultar contraseña">
+              <svg id="iconEye" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg id="iconEyeSlash" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="options-row">
+          <label class="keep-session"><input type="checkbox" id="keepSession" name="keep_session" checked/>Mantener sesión</label>
+          <button type="button" class="btn forgot-link" id="btnForgot">¿Olvidaste tu contraseña?</button>
+        </div>
+
+        <button type="submit" class="btn btn-entrar" id="btnEntrar">Entrar</button>
+      </form>
     </div>
 
-    <form id="loginForm" method="post" action="{% url 'security:login' %}" novalidate>
-      {% csrf_token %}
-      <input type="hidden" name="next" value="{{ request.GET.next|default:'' }}"/>
+    <!-- SECCIÓN 2: RECUPERACIÓN DE CONTRASEÑA -->
+    <div id="forgotSection" style="display: none;">
+      <h1><span class="title-accent"></span>Recuperar Contraseña</h1>
+      <p class="subtitle">Ingresa tu correo o usuario para recibir las instrucciones seguras de restablecimiento.</p>
 
-      <div class="field">
-        <label for="email">Correo o Usuario</label>
-        <div class="input-wrap">
-          <input type="text" id="email" name="email" placeholder="tu@correo.com o usuario" autocomplete="username" autofocus required/>
+      <div class="alert-box" id="forgotAlertBox"></div>
+
+      <form id="forgotForm" novalidate>
+        {% csrf_token %}
+        <div class="field">
+          <label for="forgotEmail">Correo institucional o Usuario</label>
+          <div class="input-wrap">
+            <input type="text" id="forgotEmail" name="identifier" placeholder="tu@correo.com o usuario" autocomplete="username" required/>
+          </div>
         </div>
-      </div>
 
-      <div class="field">
-        <label for="password">Contraseña</label>
-        <div class="input-wrap">
-          <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required/>
-          <button type="button" class="btn btn-toggle-eye" id="btnEye" aria-label="Mostrar u ocultar contraseña" title="Mostrar u ocultar contraseña">
-            <svg id="iconEye" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            <svg id="iconEyeSlash" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        <!-- Enlace rápido para modo de desarrollo (DEBUG) -->
+        <div id="debugResetLinkContainer" style="display: none; margin-bottom: 16px; padding: 12px; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 8px; font-size: 12.5px;">
+          <span style="font-weight: 700; color: #1e40af; display: block; margin-bottom: 4px;">🔧 Entorno de Desarrollo (DEBUG):</span>
+          <p style="margin: 0 0 6px; font-size: 11.5px; color: #475569;">Puedes abrir el enlace directamente aquí sin esperar al correo:</p>
+          <a id="debugResetLinkAnchor" href="#" style="color: #1b73bc; font-weight: 700; text-decoration: underline; word-break: break-all;">
+            Abrir enlace de restablecimiento ahora &rarr;
+          </a>
+        </div>
+
+        <button type="submit" class="btn btn-entrar" id="btnEnviarForgot" style="margin-bottom: 16px;">
+          Enviar enlace de recuperación
+        </button>
+
+        <div style="text-align: center;">
+          <button type="button" class="btn" id="btnBackToLogin" style="background: none; border: none; font-size: 12.5px; color: #64748b; font-weight: 600; cursor: pointer; text-decoration: none;">
+            &larr; Volver a Iniciar Sesión
           </button>
         </div>
-      </div>
-
-      <div class="options-row">
-        <label class="keep-session"><input type="checkbox" id="keepSession" name="keep_session" checked/>Mantener sesión</label>
-        <button type="button" class="btn forgot-link" id="btnForgot">¿Olvidaste tu contraseña?</button>
-      </div>
-
-      <button type="submit" class="btn btn-entrar" id="btnEntrar">Entrar</button>
-    </form>
+      </form>
+    </div>
   </div>
 
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'security/js/login.js' %}?v=20261107_01"></script>
+<script src="{% static 'security/js/login.js' %}?v=20261111_02"></script>
 {% endblock %}

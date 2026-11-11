@@ -32,6 +32,19 @@ class RequireLoginMiddleware:
             ):
                 return self.get_response(request)
 
+            # Rutas de restablecimiento de contraseña públicas para usuarios no autenticados
+            try:
+                match = resolve(path)
+                if match.namespace == 'security' and match.url_name in (
+                    'login',
+                    'logout',
+                    'password_reset_request',
+                    'password_reset_confirm',
+                ):
+                    return self.get_response(request)
+            except Resolver404:
+                pass
+
             # Solo conservar ?next= si la ruta destino existe y es segura.
             try:
                 resolve(path)
