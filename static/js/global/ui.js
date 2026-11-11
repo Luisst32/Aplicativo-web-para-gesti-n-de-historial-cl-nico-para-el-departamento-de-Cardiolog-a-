@@ -895,11 +895,6 @@ async function guardarAjustesSistema(event) {
     const data = await res.json();
 
     if (res.ok && data.status === 'success') {
-      if (succEl) {
-        succEl.textContent = data.message || 'Ajustes del sistema y credenciales guardados correctamente.';
-        succEl.style.display = 'block';
-      }
-
       // Actualizar estado en tiempo real en la interfaz
       window.CHATBOT_ENABLED = Boolean(data.chatbot_enabled);
       const btnFlotante = document.getElementById('btn-flotante-chat');
@@ -918,11 +913,9 @@ async function guardarAjustesSistema(event) {
         actualizarBadgeEstadoApi('badgeEstadoClaude', Boolean(data.claude_api_key_configured));
       }
 
-      showToast('Ajustes y credenciales de APIs actualizados en el servidor.', 'success');
-
-      setTimeout(() => {
-        cerrarModalUniversal();
-      }, 1200);
+      // Solo mantener la notificación flotante (toast) a la derecha
+      showToast('Ajustes y credenciales de APIs guardados correctamente.', 'success');
+      cerrarModalUniversal();
     } else {
       if (errEl) {
         errEl.textContent = data.message || 'Error al guardar los ajustes.';
