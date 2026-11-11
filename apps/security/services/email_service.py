@@ -1,19 +1,19 @@
 import logging
 from django.conf import settings
 from django.core.mail import send_mail
-from django.template.loader import render_to_string
-from django.utils.html import strip_tags
+from django.core.mail.backends.smtp import EmailBackend
 
-from security.models import SystemSetting
+from security.models import SystemSetting, decrypt_api_key
 
 logger = logging.getLogger(__name__)
 
 
 def send_password_reset_email(user, reset_url: str) -> bool:
     """
-    Envía el correo electrónico institucional de restablecimiento de contraseña.
-    Genera versión HTML profesional y texto plano.
-    Fallback automático a la consola o SMTP según configuración del sistema.
+    Envía el correo electrónico de restablecimiento de contraseña.
+    Si se configuró Gmail (correo y contraseña de aplicación) en Ajustes del Sistema,
+    envía el correo real a través de smtp.gmail.com con TLS.
+    De lo contrario, utiliza el backend por defecto de Django (consola/desarrollo).
     """
     subject = "CARDIOUNEMI - Restablecimiento de Contraseña"
     recipient_email = user.email
@@ -23,8 +23,12 @@ def send_password_reset_email(user, reset_url: str) -> bool:
         return False
 
     cfg = SystemSetting.get_settings()
-    from_email = cfg.gmail_sender_email or getattr(settings, 'DEFAULT_FROM_EMAIL', 'CARDIOUNEMI <noreply@cardiounemi.edu.ec>')
+    sender_email = (cfg.gmail_sender_email or '').strip()
+    raw_app_password = ''
+    if cfg.gmail_client_secret_encrypted:
+        raw_app_password = decrypt_api_key(cfg.gmail_client_secret_encrypted).replace(' ', '').strip()
 
+    from_email = sender_email or getattr(settings, 'DEFAULT_FROM_EMAIL', 'CARDIOUNEMI <noreply@cardiounemi.edu.ec>')
     user_name = user.full_name or user.username
 
     html_content = f"""<!DOCTYPE html>
@@ -49,10 +53,10 @@ def send_password_reset_email(user, reset_url: str) -> bool:
           Hola, {user_name}
         </h2>
         <p style="font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 20px;">
-          Recibimos una solicitud para restablecer la contraseña asociada a tu cuenta institucional en <strong>CARDIOUNEMI</strong>.
+          Recibimos una solicitud para restablecer la contraseña asociada a tu cuenta en <strong>CARDIOUNEMI</strong>.
         </p>
         <p style="font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 26px;">
-          Para crear una nueva contraseña, haz clic en el siguiente botón seguro:
+          Para crear una nueva contraseña, haz clic en el siguiente botón:
         </p>
 
         <!-- Botón de Acción -->
@@ -71,20 +75,20 @@ def send_password_reset_email(user, reset_url: str) -> bool:
 
         <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px 14px; border-radius: 4px; margin-bottom: 24px;">
           <p style="margin: 0; font-size: 12.5px; color: #1e40af; line-height: 1.5;">
-            <strong>Nota de seguridad:</strong> Este enlace es único y expirará en 24 horas. Si no solicitaste este cambio, puedes ignorar este correo; tu cuenta seguirá protegida.
+            <strong>Nota:</strong> Este enlace expirará en 24 horas. Si no solicitaste este cambio, puedes ignorar este correo.
           </p>
         </div>
 
         <p style="margin: 0; font-size: 13px; color: #64748b;">
           Atentamente,<br>
-          <strong>Equipo de Seguridad de Sistemas CARDIOUNEMI</strong>
+          <strong>Equipo CARDIOUNEMI</strong>
         </p>
       </td>
     </tr>
     <!-- Pie de Correo -->
     <tr>
       <td style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 24px; text-align: center; font-size: 11.5px; color: #94a3b8;">
-        Este es un mensaje institucional generado automáticamente por el sistema de Cardiología UNEMI. Por favor no responda a este mensaje.
+        Este es un mensaje institucional generado automáticamente por el sistema de Cardiología UNEMI.
       </td>
     </tr>
   </table>
@@ -94,7 +98,7 @@ def send_password_reset_email(user, reset_url: str) -> bool:
 
     plain_message = f"""Hola, {user_name}:
 
-Recibimos una solicitud para restablecer la contraseña de tu cuenta institucional en CARDIOUNEMI.
+Recibimos una solicitud para restablecer la contraseña de tu cuenta en CARDIOUNEMI.
 
 Para crear una nueva contraseña, ingresa al siguiente enlace seguro:
 {reset_url}
@@ -102,11 +106,39 @@ Para crear una nueva contraseña, ingresa al siguiente enlace seguro:
 Este enlace expirará en 24 horas. Si no realizaste esta solicitud, puedes ignorar este mensaje.
 
 Atentamente,
-Equipo de Seguridad de Sistemas CARDIOUNEMI
+Equipo CARDIOUNEMI
 """
 
     logger.info(f"[PASSWORD_RESET] Enlace de recuperación generado para {user.username} ({recipient_email}): {reset_url}")
 
+    # 1. Si Gmail está configurado con correo y contraseña de aplicación, enviar correo real vía Gmail SMTP
+    if sender_email and raw_app_password and cfg.gmail_api_enabled:
+        try:
+            logger.info(f"[PASSWORD_RESET] Despachando correo real vía Gmail SMTP ({sender_email}) a {recipient_email}...")
+            smtp_backend = EmailBackend(
+                host='smtp.gmail.com',
+                port=587,
+                username=sender_email,
+                password=raw_app_password,
+                use_tls=True,
+                fail_silently=False,
+                timeout=15,
+            )
+            send_mail(
+                subject=subject,
+                message=plain_message,
+                from_email=sender_email,
+                recipient_list=[recipient_email],
+                html_message=html_content,
+                connection=smtp_backend,
+                fail_silently=False,
+            )
+            logger.info(f"[PASSWORD_RESET] Correo enviado exitosamente vía Gmail a {recipient_email}")
+            return True
+        except Exception as e:
+            logger.exception(f"[PASSWORD_RESET] Error al enviar vía Gmail SMTP: {e}. Reintentando con backend por defecto...")
+
+    # 2. Fallback a configuración estándar de Django / consola
     try:
         send_mail(
             subject=subject,
@@ -116,7 +148,7 @@ Equipo de Seguridad de Sistemas CARDIOUNEMI
             html_message=html_content,
             fail_silently=False,
         )
-        logger.info(f"[PASSWORD_RESET] Correo enviado exitosamente a {recipient_email}")
+        logger.info(f"[PASSWORD_RESET] Correo procesado con backend estándar para {recipient_email}")
         return True
     except Exception as e:
         logger.exception(f"[PASSWORD_RESET] Error despachando correo a {recipient_email}: {e}")

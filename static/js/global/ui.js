@@ -742,16 +742,13 @@ async function cargarAjustesSistema() {
       }
       actualizarBadgeEstadoApi('badgeEstadoClaude', Boolean(data.claude_api_key_configured));
 
-      // 6. Gmail REST API
+      // 6. Gmail SMTP
       if (inputGmailSender) inputGmailSender.value = data.gmail_sender_email || '';
-      if (inputGmailClientId) inputGmailClientId.value = data.gmail_client_id || '';
       if (inputGmailSecret) inputGmailSecret.value = data.gmail_secret_masked || '';
-      if (inputGmailRefresh) inputGmailRefresh.value = data.gmail_refresh_masked || '';
-      if (inputGmailRedirect && data.gmail_redirect_uri) inputGmailRedirect.value = data.gmail_redirect_uri;
       if (switchGmailEnabled) {
-        switchGmailEnabled.checked = Boolean(data.gmail_api_enabled);
+        switchGmailEnabled.checked = data.gmail_api_enabled !== false;
       }
-      const gmailConfigurada = Boolean(data.gmail_secret_configured && data.gmail_refresh_configured);
+      const gmailConfigurada = Boolean(data.gmail_sender_email && data.gmail_secret_configured);
       actualizarBadgeEstadoApi('badgeEstadoGmail', gmailConfigurada);
     }
   } catch (err) {
@@ -856,11 +853,9 @@ async function guardarAjustesSistema(event) {
 
   // Gmail
   const gmail_sender_email = document.getElementById('inputGmailSenderEmail')?.value.trim();
-  const gmail_client_id = document.getElementById('inputGmailClientId')?.value.trim();
   const gmail_client_secret = document.getElementById('inputGmailClientSecret')?.value.trim();
-  const gmail_refresh_token = document.getElementById('inputGmailRefreshToken')?.value.trim();
-  const gmail_redirect_uri = document.getElementById('inputGmailRedirectUri')?.value.trim();
-  const gmail_api_enabled = document.getElementById('switchGmailEnabled')?.checked;
+  const switchGmailEnabled = document.getElementById('switchGmailEnabled');
+  const gmail_api_enabled = switchGmailEnabled ? switchGmailEnabled.checked : true;
 
   if (btnGuardar) {
     btnGuardar.disabled = true;

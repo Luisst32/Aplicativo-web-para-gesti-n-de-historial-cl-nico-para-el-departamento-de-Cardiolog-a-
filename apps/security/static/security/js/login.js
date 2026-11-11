@@ -23,8 +23,6 @@ document.addEventListener('DOMContentLoaded', function () {
   var forgotEmail = document.getElementById('forgotEmail');
   var forgotAlertBox = document.getElementById('forgotAlertBox');
   var btnEnviarForgot = document.getElementById('btnEnviarForgot');
-  var debugResetContainer = document.getElementById('debugResetLinkContainer');
-  var debugResetAnchor = document.getElementById('debugResetLinkAnchor');
 
   // 1. Alternar visualización de contraseña
   if (btnEye && inputPass) {
@@ -97,10 +95,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (btnEnviarForgot) {
         btnEnviarForgot.disabled = true;
-        btnEnviarForgot.textContent = 'Enviando enlace de recuperación...';
+        btnEnviarForgot.textContent = 'Enviando correo de recuperación...';
       }
       if (forgotAlertBox) forgotAlertBox.style.display = 'none';
-      if (debugResetContainer) debugResetContainer.style.display = 'none';
 
       fetch('/security/password-reset/', {
         method: 'POST',
@@ -120,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function () {
           mostrarAlertaForgot(result.data.message || 'Error al procesar la solicitud.', 'error');
           if (btnEnviarForgot) {
             btnEnviarForgot.disabled = false;
-            btnEnviarForgot.textContent = 'Enviar enlace de recuperación';
+            btnEnviarForgot.textContent = 'Enviar correo de recuperación';
           }
           return;
         }
@@ -128,21 +125,15 @@ document.addEventListener('DOMContentLoaded', function () {
         // Éxito: mensaje claro de confirmación
         mostrarAlertaForgot(result.data.message, 'success');
         if (btnEnviarForgot) {
-          btnEnviarForgot.textContent = 'Enlace enviado';
+          btnEnviarForgot.textContent = 'Correo enviado';
           btnEnviarForgot.disabled = true;
-        }
-
-        // Si se encuentra en modo DEBUG, mostrar enlace directo para pruebas inmediatas
-        if (result.data.debug_reset_url && debugResetContainer && debugResetAnchor) {
-          debugResetAnchor.href = result.data.debug_reset_url;
-          debugResetContainer.style.display = 'block';
         }
       })
       .catch(function (err) {
         mostrarAlertaForgot('Error de conexión al enviar solicitud: ' + err.message, 'error');
         if (btnEnviarForgot) {
           btnEnviarForgot.disabled = false;
-          btnEnviarForgot.textContent = 'Enviar enlace de recuperación';
+          btnEnviarForgot.textContent = 'Enviar correo de recuperación';
         }
       });
     });

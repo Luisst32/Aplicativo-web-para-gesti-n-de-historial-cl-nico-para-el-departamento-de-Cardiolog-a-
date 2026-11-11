@@ -623,7 +623,7 @@
               </div>
 
               <!-- ==============================================
-                   TARJETA 4: GOOGLE GMAIL REST API
+                   TARJETA 4: GOOGLE GMAIL
                    ============================================== -->
               <div id="cardApiGmail" class="tarjeta-api-config" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
@@ -633,113 +633,64 @@
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="#ea4335"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>
                       </div>
                       <div>
-                        <span style="font-weight: 700; font-size: 0.92rem; color: #0f172a; display: block; line-height: 1.2;">Google Gmail REST API</span>
+                        <span style="font-weight: 700; font-size: 0.92rem; color: #0f172a; display: block; line-height: 1.2;">Google Gmail</span>
                         <span id="badgeEstadoGmail" style="font-size: 0.7rem; font-weight: 500; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; padding: 2px 8px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 4px; margin-top: 3px;">
                           <span style="width: 6px; height: 6px; border-radius: 50%; background: #94a3b8; display: inline-block;"></span>
                           Sin configurar
                         </span>
                       </div>
                     </div>
-                    <label title="Habilitar envío por Gmail API" style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <label title="Habilitar envío por Gmail" style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
                       <span style="font-size: 0.75rem; font-weight: 600; color: #475569;">Habilitada</span>
                       <input type="checkbox" id="switchGmailEnabled" style="accent-color: #1b2a41; cursor: pointer; width: 16px; height: 16px;">
                     </label>
                   </div>
 
                   <p style="margin: 0 0 12px; font-size: 0.76rem; color: #64748b; line-height: 1.35;">
-                    Envío seguro de notificaciones, restablecimiento y reportes clínicos vía OAuth2 de Gmail.
+                    Envío de correos para restablecimiento de contraseñas y notificaciones clínicas.
                   </p>
 
-                  <!-- Sender Email & Client ID en 2 columnas -->
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-                    <div>
-                      <label for="inputGmailSenderEmail" style="display: block; font-size: 0.74rem; font-weight: 600; color: #334155; margin-bottom: 3px;">
-                        Correo Remitente
-                      </label>
-                      <input 
-                        type="email" 
-                        id="inputGmailSenderEmail" 
-                        placeholder="notificaciones@cardioclinica.ec" 
-                        class="form-input"
-                        style="width: 100%; box-sizing: border-box; padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.78rem; background: #ffffff;"
-                      >
-                    </div>
-                    <div>
-                      <label for="inputGmailClientId" style="display: block; font-size: 0.74rem; font-weight: 600; color: #334155; margin-bottom: 3px;">
-                        Client ID (OAuth2)
-                      </label>
-                      <input 
-                        type="text" 
-                        id="inputGmailClientId" 
-                        placeholder="...apps.googleusercontent.com" 
-                        class="form-input"
-                        style="width: 100%; box-sizing: border-box; padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.78rem; background: #ffffff;"
-                      >
-                    </div>
-                  </div>
-
-                  <!-- Client Secret & Refresh Token en 2 columnas -->
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-                    <div>
-                      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
-                        <label for="inputGmailClientSecret" style="font-size: 0.74rem; font-weight: 600; color: #334155; margin: 0;">
-                          Client Secret
-                        </label>
-                        <button type="button" onclick="limpiarGmailSecret()" style="background: transparent; border: none; color: #1b2a41; font-size: 0.68rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">
-                          Cambiar
-                        </button>
-                      </div>
-                      <div style="position: relative;">
-                        <input 
-                          type="text" 
-                          id="inputGmailClientSecret" 
-                          class="form-input masked-secret-input" 
-                          data-secret-input="true"
-                          placeholder="GOCSPX-..." 
-                          style="width: 100%; box-sizing: border-box; padding: 6px 28px 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: monospace; font-size: 0.76rem; background: #ffffff;"
-                        >
-                        <button type="button" onclick="togglePasswordVisibility('inputGmailClientSecret', this)" style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 1px;">
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px;">
-                        <label for="inputGmailRefreshToken" style="font-size: 0.74rem; font-weight: 600; color: #334155; margin: 0;">
-                          Refresh Token
-                        </label>
-                        <button type="button" onclick="limpiarGmailRefresh()" style="background: transparent; border: none; color: #1b2a41; font-size: 0.68rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">
-                          Cambiar
-                        </button>
-                      </div>
-                      <div style="position: relative;">
-                        <input 
-                          type="text" 
-                          id="inputGmailRefreshToken" 
-                          class="form-input masked-secret-input" 
-                          data-secret-input="true"
-                          placeholder="1//04..." 
-                          style="width: 100%; box-sizing: border-box; padding: 6px 28px 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: monospace; font-size: 0.76rem; background: #ffffff;"
-                        >
-                        <button type="button" onclick="togglePasswordVisibility('inputGmailRefreshToken', this)" style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 1px;">
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Redirect URI informativa -->
-                  <div>
-                    <label for="inputGmailRedirectUri" style="display: block; font-size: 0.72rem; font-weight: 600; color: #64748b; margin-bottom: 2px;">
-                      URI de Redirección Autorizada (OAuth2)
+                  <!-- Correo Remitente -->
+                  <div style="margin-bottom: 10px;">
+                    <label for="inputGmailSenderEmail" style="display: block; font-size: 0.76rem; font-weight: 600; color: #334155; margin-bottom: 4px;">
+                      Correo Remitente (Gmail)
                     </label>
                     <input 
-                      type="text" 
-                      id="inputGmailRedirectUri" 
-                      readonly 
-                      value="http://127.0.0.1:8000/security/oauth2/gmail/callback/" 
-                      style="width: 100%; box-sizing: border-box; padding: 5px 8px; border-radius: 5px; border: 1px solid #e2e8f0; font-family: monospace; font-size: 0.72rem; background: #f8fafc; color: #475569;"
+                      type="email" 
+                      id="inputGmailSenderEmail" 
+                      placeholder="tu_correo@gmail.com" 
+                      class="form-input"
+                      style="width: 100%; box-sizing: border-box; padding: 7px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.8rem; background: #ffffff;"
                     >
+                  </div>
+
+                  <!-- Contraseña de Aplicación de Google -->
+                  <div style="margin-bottom: 4px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                      <label for="inputGmailClientSecret" style="font-size: 0.76rem; font-weight: 600; color: #334155; margin: 0;">
+                        Contraseña de Aplicación (16 letras)
+                      </label>
+                      <button type="button" onclick="limpiarGmailSecret()" style="background: transparent; border: none; color: #1b2a41; font-size: 0.72rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">
+                        Cambiar clave
+                      </button>
+                    </div>
+                    <div style="position: relative;">
+                      <input 
+                        type="text" 
+                        id="inputGmailClientSecret" 
+                        class="form-input masked-secret-input" 
+                        data-secret-input="true"
+                        placeholder="•••• •••• •••• ••••" 
+                        autocomplete="off"
+                        style="width: 100%; box-sizing: border-box; padding: 7px 34px 7px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: monospace; font-size: 0.8rem; background: #ffffff;"
+                      >
+                      <button type="button" onclick="togglePasswordVisibility('inputGmailClientSecret', this)" title="Ver / Ocultar clave" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: #64748b; padding: 2px;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      </button>
+                    </div>
+                    <p style="margin: 4px 0 0; font-size: 0.72rem; color: #64748b;">
+                      Genera tu clave en Google: Cuenta &rarr; Seguridad &rarr; Contraseñas de aplicaciones.
+                    </p>
                   </div>
                 </div>
               </div>

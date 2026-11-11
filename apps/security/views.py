@@ -437,14 +437,10 @@ def password_reset_request_view(request):
             )
             send_password_reset_email(user, reset_url)
 
-        resp = {
+        return JsonResponse({
             "status": "success",
-            "message": "Si los datos ingresados corresponden a un usuario registrado, hemos enviado las instrucciones de restablecimiento a su correo electrónico institucional."
-        }
-        if settings.DEBUG and reset_url:
-            resp["debug_reset_url"] = reset_url
-
-        return JsonResponse(resp)
+            "message": "Hemos enviado un correo con el enlace para restablecer tu contraseña. Por favor revisa tu bandeja de entrada o spam."
+        })
     except Exception as e:
         logger.exception(f"Error procesando solicitud de restablecimiento de contraseña: {e}")
         return JsonResponse({
