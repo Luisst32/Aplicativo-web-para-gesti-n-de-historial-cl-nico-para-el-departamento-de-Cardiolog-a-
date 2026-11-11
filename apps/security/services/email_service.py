@@ -10,7 +10,7 @@ from security.models import SystemSetting, decrypt_api_key
 logger = logging.getLogger(__name__)
 
 
-def _send_smtp_gmail(sender_email: str, app_password: str, recipient_email: str, subject: str, plain_msg: str, html_msg: str) -> bool:
+def _send_smtp_gmail(sender_email: str, app_password: str, recipient_email: str, subject: str, plain_msg: str, html_msg: str) -> tuple[bool, str]:
     """
     Intenta despachar correo vía Gmail SMTP (probando puertos 587 y 465) con timeout de 3 segundos
     para evitar bloqueos cuando el proveedor de internet bloquea puertos salientes de correo.
@@ -24,6 +24,7 @@ def _send_smtp_gmail(sender_email: str, app_password: str, recipient_email: str,
     msg.attach(MIMEText(html_msg, 'html', 'utf-8'))
 
     # Probar puertos estándar de Gmail con timeout corto
+    last_err = ""
     for port in (587, 465):
         server = None
         try:
@@ -36,18 +37,19 @@ def _send_smtp_gmail(sender_email: str, app_password: str, recipient_email: str,
             server.send_message(msg)
             server.quit()
             logger.info(f"[EMAIL_SERVICE] Correo despachado exitosamente por Gmail SMTP (puerto {port}) a {recipient_email}")
-            return True
+            return True, "Enviado exitosamente vía Gmail SMTP"
         except Exception as e:
+            last_err = str(e)
             logger.warning(f"[EMAIL_SERVICE] Intento de envío Gmail SMTP en puerto {port} falló: {e}")
             if server:
                 try:
                     server.close()
                 except Exception:
                     pass
-    return False
+    return False, last_err or "Puertos SMTP bloqueados por el proveedor de red"
 
 
-def send_password_reset_email(user, reset_url: str) -> bool:
+def send_password_reset_email(user, reset_url: str) -> dict:
     """
     Envía el correo de restablecimiento de contraseña.
     Si se configuró Gmail con contraseña de aplicación, intenta el envío directo.
@@ -59,7 +61,7 @@ def send_password_reset_email(user, reset_url: str) -> bool:
 
     if not recipient_email:
         logger.warning(f"Usuario {user.username} no tiene correo electrónico configurado para restablecer contraseña.")
-        return False
+        return {"success": False, "smtp_delivered": False, "error": "Usuario sin correo"}
 
     cfg = SystemSetting.get_settings()
     sender_email = (cfg.gmail_sender_email or '').strip()
@@ -150,20 +152,8 @@ Equipo CARDIOUNEMI
 
     logger.info(f"[PASSWORD_RESET] Enlace de recuperación generado para {user.username} ({recipient_email}): {reset_url}")
 
-    # 1. Si Gmail está configurado y habilitado, intentar envío real vía Gmail SMTP
-    if sender_email and raw_app_password and cfg.gmail_api_enabled:
-        sent = _send_smtp_gmail(
-            sender_email=sender_email,
-            app_password=raw_app_password,
-            recipient_email=recipient_email,
-            subject=subject,
-            plain_msg=plain_message,
-            html_msg=html_content
-        )
-        if sent:
-            return True
-
-    # 2. Respaldo a configuración estándar de Django / consola
+    # 1. Registrar siempre en el backend de Django (consola en dev, locmem en tests)
+    django_sent = False
     try:
         send_mail(
             subject=subject,
@@ -173,7 +163,23 @@ Equipo CARDIOUNEMI
             html_message=html_content,
             fail_silently=False,
         )
-        return True
+        django_sent = True
     except Exception as e:
-        logger.exception(f"[PASSWORD_RESET] Error despachando correo a {recipient_email}: {e}")
-        return False
+        logger.exception(f"[PASSWORD_RESET] Error despachando correo vía Django send_mail a {recipient_email}: {e}")
+
+    # 2. Si Gmail está configurado y habilitado, intentar envío real vía Gmail SMTP
+    if sender_email and raw_app_password and cfg.gmail_api_enabled:
+        sent, err_msg = _send_smtp_gmail(
+            sender_email=sender_email,
+            app_password=raw_app_password,
+            recipient_email=recipient_email,
+            subject=subject,
+            plain_msg=plain_message,
+            html_msg=html_content
+        )
+        if sent:
+            return {"success": True, "smtp_delivered": True, "method": "smtp", "reset_url": reset_url}
+        else:
+            return {"success": django_sent, "smtp_delivered": False, "method": "console", "error": err_msg, "reset_url": reset_url}
+
+    return {"success": django_sent, "smtp_delivered": False, "method": "console", "error": "SMTP no configurado", "reset_url": reset_url}
