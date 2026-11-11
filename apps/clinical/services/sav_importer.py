@@ -1165,7 +1165,7 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
             )
             existing_questions[d_k] = q_d
 
-    # Pre-escanear identificadores de todas las filas
+    # Pre-escanear identificadores de todas las filas con diferenciación por institución
     row_meta = []
     for i in range(total_rows):
         raw_cod = None
@@ -1179,6 +1179,13 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
         else:
             sc = str(i + 1)
 
+        row_inst = inst_unemi
+        if 'universidad' in field_to_col:
+            u_val = df_dict[field_to_col['universidad']][i]
+            _, u_lbl = _get_val_and_label(u_val, meta.variable_value_labels.get(field_to_col['universidad'], {}))
+            if 'ESPOL' in u_lbl.upper() or u_val == 2.0:
+                row_inst = inst_espol
+
         id_c = None
         if 'cedula' in field_to_col:
             v_ced = df_dict[field_to_col['cedula']][i]
@@ -1186,16 +1193,17 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                 id_c = str(v_ced).strip()
         if not id_c:
             numeric_num = int(re.sub(r'[^0-9]', '', sc)) if any(c.isdigit() for c in sc) else (i + 1)
-            id_c = f"09{str(numeric_num).zfill(8)}"
+            inst_pfx = "08" if row_inst == inst_espol else "09"
+            id_c = f"{inst_pfx}{str(numeric_num).zfill(8)}"
 
-        row_meta.append((sc, id_c))
+        row_meta.append((sc, id_c, row_inst))
 
-    all_scs = [sc for sc, _ in row_meta]
-    all_ids = [id_c for _, id_c in row_meta]
+    all_scs = [sc for sc, _, _ in row_meta]
+    all_ids = [id_c for _, id_c, _ in row_meta]
 
-    # Pre-indexar visitas y pacientes existentes en memoria
+    # Pre-indexar visitas por (institución_id, study_code) y pacientes por cédula
     existing_visits = {
-        v.study_code: v
+        (v.patient.institution_id, v.study_code): v
         for v in Visit.objects.filter(study_code__in=all_scs)
         .select_related('patient', 'anthropometry', 'vital_signs', 'electrocardiogram', 'laboratory', 'echocardiogram', 'ordered_studies')
     }
@@ -1213,16 +1221,9 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
 
     with transaction.atomic():
         for i in range(total_rows):
-            study_code, id_card = row_meta[i]
+            study_code, id_card, inst = row_meta[i]
 
             try:
-                # 1. Institución
-                inst = inst_unemi
-                if 'universidad' in field_to_col:
-                    u_val = df_dict[field_to_col['universidad']][i]
-                    _, u_lbl = _get_val_and_label(u_val, meta.variable_value_labels.get(field_to_col['universidad'], {}))
-                    if 'ESPOL' in u_lbl.upper() or u_val == 2.0:
-                        inst = inst_espol
 
                 # 2. Datos Demográficos
                 first_names = f"Participante {study_code}"
@@ -1280,7 +1281,8 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                     if rc: residence_canton = rc
 
                 # 3. Paciente
-                patient = existing_visits.get(study_code).patient if (study_code in existing_visits and existing_visits[study_code].patient) else existing_patients.get(id_card)
+                existing_v = existing_visits.get((inst.institution_id, study_code))
+                patient = existing_v.patient if (existing_v and existing_v.patient) else existing_patients.get(id_card)
 
                 if patient and duplicate_action == "skip":
                     skipped_count += 1
@@ -1307,7 +1309,7 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                 existing_patients[id_card] = patient
 
                 # 4. Visita
-                visit = getattr(patient, 'visit', None) or existing_visits.get(study_code)
+                visit = getattr(patient, 'visit', None) or existing_v
                 if not visit:
                     visit = Visit(patient=patient, study_code=study_code)
                     created_count += 1
@@ -1405,7 +1407,7 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
 
                 visit.status = Visit.Status.COMPLETED
                 visit.save()
-                existing_visits[study_code] = visit
+                existing_visits[(inst.institution_id, study_code)] = visit
 
                 # 5. Antropometría
                 peso_val = None

@@ -31,9 +31,9 @@ class Visit(models.Model):
     visit_number = models.PositiveSmallIntegerField(default=1, db_column='visit_number')
     study_code = models.CharField(
         max_length=30,
-        unique=True,
+        db_index=True,
         db_column='study_code',
-        help_text="Unique cardiovascular study code (e.g., CUN-2024-001)"
+        help_text="Cardiovascular study code per cohort/institution (e.g., 1, 2, CUN-2024-001)"
     )
     visit_date = models.DateField(db_column='visit_date')
     study_year = models.GeneratedField(
@@ -126,7 +126,6 @@ class Visit(models.Model):
         db_table = 'clinical"."visit'
         constraints = [
             models.UniqueConstraint(fields=['patient'], name='uq_visit_patient'),
-            models.UniqueConstraint(fields=['study_code'], name='uq_visit_study_code'),
             models.CheckConstraint(
                 condition=models.Q(num_children__isnull=True) |
                           models.Q(num_children__gte=0, num_children__lte=30),

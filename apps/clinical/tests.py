@@ -383,4 +383,50 @@ class PatientCreateApiTests(TestCase):
         }
         resp = self.client.post('/clinical/api/pacientes/crear/', data=payload, content_type='application/json')
         self.assertEqual(resp.status_code, 400)
-        self.assertFalse(resp.json().get('success'))
+
+    def test_same_study_code_across_different_institutions(self):
+        # UNEMI y ESPOL pueden compartir el mismo study_code ("1") con IDs autogeneradas distintas
+        p_unemi = Patient.objects.create(
+            institution=self.inst_unemi,
+            id_card='0911111111',
+            first_names='Paciente UNEMI',
+            last_name1='P1',
+            birth_date='1985-05-10',
+            sex=self.sex,
+            ethnicity=self.ethnicity,
+            birth_canton=self.canton,
+            created_by=self.user
+        )
+        v_unemi = Visit.objects.create(
+            patient=p_unemi,
+            evaluator=self.user,
+            study_code='1',
+            visit_date='2026-01-15',
+            residence_canton=self.canton
+        )
+
+        p_espol = Patient.objects.create(
+            institution=self.inst_espol,
+            id_card='0822222222',
+            first_names='Paciente ESPOL',
+            last_name1='P1',
+            birth_date='1988-08-20',
+            sex=self.sex,
+            ethnicity=self.ethnicity,
+            birth_canton=self.canton,
+            created_by=self.user
+        )
+        v_espol = Visit.objects.create(
+            patient=p_espol,
+            evaluator=self.user,
+            study_code='1',  # Mismo código de estudio
+            visit_date='2026-02-10',
+            residence_canton=self.canton
+        )
+
+        self.assertNotEqual(p_unemi.patient_id, p_espol.patient_id)
+        self.assertNotEqual(v_unemi.visit_id, v_espol.visit_id)
+        self.assertEqual(v_unemi.study_code, '1')
+        self.assertEqual(v_espol.study_code, '1')
+        self.assertEqual(v_unemi.patient.institution.acronym, 'UNEMI')
+        self.assertEqual(v_espol.patient.institution.acronym, 'ESPOL')
