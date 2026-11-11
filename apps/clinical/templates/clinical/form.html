@@ -71,10 +71,6 @@
       </div>
 
       <div class="header-actions">
-        <a class="btn" id="btnVolverListado" href="{% url 'home' %}" title="Volver al Expediente">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          <span>Expediente</span>
-        </a>
         <button type="button" class="btn" onclick="window.print()">Imprimir</button>
         <div class="dropdown" style="display:inline-block; position:relative;">
           <button type="button" class="btn btn-outline-primary" id="btnExportarPdfDropdown" onclick="togglePdfMenu(event)" title="Exportar cuestionario UNEMI oficial en PDF" style="display:inline-flex; align-items:center; gap:6px; font-weight:600; color:var(--color-primary-blue,#1b73bc); border-color:var(--color-primary-blue,#1b73bc);">
