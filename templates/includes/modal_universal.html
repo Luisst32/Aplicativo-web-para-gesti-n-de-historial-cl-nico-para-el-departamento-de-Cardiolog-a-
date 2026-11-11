@@ -268,7 +268,6 @@
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
             Gestión de APIs & Cloud
-            <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 10px; background: #e0f2fe; color: #0284c7; font-weight: 700;">4 APIs</span>
           </button>
         </div>
 
@@ -302,7 +301,7 @@
 
             <!-- Selector de Proveedor Principal de IA (Active LLM Provider) -->
             <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <div style="width: 32px; height: 32px; border-radius: 8px; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: #1b2a41;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
@@ -314,6 +313,14 @@
                     </p>
                   </div>
                 </div>
+                <button 
+                  type="button" 
+                  onclick="cambiarSubpestanaAjustes('apis')" 
+                  style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; border: 1.5px solid #1b2a41; background: #1b2a41; color: #ffffff; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s;"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                  Ir a Configurar Claves de APIs &rarr;
+                </button>
               </div>
 
               <!-- Tarjetas selectoras de proveedor -->
@@ -329,7 +336,6 @@
                       <input type="radio" name="radioActiveProvider" id="radioProviderGemini" value="gemini" checked style="accent-color: #1b2a41; cursor: pointer;">
                       <span style="font-weight: 700; font-size: 0.9rem; color: #0f172a;">Google Gemini</span>
                     </div>
-                    <span style="font-size: 0.68rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: #dbeafe; color: #1e40af;">RECOMENDADO</span>
                   </div>
                   <p style="margin: 0; font-size: 0.76rem; color: #64748b; line-height: 1.35;">
                     Respuesta rápida &lt; 2s con modelos Flash multimodal de Google.
@@ -347,7 +353,6 @@
                       <input type="radio" name="radioActiveProvider" id="radioProviderOpenAI" value="openai" style="accent-color: #1b2a41; cursor: pointer;">
                       <span style="font-weight: 700; font-size: 0.9rem; color: #0f172a;">OpenAI (ChatGPT)</span>
                     </div>
-                    <span style="font-size: 0.68rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: #dcfce7; color: #15803d;">GPT-4o</span>
                   </div>
                   <p style="margin: 0; font-size: 0.76rem; color: #64748b; line-height: 1.35;">
                     Excelente estructuración de diagnósticos y resúmenes clínicos complejos.
@@ -365,7 +370,6 @@
                       <input type="radio" name="radioActiveProvider" id="radioProviderClaude" value="claude" style="accent-color: #1b2a41; cursor: pointer;">
                       <span style="font-weight: 700; font-size: 0.9rem; color: #0f172a;">Anthropic Claude</span>
                     </div>
-                    <span style="font-size: 0.68rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: #ffedd5; color: #c2410c;">CLAUDE 3.5</span>
                   </div>
                   <p style="margin: 0; font-size: 0.76rem; color: #64748b; line-height: 1.35;">
                     Capacidad analítica profunda y riguroso apego a guías cardiológicas.
@@ -758,3 +762,115 @@
 
   </div>
 </div>
+
+<script>
+window.cambiarSubpestanaAjustes = function(subpestana) {
+  const btnGeneral = document.getElementById('tabBtnAjustesGeneral');
+  const btnApis = document.getElementById('tabBtnAjustesApis');
+  const secGeneral = document.getElementById('subseccionAjustesGeneral');
+  const secApis = document.getElementById('subseccionAjustesApis');
+  const card = document.getElementById('modalUniversalCard');
+  if (card) card.style.maxWidth = '920px';
+
+  if (subpestana === 'general') {
+    if (btnGeneral) {
+      btnGeneral.style.background = '#1b2a41';
+      btnGeneral.style.color = '#ffffff';
+      btnGeneral.style.borderColor = '#1b2a41';
+      btnGeneral.style.fontWeight = '700';
+    }
+    if (btnApis) {
+      btnApis.style.background = '#ffffff';
+      btnApis.style.color = '#64748b';
+      btnApis.style.borderColor = '#cbd5e1';
+      btnApis.style.fontWeight = '600';
+    }
+    if (secGeneral) secGeneral.style.display = 'block';
+    if (secApis) secApis.style.display = 'none';
+  } else if (subpestana === 'apis') {
+    if (btnApis) {
+      btnApis.style.background = '#1b2a41';
+      btnApis.style.color = '#ffffff';
+      btnApis.style.borderColor = '#1b2a41';
+      btnApis.style.fontWeight = '700';
+    }
+    if (btnGeneral) {
+      btnGeneral.style.background = '#ffffff';
+      btnGeneral.style.color = '#64748b';
+      btnGeneral.style.borderColor = '#cbd5e1';
+      btnGeneral.style.fontWeight = '600';
+    }
+    if (secGeneral) secGeneral.style.display = 'none';
+    if (secApis) secApis.style.display = 'block';
+  }
+};
+
+window.seleccionarProveedorIA = function(provider) {
+  const radioGemini = document.getElementById('radioProviderGemini');
+  const radioOpenAI = document.getElementById('radioProviderOpenAI');
+  const radioClaude = document.getElementById('radioProviderClaude');
+
+  const cardGemini = document.getElementById('cardSelectorGemini');
+  const cardOpenAI = document.getElementById('cardSelectorOpenAI');
+  const cardClaude = document.getElementById('cardSelectorClaude');
+
+  const items = [
+    { key: 'gemini', radio: radioGemini, card: cardGemini },
+    { key: 'openai', radio: radioOpenAI, card: cardOpenAI },
+    { key: 'claude', radio: radioClaude, card: cardClaude }
+  ];
+
+  items.forEach(item => {
+    if (item.key === provider) {
+      if (item.radio) item.radio.checked = true;
+      if (item.card) {
+        item.card.style.border = '2px solid #1b2a41';
+        item.card.style.background = '#eff6ff';
+        item.card.style.boxShadow = '0 2px 6px rgba(27, 42, 65, 0.12)';
+      }
+    } else {
+      if (item.radio) item.radio.checked = false;
+      if (item.card) {
+        item.card.style.border = '2px solid #e2e8f0';
+        item.card.style.background = '#ffffff';
+        item.card.style.boxShadow = 'none';
+      }
+    }
+  });
+};
+
+window.filtrarTarjetasApi = function(apiFiltro, btnEl) {
+  const contenedorFiltros = document.getElementById('contenedorFiltrosApis');
+  if (contenedorFiltros) {
+    contenedorFiltros.querySelectorAll('.btn-filtro-api').forEach(btn => {
+      btn.style.background = '#ffffff';
+      btn.style.color = '#334155';
+      btn.style.borderColor = '#cbd5e1';
+      btn.style.fontWeight = '600';
+    });
+  }
+  if (btnEl) {
+    btnEl.style.background = '#1b2a41';
+    btnEl.style.color = '#ffffff';
+    btnEl.style.borderColor = '#1b2a41';
+    btnEl.style.fontWeight = '700';
+  }
+
+  const mapa = {
+    gemini: document.getElementById('cardApiGemini'),
+    openai: document.getElementById('cardApiOpenAI'),
+    claude: document.getElementById('cardApiClaude'),
+    gmail: document.getElementById('cardApiGmail')
+  };
+
+  Object.keys(mapa).forEach(k => {
+    const el = mapa[k];
+    if (!el) return;
+    if (apiFiltro === 'todas' || apiFiltro === k) {
+      el.style.display = 'flex';
+    } else {
+      el.style.display = 'none';
+    }
+  });
+};
+</script>

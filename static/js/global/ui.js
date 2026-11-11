@@ -205,7 +205,11 @@ function cambiarVistaModal(vista) {
 
 function abrirModalUniversal(vista = 'perfil') {
   const modal = document.getElementById('modalUniversal');
+  const card = document.getElementById('modalUniversalCard');
   if (!modal) return;
+  if (card) {
+    card.style.maxWidth = (vista === 'ajustes') ? '920px' : '540px';
+  }
   modal.style.display = 'flex';
   modal.classList.add('active');
   cambiarVistaModal(vista);
