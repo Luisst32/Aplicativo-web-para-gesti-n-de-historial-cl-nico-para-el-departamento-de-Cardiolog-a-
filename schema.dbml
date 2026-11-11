@@ -1,0 +1,536 @@
+// ============================================================================
+// Cardiovascular Clinical Health System (CardioUNEMI / ESPOL)
+// Database Architecture Definition in DBML (Database Markup Language)
+// Designed for https://dbdiagram.io and PostgreSQL / Supabase
+//
+// Naming Convention:
+//   m_ = Master / Catalog Tables (Reference, Taxonomy, Lookup)
+//   t_ = Transactional Tables (Encounters, Clinical Records, Audit Logs)
+// ============================================================================
+
+Project cardiounemi_ehr {
+  database_type: 'PostgreSQL'
+  Note: '''
+    # Comprehensive Cardiovascular Clinical History System
+    Integrated database architecture for epidemiological research and
+    cardiovascular health assessment across university cohorts (UNEMI & ESPOL).
+  '''
+}
+
+// ============================================================================
+// 1. SECURITY & INTEGRATION APIS (m_ & t_)
+// ============================================================================
+
+Table m_users [headercolor: #1E293B] {
+  id uuid [pk, note: 'Supabase Auth UUID or internal identifier']
+  username varchar(150) [unique, not null, note: 'Unique login handle']
+  email varchar(254) [unique, not null, note: 'Electronic mail address']
+  password_hash varchar(128) [not null, note: 'Salted cryptographic hash']
+  first_name varchar(150) [note: 'Given names']
+  last_name varchar(150) [note: 'Family surnames']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | SUSPENDED']
+  is_staff boolean [not null, default: false, note: 'Backoffice admin privilege']
+  is_active boolean [not null, default: true, note: 'Authentication validity']
+  created_at timestamptz [default: `now()`, note: 'User provisioning timestamp']
+
+  Note: 'Master user accounts for clinicians, specialists and administrative staff'
+}
+
+Table m_roles [headercolor: #1E293B] {
+  id int [pk, increment, note: 'Serial identifier']
+  code varchar(50) [unique, not null, note: 'Role code: Administrador | Medico']
+  name varchar(100) [not null, note: 'Display title of security role']
+  description text [note: 'Functional permissions boundary']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master role-based access control roles'
+}
+
+Table t_user_roles [headercolor: #334155] {
+  id uuid [pk, note: 'Assignment UUID']
+  user_id uuid [not null, ref: > m_users.id, note: 'Associated user']
+  role_id int [not null, ref: > m_roles.id, note: 'Assigned role']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+  assigned_at timestamptz [default: `now()`, note: 'Authorization timestamp']
+  assigned_by_id uuid [ref: > m_users.id, note: 'Authorizing administrator']
+
+  Note: 'Transactional mapping linking user accounts to operational roles'
+}
+
+Table t_system_settings [headercolor: #0F172A] {
+  id uuid [pk, note: 'Configuration row UUID']
+  authorized_role_id int [unique, not null, ref: - m_roles.id, note: 'Restricted strictly to Administrador']
+  
+  // Google Gemini Generative AI Configuration
+  gemini_api_key_encrypted text [note: 'Multi-Fernet encrypted Gemini API secret key']
+  gemini_model varchar(100) [not null, default: 'gemini-2.5-flash', note: 'Active LLM model version']
+  chatbot_enabled boolean [not null, default: true, note: 'Global AI clinical assistant toggle']
+
+  // Google Gmail REST API Configuration
+  gmail_client_id varchar(255) [note: 'Google Cloud Platform OAuth2 Client ID']
+  gmail_client_secret_encrypted text [note: 'Multi-Fernet encrypted OAuth2 Client Secret']
+  gmail_refresh_token_encrypted text [note: 'Multi-Fernet encrypted offline refresh token']
+  gmail_sender_email varchar(254) [note: 'Authorized outbound notifications email']
+  gmail_api_enabled boolean [not null, default: false, note: 'Gmail dispatch integration toggle']
+  gmail_redirect_uri varchar(255) [note: 'OAuth2 authorized redirect URI callback']
+  last_token_refresh timestamptz [note: 'Timestamp of last successful token renewal']
+
+  updated_by_id uuid [ref: > m_users.id, note: 'Admin who last saved credentials']
+  updated_at timestamptz [default: `now()`, note: 'Last modification timestamp']
+
+  Note: 'Secure configuration table storing encrypted credentials for Gemini and Gmail APIs'
+}
+
+Table t_audit_change_logs [headercolor: #475569] {
+  change_log_id bigint [pk, increment, note: 'Audit sequence identifier']
+  timestamp timestamptz [default: `now()`, note: 'UTC moment of mutation']
+  schema_name varchar(50) [not null, note: 'Target PostgreSQL schema']
+  table_name varchar(100) [not null, note: 'Mutated table name']
+  record_key varchar(100) [not null, note: 'Primary key of modified row']
+  action varchar(10) [not null, note: 'INSERT | UPDATE | DELETE']
+  column_name varchar(100) [note: 'Modified attribute name']
+  old_value text [note: 'Pre-mutation serialized value']
+  new_value text [note: 'Post-mutation serialized value']
+  status varchar(20) [not null, default: 'RECORDED', note: 'RECORDED | VERIFIED | FLAGGED']
+  user_id uuid [ref: > m_users.id, note: 'Accountable user']
+  db_login varchar(100) [note: 'PostgreSQL session user role']
+  machine_name varchar(100) [note: 'Client host machine IP or name']
+
+  Note: 'Row-level and column-level forensic audit trail for institutional review boards'
+}
+
+Table t_bot_queries [headercolor: #475569] {
+  bot_query_id bigint [pk, increment, note: 'Interaction sequence identifier']
+  user_id uuid [not null, ref: > m_users.id, note: 'Clinician submitting question']
+  user_question text [not null, note: 'Clinical question in natural language']
+  generated_sql text [note: 'Synthesized read-only analytics SQL query']
+  bot_response text [not null, note: 'AI Assistant synthesized response']
+  tokens_used int [note: 'Total LLM tokens consumed']
+  execution_time_ms int [note: 'Processing latency in ms']
+  status varchar(20) [not null, default: 'SUCCESS', note: 'SUCCESS | ERROR | PENDING']
+  created_at timestamptz [default: `now()`, note: 'Interaction timestamp']
+
+  Note: 'Audit log of clinical AI queries, synthesized SQL and token usage'
+}
+
+// ============================================================================
+// 2. GEOGRAPHICAL & INSTITUTIONAL TAXONOMY (m_)
+// ============================================================================
+
+Table m_countries [headercolor: #0369A1] {
+  id int [pk, increment]
+  code varchar(3) [unique, not null, note: 'ISO 3166-1 alpha-3 code (e.g. ECU)']
+  name varchar(100) [not null, note: 'Full national country name']
+
+  Note: 'Master country catalog'
+}
+
+Table m_provinces [headercolor: #0369A1] {
+  id int [pk, increment]
+  code varchar(10) [unique, not null, note: 'INEC provincial geographic code']
+  name varchar(100) [not null, note: 'Province territory name']
+  country_id int [not null, ref: > m_countries.id, note: 'Parent country']
+
+  Note: 'Master provincial territorial catalog'
+}
+
+Table m_cantons [headercolor: #0369A1] {
+  id int [pk, increment]
+  code varchar(10) [unique, not null, note: 'INEC canton municipality code']
+  name varchar(100) [not null, note: 'Canton / municipality name']
+  province_id int [not null, ref: > m_provinces.id, note: 'Parent province']
+
+  Note: 'Master municipality and canton catalog'
+}
+
+Table m_institutions [headercolor: #0284C7] {
+  id int [pk, increment]
+  code varchar(50) [unique, not null, note: 'UNEMI | ESPOL']
+  name varchar(150) [not null, note: 'University / Healthcare Institution Name']
+  canton_id int [ref: > m_cantons.id, note: 'Location canton']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master academic research cohorte institution catalog'
+}
+
+// ============================================================================
+// 3. DEMOGRAPHIC & SOCIOECONOMIC CATALOGS (m_)
+// ============================================================================
+
+Table m_sexes [headercolor: #0891B2] {
+  id int [pk, increment]
+  code varchar(10) [unique, not null, note: 'H | M']
+  name varchar(50) [not null, note: 'Hombre | Mujer']
+}
+
+Table m_ethnicities [headercolor: #0891B2] {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(100) [not null, note: 'Mestizo | Afroecuatoriano | Blanco | Montubio | Indigena']
+}
+
+Table m_staff_categories [headercolor: #0891B2] {
+  id int [pk, increment]
+  code varchar(50) [unique, not null, note: 'PDI | AD | PAS | SERVICIO | ESTUDIANTES']
+  name varchar(150) [not null]
+}
+
+Table m_professional_categories [headercolor: #0891B2] {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(150) [not null, note: 'Docente Titular | Auxiliar | Servidor Publico']
+}
+
+Table m_education_levels [headercolor: #0891B2] {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(100) [not null, note: 'Primaria | Secundaria | Superior | Postgrado']
+}
+
+Table m_income_ranges [headercolor: #0891B2] {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(100) [not null, note: 'Monthly income range in USD']
+}
+
+Table m_marital_statuses [headercolor: #0891B2] {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(100) [not null, note: 'Soltero | Casado | Divorciado | Viudo | Union de hecho']
+}
+
+Table m_living_situations [headercolor: #0891B2] {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(100) [not null, note: 'Solo | Pareja | Pareja e hijos | Familiares']
+}
+
+Table m_housing_types [headercolor: #0891B2] {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(100) [not null, note: 'Propia | Arrendada | Familiar | Prestada']
+}
+
+Table m_work_schedules [headercolor: #0891B2] {
+  id int [pk, increment]
+  code varchar(50) [unique, not null]
+  name varchar(100) [not null, note: 'Jornada Partida | Continua | Turnos']
+}
+
+Table m_ecg_rhythms [headercolor: #0891B2] {
+  id int [pk, increment]
+  code varchar(50) [unique, not null, note: 'RS | RL | SIUNSAL | ACXFA | OTRO']
+  name varchar(100) [not null, note: 'Clinical diagnosis of heart rhythm']
+}
+
+// ============================================================================
+// 4. PATIENT & CLINICAL ENCOUNTER (t_)
+// ============================================================================
+
+Table t_patients [headercolor: #15803D] {
+  patient_id uuid [pk, note: 'Surrogate UUID primary key']
+  institution_id int [not null, ref: > m_institutions.id, note: 'Affiliated institution (UNEMI / ESPOL)']
+  id_card varchar(13) [unique, not null, note: 'National identity card (Cedula)']
+  first_names varchar(100) [not null, note: 'Given names']
+  last_name1 varchar(50) [not null, note: 'Paternal surname']
+  last_name2 varchar(50) [note: 'Maternal surname']
+  birth_date date [not null, note: 'Date of birth']
+  sex_id int [not null, ref: > m_sexes.id, note: 'Biological sex']
+  ethnicity_id int [not null, ref: > m_ethnicities.id, note: 'Ethnic background']
+  birth_canton_id int [ref: > m_cantons.id, note: 'Domestic birth municipality']
+  birth_country_id int [ref: > m_countries.id, note: 'Foreign birth country (if abroad)']
+  foreign_birth_place varchar(80) [note: 'Foreign city/state if born abroad']
+  email varchar(100) [note: 'Patient contact email']
+  phone varchar(20) [note: 'Patient phone number with country prefix']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+  created_at timestamptz [default: `now()`, note: 'Registration date']
+  created_by_id uuid [not null, ref: > m_users.id, note: 'Clinician who created record']
+
+  Note: 'Master demographic identity for all patients and participants'
+}
+
+Table t_visits [headercolor: #166534] {
+  visit_id uuid [pk, note: 'Unique clinical encounter UUID']
+  patient_id uuid [unique, not null, ref: - t_patients.patient_id, note: '1:1 relation to Patient']
+  evaluator_id uuid [not null, ref: > m_users.id, note: 'Attending physician']
+  visit_number smallint [not null, default: 1, note: 'Encounter sequence number']
+  study_code varchar(30) [unique, not null, note: 'Protocol code: e.g. 0499/2026']
+  visit_date date [not null, note: 'Encounter examination date']
+  study_year int [note: 'Annual cohort year']
+  status varchar(20) [not null, default: 'COMPLETED', note: 'COMPLETED | PENDING | CANCELLED']
+  staff_category_id int [ref: > m_staff_categories.id]
+  professional_category_id int [ref: > m_professional_categories.id]
+  education_level_id int [ref: > m_education_levels.id]
+  income_range_id int [ref: > m_income_ranges.id]
+  marital_status_id int [ref: > m_marital_statuses.id]
+  living_situation_id int [ref: > m_living_situations.id]
+  housing_type_id int [ref: > m_housing_types.id]
+  work_schedule_id int [ref: > m_work_schedules.id]
+  residence_canton_id int [ref: > m_cantons.id]
+  faculty varchar(100) [note: 'Academic university faculty']
+  created_at timestamptz [default: `now()`, note: 'Encounter creation timestamp']
+
+  Note: 'Core clinical encounter connecting all specialized medical modules'
+}
+
+// ============================================================================
+// 5. SPECIALIZED CARDIOVASCULAR CLINICAL MODULES (t_)
+// ============================================================================
+
+Table t_anthropometries [headercolor: #DC2626] {
+  anthropometry_id uuid [pk]
+  visit_id uuid [unique, not null, ref: - t_visits.visit_id]
+  weight_kg decimal(5,2) [note: 'Body weight in kilograms']
+  height_m decimal(4,2) [note: 'Height in meters']
+  bmi decimal(5,2) [note: 'Computed Body Mass Index (kg/m2)']
+  body_surface_area decimal(4,2) [note: 'DuBois Body Surface Area (m2)']
+  abdominal_circumference_cm decimal(5,2) [note: 'Waist perimeter (cm)']
+  hip_circumference_cm decimal(5,2) [note: 'Hip perimeter (cm)']
+  waist_hip_ratio decimal(4,2) [note: 'WHR ratio']
+  created_at timestamptz [default: `now()`]
+
+  Note: 'Biometric and anthropometric evaluation parameters'
+}
+
+Table t_vital_signs [headercolor: #DC2626] {
+  vital_signs_id uuid [pk]
+  visit_id uuid [unique, not null, ref: - t_visits.visit_id]
+  systolic_bp smallint [note: 'Systolic Blood Pressure (mmHg)']
+  diastolic_bp smallint [note: 'Diastolic Blood Pressure (mmHg)']
+  heart_rate smallint [note: 'Heart rate / pulse (bpm)']
+  oxygen_saturation decimal(4,1) [note: 'Peripheral SpO2 (%)']
+  temperature_c decimal(3,1) [note: 'Body temperature (°C)']
+  created_at timestamptz [default: `now()`]
+
+  Note: 'Hemodynamic vital signs recorded during encounter'
+}
+
+Table t_electrocardiograms [headercolor: #B91C1C] {
+  ecg_id uuid [pk]
+  visit_id uuid [unique, not null, ref: - t_visits.visit_id]
+  
+  // 27 Comprehensive ECG items from Definitive Protocol
+  rhythm_id int [ref: > m_ecg_rhythms.id, note: 'Item 1: ECG Rhythm']
+  heart_rate smallint [note: 'Item 2: Heart rate (bpm)']
+  qrs_axis_degrees smallint [note: 'Item 3: Frontal plane QRS electric axis (degrees)']
+  rr_interval_sec decimal(4,2) [note: 'Item 4: Mean RR interval in seconds']
+  p_wave_mm decimal(4,2) [note: 'Item 5: P wave amplitude in mm']
+  pr_interval_ms smallint [note: 'Item 6: PR interval duration in ms']
+  qrs_duration_ms smallint [note: 'Item 7: QRS complex duration in ms']
+  qt_interval_ms smallint [note: 'Item 8: Raw QT interval duration in ms']
+  qtc_bazett_ms smallint [note: 'Item 9: Heart rate corrected QT interval (Bazett)']
+  p_mitrale boolean [note: 'Item 10: Left atrial P mitrale morphology']
+  av_block boolean [note: 'Item 11: Atrioventricular block flag']
+  av_block_grade varchar(50) [note: 'Item 11: AV block grade (Degree I, II, III)']
+  sa_block boolean [note: 'Item 12: Sinoatrial exit block flag']
+  interatrial_block boolean [note: 'Item 13: Interatrial Bachmann bundle block']
+  hemiblock boolean [note: 'Item 14: Fascicular hemiblock flag']
+  hemiblock_detail varchar(100) [note: 'Item 14: Anterior vs Posterior hemiblock']
+  has_bundle_branch_block boolean [note: 'Item 15: Bundle branch delay flag']
+  bundle_branch_block varchar(100) [note: 'Item 15: RBBB or LBBB classification']
+  brugada_pattern boolean [note: 'Item 16: Brugada syndrome pattern']
+  early_repolarization boolean [note: 'Item 17: Benign early repolarization J-wave']
+  left_ventricular_hypertrophy boolean [note: 'Item 18: LVH voltage criteria (Sokolow/Cornell)']
+  systolic_overload boolean [note: 'Item 19: Systolic strain overload pattern']
+  systolic_overload_complexes varchar(100) [note: 'Item 19: Leads exhibiting strain']
+  intrinsicoid_deflection_sec decimal(5,3) [note: 'Item 20: V5-V6 activation time (sec)']
+  right_ventricular_hypertrophy boolean [note: 'Item 21: RVH voltage criteria']
+  delta_wave boolean [note: 'Item 22: Pre-excitation delta wave (WPW)']
+  digitalis_effect boolean [note: 'Item 23: Digitalis scoop ST effect']
+  pathological_q_wave boolean [note: 'Item 24: Necrosis pathological Q wave']
+  q_wave_amplitude varchar(50) [note: 'Item 24: Q wave amplitude description']
+  q_wave_voltage_mv decimal(4,2) [note: 'Item 24: Q wave voltage in mV']
+  q_wave_complexes varchar(100) [note: 'Item 24: Leads with Q waves']
+  negative_t_wave boolean [note: 'Item 25: Negative inverted T waves']
+  negative_t_complexes varchar(100) [note: 'Item 25: Leads with negative T waves']
+  negative_t_symmetric boolean [note: 'Item 25: Symmetric ischemic inversion']
+  negative_t_asymmetric boolean [note: 'Item 25: Asymmetric strain inversion']
+  st_elevation_pathological boolean [note: 'Item 26: Acute injury ST elevation (STEMI)']
+  st_elevation_mm decimal(4,1) [note: 'Item 26: ST elevation magnitude in mm']
+  st_elevation_complexes varchar(100) [note: 'Item 26: Leads with ST elevation']
+  st_depression boolean [note: 'Item 27: Subendocardial ST depression']
+  st_depression_mm decimal(4,1) [note: 'Item 27: ST depression magnitude in mm']
+  st_depression_complexes varchar(100) [note: 'Item 27: Leads with ST depression']
+
+  is_normal boolean [default: true, note: 'Overall normal ECG assessment']
+  repolarization_abnormalities boolean [note: 'Non-specific repolarization changes']
+  ecg_comments text [note: 'Specialist narrative diagnosis and remarks']
+  created_at timestamptz [default: `now()`]
+
+  Note: 'Comprehensive 12-lead Electrocardiogram evaluation with all 27 protocol items'
+}
+
+Table t_echocardiograms [headercolor: #991B1B] {
+  echo_id uuid [pk]
+  visit_id uuid [unique, not null, ref: - t_visits.visit_id]
+  lv_diastolic_diameter_mm decimal(5,2) [note: 'LVEDD in mm']
+  lv_systolic_diameter_mm decimal(5,2) [note: 'LVESD in mm']
+  ivs_thickness_mm decimal(4,2) [note: 'IVSd thickness in mm']
+  posterior_wall_thickness_mm decimal(4,2) [note: 'LVPWd thickness in mm']
+  la_diameter_mm decimal(5,2) [note: 'Left Atrium diameter in mm']
+  aortic_root_diameter_mm decimal(5,2) [note: 'Aortic root dimension in mm']
+  lvef_percentage decimal(4,1) [note: 'Left Ventricular Ejection Fraction (%)']
+  ventricular_hypertrophy boolean [note: 'Ventricular hypertrophy flag']
+  diastolic_dysfunction boolean [note: 'Diastolic filling dysfunction']
+  aortic_valve_calcification boolean [note: 'Aortic valve sclerosis']
+  valvular_regurgitation_detail varchar(200) [note: 'Valvulopathy description']
+  echo_comments text [note: 'Narrative echocardiography remarks']
+  created_at timestamptz [default: `now()`]
+
+  Note: 'Transthoracic 2D and Doppler Echocardiography measurements'
+}
+
+Table t_laboratories [headercolor: #991B1B] {
+  lab_id uuid [pk]
+  visit_id uuid [unique, not null, ref: - t_visits.visit_id]
+  
+  // Blood Chemistry & Renal Function
+  glucose_mg_dl decimal(6,2) [note: 'Fasting glucose (mg/dL)']
+  urea_mg_dl decimal(6,2) [note: 'Blood urea (mg/dL)']
+  creatinine_mg_dl decimal(5,2) [note: 'Serum creatinine (mg/dL)']
+  
+  // Lipid Profile
+  total_cholesterol_mg_dl decimal(6,2) [note: 'Total cholesterol (mg/dL)']
+  hdl_mg_dl decimal(5,2) [note: 'HDL cholesterol (mg/dL)']
+  ldl_mg_dl decimal(6,2) [note: 'LDL cholesterol (mg/dL)']
+  triglycerides_mg_dl decimal(6,2) [note: 'Serum triglycerides (mg/dL)']
+  
+  // Liver Function & Enzymes
+  ast_got_u_l decimal(6,2) [note: 'AST / GOT (U/L)']
+  alt_gpt_u_l decimal(6,2) [note: 'ALT / GPT (U/L)']
+  ggt_u_l decimal(6,2) [note: 'GGT (U/L)']
+  
+  // Thyroid & Hematology
+  tsh_u_iu_ml decimal(6,3) [note: 'TSH (uIU/mL)']
+  hemoglobin_g_dl decimal(4,2) [note: 'Hemoglobin (g/dL)']
+  hematocrit_percentage decimal(4,2) [note: 'Hematocrit (%)']
+  rbc_millions decimal(4,2) [note: 'RBC count (millions/uL)']
+  wbc_thousands decimal(5,2) [note: 'WBC count (thousands/uL)']
+  platelets_thousands decimal(6,2) [note: 'Platelets (thousands/uL)']
+  mcv_fl decimal(5,2) [note: 'MCV (fL)']
+  prothrombin_time_sec decimal(5,2) [note: 'Prothrombin time / INR (sec)']
+  created_at timestamptz [default: `now()`]
+
+  Note: 'Clinical laboratory blood panel and biomarkers'
+}
+
+Table t_ordered_studies [headercolor: #7F1D1D] {
+  study_id uuid [pk, note: 'Prescription surrogate UUID']
+  visit_id uuid [unique, not null, ref: - t_visits.visit_id, note: '1:1 relation to Visit']
+  
+  // 8 Studies Prescribed from Protocol Page 19
+  clinical_analysis boolean [note: '1- Clinical laboratory tests ordered']
+  ergometry_spect boolean [note: '2- SPECT treadmill stress ergometry']
+  cardiac_ct boolean [note: '3- Coronary Computed Tomography Angiography']
+  cardiac_mri boolean [note: '4- Cardiac Magnetic Resonance Imaging']
+  electrophysiology boolean [note: '5- Invasive / diagnostic electrophysiology']
+  echocardiogram_ordered boolean [note: 'Doppler Echocardiography']
+  holter_ordered boolean [note: 'Ambulatory 24-hour Holter ECG']
+  mapa_ordered boolean [note: 'Ambulatory Blood Pressure Monitoring (MAPA)']
+  other_studies text [note: 'Narrative complementary indications and notes']
+  created_at timestamptz [default: `now()`]
+
+  Note: 'Medical studies and diagnostic exams prescribed to the patient'
+}
+
+// ============================================================================
+// 6. QUESTIONNAIRE & MODULAR SURVEY RESPONSES (m_ & t_)
+// ============================================================================
+
+Table m_questionnaire_sections [headercolor: #D97706] {
+  id int [pk, increment]
+  code varchar(50) [unique, not null, note: 'MOD_1_SOCIO | MOD_3_FACTORES_MOD | etc.']
+  title varchar(150) [not null, note: 'Section clinical heading title']
+  display_order int [not null, default: 0, note: 'Sequential sorting order']
+
+  Note: 'Master questionnaire module chapters'
+}
+
+Table m_questions [headercolor: #D97706] {
+  id int [pk, increment]
+  section_id int [not null, ref: > m_questionnaire_sections.id]
+  code varchar(50) [unique, not null, note: 'Standard variable code (e.g. r_hta, r_mapa)']
+  text text [not null, note: 'Clinical question label verbatim']
+  response_type varchar(30) [not null, default: 'TEXTO', note: 'RADIO | CHECKBOX | TEXTO | NUMERICO']
+  display_order int [not null, default: 0]
+
+  Note: 'Master items and survey questions'
+}
+
+Table m_question_options [headercolor: #D97706] {
+  id int [pk, increment]
+  question_id int [not null, ref: > m_questions.id]
+  option_code varchar(50) [not null, note: 'Coded choice identifier']
+  option_text varchar(255) [not null, note: 'Display option label']
+  numeric_value decimal(10,2) [note: 'SPSS assigned numeric code']
+  display_order int [not null, default: 0]
+
+  Note: 'Master categorical options for discrete questions'
+}
+
+Table t_visit_answers [headercolor: #B45309] {
+  answer_id bigint [pk, increment, note: 'Serial primary key']
+  visit_id uuid [not null, ref: > t_visits.visit_id, note: 'Encounter relation']
+  question_id int [not null, ref: > m_questions.id, note: 'Questionnaire item']
+  selected_option_id int [ref: > m_question_options.id, note: 'Selected discrete option']
+  text_value text [note: 'Alphanumeric or narrative response']
+  numeric_value decimal(10,3) [note: 'Continuous metric response']
+  created_at timestamptz [default: `now()`]
+
+  Note: 'EAV survey repository persisting all questionnaire observations'
+}
+
+// ============================================================================
+// TABLE GROUPS FOR VISUAL CLUSTERING IN dbdiagram.io
+// ============================================================================
+
+TableGroup security_and_governance {
+  m_users
+  m_roles
+  t_user_roles
+  t_system_settings
+  t_audit_change_logs
+  t_bot_queries
+}
+
+TableGroup geographic_and_academic_master {
+  m_countries
+  m_provinces
+  m_cantons
+  m_institutions
+}
+
+TableGroup demographic_catalogs {
+  m_sexes
+  m_ethnicities
+  m_staff_categories
+  m_professional_categories
+  m_education_levels
+  m_income_ranges
+  m_marital_statuses
+  m_living_situations
+  m_housing_types
+  m_work_schedules
+  m_ecg_rhythms
+}
+
+TableGroup patient_and_encounter_core {
+  t_patients
+  t_visits
+}
+
+TableGroup clinical_specialized_exams {
+  t_anthropometries
+  t_vital_signs
+  t_electrocardiograms
+  t_echocardiograms
+  t_laboratories
+  t_ordered_studies
+}
+
+TableGroup questionnaire_survey_framework {
+  m_questionnaire_sections
+  m_questions
+  m_question_options
+  t_visit_answers
+}

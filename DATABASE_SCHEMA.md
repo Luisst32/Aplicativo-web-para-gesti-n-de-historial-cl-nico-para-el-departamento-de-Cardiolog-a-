@@ -4,6 +4,10 @@ This document defines the complete relational database architecture and entity-r
 
 The architecture is designed to be fully compatible with PostgreSQL and modern cloud platforms such as **Supabase**, adopting UUID primary keys for entities managed by Supabase Auth and standard relational integrity constraints.
 
+> [!TIP]
+> **Interactive Visualization in dbdiagram.io**:
+> To visualize and interact with the full schema (zoom, pan, color-coded table groups, and export to PDF/PNG) without any character limits, open **[https://dbdiagram.io](https://dbdiagram.io)** and copy-paste the contents of [`schema.dbml`](./schema.dbml).
+
 ---
 
 ## 1. Naming Conventions
@@ -719,3 +723,4 @@ Audit and token consumption history for the clinical AI assistant.
 1. **Independent Surrogate Identity**: Every patient is uniquely identified by `t_patients.patient_id` and each consultation by `t_visits.visit_id`. This guarantees that cohorts from multiple institutions (e.g., UNEMI and ESPOL) can coexist without primary key collisions, even if both protocols use patient code `1`.
 2. **Dedicated API Credential Encryption**: The `t_system_settings` table isolates external API secrets (`gemini_api_key_encrypted`, `gmail_client_secret_encrypted`, `gmail_refresh_token_encrypted`) encrypted with dedicated environment-driven keys using Multi-Fernet, strictly guarded by Role-Based Access Control (`m_roles.code = 'Administrador'`).
 3. **Audit Compliance**: All clinical edits are transparently tracked in `t_audit_change_logs`, providing forensic traceability for biomedical ethics and institutional review boards.
+
