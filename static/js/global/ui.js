@@ -879,10 +879,7 @@ async function guardarAjustesSistema(event) {
       claude_model,
       claude_enabled,
       gmail_sender_email,
-      gmail_client_id,
       gmail_client_secret,
-      gmail_refresh_token,
-      gmail_redirect_uri,
       gmail_api_enabled
     };
 

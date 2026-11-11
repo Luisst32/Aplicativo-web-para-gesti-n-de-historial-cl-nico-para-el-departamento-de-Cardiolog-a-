@@ -1,19 +1,58 @@
 import logging
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from django.conf import settings
 from django.core.mail import send_mail
-from django.core.mail.backends.smtp import EmailBackend
 
 from security.models import SystemSetting, decrypt_api_key
 
 logger = logging.getLogger(__name__)
 
 
+def _send_smtp_gmail(sender_email: str, app_password: str, recipient_email: str, subject: str, plain_msg: str, html_msg: str) -> bool:
+    """
+    Intenta despachar correo vía Gmail SMTP (probando puertos 587 y 465) con timeout de 3 segundos
+    para evitar bloqueos cuando el proveedor de internet bloquea puertos salientes de correo.
+    """
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = sender_email
+    msg['To'] = recipient_email
+
+    msg.attach(MIMEText(plain_msg, 'plain', 'utf-8'))
+    msg.attach(MIMEText(html_msg, 'html', 'utf-8'))
+
+    # Probar puertos estándar de Gmail con timeout corto
+    for port in (587, 465):
+        server = None
+        try:
+            if port == 465:
+                server = smtplib.SMTP_SSL('smtp.gmail.com', port, timeout=3)
+            else:
+                server = smtplib.SMTP('smtp.gmail.com', port, timeout=3)
+                server.starttls()
+            server.login(sender_email, app_password)
+            server.send_message(msg)
+            server.quit()
+            logger.info(f"[EMAIL_SERVICE] Correo despachado exitosamente por Gmail SMTP (puerto {port}) a {recipient_email}")
+            return True
+        except Exception as e:
+            logger.warning(f"[EMAIL_SERVICE] Intento de envío Gmail SMTP en puerto {port} falló: {e}")
+            if server:
+                try:
+                    server.close()
+                except Exception:
+                    pass
+    return False
+
+
 def send_password_reset_email(user, reset_url: str) -> bool:
     """
-    Envía el correo electrónico de restablecimiento de contraseña.
-    Si se configuró Gmail (correo y contraseña de aplicación) en Ajustes del Sistema,
-    envía el correo real a través de smtp.gmail.com con TLS.
-    De lo contrario, utiliza el backend por defecto de Django (consola/desarrollo).
+    Envía el correo de restablecimiento de contraseña.
+    Si se configuró Gmail con contraseña de aplicación, intenta el envío directo.
+    Si el proveedor de red bloquea los puertos SMTP o no está configurado, registra el enlace
+    en el logger y usa el backend de consola de Django.
     """
     subject = "CARDIOUNEMI - Restablecimiento de Contraseña"
     recipient_email = user.email
@@ -100,7 +139,7 @@ def send_password_reset_email(user, reset_url: str) -> bool:
 
 Recibimos una solicitud para restablecer la contraseña de tu cuenta en CARDIOUNEMI.
 
-Para crear una nueva contraseña, ingresa al siguiente enlace seguro:
+Para crear una nueva contraseña, ingresa al siguiente enlace:
 {reset_url}
 
 Este enlace expirará en 24 horas. Si no realizaste esta solicitud, puedes ignorar este mensaje.
@@ -111,34 +150,20 @@ Equipo CARDIOUNEMI
 
     logger.info(f"[PASSWORD_RESET] Enlace de recuperación generado para {user.username} ({recipient_email}): {reset_url}")
 
-    # 1. Si Gmail está configurado con correo y contraseña de aplicación, enviar correo real vía Gmail SMTP
+    # 1. Si Gmail está configurado y habilitado, intentar envío real vía Gmail SMTP
     if sender_email and raw_app_password and cfg.gmail_api_enabled:
-        try:
-            logger.info(f"[PASSWORD_RESET] Despachando correo real vía Gmail SMTP ({sender_email}) a {recipient_email}...")
-            smtp_backend = EmailBackend(
-                host='smtp.gmail.com',
-                port=587,
-                username=sender_email,
-                password=raw_app_password,
-                use_tls=True,
-                fail_silently=False,
-                timeout=15,
-            )
-            send_mail(
-                subject=subject,
-                message=plain_message,
-                from_email=sender_email,
-                recipient_list=[recipient_email],
-                html_message=html_content,
-                connection=smtp_backend,
-                fail_silently=False,
-            )
-            logger.info(f"[PASSWORD_RESET] Correo enviado exitosamente vía Gmail a {recipient_email}")
+        sent = _send_smtp_gmail(
+            sender_email=sender_email,
+            app_password=raw_app_password,
+            recipient_email=recipient_email,
+            subject=subject,
+            plain_msg=plain_message,
+            html_msg=html_content
+        )
+        if sent:
             return True
-        except Exception as e:
-            logger.exception(f"[PASSWORD_RESET] Error al enviar vía Gmail SMTP: {e}. Reintentando con backend por defecto...")
 
-    # 2. Fallback a configuración estándar de Django / consola
+    # 2. Respaldo a configuración estándar de Django / consola
     try:
         send_mail(
             subject=subject,
@@ -148,7 +173,6 @@ Equipo CARDIOUNEMI
             html_message=html_content,
             fail_silently=False,
         )
-        logger.info(f"[PASSWORD_RESET] Correo procesado con backend estándar para {recipient_email}")
         return True
     except Exception as e:
         logger.exception(f"[PASSWORD_RESET] Error despachando correo a {recipient_email}: {e}")
