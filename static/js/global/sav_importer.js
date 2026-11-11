@@ -56,6 +56,15 @@ function abrirModalImportarSav() {
   currentMappingFilter = 'errors';
   currentSearchTerm = '';
 
+  const dupsSection = document.getElementById('savDuplicatesSection');
+  if (dupsSection) dupsSection.style.display = 'none';
+  const dupsWrapper = document.getElementById('savDupsTableWrapper');
+  if (dupsWrapper) dupsWrapper.style.display = 'none';
+  const btnText = document.getElementById('savToggleDupsBtnText');
+  if (btnText) btnText.textContent = 'Ver detalle de duplicados';
+  const arrow = document.getElementById('savToggleDupsArrow');
+  if (arrow) arrow.style.transform = 'rotate(0deg)';
+
   // Resetear barra de progreso
   updateSavProgress(0, 'Importando archivo SPSS...', 'Procesando y guardando datos automáticamente en la base de datos...', 'Progreso de importación');
 
@@ -219,7 +228,7 @@ async function onSavFileSelected(file) {
 
     const rowsCount = execData.total_rows || analyzeData.total_rows || 0;
     const newCount = execData.imported_count || 0;
-    const dupsCount = execData.updated_count || 0;
+    const dupsCount = execData.duplicate_count !== undefined ? execData.duplicate_count : (execData.updated_count || 0);
     const typosCount = analyzeData.grammatical_errors_count || 0;
 
     if (metricRows) metricRows.textContent = rowsCount;
@@ -229,8 +238,88 @@ async function onSavFileSelected(file) {
     if (errorsTabCount) errorsTabCount.textContent = typosCount;
     if (totalColsBadge) totalColsBadge.textContent = `${analyzeData.total_columns || 0} variables analizadas`;
 
+    // Estilo y etiqueta dinámica para tarjeta de Duplicados
+    const cardDups = document.getElementById('savCardDups');
+    const labelDups = document.getElementById('savMetricDupsLabel');
+    if (cardDups && labelDups) {
+      if (dupsCount > 0) {
+        cardDups.style.background = '#fffbeb';
+        cardDups.style.borderColor = '#fde68a';
+        metricDups.style.color = '#b45309';
+        labelDups.style.color = '#92400e';
+        labelDups.textContent = `${dupsCount} Duplicados en BD`;
+      } else {
+        cardDups.style.background = '#f8fafc';
+        cardDups.style.borderColor = '#e2e8f0';
+        metricDups.style.color = '#15803d';
+        labelDups.style.color = '#166534';
+        labelDups.textContent = 'Sin Duplicados (0)';
+      }
+    }
+
     if (successMsg) {
       successMsg.textContent = execData.message || `Se importaron ${rowsCount} pacientes y registros con éxito.`;
+    }
+
+    // Gestionar Sección Inteligente de Duplicados en el Resumen
+    const dupsSection = document.getElementById('savDuplicatesSection');
+    const dupsCountBadge = document.getElementById('savDupsCountBadge');
+    const dupsDesc = document.getElementById('savDuplicatesDesc');
+    const dupsTableBody = document.getElementById('savDupsTableBody');
+    const internalNotice = document.getElementById('savInternalDupsNotice');
+    const internalText = document.getElementById('savInternalDupsText');
+
+    const duplicateRecords = execData.duplicate_records || [];
+    const internalDuplicates = analyzeData.duplicates?.internal_duplicates || [];
+
+    if (dupsSection) {
+      if (dupsCount > 0 || internalDuplicates.length > 0) {
+        dupsSection.style.display = 'block';
+        if (dupsCountBadge) dupsCountBadge.textContent = dupsCount;
+        if (dupsDesc) {
+          dupsDesc.textContent = `Se detectaron ${dupsCount} paciente(s) que ya existían previamente en esta cohorte. Sus datos clínicos fueron actualizados y sincronizados sin alterar su identificador.`;
+        }
+
+        // Renderizar tabla de duplicados
+        if (dupsTableBody) {
+          if (duplicateRecords.length > 0) {
+            dupsTableBody.innerHTML = duplicateRecords.map(d => `
+              <tr style="border-bottom: 1px solid #fef3c7;">
+                <td style="padding: 6px 10px; color: #64748b;">${escapeHtml(d.row || '--')}</td>
+                <td style="padding: 6px 10px; font-weight: 700; color: #92400e;">${escapeHtml(d.code || '--')}</td>
+                <td style="padding: 6px 10px; color: #475569;">${escapeHtml(d.institution || 'UNEMI')}</td>
+                <td style="padding: 6px 10px; color: #1e293b; font-weight: 600;">${escapeHtml(d.patient_name || 'Paciente')} ${d.id_card ? `<span style="font-size:0.7rem; color:#64748b;">(${escapeHtml(d.id_card)})</span>` : ''}</td>
+                <td style="padding: 6px 10px; text-align: center;">
+                  <span style="background: #fef3c7; color: #b45309; font-weight: 700; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; border: 1px solid #fde68a;">
+                    ${escapeHtml(d.action || 'Actualizado en BD')}
+                  </span>
+                </td>
+              </tr>
+            `).join('');
+          } else {
+            dupsTableBody.innerHTML = `
+              <tr>
+                <td colspan="5" style="text-align: center; padding: 12px; color: #94a3b8; font-style: italic;">
+                  No hay detalles individuales de duplicados para mostrar.
+                </td>
+              </tr>
+            `;
+          }
+        }
+
+        // Aviso si hay duplicidad interna dentro del archivo SPSS
+        if (internalNotice && internalText) {
+          if (internalDuplicates.length > 0) {
+            internalNotice.style.display = 'block';
+            const codList = internalDuplicates.map(idup => `Código ${idup.code} (${idup.institution}, filas ${idup.rows.join(' y ')})`).join(', ');
+            internalText.textContent = `Se detectaron códigos repetidos en distintas filas dentro del archivo: ${codList}.`;
+          } else {
+            internalNotice.style.display = 'none';
+          }
+        }
+      } else {
+        dupsSection.style.display = 'none';
+      }
     }
 
     // Guardar lista de mapeo de columnas para renderizar y filtrar
@@ -241,17 +330,24 @@ async function onSavFileSelected(file) {
     // Rellenar previsualización de pacientes importados
     const previewTbody = document.getElementById('savPreviewTbody');
     if (previewTbody && analyzeData.preview_rows) {
-      previewTbody.innerHTML = analyzeData.preview_rows.map(r => `
-        <tr style="border-bottom: 1px solid #f1f5f9;">
-          <td style="padding: 6px 10px; font-weight: 700; color: #1e293b;">${escapeHtml(r.codigo || '--')}</td>
-          <td style="padding: 6px 10px; color: #475569;">${escapeHtml(r.universidad || 'UNEMI')}</td>
-          <td style="padding: 6px 10px; color: #475569;">${escapeHtml(r.sexo || '--')}</td>
-          <td style="padding: 6px 10px; color: #475569;">${escapeHtml(r.edad || '--')}</td>
-          <td style="padding: 6px 10px; color: #475569;">${escapeHtml(r.ciudad_res || '--')}</td>
-          <td style="padding: 6px 10px; color: #475569;">${escapeHtml(r.tas || '--')} / ${escapeHtml(r.tad || '--')}</td>
-          <td style="padding: 6px 10px; color: #475569;">${escapeHtml(r.peso || '--')}</td>
-        </tr>
-      `).join('');
+      previewTbody.innerHTML = analyzeData.preview_rows.map(r => {
+        const isDup = r.is_duplicate;
+        const statusBadge = isDup
+          ? `<span style="background: #fef3c7; color: #b45309; font-weight: 700; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; border: 1px solid #fde68a;">Duplicado (Actualizado)</span>`
+          : `<span style="background: #ecfdf5; color: #047857; font-weight: 700; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; border: 1px solid #a7f3d0;">Nuevo</span>`;
+        return `
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 6px 10px; font-weight: 700; color: #1e293b;">${escapeHtml(r.codigo || '--')}</td>
+            <td style="padding: 6px 10px; color: #475569;">${escapeHtml(r.universidad || 'UNEMI')}</td>
+            <td style="padding: 6px 10px; color: #475569;">${escapeHtml(r.sexo || '--')}</td>
+            <td style="padding: 6px 10px; color: #475569;">${escapeHtml(r.edad || '--')}</td>
+            <td style="padding: 6px 10px; color: #475569;">${escapeHtml(r.ciudad_res || '--')}</td>
+            <td style="padding: 6px 10px; color: #475569;">${escapeHtml(r.tas || '--')} / ${escapeHtml(r.tad || '--')}</td>
+            <td style="padding: 6px 10px; color: #475569;">${escapeHtml(r.peso || '--')}</td>
+            <td style="padding: 6px 10px; text-align: center;">${statusBadge}</td>
+          </tr>
+        `;
+      }).join('');
     }
 
     // Mostrar fase de éxito
@@ -378,6 +474,22 @@ function finalizarImportacionSav() {
   } else {
     // Si estamos en otra vista, redirigir a la raíz (listado de pacientes)
     window.location.href = '/';
+  }
+}
+
+function toggleDetalleDuplicados() {
+  const wrapper = document.getElementById('savDupsTableWrapper');
+  const btnText = document.getElementById('savToggleDupsBtnText');
+  const arrow = document.getElementById('savToggleDupsArrow');
+  if (!wrapper) return;
+
+  const isHidden = wrapper.style.display === 'none' || wrapper.style.display === '';
+  wrapper.style.display = isHidden ? 'block' : 'none';
+  if (btnText) {
+    btnText.textContent = isHidden ? 'Ocultar detalle de duplicados' : 'Ver detalle de duplicados';
+  }
+  if (arrow) {
+    arrow.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
   }
 }
 

@@ -165,6 +165,62 @@ class SavImporterTests(TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_execute_sav_import_duplicate_reporting(self):
+        from unittest.mock import patch, MagicMock
+        from pathlib import Path
+        from django.conf import settings
+        from apps.clinical.services.sav_importer import execute_sav_import
+
+        inst_unemi, _ = Institution.objects.get_or_create(acronym='UNEMI', defaults={'name': 'Universidad Estatal de Milagro'})
+        sex_h, _ = Sex.objects.get_or_create(sex_id=1, defaults={'name': 'Hombre'})
+        eth, _ = Ethnicity.objects.get_or_create(name='Mestizo')
+        prov, _ = Province.objects.get_or_create(iso_code='EC-G', defaults={'name': 'Guayas'})
+        cant, _ = Canton.objects.get_or_create(dpa_code='0910', defaults={'province': prov, 'name': 'Milagro'})
+
+        p = Patient.objects.create(
+            institution=inst_unemi,
+            id_card='0900000001',
+            first_names='Carlos',
+            last_name1='Pérez',
+            birth_date=datetime.date(1980, 1, 1),
+            sex=sex_h,
+            ethnicity=eth,
+            birth_canton=cant,
+            created_by=self.user
+        )
+        Visit.objects.create(
+            patient=p,
+            evaluator=self.user,
+            study_code='1',
+            visit_date=datetime.date(2026, 1, 1),
+            residence_canton=cant
+        )
+
+        temp_dir = Path(settings.MEDIA_ROOT) / 'temp_imports'
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        dummy_file = temp_dir / 'test_token_dup.sav'
+        dummy_file.write_bytes(b'fake sav content')
+
+        mock_meta = MagicMock()
+        mock_meta.number_rows = 1
+        mock_meta.number_columns = 2
+        mock_meta.variable_value_labels = {'UNIVERSIDAD': {1.0: 'UNEMI'}}
+        mock_df = {'CODIGO': [1], 'UNIVERSIDAD': [1.0]}
+
+        with patch('apps.clinical.services.sav_importer.pyreadstat.read_sav', return_value=(mock_df, mock_meta)):
+            res = execute_sav_import('test_token_dup', self.user, duplicate_action='update')
+
+        self.assertTrue(res.get('success'))
+        self.assertEqual(res.get('total_rows'), 1)
+        self.assertEqual(res.get('duplicate_count'), 1)
+        self.assertEqual(res.get('updated_count'), 1)
+        self.assertEqual(len(res.get('duplicate_records')), 1)
+        dup_rec = res['duplicate_records'][0]
+        self.assertEqual(dup_rec['code'], '1')
+        self.assertEqual(dup_rec['institution'], 'UNEMI')
+        self.assertEqual(dup_rec['action'], 'Actualizado en BD')
+        self.assertIn('1 duplicados actualizados en BD', res['message'])
+
 
 
 class FichaEliminarSecurityTests(TestCase):

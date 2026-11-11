@@ -872,21 +872,77 @@ def analyze_sav_file(file_obj, filename="archivo.sav"):
             "status": "Corregido y Mapeado" if has_typo else "Mapeado"
         })
 
-    # 5. Detección de Duplicados Internos en el Archivo
+    # 5. Detección de Duplicados Internos en el Archivo y con la Base de Datos
+    inst_unemi = Institution.objects.filter(acronym__iexact='UNEMI').first() or Institution.objects.first()
+    inst_espol = Institution.objects.filter(acronym__iexact='ESPOL').first() or inst_unemi
+
+    db_visits = Visit.objects.select_related('patient', 'patient__institution').all()
+    db_visits_map = {
+        (v.patient.institution_id, str(v.study_code)): (v.patient.full_name if v.patient else f"Código {v.study_code}")
+        for v in db_visits if v.study_code and v.patient and v.patient.institution_id
+    }
+    db_patients_map = {
+        p.id_card: p.full_name
+        for p in Patient.objects.all() if p.id_card
+    }
+
     internal_duplicates = []
     codes_seen_in_file = {}
-    if has_codigo:
-        cod_col = field_to_col['codigo']
-        for idx_row, v in enumerate(df_dict[cod_col]):
-            if v is not None:
-                c_str = str(int(float(v))) if isinstance(v, (int, float)) else str(v).strip()
-                if c_str in codes_seen_in_file:
-                    internal_duplicates.append({
-                        "code": c_str,
-                        "rows": [codes_seen_in_file[c_str] + 1, idx_row + 1]
-                    })
-                else:
-                    codes_seen_in_file[c_str] = idx_row
+    db_duplicates = []
+    new_patients_count = 0
+
+    for idx_row in range(total_rows):
+        row_inst = inst_unemi
+        if 'universidad' in field_to_col:
+            u_val = df_dict[field_to_col['universidad']][idx_row]
+            _, u_lbl = _get_val_and_label(u_val, meta.variable_value_labels.get(field_to_col['universidad'], {}))
+            if 'ESPOL' in u_lbl.upper() or u_val == 2.0:
+                row_inst = inst_espol
+
+        c_str = None
+        if has_codigo:
+            raw_c = df_dict[field_to_col['codigo']][idx_row]
+            if raw_c is not None:
+                c_str = str(int(float(raw_c))) if isinstance(raw_c, (int, float)) else str(raw_c).strip()
+        if not c_str:
+            c_str = str(idx_row + 1)
+
+        id_c = None
+        if has_id_card:
+            raw_id = df_dict[field_to_col['cedula']][idx_row]
+            if raw_id is not None and str(raw_id).strip():
+                id_c = str(raw_id).strip()
+
+        # Duplicados internos dentro del mismo archivo
+        file_key = (row_inst.institution_id if row_inst else 1, c_str)
+        if file_key in codes_seen_in_file:
+            internal_duplicates.append({
+                "code": c_str,
+                "institution": row_inst.acronym if row_inst else "UNEMI",
+                "rows": [codes_seen_in_file[file_key] + 1, idx_row + 1]
+            })
+        else:
+            codes_seen_in_file[file_key] = idx_row
+
+        # Duplicados con la base de datos
+        dup_found = False
+        dup_name = ""
+        if file_key in db_visits_map:
+            dup_found = True
+            dup_name = db_visits_map[file_key]
+        elif id_c and id_c in db_patients_map:
+            dup_found = True
+            dup_name = db_patients_map[id_c]
+
+        if dup_found:
+            db_duplicates.append({
+                "row": idx_row + 1,
+                "code": c_str,
+                "institution": row_inst.acronym if row_inst else "UNEMI",
+                "patient_name": dup_name or f"Código {c_str}"
+            })
+        else:
+            new_patients_count += 1
 
     if internal_duplicates:
         warnings.append(
@@ -894,37 +950,11 @@ def analyze_sav_file(file_obj, filename="archivo.sav"):
             f"(ej: Código {internal_duplicates[0]['code']})."
         )
 
-    # 6. Detección de Duplicados con la Base de Datos
-    db_visits = Visit.objects.select_related('patient').all()
-    db_codes_map = {
-        v.study_code: (v.patient.full_name if v.patient else f"Código {v.study_code}")
-        for v in db_visits if v.study_code
-    }
-
-    db_duplicates = []
-    new_patients_count = 0
-    if has_codigo:
-        cod_col = field_to_col['codigo']
-        for v in df_dict[cod_col]:
-            if v is not None:
-                c_str = str(int(float(v))) if isinstance(v, (int, float)) else str(v).strip()
-                if c_str in db_codes_map:
-                    db_duplicates.append({
-                        "code": c_str,
-                        "patient_name": db_codes_map[c_str]
-                    })
-                else:
-                    new_patients_count += 1
-            else:
-                new_patients_count += 1
-    else:
-        new_patients_count = total_rows
-
     if db_duplicates:
         warnings.append(
             f"Se encontraron {len(db_duplicates)} paciente(s) que ya existen en la base de datos "
             f"(Códigos: {', '.join([d['code'] for d in db_duplicates[:5]])}{'...' if len(db_duplicates) > 5 else ''}). "
-            f"Podrá elegir si desea actualizarlos o conservar los datos existentes."
+            f"Serán sincronizados y actualizados con los datos del archivo."
         )
 
     # Vista previa de los primeros 5 registros
@@ -953,6 +983,15 @@ def analyze_sav_file(file_obj, filename="archivo.sav"):
         # Si no hay código explícito
         if row_data.get('codigo') == "--":
             row_data['codigo'] = str(i + 1)
+
+        # Determinar si este registro de previsualización es duplicado existente
+        prev_sc = row_data.get('codigo')
+        prev_u = (row_data.get('universidad') or '').upper()
+        prev_inst = inst_espol if 'ESPOL' in prev_u else inst_unemi
+        prev_key = (prev_inst.institution_id if prev_inst else 1, prev_sc)
+        is_preview_dup = prev_key in db_visits_map
+        row_data['is_duplicate'] = is_preview_dup
+        row_data['status_label'] = 'Duplicado (Existente)' if is_preview_dup else 'Nuevo'
 
         preview_rows.append(row_data)
 
@@ -1037,6 +1076,8 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
     default_canton = _resolve_canton_safe('Milagro') or Canton.objects.first()
     sections_by_code = {s.code: s for s in QuestionnaireSection.objects.all()}
     default_section = sections_by_code.get('MOD_3_FACTORES_MOD') or QuestionnaireSection.objects.first()
+    if not default_section:
+        default_section, _ = QuestionnaireSection.objects.get_or_create(code='GENERAL', defaults={'name': 'General', 'display_order': 1})
 
     staff_map = {
         'PDI': StaffCategory.objects.filter(name__icontains='PDI').first(),
@@ -1100,7 +1141,7 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
             col_code_map[col_name] = clean_30
             if clean_30 not in existing_questions:
                 target_sec_code = classify_spss_question_section(col_name)
-                target_sec = sections_by_code.get(target_sec_code, default_section)
+                target_sec = sections_by_code.get(target_sec_code) or default_section
                 var_label = meta.column_names_to_labels.get(col_name) or col_name
                 q = Question.objects.create(
                     section=target_sec,
@@ -1216,6 +1257,7 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
     created_count = 0
     updated_count = 0
     skipped_count = 0
+    duplicate_records = []
     errors = []
     answers_to_upsert = {}
 
@@ -1283,9 +1325,18 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                 # 3. Paciente
                 existing_v = existing_visits.get((inst.institution_id, study_code))
                 patient = existing_v.patient if (existing_v and existing_v.patient) else existing_patients.get(id_card)
+                is_duplicate_case = bool(patient or existing_v)
 
                 if patient and duplicate_action == "skip":
                     skipped_count += 1
+                    duplicate_records.append({
+                        "row": i + 1,
+                        "code": study_code,
+                        "institution": inst.acronym if inst else "UNEMI",
+                        "patient_name": patient.full_name or f"Participante {study_code}",
+                        "id_card": patient.id_card,
+                        "action": "Omitido"
+                    })
                     continue
 
                 is_new_patient = False
@@ -1315,6 +1366,15 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                     created_count += 1
                 else:
                     updated_count += 1
+                    if is_duplicate_case:
+                        duplicate_records.append({
+                            "row": i + 1,
+                            "code": study_code,
+                            "institution": inst.acronym if inst else "UNEMI",
+                            "patient_name": patient.full_name or f"Participante {study_code}",
+                            "id_card": patient.id_card,
+                            "action": "Actualizado en BD"
+                        })
 
                 visit.evaluator = user
                 visit.residence_canton = residence_canton
@@ -1843,6 +1903,7 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
                         'created_patients': created_count,
                         'updated_patients': updated_count,
                         'skipped_patients': skipped_count,
+                        'duplicate_count': len(duplicate_records),
                         'error_count': len(errors)
                     }),
                     status=ChangeLog.Status.RECORDED
@@ -1855,12 +1916,15 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
         try: temp_path.unlink()
         except Exception: pass
 
+    dup_summary = f"{len(duplicate_records)} duplicados actualizados en BD" if len(duplicate_records) > 0 else "sin duplicados"
     return {
         "success": True,
         "total_rows": total_rows,
         "imported_count": created_count,
         "updated_count": updated_count,
         "skipped_count": skipped_count,
+        "duplicate_count": len(duplicate_records),
+        "duplicate_records": duplicate_records[:200],
         "errors": errors[:10],
-        "message": f"Se procesaron con éxito {total_rows} registros ({created_count} nuevos creados, {updated_count} actualizados, {skipped_count} omitidos)."
+        "message": f"Se procesaron con éxito {total_rows} registros ({created_count} nuevos creados, {dup_summary}, {skipped_count} omitidos)."
     }
