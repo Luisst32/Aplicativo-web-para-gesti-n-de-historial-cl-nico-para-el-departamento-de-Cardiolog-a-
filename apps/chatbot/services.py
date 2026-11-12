@@ -293,15 +293,17 @@ def query_gemini_assistant(
     db_model = "gemini-3.5-flash-lite"
     has_admin_access = False
     key_configured = False
+    provider_enabled = False
     try:
         from security.models import SystemSetting
         cfg = SystemSetting.get_settings()
         if cfg:
             db_model = cfg.gemini_model or 'gemini-3.5-flash-lite'
             key_configured = bool(cfg.gemini_api_key_encrypted)
+            provider_enabled = bool(cfg.gemini_enabled)
             has_admin_access = cfg.is_role_authorized(user)
-            if has_admin_access:
-                db_key = SystemSetting.get_gemini_api_key(user=user)
+            if has_admin_access and provider_enabled:
+                db_key = SystemSetting.get_gemini_api_key(user=user, check_enabled=True)
     except Exception as e:
         logger.warning(f"Error consultando SystemSetting: {e}")
 
@@ -312,7 +314,9 @@ def query_gemini_assistant(
 
     if not api_key:
         fallback_answer = generate_fallback_clinical_answer(clean_question)
-        if key_configured and not has_admin_access:
+        if key_configured and not provider_enabled:
+            note = "\n\n> ⚠️ *(La integración con Google Gemini se encuentra deshabilitada en los Ajustes del Sistema. Mostrando análisis estadístico determinista local)*"
+        elif key_configured and not has_admin_access:
             note = "\n\n> 🔒 *(Modo estadístico local: el uso de credenciales de Gemini AI está restringido al rol Administrador)*"
         else:
             note = "\n\n> ℹ️ *(No se detectó clave de Gemini configurada en la base de datos. Un Administrador puede configurarla en Ajustes del Sistema)*"

@@ -77,6 +77,18 @@ class ChatbotSecurityAndPrivacyTests(TestCase):
         self.assertIn("Hipertensión", res['response'])
         self.assertIn("30,5", res['response'])
 
+    def test_gemini_disabled_toggle_prevents_api_call(self):
+        from security.models import SystemSetting
+        SystemSetting.set_settings(
+            chatbot_enabled=True,
+            raw_api_key='AIzaFakeKeyForDisabledTest_123',
+            gemini_enabled=False
+        )
+        res = query_gemini_assistant("¿Cuál es la prevalencia de hipertensión arterial?", user=self.user)
+        self.assertEqual(res['status'], 'success')
+        self.assertEqual(res.get('mode'), 'deterministic_fallback')
+        self.assertIn("deshabilitada en los Ajustes del Sistema", res['response'])
+
     def test_bot_query_logging_in_db(self):
         initial_count = BotQuery.objects.count()
         res = query_gemini_assistant("¿Cuántos evaluados hay en total?", user=self.user)

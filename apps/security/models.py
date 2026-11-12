@@ -479,12 +479,14 @@ class SystemSetting(models.Model):
             return False
 
     @classmethod
-    def get_gemini_api_key(cls, user=None) -> str:
+    def get_gemini_api_key(cls, user=None, check_enabled=True) -> str:
         """
-        Retorna la clave API descifrada de Google Gemini.
+        Retorna la clave API descifrada de Google Gemini si está habilitada.
         """
         try:
             cfg = cls.get_settings()
+            if check_enabled and not cfg.gemini_enabled:
+                return ''
             if not cfg.role_id or cfg.role.status != Role.Status.ACTIVE:
                 return ''
             if user is not None and not cfg.is_role_authorized(user):
@@ -496,12 +498,14 @@ class SystemSetting(models.Model):
         return ''
 
     @classmethod
-    def get_openai_api_key(cls, user=None) -> str:
+    def get_openai_api_key(cls, user=None, check_enabled=True) -> str:
         """
-        Retorna la clave API descifrada de OpenAI (ChatGPT).
+        Retorna la clave API descifrada de OpenAI (ChatGPT) si está habilitada.
         """
         try:
             cfg = cls.get_settings()
+            if check_enabled and not cfg.openai_enabled:
+                return ''
             if not cfg.role_id or cfg.role.status != Role.Status.ACTIVE:
                 return ''
             if user is not None and not cfg.is_role_authorized(user):
@@ -513,12 +517,14 @@ class SystemSetting(models.Model):
         return ''
 
     @classmethod
-    def get_claude_api_key(cls, user=None) -> str:
+    def get_claude_api_key(cls, user=None, check_enabled=True) -> str:
         """
-        Retorna la clave API descifrada de Anthropic Claude.
+        Retorna la clave API descifrada de Anthropic Claude si está habilitada.
         """
         try:
             cfg = cls.get_settings()
+            if check_enabled and not cfg.claude_enabled:
+                return ''
             if not cfg.role_id or cfg.role.status != Role.Status.ACTIVE:
                 return ''
             if user is not None and not cfg.is_role_authorized(user):

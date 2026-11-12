@@ -254,9 +254,9 @@ def api_settings_view(request):
     is_admin = cfg.is_role_authorized(request.user)
 
     if request.method == "GET":
-        raw_gemini = SystemSetting.get_gemini_api_key(user=request.user) if is_admin else ""
-        raw_openai = SystemSetting.get_openai_api_key(user=request.user) if is_admin else ""
-        raw_claude = SystemSetting.get_claude_api_key(user=request.user) if is_admin else ""
+        raw_gemini = SystemSetting.get_gemini_api_key(user=request.user, check_enabled=False) if is_admin else ""
+        raw_openai = SystemSetting.get_openai_api_key(user=request.user, check_enabled=False) if is_admin else ""
+        raw_claude = SystemSetting.get_claude_api_key(user=request.user, check_enabled=False) if is_admin else ""
         raw_gmail_secret = SystemSetting.get_gmail_client_secret(user=request.user) if is_admin else ""
         raw_gmail_refresh = SystemSetting.get_gmail_refresh_token(user=request.user) if is_admin else ""
 
@@ -376,9 +376,10 @@ def api_settings_view(request):
             user=request.user
         )
 
-        raw_gemini = SystemSetting.get_gemini_api_key(user=request.user)
-        raw_openai = SystemSetting.get_openai_api_key(user=request.user)
-        raw_claude = SystemSetting.get_claude_api_key(user=request.user)
+        raw_gemini = SystemSetting.get_gemini_api_key(user=request.user, check_enabled=False)
+        raw_openai = SystemSetting.get_openai_api_key(user=request.user, check_enabled=False)
+        raw_claude = SystemSetting.get_claude_api_key(user=request.user, check_enabled=False)
+        raw_gmail_secret = SystemSetting.get_gmail_client_secret(user=request.user)
 
         return JsonResponse({
             "status": "success",
@@ -386,12 +387,21 @@ def api_settings_view(request):
             "chatbot_enabled": cfg.chatbot_enabled,
             "active_llm_provider": cfg.active_llm_provider,
             "gemini_model": cfg.gemini_model,
+            "gemini_enabled": cfg.gemini_enabled,
             "gemini_api_key_configured": bool(raw_gemini),
             "gemini_api_key_masked": _mask_api_key(raw_gemini),
+            "openai_model": cfg.openai_model,
+            "openai_enabled": cfg.openai_enabled,
             "openai_api_key_configured": bool(raw_openai),
             "openai_api_key_masked": _mask_api_key(raw_openai),
+            "claude_model": cfg.claude_model,
+            "claude_enabled": cfg.claude_enabled,
             "claude_api_key_configured": bool(raw_claude),
             "claude_api_key_masked": _mask_api_key(raw_claude),
+            "gmail_api_enabled": cfg.gmail_api_enabled,
+            "gmail_sender_email": cfg.gmail_sender_email or "",
+            "gmail_secret_configured": bool(raw_gmail_secret),
+            "gmail_secret_masked": _mask_api_key(raw_gmail_secret),
             "is_admin": True
         })
     except PermissionDenied as e:

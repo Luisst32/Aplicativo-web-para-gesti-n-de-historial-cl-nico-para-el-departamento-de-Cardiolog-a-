@@ -641,21 +641,28 @@ function filtrarTarjetasApi(apiFiltro, btnEl) {
   });
 }
 
-function actualizarBadgeEstadoApi(badgeId, configurada) {
+function actualizarBadgeEstadoApi(badgeId, configurada, habilitada) {
   const badge = document.getElementById(badgeId);
   if (!badge) return;
-  if (configurada) {
-    badge.innerHTML = '<span style="width: 6px; height: 6px; border-radius: 50%; background: #16a34a; display: inline-block;"></span>Configurada';
-    badge.style.background = '#f0fdf4';
-    badge.style.color = '#166534';
-    badge.style.border = '1px solid #bbf7d0';
-    badge.style.fontWeight = '600';
-  } else {
+  const isHab = typeof habilitada === 'undefined' ? true : Boolean(habilitada);
+  if (!configurada) {
     badge.innerHTML = '<span style="width: 6px; height: 6px; border-radius: 50%; background: #94a3b8; display: inline-block;"></span>Sin configurar';
     badge.style.background = '#f8fafc';
     badge.style.color = '#64748b';
     badge.style.border = '1px solid #e2e8f0';
     badge.style.fontWeight = '500';
+  } else if (!isHab) {
+    badge.innerHTML = '<span style="width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>Deshabilitada';
+    badge.style.background = '#fffbeb';
+    badge.style.color = '#b45309';
+    badge.style.border = '1px solid #fde68a';
+    badge.style.fontWeight = '600';
+  } else {
+    badge.innerHTML = '<span style="width: 6px; height: 6px; border-radius: 50%; background: #16a34a; display: inline-block;"></span>Habilitada';
+    badge.style.background = '#f0fdf4';
+    badge.style.color = '#166534';
+    badge.style.border = '1px solid #bbf7d0';
+    badge.style.fontWeight = '600';
   }
 }
 
@@ -713,10 +720,11 @@ async function cargarAjustesSistema() {
       if (inputGeminiKey) {
         inputGeminiKey.value = data.gemini_api_key_masked || data.api_key_masked || '';
       }
+      window._geminiConfigurada = Boolean(data.gemini_api_key_configured);
       if (switchGeminiEnabled) {
         switchGeminiEnabled.checked = data.gemini_enabled !== false;
       }
-      actualizarBadgeEstadoApi('badgeEstadoGemini', Boolean(data.gemini_api_key_configured));
+      actualizarBadgeEstadoApi('badgeEstadoGemini', window._geminiConfigurada, switchGeminiEnabled ? switchGeminiEnabled.checked : true);
 
       // 4. OpenAI
       if (selectOpenAIModel && data.openai_model) {
@@ -725,10 +733,11 @@ async function cargarAjustesSistema() {
       if (inputOpenAIKey) {
         inputOpenAIKey.value = data.openai_api_key_masked || '';
       }
+      window._openaiConfigurada = Boolean(data.openai_api_key_configured);
       if (switchOpenAIEnabled) {
         switchOpenAIEnabled.checked = data.openai_enabled !== false;
       }
-      actualizarBadgeEstadoApi('badgeEstadoOpenAI', Boolean(data.openai_api_key_configured));
+      actualizarBadgeEstadoApi('badgeEstadoOpenAI', window._openaiConfigurada, switchOpenAIEnabled ? switchOpenAIEnabled.checked : true);
 
       // 5. Claude
       if (selectClaudeModel && data.claude_model) {
@@ -737,19 +746,46 @@ async function cargarAjustesSistema() {
       if (inputClaudeKey) {
         inputClaudeKey.value = data.claude_api_key_masked || '';
       }
+      window._claudeConfigurada = Boolean(data.claude_api_key_configured);
       if (switchClaudeEnabled) {
         switchClaudeEnabled.checked = data.claude_enabled !== false;
       }
-      actualizarBadgeEstadoApi('badgeEstadoClaude', Boolean(data.claude_api_key_configured));
+      actualizarBadgeEstadoApi('badgeEstadoClaude', window._claudeConfigurada, switchClaudeEnabled ? switchClaudeEnabled.checked : true);
 
       // 6. Gmail SMTP
       if (inputGmailSender) inputGmailSender.value = data.gmail_sender_email || '';
       if (inputGmailSecret) inputGmailSecret.value = data.gmail_secret_masked || '';
+      window._gmailConfigurada = Boolean(data.gmail_sender_email && data.gmail_secret_configured);
       if (switchGmailEnabled) {
         switchGmailEnabled.checked = data.gmail_api_enabled !== false;
       }
-      const gmailConfigurada = Boolean(data.gmail_sender_email && data.gmail_secret_configured);
-      actualizarBadgeEstadoApi('badgeEstadoGmail', gmailConfigurada);
+      actualizarBadgeEstadoApi('badgeEstadoGmail', window._gmailConfigurada, switchGmailEnabled ? switchGmailEnabled.checked : true);
+
+      // Listeners de cambio en tiempo real para badges
+      if (switchGeminiEnabled && !switchGeminiEnabled._listenerAdded) {
+        switchGeminiEnabled._listenerAdded = true;
+        switchGeminiEnabled.addEventListener('change', () => {
+          actualizarBadgeEstadoApi('badgeEstadoGemini', window._geminiConfigurada, switchGeminiEnabled.checked);
+        });
+      }
+      if (switchOpenAIEnabled && !switchOpenAIEnabled._listenerAdded) {
+        switchOpenAIEnabled._listenerAdded = true;
+        switchOpenAIEnabled.addEventListener('change', () => {
+          actualizarBadgeEstadoApi('badgeEstadoOpenAI', window._openaiConfigurada, switchOpenAIEnabled.checked);
+        });
+      }
+      if (switchClaudeEnabled && !switchClaudeEnabled._listenerAdded) {
+        switchClaudeEnabled._listenerAdded = true;
+        switchClaudeEnabled.addEventListener('change', () => {
+          actualizarBadgeEstadoApi('badgeEstadoClaude', window._claudeConfigurada, switchClaudeEnabled.checked);
+        });
+      }
+      if (switchGmailEnabled && !switchGmailEnabled._listenerAdded) {
+        switchGmailEnabled._listenerAdded = true;
+        switchGmailEnabled.addEventListener('change', () => {
+          actualizarBadgeEstadoApi('badgeEstadoGmail', window._gmailConfigurada, switchGmailEnabled.checked);
+        });
+      }
     }
   } catch (err) {
     console.error('Error cargando ajustes:', err);
@@ -902,15 +938,22 @@ async function guardarAjustesSistema(event) {
         btnFlotante.style.display = data.chatbot_enabled ? 'flex' : 'none';
       }
 
-      // Actualizar badges
+      // Actualizar badges con estado y habilitación
       if (typeof data.gemini_api_key_configured !== 'undefined') {
-        actualizarBadgeEstadoApi('badgeEstadoGemini', Boolean(data.gemini_api_key_configured));
+        window._geminiConfigurada = Boolean(data.gemini_api_key_configured);
+        actualizarBadgeEstadoApi('badgeEstadoGemini', window._geminiConfigurada, data.gemini_enabled !== false);
       }
       if (typeof data.openai_api_key_configured !== 'undefined') {
-        actualizarBadgeEstadoApi('badgeEstadoOpenAI', Boolean(data.openai_api_key_configured));
+        window._openaiConfigurada = Boolean(data.openai_api_key_configured);
+        actualizarBadgeEstadoApi('badgeEstadoOpenAI', window._openaiConfigurada, data.openai_enabled !== false);
       }
       if (typeof data.claude_api_key_configured !== 'undefined') {
-        actualizarBadgeEstadoApi('badgeEstadoClaude', Boolean(data.claude_api_key_configured));
+        window._claudeConfigurada = Boolean(data.claude_api_key_configured);
+        actualizarBadgeEstadoApi('badgeEstadoClaude', window._claudeConfigurada, data.claude_enabled !== false);
+      }
+      if (typeof data.gmail_secret_configured !== 'undefined') {
+        window._gmailConfigurada = Boolean(data.gmail_secret_configured);
+        actualizarBadgeEstadoApi('badgeEstadoGmail', window._gmailConfigurada, data.gmail_api_enabled !== false);
       }
 
       // Solo mantener la notificación flotante (toast) a la derecha
