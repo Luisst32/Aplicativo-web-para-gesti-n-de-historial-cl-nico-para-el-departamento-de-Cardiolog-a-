@@ -166,24 +166,31 @@ def list_view(request):
     from django.db.models.functions import ExtractYear
     from catalog.models import StaffCategory
 
-    # Detección dinámica de años existentes en visitas registradas
-    years_qs = Visit.objects.filter(visit_date__isnull=False).annotate(
+    # Detección dinámica inteligente: ÚNICAMENTE los años de visitas de pacientes activos existentes
+    years_qs = Visit.objects.filter(
+        visit_date__isnull=False,
+        patient__status=Patient.Status.ACTIVE
+    ).annotate(
         v_year=ExtractYear('visit_date')
     ).values_list('v_year', flat=True).distinct()
 
-    years_set = {int(y) for y in years_qs if y is not None}
-    cur_year = timezone.now().year
-    years_set.add(cur_year)
-    years_set.add(cur_year + 1) # Asegurar cohorte futura inmediata (ej. 2027)
+    years_set = {int(y) for y in years_qs if y is not None and 1900 < int(y) < 2200}
+    if not years_set:
+        years_set = {timezone.now().year}
     available_years = sorted(list(years_set), reverse=True)
 
-    # Estamentos institucionales del catálogo activo
+    # Estamentos institucionales presentes en visitas de la cohorte activa
     estamentos_qs = list(
-        StaffCategory.objects.filter(status=StaffCategory.Status.ACTIVE)
-        .values_list('name', flat=True).order_by('name')
+        Visit.objects.filter(
+            patient__status=Patient.Status.ACTIVE,
+            staff_category__isnull=False
+        ).values_list('staff_category__name', flat=True).distinct().order_by('staff_category__name')
     )
     if not estamentos_qs:
-        estamentos_qs = ['PDI', 'AD', 'PAS', 'SERVICIO', 'ESTUDIANTES']
+        estamentos_qs = list(
+            StaffCategory.objects.filter(status=StaffCategory.Status.ACTIVE)
+            .values_list('name', flat=True).order_by('name')
+        )
 
     labels_map = {
         'PDI': 'PDI (Docentes)',

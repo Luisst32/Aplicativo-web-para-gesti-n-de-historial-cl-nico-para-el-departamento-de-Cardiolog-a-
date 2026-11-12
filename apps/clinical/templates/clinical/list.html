@@ -85,12 +85,6 @@
             <option value="all">Todos los Años</option>
             {% for y in available_years %}
             <option value="{{ y }}">{{ y }}</option>
-            {% empty %}
-            <option value="2027">2027</option>
-            <option value="2026">2026</option>
-            <option value="2025">2025</option>
-            <option value="2024">2024</option>
-            <option value="2023">2023</option>
             {% endfor %}
           </select>
         </div>
@@ -101,12 +95,6 @@
             <option value="all">Todos los Estamentos</option>
             {% for est in available_estamentos %}
             <option value="{{ est.code }}">{{ est.label }}</option>
-            {% empty %}
-            <option value="PDI">PDI (Docentes)</option>
-            <option value="AD">AD (Administrativos)</option>
-            <option value="PAS">PAS (Personal de Adm. y Servicios)</option>
-            <option value="SERVICIO">SERVICIO (Apoyo)</option>
-            <option value="ESTUDIANTES">ESTUDIANTES</option>
             {% endfor %}
           </select>
         </div>

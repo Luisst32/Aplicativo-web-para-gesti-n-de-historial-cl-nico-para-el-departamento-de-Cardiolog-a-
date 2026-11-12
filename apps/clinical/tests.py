@@ -138,7 +138,12 @@ class ClinicalCRUDAndIntegrationTests(TestCase):
 
     def test_list_view_dynamic_filters(self):
         self.client.force_login(self.user)
-        # Crear un paciente con visita en 2027
+        # 1. Sin pacientes en 2027, el año 2027 NO debe aparecer en el filtro
+        resp_inicial = self.client.get(reverse('clinical:list'))
+        self.assertEqual(resp_inicial.status_code, 200)
+        self.assertNotIn(2027, resp_inicial.context['available_years'])
+
+        # 2. Al registrar un paciente con visita en 2027, debe detectarse dinámicamente
         patient_2027 = Patient.objects.create(
             institution=self.institution,
             id_card='0928374651',

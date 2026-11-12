@@ -80,35 +80,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 // =========================================================================
 
 /**
- * Detecta dinámicamente los años, estamentos y opciones presentes en la cohorte
- * y en el formulario clínico, asegurando que años futuros (ej. 2027) o años
- * agregados aparezcan automáticamente en los desplegables de filtrado.
+ * Detecta de forma inteligente y exclusiva los años y estamentos presentes
+ * en las fechas y registros de los pacientes que existen en la cohorte.
+ * Si no hay pacientes de 2027, 2027 NO aparece; si se agrega uno con 2027,
+ * se incorpora de inmediato.
  */
 function actualizarOpcionesFiltrosDinamicos() {
   const selAnio = document.getElementById('filtroAnio');
   const selEstamento = document.getElementById('filtroEstamento');
   if (!selAnio && !selEstamento) return;
 
-  // 1. DINAMISMO PARA FILTRO DE AÑO
+  // 1. DINAMISMO INTELIGENTE PARA FILTRO DE AÑO
+  // Solo se agregan los años reales de las visitas/fichas de pacientes que existen
   if (selAnio) {
     const anioSeleccionado = selAnio.value || 'all';
     const aniosSet = new Set();
 
-    // Años estándar base: año actual y año siguiente (ej. 2026, 2027)
-    const curYear = new Date().getFullYear();
-    aniosSet.add(curYear);
-    aniosSet.add(curYear + 1);
-
-    // Leer opciones ya precargadas en el DOM
-    Array.from(selAnio.options).forEach(opt => {
-      const valInt = parseInt(opt.value, 10);
-      if (!isNaN(valInt) && valInt > 1900 && valInt < 2200) {
-        aniosSet.add(valInt);
-      }
-    });
-
-    // Detectar años existentes en la cohorte de pacientes
-    if (Array.isArray(pacientes)) {
+    // Detectar exclusivamente años presentes en los pacientes y sus historiales
+    if (Array.isArray(pacientes) && pacientes.length > 0) {
       pacientes.forEach(p => {
         const yP = anioDePaciente(p);
         if (yP && !isNaN(yP) && yP > 1900 && yP < 2200) {
@@ -131,6 +120,14 @@ function actualizarOpcionesFiltrosDinamicos() {
           }
         }
       });
+    } else {
+      // Si aún no se cargaron pacientes, tomar las opciones del HTML renderizado por el servidor
+      Array.from(selAnio.options).forEach(opt => {
+        const valInt = parseInt(opt.value, 10);
+        if (!isNaN(valInt) && valInt > 1900 && valInt < 2200) {
+          aniosSet.add(valInt);
+        }
+      });
     }
 
     const aniosOrdenados = Array.from(aniosSet).sort((a, b) => b - a);
@@ -150,7 +147,8 @@ function actualizarOpcionesFiltrosDinamicos() {
     }
   }
 
-  // 2. DINAMISMO PARA FILTRO DE ESTAMENTO
+  // 2. DINAMISMO INTELIGENTE PARA FILTRO DE ESTAMENTO
+  // Solo se agregan los estamentos reales de los pacientes que existen
   if (selEstamento) {
     const estamentoSeleccionado = (selEstamento.value || 'all').toUpperCase();
     const estamentosMap = new Map();
@@ -163,27 +161,23 @@ function actualizarOpcionesFiltrosDinamicos() {
       'ESTUDIANTES': 'ESTUDIANTES'
     };
 
-    ['PDI', 'AD', 'PAS', 'SERVICIO', 'ESTUDIANTES'].forEach(code => {
-      estamentosMap.set(code, labelsConocidos[code] || code);
-    });
-
-    // Leer opciones ya precargadas en el DOM
-    Array.from(selEstamento.options).forEach(opt => {
-      if (opt.value && opt.value !== 'all') {
-        const cod = opt.value.trim().toUpperCase();
-        if (!estamentosMap.has(cod)) {
-          estamentosMap.set(cod, opt.textContent.trim() || cod);
-        }
-      }
-    });
-
-    // Detectar estamentos presentes en los pacientes cargados
-    if (Array.isArray(pacientes)) {
+    // Detectar estamentos presentes en los pacientes existentes
+    if (Array.isArray(pacientes) && pacientes.length > 0) {
       pacientes.forEach(p => {
         if (p && p.estamento && typeof p.estamento === 'string') {
           const cod = p.estamento.trim().toUpperCase();
           if (cod && !estamentosMap.has(cod)) {
             estamentosMap.set(cod, labelsConocidos[cod] || cod);
+          }
+        }
+      });
+    } else {
+      // Tomar opciones del HTML renderizado por el servidor
+      Array.from(selEstamento.options).forEach(opt => {
+        if (opt.value && opt.value !== 'all') {
+          const cod = opt.value.trim().toUpperCase();
+          if (!estamentosMap.has(cod)) {
+            estamentosMap.set(cod, opt.textContent.trim() || labelsConocidos[cod] || cod);
           }
         }
       });
