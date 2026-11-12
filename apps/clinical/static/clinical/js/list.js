@@ -962,16 +962,20 @@ function abrirModalEnviarCorreo() {
   if (alerta) alerta.style.display = 'none';
 
   if (arrSeleccionados.length === 1) {
-    const pSel = pacientes.find(p => p.id === arrSeleccionados[0]);
+    const pSel = pacientes.find(p => String(p.id) === String(arrSeleccionados[0]));
     if (pSel) {
+      const nombre = pSel.nombre || pSel.nombre_completo || 'Paciente';
+      const codigo = pSel.codigo || pSel.codigo_estudio || pSel.id;
+      const correo = pSel.correo || pSel.email || '';
+
       if (resumenEl) {
-        resumenEl.innerHTML = `Se adjuntará el PDF oficial de <strong>${pSel.nombre_completo}</strong> (Código: ${pSel.codigo_estudio || pSel.id}).`;
+        resumenEl.innerHTML = `Se adjuntará el PDF oficial de <strong>${nombre}</strong> (Código: ${codigo}).`;
       }
       if (inputDest) {
-        inputDest.value = pSel.email || '';
+        inputDest.value = correo;
       }
       if (inputAsunto) {
-        inputAsunto.value = `Ficha Clínica Cardiológica - ${pSel.nombre_completo} (UNEMI)`;
+        inputAsunto.value = `Ficha Clínica Cardiológica - ${nombre} (UNEMI)`;
       }
     }
   } else {
@@ -981,8 +985,9 @@ function abrirModalEnviarCorreo() {
     if (inputDest) {
       // Recoger correos de los seleccionados que tengan correo
       const correos = pacientes
-        .filter(p => seleccionados.has(p.id) && p.email)
-        .map(p => p.email);
+        .filter(p => (seleccionados.has(p.id) || seleccionados.has(String(p.id))) && (p.correo || p.email))
+        .map(p => p.correo || p.email)
+        .filter(Boolean);
       inputDest.value = correos.join(', ');
     }
     if (inputAsunto) {
@@ -1051,9 +1056,15 @@ async function ejecutarEnvioCorreoFicha() {
       })
     });
 
-    const data = await resp.json();
+    let data = null;
+    try {
+      data = await resp.json();
+    } catch (parseErr) {
+      const errText = await resp.text().catch(() => '');
+      throw new Error(`Error del servidor (${resp.status}): ${errText || 'No se pudo procesar la respuesta'}`);
+    }
 
-    if (resp.ok && data.success) {
+    if (resp.ok && data && data.success) {
       if (alerta) {
         alerta.style.display = 'block';
         alerta.style.background = '#ecfdf5';
@@ -1068,7 +1079,7 @@ async function ejecutarEnvioCorreoFicha() {
         cerrarModalEnviarCorreo();
       }, 1600);
     } else {
-      throw new Error(data.error || 'Ocurrió un error al enviar el correo.');
+      throw new Error((data && data.error) || 'Ocurrió un error al enviar el correo.');
     }
   } catch (err) {
     if (alerta) {

@@ -18,6 +18,7 @@ urlpatterns = [
     # APIs JSON para Ficha Clínica (HU-11, HU-12, HU-13)
     path('api/ficha/guardar/', views.form_save_api, name='api_form_save'),
     path('api/ficha/eliminar/', views.ficha_eliminar_api, name='api_ficha_eliminar'),
+    path('api/ficha/enviar-correo/', views.api_send_patient_sheet_email, name='api_ficha_enviar_correo'),
     path('api/ficha/<str:patient_id>/', views.form_get_api, name='api_form_get'),
 
     # Importación Inteligente de Datos SPSS .SAV
@@ -30,5 +31,4 @@ urlpatterns = [
     # Exportación oficial a PDF (HU-17) y envío por correo
     path('ficha/<int:visit_id>/pdf/', views.export_pdf_view, name='export_pdf'),
     path('ficha/pdf/', views.export_pdf_view, name='export_pdf_query'),
-    path('api/ficha/enviar-correo/', views.api_send_patient_sheet_email, name='api_ficha_enviar_correo'),
 ]

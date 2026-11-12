@@ -107,8 +107,10 @@ def _patient_to_dict(patient, visit=None):
     return {
         "id": str(patient.patient_id),
         "codigo": visit.study_code if (visit and visit.study_code) else str(patient.patient_id),
+        "codigo_estudio": visit.study_code if (visit and visit.study_code) else str(patient.patient_id),
         "cedula": patient.id_card,
         "nombre": patient.full_name,
+        "nombre_completo": patient.full_name,
         "fechaNac": patient.birth_date.isoformat() if patient.birth_date else "",
         "sexo": "H" if (patient.sex and patient.sex.name.lower().startswith('h')) else "M",
         "estamento": visit.staff_category.name if (visit and visit.staff_category) else "PDI",
@@ -118,6 +120,7 @@ def _patient_to_dict(patient, visit=None):
         "provincia": visit.residence_canton.province.name.upper() if (visit and visit.residence_canton and visit.residence_canton.province) else "GUAYAS",
         "telefono": patient.phone or "",
         "correo": patient.email or "",
+        "email": patient.email or "",
         "municipio": patient.birth_canton.name if patient.birth_canton else "Milagro",
         "provincia_nac": patient.birth_canton.province.name.upper() if (patient.birth_canton and patient.birth_canton.province) else "GUAYAS",
         "numeroVisita": visit.visit_number if (visit and visit.visit_number) else 1,
@@ -1632,7 +1635,8 @@ def api_send_patient_sheet_email(request):
         if visit:
             pdf_bytes = generate_clinical_sheet_pdf(visit, is_blank=False)
             code_safe = (visit.study_code or f"V{visit.visit_id}").replace('/', '-').replace(' ', '_')
-            fname = f"Ficha_Clinica_{code_safe}_{visit.patient.last_name1}.pdf"
+            last_name = getattr(visit.patient, 'last_name1', '') or getattr(visit.patient, 'last_name', '') or 'Paciente'
+            fname = f"Ficha_Clinica_{code_safe}_{last_name}.pdf"
             pdf_attachments.append((fname, pdf_bytes))
 
     if not pdf_attachments:
