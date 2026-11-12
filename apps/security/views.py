@@ -406,7 +406,7 @@ def password_reset_request_view(request):
     """
     Solicitud institucional de restablecimiento de contraseña.
     Busca al usuario por correo electrónico o nombre de usuario y le envía
-    un enlace con token criptográfico válido por 24 horas.
+    un enlace con token criptográfico válido por 15 minutos.
     """
     try:
         if request.content_type == 'application/json':

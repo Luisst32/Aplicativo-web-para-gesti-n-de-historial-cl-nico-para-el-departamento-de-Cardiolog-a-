@@ -562,3 +562,51 @@ class PasswordResetFlowTests(TestCase):
         self.assertFalse(self.user.check_password('OldPassword123!'))
         self.assertTrue(self.user.check_password('NewPassword123!'))
 
+        # Subsequent GET to same URL must show expired/invalid card
+        res_expired_get = self.client.get(confirm_url)
+        self.assertEqual(res_expired_get.status_code, 200)
+        self.assertIn('Enlace Expirado o Inválido', res_expired_get.content.decode('utf-8'))
+
+        # Subsequent POST to same URL must be rejected with 400
+        res_expired_post = self.client.post(
+            confirm_url,
+            data=json.dumps({'new_password': 'AnotherPassword123!', 'confirm_password': 'AnotherPassword123!'}),
+            content_type='application/json'
+        )
+        self.assertEqual(res_expired_post.status_code, 400)
+
+    def test_settings_password_reset_timeout_configured(self):
+        from django.conf import settings
+        self.assertEqual(settings.PASSWORD_RESET_TIMEOUT, 900)
+
+    def test_token_expired_after_timeout(self):
+        import datetime
+        from django.conf import settings
+        from django.contrib.auth.tokens import default_token_generator
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+
+        uidb64 = urlsafe_base64_encode(force_bytes(self.user.pk))
+        token = default_token_generator.make_token(self.user)
+        confirm_url = reverse('security:password_reset_confirm', kwargs={'uidb64': uidb64, 'token': token})
+
+        # Token created right now should be valid
+        res_fresh = self.client.get(confirm_url)
+        self.assertEqual(res_fresh.status_code, 200)
+        self.assertIn('Nueva Contraseña', res_fresh.content.decode('utf-8'))
+
+        # When checking with time advanced beyond PASSWORD_RESET_TIMEOUT (15m + 1s = 901s)
+        future_time = default_token_generator._now() + datetime.timedelta(seconds=901)
+        with patch.object(default_token_generator, '_now', return_value=future_time):
+            res_expired = self.client.get(confirm_url)
+            self.assertEqual(res_expired.status_code, 200)
+            self.assertIn('Enlace Expirado o Inválido', res_expired.content.decode('utf-8'))
+
+            res_post_expired = self.client.post(
+                confirm_url,
+                data=json.dumps({'new_password': 'NewPassword123!', 'confirm_password': 'NewPassword123!'}),
+                content_type='application/json'
+            )
+            self.assertEqual(res_post_expired.status_code, 400)
+            self.assertIn('ha caducado', res_post_expired.json()['message'])
+

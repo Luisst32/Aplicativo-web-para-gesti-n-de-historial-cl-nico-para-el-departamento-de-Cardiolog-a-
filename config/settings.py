@@ -149,6 +149,9 @@ LOGIN_URL = 'security:login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'security:login'
 
+# Tiempo de expiración estricto para enlaces de restablecimiento de contraseña (15 minutos = 900 segundos)
+PASSWORD_RESET_TIMEOUT = int(os.getenv('PASSWORD_RESET_TIMEOUT', 900))
+
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration

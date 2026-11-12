@@ -116,7 +116,7 @@ def send_password_reset_email(user, reset_url: str) -> dict:
 
         <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px 14px; border-radius: 4px; margin-bottom: 24px;">
           <p style="margin: 0; font-size: 12.5px; color: #1e40af; line-height: 1.5;">
-            <strong>Nota:</strong> Este enlace expirará en 24 horas. Si no solicitaste este cambio, puedes ignorar este correo.
+            <strong>Nota:</strong> Este enlace expirará en 15 minutos. Si no solicitaste este cambio, puedes ignorar este correo.
           </p>
         </div>
 
@@ -144,7 +144,7 @@ Recibimos una solicitud para restablecer la contraseña de tu cuenta en CARDIOUN
 Para crear una nueva contraseña, ingresa al siguiente enlace:
 {reset_url}
 
-Este enlace expirará en 24 horas. Si no realizaste esta solicitud, puedes ignorar este mensaje.
+Este enlace expirará en 15 minutos. Si no realizaste esta solicitud, puedes ignorar este mensaje.
 
 Atentamente,
 Equipo CARDIOUNEMI
