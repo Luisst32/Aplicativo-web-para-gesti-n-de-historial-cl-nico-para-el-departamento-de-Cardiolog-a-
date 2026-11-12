@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <title>Acceso Seguro a Documento · CARDIOUNEMI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1b73bc;
+      --primary-dark: #1b2a41;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .share-container {
+      max-width: 480px;
+      width: 100%;
+      background: var(--card-bg);
+      border-radius: 18px;
+      box-shadow: 0 12px 36px rgba(15, 23, 42, 0.08);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      animation: fadeIn 0.3s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .share-header {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+      padding: 28px 24px;
+      text-align: center;
+      color: #ffffff;
+    }
+    .share-header h1 {
+      font-size: 1.28rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      margin: 0;
+    }
+    .share-header p {
+      font-size: 0.8rem;
+      opacity: 0.88;
+      margin-top: 4px;
+    }
+    .share-body {
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .icon-wrapper {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #eff6ff;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+    }
+    .instructions {
+      text-align: center;
+      font-size: 0.9rem;
+      line-height: 1.55;
+      color: #334155;
+    }
+    .alert-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: #991b1b;
+      font-size: 0.84rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .note-box {
+      background: #f8fafc;
+      border-left: 3px solid var(--primary);
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-size: 0.82rem;
+      color: #475569;
+    }
+    .code-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+    .code-input-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #1e293b;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    .code-input {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: 12px;
+      text-align: center;
+      width: 100%;
+      max-width: 280px;
+      padding: 12px 14px 12px 22px;
+      border-radius: 10px;
+      border: 2px solid #cbd5e1;
+      background: #ffffff;
+      color: #0f172a;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    .code-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(27, 115, 188, 0.15);
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 13px 20px;
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 9px;
+      font-size: 0.94rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 2px 8px rgba(27, 115, 188, 0.35);
+      transition: all 0.2s ease;
+    }
+    .btn-submit:hover {
+      background: #145d99;
+      transform: translateY(-1px);
+    }
+    .security-notice {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.45;
+    }
+    .share-footer {
+      padding: 14px 24px;
+      background: #f8fafc;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="share-container">
+    <div class="share-header">
+      <h1>CARDIOUNEMI</h1>
+      <p>Estudio Cardiovascular Oficial · Universidad Estatal de Milagro</p>
+    </div>
+
+    <div class="share-body">
+      <div class="icon-wrapper">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </div>
+
+      <div class="instructions">
+        <strong style="font-size: 1.05rem; display: block; margin-bottom: 4px; color: #0f172a;">
+          Acceso a Documento Clínico Protegido
+        </strong>
+        Ingrese el código de acceso de 6 dígitos que le proporcionó su especialista por un canal seguro para validar y descargar su documento oficial.
+      </div>
+
+      {% if error_msg %}
+        <div class="alert-error">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="flex-shrink:0;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <div>{{ error_msg }}</div>
+        </div>
+      {% endif %}
+
+      {% if safe_note %}
+        <div class="note-box">
+          <strong style="color: #1e293b; display: block; margin-bottom: 2px;">Observaciones del Especialista:</strong>
+          <em>{{ safe_note }}</em>
+        </div>
+      {% endif %}
+
+      <form method="POST" action="">
+        {% csrf_token %}
+        <div class="code-input-group">
+          <label for="codeInput" class="code-input-label">Código de Verificación (6 Dígitos)</label>
+          <input
+            type="text"
+            id="codeInput"
+            name="code"
+            class="code-input"
+            maxlength="6"
+            pattern="[0-9]{6}"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            placeholder="······"
+            autofocus
+            required
+          >
+        </div>
+
+        <button type="submit" class="btn-submit" style="margin-top: 18px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Validar Código y Descargar Documento</span>
+        </button>
+      </form>
+
+      <div class="security-notice">
+        ⏱️ Este enlace caduca el <strong>{{ expires_display }}</strong>.<br>
+        Dispone de <strong>{{ attempts_left }}</strong> intento(s) antes de que el enlace se inhabilite permanentemente.
+      </div>
+    </div>
+
+    <div class="share-footer">
+      Este sistema cumple con los estándares institucionales de confidencialidad bioética médica.
+    </div>
+  </div>
+
+  <script>
+    // Limitar entrada exclusivamente a dígitos numéricos
+    const input = document.getElementById('codeInput');
+    if (input) {
+      input.addEventListener('input', function(e) {
+        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+      });
+    }
+  </script>
+</body>
+</html>
+

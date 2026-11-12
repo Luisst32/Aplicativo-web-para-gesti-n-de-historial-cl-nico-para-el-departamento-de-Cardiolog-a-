@@ -938,8 +938,26 @@ function exportarPDFPacienteActivo() {
 }
 
 // =========================================================================
-// ENVÍO DE FICHA OFICIAL POR CORREO ELECTRÓNICO (MODAL REUTILIZABLE)
+// ENVÍO DE ENLACE SEGURO CON CÓDIGO TEMPORAL (FLUJO SECURE SHARE)
 // =========================================================================
+
+// Memoria estrictamente efímera de códigos (NUNCA en localStorage/sessionStorage)
+let codigosAccesoEnMemoria = [];
+let codigosCopiadosSet = new Set();
+
+function actualizarContadorNotas(textarea) {
+  const countEl = document.getElementById('correoNotasCharCount');
+  if (countEl && textarea) {
+    countEl.textContent = `${textarea.value.length} / 300`;
+  }
+}
+
+function limpiarMemoriaCodigos() {
+  codigosAccesoEnMemoria = [];
+  codigosCopiadosSet.clear();
+  const listEl = document.getElementById('listaCodigosGenerados');
+  if (listEl) listEl.innerHTML = '';
+}
 
 function abrirModalEnviarCorreo() {
   const modal = document.getElementById('modalEnviarFichaCorreo');
@@ -948,50 +966,57 @@ function abrirModalEnviarCorreo() {
   const arrSeleccionados = Array.from(seleccionados);
   if (arrSeleccionados.length === 0) {
     if (typeof mostrarNotificacion === 'function') {
-      mostrarNotificacion('Seleccione al menos una ficha para enviar por correo.', 'warning');
+      mostrarNotificacion('Seleccione una ficha clínica para generar el enlace seguro.', 'warning');
     } else {
-      alert('Seleccione al menos una ficha para enviar por correo.');
+      alert('Seleccione una ficha clínica para generar el enlace seguro.');
     }
     return;
   }
 
+  // Limpiar códigos previos en memoria y reiniciar vistas
+  limpiarMemoriaCodigos();
+  const vistaForm = document.getElementById('vistaFormularioEnvioCorreo');
+  const vistaRes = document.getElementById('vistaResultadosCodigos');
+  if (vistaForm) vistaForm.style.display = 'flex';
+  if (vistaRes) vistaRes.style.display = 'none';
+
   const resumenEl = document.getElementById('correoResumenFichas');
   const inputDest = document.getElementById('correoDestinatariosInput');
   const inputAsunto = document.getElementById('correoAsuntoInput');
+  const inputNotas = document.getElementById('correoNotasInput');
+  const selectCad = document.getElementById('correoCaducidadSelect');
   const alerta = document.getElementById('correoAlertaEstado');
+
   if (alerta) alerta.style.display = 'none';
+  if (selectCad) selectCad.value = '48';
+  if (inputNotas) {
+    inputNotas.value = '';
+    actualizarContadorNotas(inputNotas);
+  }
+
+  // Asunto estrictamente GENÉRICO (sin datos del participante)
+  if (inputAsunto) {
+    inputAsunto.value = 'Documento disponible en portal seguro';
+  }
 
   if (arrSeleccionados.length === 1) {
     const pSel = pacientes.find(p => String(p.id) === String(arrSeleccionados[0]));
-    if (pSel) {
-      const nombre = pSel.nombre || pSel.nombre_completo || 'Paciente';
-      const codigo = pSel.codigo || pSel.codigo_estudio || pSel.id;
-      const correo = pSel.correo || pSel.email || '';
-
-      if (resumenEl) {
-        resumenEl.innerHTML = `Se adjuntará el PDF oficial de <strong>${nombre}</strong> (Código: ${codigo}).`;
-      }
-      if (inputDest) {
-        inputDest.value = correo;
-      }
-      if (inputAsunto) {
-        inputAsunto.value = `Ficha Clínica Cardiológica - ${nombre} (UNEMI)`;
-      }
+    if (resumenEl) {
+      resumenEl.innerHTML = `Se generará un enlace protegido individual para la ficha seleccionada.`;
+    }
+    if (inputDest) {
+      inputDest.value = (pSel && (pSel.correo || pSel.email)) ? (pSel.correo || pSel.email) : '';
     }
   } else {
     if (resumenEl) {
-      resumenEl.innerHTML = `Se adjuntarán los PDFs oficiales de <strong>${arrSeleccionados.length} pacientes seleccionados</strong>.`;
+      resumenEl.innerHTML = `Se generarán enlaces protegidos para los destinatarios indicados (máx. 5).`;
     }
     if (inputDest) {
-      // Recoger correos de los seleccionados que tengan correo
       const correos = pacientes
         .filter(p => (seleccionados.has(p.id) || seleccionados.has(String(p.id))) && (p.correo || p.email))
         .map(p => p.correo || p.email)
-        .filter(Boolean);
+        .slice(0, 5);
       inputDest.value = correos.join(', ');
-    }
-    if (inputAsunto) {
-      inputAsunto.value = `Fichas Clínicas Cardiológicas - CARDIOUNEMI (${arrSeleccionados.length} expedientes)`;
     }
   }
 
@@ -1000,6 +1025,7 @@ function abrirModalEnviarCorreo() {
 }
 
 function cerrarModalEnviarCorreo() {
+  limpiarMemoriaCodigos();
   const modal = document.getElementById('modalEnviarFichaCorreo');
   if (modal) modal.style.display = 'none';
 }
@@ -1008,6 +1034,7 @@ async function ejecutarEnvioCorreoFicha() {
   const inputDest = document.getElementById('correoDestinatariosInput');
   const inputAsunto = document.getElementById('correoAsuntoInput');
   const inputNotas = document.getElementById('correoNotasInput');
+  const selectCad = document.getElementById('correoCaducidadSelect');
   const btnEnviar = document.getElementById('btnEjecutarEnvioCorreo');
   const btnTxt = document.getElementById('btnTxtEnviarCorreo');
   const alerta = document.getElementById('correoAlertaEstado');
@@ -1026,17 +1053,31 @@ async function ejecutarEnvioCorreoFicha() {
   }
 
   const destinatarios = destVal.split(',').map(s => s.trim()).filter(Boolean);
+  if (destinatarios.length > 5) {
+    if (alerta) {
+      alerta.style.display = 'block';
+      alerta.style.background = '#fef2f2';
+      alerta.style.color = '#991b1b';
+      alerta.style.border = '1px solid #fecaca';
+      alerta.textContent = 'No puede ingresar más de 5 correos destinatarios por envío.';
+    }
+    inputDest?.focus();
+    return;
+  }
+
   const arrSeleccionados = Array.from(seleccionados);
+  const durationHours = parseInt(selectCad?.value || '48', 10);
+  const notasSanitizadas = (inputNotas?.value || '').slice(0, 300);
 
   // Estado de carga en el botón
   if (btnEnviar) btnEnviar.disabled = true;
-  if (btnTxt) btnTxt.textContent = 'Enviando...';
+  if (btnTxt) btnTxt.textContent = 'Generando enlaces y enviando...';
   if (alerta) {
     alerta.style.display = 'block';
     alerta.style.background = '#f0f9ff';
     alerta.style.color = '#0369a1';
     alerta.style.border = '1px solid #bae6fd';
-    alerta.textContent = 'Generando documentos PDF y despachando vía SMTP institucional...';
+    alerta.textContent = 'Creando tokens con hash SHA-256, códigos de 6 dígitos y enviando notificaciones seguras...';
   }
 
   try {
@@ -1051,8 +1092,9 @@ async function ejecutarEnvioCorreoFicha() {
       body: JSON.stringify({
         patient_ids: arrSeleccionados,
         recipients: destinatarios,
-        subject: inputAsunto?.value || 'Ficha Clínica Cardiológica - CARDIOUNEMI',
-        notes: inputNotas?.value || ''
+        duration_hours: durationHours,
+        subject: inputAsunto?.value || 'Documento disponible en portal seguro',
+        notes: notasSanitizadas
       })
     });
 
@@ -1065,21 +1107,24 @@ async function ejecutarEnvioCorreoFicha() {
     }
 
     if (resp.ok && data && data.success) {
-      if (alerta) {
-        alerta.style.display = 'block';
-        alerta.style.background = '#ecfdf5';
-        alerta.style.color = '#065f46';
-        alerta.style.border = '1px solid #a7f3d0';
-        alerta.textContent = data.message || 'Ficha enviada exitosamente por correo.';
-      }
+      // Guardar códigos estrictamente en memoria volátil
+      codigosAccesoEnMemoria = data.results || [];
+      codigosCopiadosSet.clear();
+
+      // Renderizar vista de resultados con códigos
+      renderizarResultadosCodigos(data.results || []);
+
+      // Cambiar a Vista 2 dentro del modal
+      const vistaForm = document.getElementById('vistaFormularioEnvioCorreo');
+      const vistaRes = document.getElementById('vistaResultadosCodigos');
+      if (vistaForm) vistaForm.style.display = 'none';
+      if (vistaRes) vistaRes.style.display = 'flex';
+
       if (typeof mostrarNotificacion === 'function') {
-        mostrarNotificacion(data.message || 'Ficha enviada exitosamente por correo.', 'success');
+        mostrarNotificacion(data.message || 'Enlaces seguros generados exitosamente.', 'success');
       }
-      setTimeout(() => {
-        cerrarModalEnviarCorreo();
-      }, 1600);
     } else {
-      throw new Error((data && data.error) || 'Ocurrió un error al enviar el correo.');
+      throw new Error((data && data.error) || 'Ocurrió un error al despachar los enlaces seguros.');
     }
   } catch (err) {
     if (alerta) {
@@ -1091,6 +1136,119 @@ async function ejecutarEnvioCorreoFicha() {
     }
   } finally {
     if (btnEnviar) btnEnviar.disabled = false;
-    if (btnTxt) btnTxt.textContent = 'Enviar Correo';
+    if (btnTxt) btnTxt.textContent = 'Enviar enlace seguro';
   }
+}
+
+function renderizarResultadosCodigos(results) {
+  const container = document.getElementById('listaCodigosGenerados');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  results.forEach((r, idx) => {
+    const card = document.createElement('div');
+    card.style.cssText = 'background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;';
+
+    if (r.success && r.code) {
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div style="font-size:0.84rem; font-weight:700; color:#1e293b;">
+            ✉️ ${r.email}
+          </div>
+          <span style="font-size:0.75rem; color:#059669; background:#ecfdf5; border:1px solid #a7f3d0; padding:2px 8px; border-radius:12px; font-weight:600;">
+            Enviado con éxito
+          </span>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 14px;">
+          <div>
+            <div style="font-size:0.7rem; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Código de Acceso</div>
+            <div style="font-family:'JetBrains Mono', monospace, courier; font-size:1.6rem; font-weight:800; letter-spacing:5px; color:#0f172a;" id="codeText_${idx}">
+              ${r.code}
+            </div>
+          </div>
+          <button type="button" class="btn" onclick="copiarCodigoAcceso(this, '${r.code}', '${r.email}')" style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; font-size:0.82rem; font-weight:700; border-radius:6px; border:1px solid #0284c7; background:#0284c7; color:#ffffff; cursor:pointer; transition:all 0.15s ease;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span>Copiar código</span>
+          </button>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:#64748b;">
+          <span>⏱️ Caduca el: <strong>${r.expires_display || '48 horas'}</strong></span>
+          <span>Máx. 5 intentos · 3 descargas</span>
+        </div>
+      `;
+    } else {
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-size:0.84rem; font-weight:700; color:#1e293b;">
+            ✉️ ${r.email}
+          </div>
+          <span style="font-size:0.75rem; color:#dc2626; background:#fef2f2; border:1px solid #fecaca; padding:2px 8px; border-radius:12px; font-weight:600;">
+            Error de envío
+          </span>
+        </div>
+        <div style="font-size:0.78rem; color:#991b1b; background:#fff1f2; padding:8px 12px; border-radius:6px;">
+          No se generó código para este destinatario debido al fallo de entrega: ${r.error || 'Fallo de entrega SMTP'}.
+        </div>
+      `;
+    }
+
+    container.appendChild(card);
+  });
+}
+
+function copiarCodigoAcceso(btn, codigo, email) {
+  if (!codigo) return;
+  navigator.clipboard.writeText(codigo).then(() => {
+    codigosCopiadosSet.add(email);
+    const span = btn.querySelector('span');
+    const originalText = span ? span.textContent : 'Copiar código';
+    btn.style.background = '#059669';
+    btn.style.borderColor = '#059669';
+    if (span) span.textContent = '✓ ¡Copiado!';
+    setTimeout(() => {
+      btn.style.background = '#0284c7';
+      btn.style.borderColor = '#0284c7';
+      if (span) span.textContent = originalText;
+    }, 2000);
+  }).catch(() => {
+    prompt('Copie manualmente el código:', codigo);
+    codigosCopiadosSet.add(email);
+  });
+}
+
+function ocultarYLimpiarCodigos() {
+  const exitosos = codigosAccesoEnMemoria.filter(c => c.success);
+  const algunoCopiado = exitosos.length > 0 && exitosos.some(c => codigosCopiadosSet.has(c.email));
+
+  if (exitosos.length > 0 && !algunoCopiado) {
+    const confirmar = confirm('¿Está seguro de ocultar y limpiar los códigos sin haberlos copiado? No se podrán recuperar después.');
+    if (!confirmar) return;
+  }
+
+  limpiarMemoriaCodigos();
+  cerrarModalEnviarCorreo();
+}
+
+function enviarOtraFichaDesdeModal() {
+  limpiarMemoriaCodigos();
+  const inputDest = document.getElementById('correoDestinatariosInput');
+  const inputNotas = document.getElementById('correoNotasInput');
+  const alerta = document.getElementById('correoAlertaEstado');
+
+  if (inputDest) inputDest.value = '';
+  if (inputNotas) {
+    inputNotas.value = '';
+    actualizarContadorNotas(inputNotas);
+  }
+  if (alerta) alerta.style.display = 'none';
+
+  const vistaForm = document.getElementById('vistaFormularioEnvioCorreo');
+  const vistaRes = document.getElementById('vistaResultadosCodigos');
+  if (vistaForm) vistaForm.style.display = 'flex';
+  if (vistaRes) vistaRes.style.display = 'none';
+
+  if (inputDest) setTimeout(() => inputDest.focus(), 150);
 }

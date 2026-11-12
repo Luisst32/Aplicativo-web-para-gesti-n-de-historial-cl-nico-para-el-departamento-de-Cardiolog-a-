@@ -32,7 +32,7 @@ class RequireLoginMiddleware:
             ):
                 return self.get_response(request)
 
-            # Rutas de restablecimiento de contraseña públicas para usuarios no autenticados
+            # Rutas públicas para usuarios no autenticados (reset de contraseña y portal de enlace seguro de ficha)
             try:
                 match = resolve(path)
                 if match.namespace == 'security' and match.url_name in (
@@ -41,6 +41,8 @@ class RequireLoginMiddleware:
                     'password_reset_request',
                     'password_reset_confirm',
                 ):
+                    return self.get_response(request)
+                if match.namespace == 'clinical' and match.url_name == 'public_secure_share':
                     return self.get_response(request)
             except Resolver404:
                 pass

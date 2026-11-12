@@ -364,70 +364,159 @@
   </div>
 
   <!-- =========================================================================
-       MODAL: ENVIAR FICHA CLÍNICA OFICIAL POR CORREO ELECTRÓNICO
+       MODAL: ENVIAR ENLACE SEGURO DE FICHA CLÍNICA (PORTAL SEGURO CON CÓDIGO)
        ========================================================================= -->
   <div class="modal-overlay" id="modalEnviarFichaCorreo" style="display:none; align-items:center; justify-content:center;">
-    <div class="modal-card" style="max-width: 560px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28); background: #ffffff;">
+    <div class="modal-card" style="max-width: 580px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28); background: #ffffff;">
+      
+      <!-- ENCABEZADO DEL MODAL -->
       <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 22px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
         <div style="display:flex; align-items:center; gap:12px;">
           <div style="width: 38px; height: 38px; border-radius: 8px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
           </div>
           <div>
-            <h3 class="modal-title" style="margin:0; font-size:1.12rem; font-weight:800; color:#1b2a41;">Enviar Ficha por Correo</h3>
-            <p style="margin:2px 0 0 0; font-size:0.78rem; color:#64748b;">Despacho de Cuestionario Oficial UNEMI en PDF adjunto</p>
+            <h3 class="modal-title" style="margin:0; font-size:1.12rem; font-weight:800; color:#1b2a41;">Enviar Enlace Seguro de Ficha</h3>
+            <p style="margin:2px 0 0 0; font-size:0.78rem; color:#64748b;">Acceso protegido temporal con código de verificación</p>
           </div>
         </div>
         <button type="button" class="modal-close-btn" onclick="cerrarModalEnviarCorreo()" title="Cerrar ventana">&times;</button>
       </div>
 
-      <div class="modal-body" style="padding: 20px 24px; display:flex; flex-direction:column; gap:16px; overflow-y:auto; flex:1;">
-        <!-- Indicador de Ficha Seleccionada -->
-        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 14px; display:flex; align-items:center; gap:10px;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-          <div style="font-size:0.83rem; color:#1e40af;" id="correoResumenFichas">
-            Se adjuntará el PDF oficial de <strong>1 paciente seleccionado</strong>.
+      <!-- VISTA 1: FORMULARIO DE ENVÍO -->
+      <div id="vistaFormularioEnvioCorreo" style="display:flex; flex-direction:column; flex:1; overflow-y:auto;">
+        <div class="modal-body" style="padding: 20px 24px; display:flex; flex-direction:column; gap:15px; overflow-y:auto; flex:1;">
+          <!-- Indicador Informativo -->
+          <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:11px 14px; display:flex; align-items:center; gap:10px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <div style="font-size:0.83rem; color:#1e40af;" id="correoResumenFichas">
+              Se generará un enlace protegido individual para la ficha seleccionada.
+            </div>
           </div>
+
+          <!-- Campo Destinatarios (Máximo 5) -->
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+              <label for="correoDestinatariosInput" style="font-size:0.82rem; font-weight:700; color:#1e293b;">
+                Correos Destinatarios *
+              </label>
+              <span style="font-size:0.74rem; font-weight:600; color:#64748b;">Máximo 5 correos</span>
+            </div>
+            <input type="text" id="correoDestinatariosInput" class="form-input" placeholder="destinatario1@correo.com, destinatario2@unemi.edu.ec" style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:7px; border:1.5px solid #cbd5e1; font-size:0.88rem;" required>
+            <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">Cada destinatario recibirá un enlace independiente con su propio código de verificación.</span>
+          </div>
+
+          <!-- Selector Caduca en -->
+          <div>
+            <label for="correoCaducidadSelect" style="display:block; font-size:0.82rem; font-weight:700; color:#1e293b; margin-bottom:5px;">
+              Caduca en *
+            </label>
+            <select id="correoCaducidadSelect" class="form-input" style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:7px; border:1.5px solid #cbd5e1; font-size:0.88rem; background:#ffffff; font-weight:500;">
+              <option value="24">24 horas (1 día)</option>
+              <option value="48" selected>48 horas (2 días - Recomendado)</option>
+              <option value="72">72 horas (3 días)</option>
+              <option value="168">7 días (1 semana)</option>
+            </select>
+            <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">Máximo de 5 intentos fallidos y hasta 3 descargas por enlace.</span>
+          </div>
+
+          <!-- Campo Asunto (Genérico) -->
+          <div>
+            <label for="correoAsuntoInput" style="display:block; font-size:0.82rem; font-weight:700; color:#1e293b; margin-bottom:5px;">
+              Asunto del Mensaje
+            </label>
+            <input type="text" id="correoAsuntoInput" class="form-input" value="Documento disponible en portal seguro" style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:7px; border:1.5px solid #cbd5e1; font-size:0.88rem;">
+            <span style="font-size:0.74rem; color:#64748b; margin-top:3px; display:block;">Asunto genérico sin nombres ni datos clínicos por protección de privacidad.</span>
+          </div>
+
+          <!-- Campo Observaciones / Mensaje Adicional (Limitado a 300 caracteres con advertencia) -->
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+              <label for="correoNotasInput" style="font-size:0.82rem; font-weight:700; color:#1e293b;">
+                Observaciones o Mensaje Adicional (Opcional)
+              </label>
+              <span id="correoNotasCharCount" style="font-size:0.73rem; color:#64748b; font-weight:600;">0 / 300</span>
+            </div>
+
+            <!-- Advertencia visible de canal no seguro -->
+            <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:6px; padding:7px 11px; margin-bottom:6px; display:flex; align-items:center; gap:8px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.2" style="flex-shrink:0;">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <span style="font-size:0.75rem; color:#92400e; font-weight:600; line-height:1.35;">
+                No escriba datos clínicos ni identificadores del paciente; el correo no es un canal seguro.
+              </span>
+            </div>
+
+            <textarea id="correoNotasInput" class="form-input" rows="2" maxlength="300" oninput="actualizarContadorNotas(this)" placeholder="Instrucciones generales para el destinatario..." style="width:100%; box-sizing:border-box; padding:8px 12px; border-radius:7px; border:1.5px solid #cbd5e1; font-size:0.85rem; font-family:inherit; resize:vertical;"></textarea>
+          </div>
+
+          <!-- Alerta de Estado / Errores -->
+          <div id="correoAlertaEstado" style="display:none; padding:10px 14px; border-radius:7px; font-size:0.83rem;"></div>
         </div>
 
-        <!-- Campo Destinatarios -->
-        <div>
-          <label for="correoDestinatariosInput" style="display:block; font-size:0.82rem; font-weight:700; color:#1e293b; margin-bottom:5px;">
-            Correos Destinatarios *
-          </label>
-          <input type="text" id="correoDestinatariosInput" class="form-input" placeholder="ejemplo@unemi.edu.ec, cardiologo@hospital.com" style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:7px; border:1.5px solid #cbd5e1; font-size:0.88rem;" required>
-          <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">Puedes ingresar una o varias direcciones separadas por comas (,).</span>
+        <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 22px; background:#f8fafc; border-top:1px solid #e2e8f0;">
+          <button type="button" class="btn btn-modal-cancel" onclick="cerrarModalEnviarCorreo()" style="display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:8px 18px; font-size:0.88rem; font-weight:600; border-radius:8px; border:1.5px solid #cbd5e1; background:#ffffff; color:#475569; cursor:pointer; transition:all 0.2s ease;">
+            Cancelar
+          </button>
+          <button type="button" class="btn btn-modal-primary" id="btnEjecutarEnvioCorreo" onclick="ejecutarEnvioCorreoFicha()" style="display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:8px 22px; font-size:0.88rem; font-weight:700; border-radius:8px; border:1px solid #0284c7; background:#0284c7; color:#ffffff; cursor:pointer; transition:all 0.2s ease; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+            <span id="btnTxtEnviarCorreo">Enviar enlace seguro</span>
+          </button>
         </div>
-
-        <!-- Campo Asunto -->
-        <div>
-          <label for="correoAsuntoInput" style="display:block; font-size:0.82rem; font-weight:700; color:#1e293b; margin-bottom:5px;">
-            Asunto del Mensaje
-          </label>
-          <input type="text" id="correoAsuntoInput" class="form-input" value="Ficha Clínica Cardiológica - CARDIOUNEMI" style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:7px; border:1.5px solid #cbd5e1; font-size:0.88rem;">
-        </div>
-
-        <!-- Campo Mensaje / Notas -->
-        <div>
-          <label for="correoNotasInput" style="display:block; font-size:0.82rem; font-weight:700; color:#1e293b; margin-bottom:5px;">
-            Observaciones o Mensaje Adicional (Opcional)
-          </label>
-          <textarea id="correoNotasInput" class="form-input" rows="3" placeholder="Comentarios clínicos, indicaciones o notas para el destinatario..." style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:7px; border:1.5px solid #cbd5e1; font-size:0.85rem; font-family:inherit; resize:vertical;"></textarea>
-        </div>
-
-        <!-- Alerta de Estado / Errores -->
-        <div id="correoAlertaEstado" style="display:none; padding:10px 14px; border-radius:7px; font-size:0.83rem;"></div>
       </div>
 
-      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 22px; background:#f8fafc; border-top:1px solid #e2e8f0;">
-        <button type="button" class="btn btn-modal-cancel" onclick="cerrarModalEnviarCorreo()" style="display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:8px 18px; font-size:0.88rem; font-weight:600; border-radius:8px; border:1.5px solid #cbd5e1; background:#ffffff; color:#475569; cursor:pointer; transition:all 0.2s ease;">
-          Cancelar
-        </button>
-        <button type="button" class="btn btn-modal-primary" id="btnEjecutarEnvioCorreo" onclick="ejecutarEnvioCorreoFicha()" style="display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:8px 22px; font-size:0.88rem; font-weight:700; border-radius:8px; border:1px solid #0284c7; background:#0284c7; color:#ffffff; cursor:pointer; transition:all 0.2s ease; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-          <span id="btnTxtEnviarCorreo">Enviar Correo</span>
-        </button>
+      <!-- VISTA 2: RESULTADO CON CÓDIGOS DE ACCESO (MUESTRA ÚNICA EN MEMORIA) -->
+      <div id="vistaResultadosCodigos" style="display:none; flex-direction:column; flex:1; overflow-y:auto;">
+        <div class="modal-body" style="padding: 22px 24px; display:flex; flex-direction:column; gap:16px; overflow-y:auto; flex:1;">
+          
+          <div style="background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; padding:12px 14px; display:flex; align-items:center; gap:10px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" style="flex-shrink:0;">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <div>
+              <strong style="color:#065f46; font-size:0.9rem; display:block;">Enlaces Seguros Enviados Exitosamente</strong>
+              <span style="font-size:0.78rem; color:#047857;">Se despacharon los enlaces protegidos. Cada destinatario debe recibir su código de 6 dígitos para poder descargar el documento.</span>
+            </div>
+          </div>
+
+          <!-- Contenedor dinámico de códigos por destinatario -->
+          <div id="listaCodigosGenerados" style="display:flex; flex-direction:column; gap:12px;"></div>
+
+          <!-- Aviso de seguridad obligatorio -->
+          <div style="background:#fff7ed; border-left:4px solid #ea580c; border-radius:4px; padding:12px 14px; margin-top:4px;">
+            <div style="display:flex; align-items:flex-start; gap:8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2.2" style="flex-shrink:0; margin-top:2px;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <div style="font-size:0.8rem; color:#9a3412; line-height:1.45;">
+                <strong>Entregue este código por otro medio</strong> (en persona, llamada o WhatsApp). <strong>No lo envíe por correo.</strong> Solo se muestra ahora y no podrá ser recuperado después ya que en la base de datos únicamente se almacena su huella criptográfica.
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:14px 22px; background:#f8fafc; border-top:1px solid #e2e8f0;">
+          <button type="button" class="btn" onclick="enviarOtraFichaDesdeModal()" style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; font-size:0.85rem; font-weight:600; border-radius:8px; border:1.5px solid #cbd5e1; background:#ffffff; color:#334155; cursor:pointer;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+            <span>Enviar otra ficha</span>
+          </button>
+          <button type="button" class="btn btn-modal-primary" onclick="ocultarYLimpiarCodigos()" style="display:inline-flex; align-items:center; gap:8px; padding:8px 20px; font-size:0.88rem; font-weight:700; border-radius:8px; border:1px solid #1e293b; background:#1e293b; color:#ffffff; cursor:pointer;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+            <span>Ocultar y limpiar códigos</span>
+          </button>
+        </div>
       </div>
+
     </div>
   </div>
 
@@ -435,6 +524,6 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261111_10"></script>
-  <script src="{% static 'clinical/js/list.js' %}?v=20261111_10"></script>
+  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261111_11"></script>
+  <script src="{% static 'clinical/js/list.js' %}?v=20261111_11"></script>
 {% endblock %}

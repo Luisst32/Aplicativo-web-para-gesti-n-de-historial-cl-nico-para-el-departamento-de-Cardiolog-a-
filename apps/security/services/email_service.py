@@ -1,5 +1,6 @@
 import logging
 import smtplib
+import html
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
@@ -332,3 +333,158 @@ Universidad Estatal de Milagro (UNEMI)
             return {"success": django_ok, "smtp_delivered": False, "recipients": clean_recipients, "error": "; ".join(smtp_errors)}
 
     return {"success": django_ok, "smtp_delivered": False, "recipients": clean_recipients, "note": "Enviado por consola/backend por falta de SMTP activo"}
+
+
+def send_secure_share_link_email(
+    recipient_email: str,
+    access_url: str,
+    expires_at,
+    note_message: str = '',
+    subject: str = None,
+    sender_user=None
+) -> dict:
+    """
+    Envía un correo institucional 100% GENÉRICO y SEGURO con enlace único de acceso.
+    NO contiene nombres, cédulas ni datos clínicos del paciente.
+    NO adjunta ningún archivo (el PDF se generará en el servidor tras validar el código).
+    """
+    clean_email = (recipient_email or '').strip()
+    if not clean_email or '@' not in clean_email:
+        return {"success": False, "error": "Dirección de correo inválida."}
+
+    subj = (subject or "Documento disponible en portal seguro").strip()
+    if not subj:
+        subj = "Documento disponible en portal seguro"
+
+    # Sanitizar mensaje adicional (máximo 300 caracteres, escapar HTML)
+    safe_note = html.escape((note_message or '').strip()[:300])
+
+    cfg = SystemSetting.get_settings()
+    sender_email = (cfg.gmail_sender_email or '').strip()
+    raw_app_password = ''
+    if cfg.gmail_client_secret_encrypted:
+        raw_app_password = decrypt_api_key(cfg.gmail_client_secret_encrypted).replace(' ', '').strip()
+
+    from_email = sender_email or getattr(settings, 'DEFAULT_FROM_EMAIL', 'CARDIOUNEMI <noreply@cardiounemi.edu.ec>')
+    doctor_name = getattr(sender_user, 'full_name', '') or getattr(sender_user, 'username', '') if sender_user else "Departamento de Cardiología"
+
+    expires_text = expires_at.strftime('%d/%m/%Y a las %H:%M') if hasattr(expires_at, 'strftime') else str(expires_at)
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>{html.escape(subj)}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px; color: #1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+    <!-- Encabezado Institucional -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #1b2a41 0%, #1b73bc 100%); padding: 28px 24px; text-align: center; color: #ffffff;">
+        <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.5px;">CARDIOUNEMI</h1>
+        <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9;">Portal Seguro · Universidad Estatal de Milagro</p>
+      </td>
+    </tr>
+    <!-- Contenido Principal -->
+    <tr>
+      <td style="padding: 30px 26px;">
+        <h2 style="font-size: 17px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 12px;">
+          Documento Clínico Disponible en Portal Seguro
+        </h2>
+        <p style="font-size: 13.5px; line-height: 1.6; color: #475569; margin-bottom: 16px;">
+          Estimado(a), se ha puesto a su disposición un documento oficial en el repositorio institucional seguro de CARDIOUNEMI.
+        </p>
+        <p style="font-size: 13.5px; line-height: 1.6; color: #475569; margin-bottom: 20px;">
+          Para acceder y descargar el documento, pulse el botón a continuación e ingrese el <strong>código de verificación de 6 dígitos</strong> que le fue proporcionado por su especialista a través de un canal seguro:
+        </p>
+
+        <!-- Botón de Acceso -->
+        <div style="text-align: center; margin: 26px 0;">
+          <a href="{access_url}" style="display: inline-block; background: #1b73bc; color: #ffffff; font-size: 14.5px; font-weight: 700; text-decoration: none; padding: 12px 28px; border-radius: 8px; box-shadow: 0 2px 6px rgba(27, 115, 188, 0.35);">
+            Acceder al Documento Seguro
+          </a>
+        </div>
+
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
+          <p style="margin: 0; font-size: 12.5px; color: #1e40af; line-height: 1.5;">
+            ⏱️ <strong>Caducidad del enlace:</strong> Este acceso vence el <strong>{expires_text}</strong>. Pasada esta fecha o superado el número de intentos permitidos, el enlace quedará inhabilitado.
+          </p>
+        </div>
+
+        {f'''<div style="background: #f8fafc; border-left: 4px solid #1b73bc; padding: 12px 16px; border-radius: 4px; margin-bottom: 20px;">
+          <strong style="font-size: 12.5px; color: #1e293b;">Observaciones:</strong>
+          <p style="margin: 4px 0 0; font-size: 13px; color: #475569; font-style: italic;">{safe_note}</p>
+        </div>''' if safe_note else ''}
+
+        <p style="margin: 18px 0 6px 0; font-size: 12px; color: #64748b;">
+          Si no puede hacer clic en el botón, copie y pegue el siguiente enlace en su navegador:
+        </p>
+        <p style="margin: 0; font-size: 11.5px; color: #1b73bc; word-break: break-all;">
+          {access_url}
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0 16px 0;">
+
+        <p style="margin: 0; font-size: 12.5px; color: #64748b;">
+          Emitido por: <strong>{html.escape(doctor_name)}</strong><br>
+          Universidad Estatal de Milagro (UNEMI)
+        </p>
+      </td>
+    </tr>
+    <!-- Pie -->
+    <tr>
+      <td style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 24px; text-align: center; font-size: 11px; color: #94a3b8;">
+        Este mensaje no contiene datos personales ni diagnósticos médicos. La entrega de este documento cumple con los protocolos de seguridad bioética institucional.
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+    plain_message = f"""CARDIOUNEMI - Documento Disponible en Portal Seguro
+Estimado(a), se ha puesto a su disposición un documento oficial en el repositorio institucional de CARDIOUNEMI.
+
+Para acceder, ingrese al siguiente enlace e introduzca el código de verificación de 6 dígitos que le fue entregado por su especialista:
+{access_url}
+
+Caducidad: {expires_text}
+
+{f'Observaciones: {safe_note}' if safe_note else ''}
+
+Emitido por: {doctor_name}
+Universidad Estatal de Milagro (UNEMI)
+"""
+
+    # 1. Enviar vía Django EmailMessage
+    django_ok = False
+    try:
+        msg = EmailMessage(
+            subject=subj,
+            body=html_content,
+            from_email=from_email,
+            to=[clean_email],
+        )
+        msg.content_subtype = "html"
+        msg.send(fail_silently=False)
+        django_ok = True
+    except Exception as e:
+        logger.exception(f"[SECURE_SHARE_EMAIL] Error al enviar correo vía Django a {clean_email}: {e}")
+
+    # 2. Si Gmail SMTP está configurado y habilitado, enviar directamente
+    if sender_email and raw_app_password and cfg.gmail_api_enabled:
+        ok, err = _send_smtp_gmail(
+            sender_email=sender_email,
+            app_password=raw_app_password,
+            recipient_email=clean_email,
+            subject=subj,
+            plain_msg=plain_message,
+            html_msg=html_content,
+            attachments=None
+        )
+        if ok:
+            return {"success": True, "smtp_delivered": True, "recipient": clean_email}
+        else:
+            return {"success": django_ok, "smtp_delivered": False, "recipient": clean_email, "error": err}
+
+    return {"success": django_ok, "smtp_delivered": False, "recipient": clean_email, "note": "Enviado por consola/backend"}

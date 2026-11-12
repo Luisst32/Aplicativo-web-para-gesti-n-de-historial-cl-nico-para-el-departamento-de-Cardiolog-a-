@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <title>Acceso No Disponible · CARDIOUNEMI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-dark: #1b2a41;
+      --primary: #1b73bc;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .share-container {
+      max-width: 480px;
+      width: 100%;
+      background: var(--card-bg);
+      border-radius: 18px;
+      box-shadow: 0 12px 36px rgba(15, 23, 42, 0.08);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      text-align: center;
+    }
+    .share-header {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+      padding: 24px 20px;
+      color: #ffffff;
+    }
+    .share-header h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+    .share-body {
+      padding: 36px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .icon-error {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: #fef2f2;
+      color: #dc2626;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .error-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #991b1b;
+    }
+    .error-text {
+      font-size: 0.9rem;
+      color: #475569;
+      line-height: 1.6;
+    }
+    .share-footer {
+      padding: 14px 20px;
+      background: #f8fafc;
+      border-top: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="share-container">
+    <div class="share-header">
+      <h1>CARDIOUNEMI</h1>
+    </div>
+    <div class="share-body">
+      <div class="icon-error">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <div class="error-title">{{ error_title|default:"Enlace No Disponible" }}</div>
+      <div class="error-text">
+        {{ error_message|default:"El enlace solicitado no existe, ha caducado o ha alcanzado el límite máximo de intentos o descargas permitidas. Por motivos de seguridad médica, solicite al especialista la generación de un nuevo enlace." }}
+      </div>
+    </div>
+    <div class="share-footer">
+      Repositorio Institucional · Universidad Estatal de Milagro
+    </div>
+  </div>
+</body>
+</html>
+

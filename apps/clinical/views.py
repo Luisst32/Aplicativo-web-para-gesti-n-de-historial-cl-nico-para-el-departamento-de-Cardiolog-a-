@@ -1,13 +1,22 @@
 from .services.sav_importer import analyze_sav_file, execute_sav_import
 import json
 import datetime
+import secrets
+import hashlib
+import logging
 from decimal import Decimal
 from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, Http404
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.http import require_POST, require_GET, require_http_methods
+from django.views.decorators.csrf import csrf_protect
 from django.db import models, transaction, connection
 from django.core.paginator import Paginator
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+from django.contrib.auth.hashers import make_password
+from django.urls import reverse
 
 from catalog.models import (
     Country, Province, Canton, Institution,
@@ -18,11 +27,14 @@ from catalog.models import (
 )
 from clinical.models import (
     Patient, Visit, Anthropometry, VitalSigns,
-    Electrocardiogram, Echocardiogram, Laboratory, OrderedStudies, VisitAnswer
+    Electrocardiogram, Echocardiogram, Laboratory, OrderedStudies, VisitAnswer,
+    SecureShare
 )
 from clinical.validators import validate_ecuadorian_id, validate_clinical_ranges
 from clinical.pdf import generate_clinical_sheet_pdf
 from audit.services import register_audit_log
+
+logger = logging.getLogger(__name__)
 
 
 from clinical.services.sav_importer import (
@@ -1601,63 +1613,293 @@ def export_pdf_view(request, visit_id=None):
 @require_POST
 def api_send_patient_sheet_email(request):
     """
-    Despacha por correo electrónico el Cuestionario Oficial UNEMI en PDF
-    para los pacientes seleccionados en el directorio.
+    Genera un envío seguro individual por cada destinatario especificado (SecureShare).
+    No adjunta ningún PDF. Despacha por correo un enlace seguro con caducidad.
+    Devuelve los códigos de 6 dígitos una única vez en memoria para entrega fuera de banda.
+    Responde estrictamente con Cache-Control: no-store.
     """
     try:
         data = json.loads(request.body.decode('utf-8'))
     except Exception:
-        return JsonResponse({"success": False, "error": "Cuerpo de solicitud inválido."}, status=400)
+        resp = JsonResponse({"success": False, "error": "Cuerpo de solicitud JSON inválido."}, status=400)
+        resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        return resp
 
     patient_ids = data.get('patient_ids', [])
     recipients = data.get('recipients', [])
-    subject = (data.get('subject') or 'Ficha Clínica Cardiológica - CARDIOUNEMI').strip()
-    notes = (data.get('notes') or '').strip()
+    raw_duration = data.get('duration_hours', 48)
+    subject = (data.get('subject') or 'Documento disponible en portal seguro').strip()
+    notes = (data.get('notes') or '').strip()[:300]
 
     if not patient_ids:
-        return JsonResponse({"success": False, "error": "Debe seleccionar al menos una ficha para enviar."}, status=400)
+        resp = JsonResponse({"success": False, "error": "Debe seleccionar una ficha clínica para compartir."}, status=400)
+        resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        return resp
 
     if not recipients:
-        return JsonResponse({"success": False, "error": "Debe ingresar al menos un correo de destino."}, status=400)
+        resp = JsonResponse({"success": False, "error": "Debe ingresar al menos una dirección de correo válida."}, status=400)
+        resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        return resp
 
-    pdf_attachments = []
-    from clinical.pdf import generate_clinical_sheet_pdf
-    from security.services.email_service import send_clinical_sheet_email
+    # Validar límite máximo de 5 destinatarios por operación
+    if len(recipients) > 5:
+        resp = JsonResponse({"success": False, "error": "No puede enviar a más de 5 destinatarios por operación."}, status=400)
+        resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        return resp
 
-    for p_id in patient_ids:
-        clean_id = str(p_id).replace('p', '')
-        visit = None
-        if clean_id.isdigit():
-            visit = Visit.objects.filter(patient__patient_id=int(clean_id)).order_by('-visit_date', '-visit_id').first()
-        if not visit:
-            visit = Visit.objects.filter(patient__id_card=str(p_id)).order_by('-visit_date', '-visit_id').first()
+    # Validar formato de cada correo
+    cleaned_recipients = []
+    for r in recipients:
+        email_str = str(r).strip()
+        try:
+            validate_email(email_str)
+            if email_str not in cleaned_recipients:
+                cleaned_recipients.append(email_str)
+        except ValidationError:
+            resp = JsonResponse({"success": False, "error": f"La dirección de correo '{email_str}' no tiene un formato válido."}, status=400)
+            resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            return resp
 
-        if visit:
-            pdf_bytes = generate_clinical_sheet_pdf(visit, is_blank=False)
-            code_safe = (visit.study_code or f"V{visit.visit_id}").replace('/', '-').replace(' ', '_')
-            last_name = getattr(visit.patient, 'last_name1', '') or getattr(visit.patient, 'last_name', '') or 'Paciente'
-            fname = f"Ficha_Clinica_{code_safe}_{last_name}.pdf"
-            pdf_attachments.append((fname, pdf_bytes))
+    # Validar caducidad (24h, 48h, 72h, 168h / 7 días)
+    try:
+        duration_hours = int(raw_duration)
+        if duration_hours not in (24, 48, 72, 168):
+            duration_hours = 48
+    except (ValueError, TypeError):
+        duration_hours = 48
 
-    if not pdf_attachments:
-        return JsonResponse({"success": False, "error": "No se encontraron visitas médicas para los pacientes seleccionados."}, status=404)
+    expires_at = timezone.now() + datetime.timedelta(hours=duration_hours)
 
-    result = send_clinical_sheet_email(
-        recipient_emails=recipients,
-        subject=subject,
-        note_message=notes,
-        pdf_attachments=pdf_attachments,
-        sender_user=request.user
-    )
+    # Validar en el servidor que la ficha/visita exista y sea legítima
+    p_id = patient_ids[0]
+    clean_id = str(p_id).replace('p', '')
+    visit = None
+    if clean_id.isdigit():
+        visit = Visit.objects.filter(patient__patient_id=int(clean_id)).order_by('-visit_date', '-visit_id').first()
+    if not visit:
+        visit = Visit.objects.filter(patient__id_card=str(p_id)).order_by('-visit_date', '-visit_id').first()
 
-    if result.get('success'):
-        msg = f"Ficha(s) enviada(s) exitosamente a {len(result.get('recipients', []))} destinatario(s)."
-        if result.get('smtp_delivered'):
-            msg += " (Despacho verificado por Gmail SMTP)"
-        return JsonResponse({"success": True, "message": msg, "details": result})
+    if not visit:
+        resp = JsonResponse({"success": False, "error": "No se encontró el registro clínico en el sistema."}, status=404)
+        resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        return resp
+
+    results = []
+    success_count = 0
+
+    from security.services.email_service import send_secure_share_link_email
+
+    for email in cleaned_recipients:
+        # 1. Generar token criptoseguro para el enlace (32 bytes URL-safe)
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+
+        # 2. Generar código numérico de 6 dígitos con secrets.randbelow
+        raw_code = f"{secrets.randbelow(1000000):06d}"
+        code_hash = make_password(raw_code)
+
+        # 3. Construir URL pública absoluta hacia el portal de descarga
+        access_url = request.build_absolute_uri(
+            reverse('clinical:public_secure_share', kwargs={'token': raw_token})
+        )
+
+        # 4. Crear registro en base de datos (con token_hash y code_hash)
+        share = SecureShare.objects.create(
+            visit=visit,
+            recipient_email=email,
+            token_hash=token_hash,
+            code_hash=code_hash,
+            expires_at=expires_at,
+            attempts=0,
+            max_attempts=5,
+            download_count=0,
+            max_downloads=3,
+            is_revoked=False,
+            created_by=request.user,
+            note=notes
+        )
+
+        # 5. Despachar correo electrónico individual genérico (sin PDF adjunto)
+        mail_res = send_secure_share_link_email(
+            recipient_email=email,
+            access_url=access_url,
+            expires_at=expires_at,
+            note_message=notes,
+            subject=subject,
+            sender_user=request.user
+        )
+
+        if mail_res.get('success'):
+            success_count += 1
+            # Registrar auditoría (NO se registra el código ni el token en texto claro)
+            try:
+                ip_addr = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '127.0.0.1'))
+                if ip_addr and ',' in ip_addr:
+                    ip_addr = ip_addr.split(',')[0].strip()
+                register_audit_log(
+                    user=request.user,
+                    schema_name='clinical',
+                    table_name='clinical_secure_share',
+                    record_key=str(share.share_id),
+                    action='INSERT',
+                    new_value={
+                        'event': 'SECURE_SHARE_CREATED',
+                        'visit_id': visit.visit_id,
+                        'patient_id': visit.patient.patient_id,
+                        'recipient_email': email,
+                        'expires_at': expires_at.isoformat(),
+                        'duration_hours': duration_hours
+                    },
+                    machine_name=ip_addr
+                )
+            except Exception as audit_err:
+                logger.warning(f"Error registrando auditoría de SecureShare: {audit_err}")
+
+            results.append({
+                "email": email,
+                "success": True,
+                "code": raw_code,  # Solo se retorna en memoria para esta respuesta
+                "expires_at": expires_at.isoformat(),
+                "expires_display": expires_at.strftime("%d/%m/%Y a las %H:%M")
+            })
+        else:
+            # Si falla la entrega del correo, revocar el envío y no generar el código
+            share.is_revoked = True
+            share.revoked_at = timezone.now()
+            share.save()
+            results.append({
+                "email": email,
+                "success": False,
+                "error": mail_res.get('error', 'Error al despachar correo electrónico.')
+            })
+
+    if success_count == 0:
+        resp = JsonResponse({
+            "success": False,
+            "error": "No se pudo entregar el correo a ningún destinatario. Verifique su configuración SMTP.",
+            "results": results
+        }, status=500)
     else:
-        err = result.get('error', 'No fue posible despachar el correo.')
-        return JsonResponse({"success": False, "error": err}, status=500)
+        resp = JsonResponse({
+            "success": True,
+            "message": f"Se generaron y enviaron {success_count} de {len(cleaned_recipients)} enlace(s) seguro(s).",
+            "results": results
+        })
+
+    # Cabeceras estrictas de no-cache para proteger los códigos efímeros en tránsito
+    resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0, private'
+    resp['Pragma'] = 'no-cache'
+    return resp
+
+
+@require_http_methods(['GET', 'POST'])
+@csrf_protect
+def public_secure_share_view(request, token):
+    """
+    Ruta pública del destinatario para validación de código de acceso y descarga segura del PDF.
+    - Token verificado por hash SHA-256.
+    - Límite de 5 intentos fallidos y 3 descargas.
+    - El PDF se genera en el servidor solo al validar el código.
+    - Mensajes de error genéricos (404) y Referrer-Policy: no-referrer.
+    - Nombre de archivo descargado genérico: 'documento.pdf'.
+    """
+    clean_token = (token or '').strip()
+    if not clean_token:
+        raise Http404("Documento no encontrado o enlace inválido.")
+
+    token_hash = hashlib.sha256(clean_token.encode('utf-8')).hexdigest()
+    share = SecureShare.objects.select_related('visit', 'visit__patient').filter(token_hash=token_hash).first()
+
+    if not share or not share.is_valid():
+        resp = render(request, 'clinical/public_share_error.html', {
+            'error_title': 'Enlace no disponible',
+            'error_message': 'El enlace solicitado no existe, ha caducado, ha sido revocado o superó el límite de descargas/intentos permitidos.'
+        }, status=404)
+        resp['Referrer-Policy'] = 'no-referrer'
+        resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        return resp
+
+    error_msg = None
+
+    if request.method == 'POST':
+        raw_code = request.POST.get('code', '').strip()
+
+        if not raw_code or len(raw_code) != 6 or not raw_code.isdigit():
+            share.attempts += 1
+            if share.attempts >= share.max_attempts:
+                share.is_revoked = True
+                share.revoked_at = timezone.now()
+            share.save()
+            error_msg = f"Ingrese un código de 6 dígitos numéricos. Le quedan {max(0, share.max_attempts - share.attempts)} intento(s)."
+        elif not share.verify_code(raw_code):
+            share.attempts += 1
+            if share.attempts >= share.max_attempts:
+                share.is_revoked = True
+                share.revoked_at = timezone.now()
+            share.save()
+
+            if share.is_revoked:
+                resp = render(request, 'clinical/public_share_error.html', {
+                    'error_title': 'Acceso bloqueado',
+                    'error_message': 'Ha superado el número máximo de intentos fallidos permitidos. Por seguridad, este enlace ha sido inhabilitado.'
+                }, status=404)
+                resp['Referrer-Policy'] = 'no-referrer'
+                resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+                return resp
+            else:
+                error_msg = f"Código de acceso incorrecto. Le quedan {share.max_attempts - share.attempts} intento(s)."
+        else:
+            # CÓDIGO VÁLIDO: Registrar descarga y generar PDF en caliente
+            share.download_count += 1
+            if share.download_count >= share.max_downloads:
+                share.is_revoked = True
+                share.revoked_at = timezone.now()
+            share.save()
+
+            try:
+                ip_addr = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '127.0.0.1'))
+                if ip_addr and ',' in ip_addr:
+                    ip_addr = ip_addr.split(',')[0].strip()
+                register_audit_log(
+                    user=None,
+                    schema_name='clinical',
+                    table_name='clinical_secure_share',
+                    record_key=str(share.share_id),
+                    action='UPDATE',
+                    new_value={
+                        'event': 'SECURE_SHARE_DOWNLOAD',
+                        'recipient_email': share.recipient_email,
+                        'download_count': share.download_count,
+                        'visit_id': share.visit_id
+                    },
+                    machine_name=ip_addr
+                )
+            except Exception as audit_err:
+                logger.warning(f"Error registrando descarga en auditoría: {audit_err}")
+
+            # Generar PDF oficial en el servidor (el PDF no viajó por correo)
+            from clinical.pdf import generate_clinical_sheet_pdf
+            pdf_bytes = generate_clinical_sheet_pdf(share.visit, is_blank=False)
+
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            response['Content-Disposition'] = 'attachment; filename="documento.pdf"'
+            response['Referrer-Policy'] = 'no-referrer'
+            response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0, private'
+            response['Pragma'] = 'no-cache'
+            response['X-Content-Type-Options'] = 'nosniff'
+            return response
+
+    context = {
+        'token': clean_token,
+        'attempts_left': max(0, share.max_attempts - share.attempts),
+        'expires_display': share.expires_at.strftime('%d/%m/%Y a las %H:%M'),
+        'error_msg': error_msg,
+        'safe_note': share.note
+    }
+    resp = render(request, 'clinical/public_share.html', context)
+    resp['Referrer-Policy'] = 'no-referrer'
+    resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return resp
 
 
 # =============================================================================

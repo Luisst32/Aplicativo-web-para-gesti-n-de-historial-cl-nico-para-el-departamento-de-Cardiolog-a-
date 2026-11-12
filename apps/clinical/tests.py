@@ -522,3 +522,136 @@ class PatientCreateApiTests(TestCase):
         self.assertEqual(v_espol.study_code, '1')
         self.assertEqual(v_unemi.patient.institution.acronym, 'UNEMI')
         self.assertEqual(v_espol.patient.institution.acronym, 'ESPOL')
+
+
+import json
+import secrets
+import hashlib
+from django.utils import timezone
+from django.contrib.auth.hashers import make_password
+from clinical.models import SecureShare
+
+
+class SecureShareTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='cardiologo_share',
+            email='cardio_share@unemi.edu.ec',
+            password='password123'
+        )
+        self.country, _ = Country.objects.get_or_create(iso_alpha3='ECU', defaults={'name': 'Ecuador'})
+        self.prov, _ = Province.objects.get_or_create(country=self.country, iso_code='EC-G', defaults={'name': 'Guayas'})
+        self.canton, _ = Canton.objects.get_or_create(province=self.prov, dpa_code='0910', defaults={'name': 'Milagro'})
+        self.inst, _ = Institution.objects.get_or_create(acronym='UNEMI', defaults={'name': 'Universidad Estatal de Milagro'})
+        self.sex, _ = Sex.objects.get_or_create(sex_id=1, defaults={'name': 'Hombre'})
+        self.ethnicity, _ = Ethnicity.objects.get_or_create(name='Mestizo')
+        self.patient = Patient.objects.create(
+            institution=self.inst,
+            id_card='0923485718',
+            first_names='Juan',
+            last_name1='Perez',
+            birth_date='1980-01-01',
+            sex=self.sex,
+            ethnicity=self.ethnicity,
+            birth_canton=self.canton,
+            email='paciente@correo.com',
+            created_by=self.user
+        )
+        self.visit = Visit.objects.create(
+            patient=self.patient,
+            evaluator=self.user,
+            study_code='CUN-001',
+            visit_date='2026-03-01',
+            residence_canton=self.canton
+        )
+
+    def test_api_send_patient_sheet_email_creates_secureshares(self):
+        self.client.login(username='cardiologo_share', password='password123')
+        payload = {
+            'patient_ids': [self.patient.patient_id],
+            'recipients': ['destinatario1@correo.com', 'destinatario2@correo.com'],
+            'duration_hours': 48,
+            'subject': 'Documento disponible en portal seguro',
+            'notes': 'Indicaciones médicas confidenciales.'
+        }
+        response = self.client.post(
+            reverse('clinical:api_ficha_enviar_correo'),
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('no-store', response['Cache-Control'])
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(len(data['results']), 2)
+        for res in data['results']:
+            self.assertTrue(res['success'])
+            self.assertEqual(len(res['code']), 6)
+            self.assertTrue(res['code'].isdigit())
+
+        shares = SecureShare.objects.filter(visit=self.visit)
+        self.assertEqual(shares.count(), 2)
+        for s in shares:
+            self.assertEqual(len(s.token_hash), 64)
+            self.assertTrue(s.code_hash.startswith('pbkdf2_') or 'argon2' in s.code_hash or s.code_hash.startswith('bcrypt'))
+            self.assertEqual(s.attempts, 0)
+            self.assertEqual(s.download_count, 0)
+            self.assertEqual(s.max_attempts, 5)
+            self.assertEqual(s.max_downloads, 3)
+            self.assertFalse(s.is_revoked)
+
+    def test_max_recipients_limit(self):
+        self.client.login(username='cardiologo_share', password='password123')
+        payload = {
+            'patient_ids': [self.patient.patient_id],
+            'recipients': [f'user{i}@correo.com' for i in range(6)],  # 6 > 5
+            'duration_hours': 48
+        }
+        response = self.client.post(
+            reverse('clinical:api_ficha_enviar_correo'),
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('5 destinatarios', response.json()['error'])
+
+    def test_public_secure_share_flow(self):
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+        raw_code = '123456'
+        code_hash = make_password(raw_code)
+        expires_at = timezone.now() + datetime.timedelta(hours=48)
+
+        share = SecureShare.objects.create(
+            visit=self.visit,
+            recipient_email='evaluador@correo.com',
+            token_hash=token_hash,
+            code_hash=code_hash,
+            expires_at=expires_at,
+            created_by=self.user
+        )
+
+        url = reverse('clinical:public_secure_share', kwargs={'token': raw_token})
+
+        # 1. GET inicial muestra formulario
+        res_get = self.client.get(url)
+        self.assertEqual(res_get.status_code, 200)
+        self.assertEqual(res_get['Referrer-Policy'], 'no-referrer')
+
+        # 2. POST con código incorrecto incrementa intentos
+        res_post_bad = self.client.post(url, {'code': '000000'})
+        self.assertEqual(res_post_bad.status_code, 200)
+        share.refresh_from_db()
+        self.assertEqual(share.attempts, 1)
+
+        # 3. POST con código correcto descarga PDF 'documento.pdf'
+        res_post_ok = self.client.post(url, {'code': raw_code})
+        self.assertEqual(res_post_ok.status_code, 200)
+        self.assertEqual(res_post_ok['Content-Type'], 'application/pdf')
+        self.assertIn('documento.pdf', res_post_ok['Content-Disposition'])
+        self.assertEqual(res_post_ok['Referrer-Policy'], 'no-referrer')
+        self.assertIn('no-store', res_post_ok['Cache-Control'])
+
+        share.refresh_from_db()
+        self.assertEqual(share.download_count, 1)
+

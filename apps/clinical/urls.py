@@ -31,4 +31,7 @@ urlpatterns = [
     # Exportación oficial a PDF (HU-17) y envío por correo
     path('ficha/<int:visit_id>/pdf/', views.export_pdf_view, name='export_pdf'),
     path('ficha/pdf/', views.export_pdf_view, name='export_pdf_query'),
+
+    # Portal público de descarga segura mediante token y código de acceso
+    path('compartir/<str:token>/', views.public_secure_share_view, name='public_secure_share'),
 ]

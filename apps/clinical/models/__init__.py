@@ -9,6 +9,7 @@ from .exams import (
     OrderedStudies,
 )
 from .answers import VisitAnswer
+from .share import SecureShare
 
 __all__ = [
     'Patient',
@@ -20,4 +21,5 @@ __all__ = [
     'Laboratory',
     'OrderedStudies',
     'VisitAnswer',
+    'SecureShare',
 ]
