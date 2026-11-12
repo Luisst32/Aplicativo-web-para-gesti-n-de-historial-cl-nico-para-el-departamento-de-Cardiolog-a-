@@ -4,8 +4,8 @@
 {% block title %}UNEMI - Directorio de Pacientes e Historiales Clínicos{% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'clinical/css/pacientes.css' %}?v=20261110_02">
-  <link rel="stylesheet" href="{% static 'clinical/css/list.css' %}?v=20261110_05">
+  <link rel="stylesheet" href="{% static 'clinical/css/pacientes.css' %}?v=20261111_06">
+  <link rel="stylesheet" href="{% static 'clinical/css/list.css' %}?v=20261111_06">
 {% endblock %}
 
 {% block content %}
@@ -57,19 +57,19 @@
           Seleccionar todos
         </label>
 
-        <button type="button" class="btn btn-outline-danger" id="btnEliminarSeleccionados" onclick="solicitarEliminarSeleccionados()" title="Eliminar fichas clínicas seleccionadas" style="display: none; align-items: center; gap: 6px;">
+        <button type="button" class="btn btn-outline-danger" id="btnEliminarSeleccionados" onclick="solicitarEliminarSeleccionados()" title="Eliminar fichas clínicas seleccionadas" style="display: none;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-          <span>Eliminar seleccionados (<span id="countSeleccionadosEliminar">0</span>)</span>
+          <span>Eliminar (<span id="countSeleccionadosEliminar">0</span>)</span>
         </button>
 
-        <button type="button" class="btn btn-exportar-modal" id="btnDescargarPdfsSeleccionados" onclick="descargarPDFsSeleccionados()" title="Descargar fichas clínicas seleccionadas en PDF (.ZIP)" style="display: none; align-items: center; gap: 6px; background: #059669; color: #ffffff; border-color: #059669;">
+        <button type="button" class="btn btn-exportar-modal" id="btnDescargarPdfsSeleccionados" onclick="descargarPDFsSeleccionados()" title="Descargar fichas clínicas seleccionadas en PDF (.ZIP)" style="display: none;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           <span>Descargar PDFs (<span id="countSeleccionadosDescargar">0</span>)</span>
         </button>
 
-        <button type="button" class="btn btn-exportar-modal" id="btnEnviarCorreoSeleccionados" onclick="abrirModalEnviarCorreo()" title="Enviar ficha clínica oficial por correo electrónico" style="display: none; align-items: center; gap: 6px; background: #0284c7; color: #ffffff; border-color: #0284c7;">
+        <button type="button" class="btn btn-exportar-modal" id="btnEnviarCorreoSeleccionados" onclick="abrirModalEnviarCorreo()" title="Enviar ficha clínica oficial por correo electrónico" style="display: none;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-          <span>Enviar enlace seguro (<span id="countSeleccionadosCorreo">0</span>)</span>
+          <span>Enviar enlace (<span id="countSeleccionadosCorreo">0</span>)</span>
         </button>
 
         <button type="button" class="btn btn-exportar-modal" id="btnImportarSavTop" onclick="abrirModalImportarSav()" title="Importar archivo SPSS (.sav)">
