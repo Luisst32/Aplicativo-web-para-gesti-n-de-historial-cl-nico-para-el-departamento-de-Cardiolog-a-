@@ -186,50 +186,49 @@ function montarModalAgregarPaciente(onListo) {
         </div>
         <button class="modal-close-btn" id="btnCancelX" title="Cerrar">&times;</button>
       </div>
-      <div class="modal-body">
-        <div class="form-field">
-          <label class="field-label">Nombre y Apellidos Completos *</label>
-          <input type="text" class="form-input" id="m_nombre" placeholder="Ej: Carmen Villacrés Moreira" name="m_nombre" required>
-        </div>
-        <div class="grid form-grid-2">
-          <div class="form-field">
-            <label class="field-label">Número de Cédula (10 dígitos ecuatoriana)</label>
+      <div class="modal-body pac-modal-body">
+        <!-- Fila 1: Nombre (8 cols) y Cédula (4 cols) -->
+        <div class="pac-form-row">
+          <div class="form-field pac-col-8">
+            <label class="field-label">Nombre y Apellidos Completos *</label>
+            <input type="text" class="form-input" id="m_nombre" placeholder="Ej: Carmen Villacrés Moreira" name="m_nombre" required>
+          </div>
+          <div class="form-field pac-col-4">
+            <label class="field-label">Cédula de Identidad (10 dígitos)</label>
             <input type="text" class="form-input" id="m_cedula" placeholder="Ej: 0928475615" maxlength="10" name="m_cedula">
           </div>
-          <div class="form-field">
-            <label class="field-label">Fecha de Nacimiento *</label>
+        </div>
+
+        <!-- Fila 2: Fecha Nac (3), Edad (2), Sexo (3), Teléfono (4) -->
+        <div class="pac-form-row">
+          <div class="form-field pac-col-3">
+            <label class="field-label">Fecha Nacimiento *</label>
             <input type="date" class="form-input" id="m_fecha_nac" oninput="document.getElementById('m_edad').value = calcAgeStr(this.value)" name="m_fecha_nac" required>
           </div>
-        </div>
-        <div class="grid form-grid-2">
-          <div class="form-field">
-            <label class="field-label">Edad <small>(Auto-calculada)</small></label>
+          <div class="form-field pac-col-2">
+            <label class="field-label">Edad <small>(Auto)</small></label>
             <input type="text" class="form-input calc" id="m_edad" readonly placeholder="Calculando..." name="m_edad">
           </div>
-          <div class="form-field">
+          <div class="form-field pac-col-3">
             <label class="field-label">Sexo *</label>
             <select class="form-select" id="m_sexo" name="m_sexo">
               <option value="H">Hombre (H)</option>
               <option value="M">Mujer (M)</option>
             </select>
           </div>
-        </div>
-        <div class="grid form-grid-2">
-          <div class="form-field">
-            <label class="field-label">Universidad / Institución *</label>
-            <select class="form-select" id="m_universidad" name="m_universidad" onchange="actualizarFacultadesModal(this.value)">
-              <option value="UNEMI">UNEMI - Universidad Estatal de Milagro</option>
-              <option value="ESPOL">ESPOL - Escuela Superior Politécnica del Litoral</option>
-            </select>
-          </div>
-          <div class="form-field">
-            <label class="field-label">Facultad / Dependencia *</label>
-            <select class="form-select" id="m_facultad" name="m_facultad">
-            </select>
+          <div class="form-field pac-col-4">
+            <label class="field-label">Teléfono Móvil</label>
+            <input type="tel" class="form-input" id="m_telefono" placeholder="Ej: 0987654321" name="m_telefono">
           </div>
         </div>
-        <div class="grid form-grid-2">
-          <div class="form-field">
+
+        <!-- Fila 3: Correo (7) y Estamento (5) -->
+        <div class="pac-form-row">
+          <div class="form-field pac-col-7">
+            <label class="field-label">Correo Electrónico</label>
+            <input type="email" class="form-input" id="m_correo" placeholder="Ej: cvillacres@unemi.edu.ec" name="m_correo">
+          </div>
+          <div class="form-field pac-col-5">
             <label class="field-label">Estamento Institucional *</label>
             <select class="form-select" id="m_estamento" name="m_estamento">
               <option value="PDI">PDI (Profesor)</option>
@@ -239,15 +238,24 @@ function montarModalAgregarPaciente(onListo) {
               <option value="ESTUDIANTES">ESTUDIANTES</option>
             </select>
           </div>
-          <div class="form-field">
-            <label class="field-label">Teléfono Móvil</label>
-            <input type="tel" class="form-input" id="m_telefono" placeholder="Ej: 0987654321" name="m_telefono">
+        </div>
+
+        <!-- Fila 4: Universidad (6) y Facultad (6) -->
+        <div class="pac-form-row">
+          <div class="form-field pac-col-6">
+            <label class="field-label">Universidad / Institución *</label>
+            <select class="form-select" id="m_universidad" name="m_universidad" onchange="actualizarFacultadesModal(this.value)">
+              <option value="UNEMI">UNEMI - Universidad Estatal de Milagro</option>
+              <option value="ESPOL">ESPOL - Escuela Superior Politécnica del Litoral</option>
+            </select>
+          </div>
+          <div class="form-field pac-col-6">
+            <label class="field-label">Facultad / Dependencia *</label>
+            <select class="form-select" id="m_facultad" name="m_facultad">
+            </select>
           </div>
         </div>
-        <div class="form-field">
-          <label class="field-label">Correo Electrónico</label>
-          <input type="email" class="form-input" id="m_correo" placeholder="Ej: cvillacres@unemi.edu.ec" name="m_correo">
-        </div>
+
         <div class="modal-aviso" id="m_duplicado">
           <span id="m_duplicado_texto"></span>
           <button type="button" class="btn btn-primary" id="btnAbrirExistente">Abrir su expediente</button>
