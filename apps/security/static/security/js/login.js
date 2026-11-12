@@ -123,37 +123,12 @@ document.addEventListener('DOMContentLoaded', function () {
           return;
         }
 
-        // Caso 1: Correo entregado exitosamente por SMTP real
-        if (data.smtp_delivered) {
-          mostrarAlertaForgot(data.message, 'success');
-          if (btnEnviarForgot) {
-            btnEnviarForgot.textContent = 'Correo enviado';
-            btnEnviarForgot.disabled = true;
-          }
-          return;
+        // Éxito: confirmación institucional segura
+        mostrarAlertaForgot(data.message || 'Instrucciones enviadas a tu correo.', 'success');
+        if (btnEnviarForgot) {
+          btnEnviarForgot.textContent = 'Solicitud enviada';
+          btnEnviarForgot.disabled = true;
         }
-
-        // Caso 2: Puertos SMTP bloqueados por ISP o entorno local, proveemos enlace directo de recuperación
-        if (data.reset_url) {
-          var warningHtml = '<div style="margin-bottom: 10px;">' +
-            '<strong>Aviso de conexión de red:</strong> ' +
-            escapeHtml(data.message) +
-            '</div>' +
-            '<div style="text-align: center; margin: 12px 0 6px 0;">' +
-            '<a href="' + data.reset_url + '" class="btn-direct-reset">' +
-            'Restablecer mi contraseña ahora &rarr;' +
-            '</a>' +
-            '</div>';
-          mostrarAlertaForgotHtml(warningHtml, 'warning');
-          if (btnEnviarForgot) {
-            btnEnviarForgot.disabled = false;
-            btnEnviarForgot.textContent = 'Generar nuevo enlace';
-          }
-          return;
-        }
-
-        // Caso genérico
-        mostrarAlertaForgot(data.message || 'Solicitud procesada correctamente.', 'info');
       })
       .catch(function (err) {
         mostrarAlertaForgot('Error de conexión al enviar solicitud: ' + err.message, 'error');
@@ -163,20 +138,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       });
     });
-  }
-
-  function escapeHtml(text) {
-    if (!text) return '';
-    var div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  function mostrarAlertaForgotHtml(html, tipo) {
-    if (!forgotAlertBox) return;
-    forgotAlertBox.className = 'alert-box ' + tipo;
-    forgotAlertBox.innerHTML = html;
-    forgotAlertBox.style.display = 'block';
   }
 
   function mostrarAlertaForgot(msg, tipo) {

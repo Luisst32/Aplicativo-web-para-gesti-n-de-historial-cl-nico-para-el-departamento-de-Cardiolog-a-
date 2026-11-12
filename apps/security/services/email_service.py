@@ -23,9 +23,9 @@ def _send_smtp_gmail(sender_email: str, app_password: str, recipient_email: str,
     msg.attach(MIMEText(plain_msg, 'plain', 'utf-8'))
     msg.attach(MIMEText(html_msg, 'html', 'utf-8'))
 
-    # Probar puertos estándar de Gmail con timeout corto
+    # Probar puertos estándar de Gmail: 465 (SSL directo), 587 (STARTTLS) y 25
     last_err = ""
-    for port in (587, 465):
+    for port in (465, 587, 25):
         server = None
         try:
             if port == 465:
@@ -37,7 +37,7 @@ def _send_smtp_gmail(sender_email: str, app_password: str, recipient_email: str,
             server.send_message(msg)
             server.quit()
             logger.info(f"[EMAIL_SERVICE] Correo despachado exitosamente por Gmail SMTP (puerto {port}) a {recipient_email}")
-            return True, "Enviado exitosamente vía Gmail SMTP"
+            return True, f"Enviado exitosamente vía Gmail SMTP (puerto {port})"
         except Exception as e:
             last_err = str(e)
             logger.warning(f"[EMAIL_SERVICE] Intento de envío Gmail SMTP en puerto {port} falló: {e}")
@@ -46,7 +46,7 @@ def _send_smtp_gmail(sender_email: str, app_password: str, recipient_email: str,
                     server.close()
                 except Exception:
                     pass
-    return False, last_err or "Puertos SMTP bloqueados por el proveedor de red"
+    return False, last_err or "Puertos SMTP no disponibles en la red"
 
 
 def send_password_reset_email(user, reset_url: str) -> dict:
@@ -178,8 +178,8 @@ Equipo CARDIOUNEMI
             html_msg=html_content
         )
         if sent:
-            return {"success": True, "smtp_delivered": True, "method": "smtp", "reset_url": reset_url}
+            return {"success": True, "smtp_delivered": True, "method": "smtp"}
         else:
-            return {"success": django_sent, "smtp_delivered": False, "method": "console", "error": err_msg, "reset_url": reset_url}
+            return {"success": django_sent, "smtp_delivered": False, "method": "console", "error": err_msg}
 
-    return {"success": django_sent, "smtp_delivered": False, "method": "console", "error": "SMTP no configurado", "reset_url": reset_url}
+    return {"success": django_sent, "smtp_delivered": False, "method": "console", "error": "SMTP no configurado"}

@@ -513,6 +513,7 @@ class PasswordResetFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data['status'], 'success')
+        self.assertNotIn('reset_url', data)
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn('CARDIOUNEMI - Restablecimiento de Contraseña', mail.outbox[0].subject)
         self.assertIn(self.user.email, mail.outbox[0].to)
@@ -527,6 +528,7 @@ class PasswordResetFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data['status'], 'success')
+        self.assertNotIn('reset_url', data)
         self.assertEqual(len(mail.outbox), 1)
 
     def test_password_reset_confirm_view_updates_password(self):

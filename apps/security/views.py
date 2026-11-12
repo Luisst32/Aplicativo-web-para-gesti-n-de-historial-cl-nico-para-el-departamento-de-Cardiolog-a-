@@ -428,34 +428,18 @@ def password_reset_request_view(request):
         if not user:
             user = User.objects.filter(username__iexact=identifier).first()
 
-        if not user or not user.is_active:
-            return JsonResponse({
-                "status": "error",
-                "message": "No se encontró ningún usuario activo registrado con ese correo o usuario."
-            }, status=404)
+        if user and user.is_active:
+            uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            reset_url = request.build_absolute_uri(
+                reverse('security:password_reset_confirm', kwargs={'uidb64': uidb64, 'token': token})
+            )
+            send_password_reset_email(user, reset_url)
 
-        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-        token = default_token_generator.make_token(user)
-        reset_url = request.build_absolute_uri(
-            reverse('security:password_reset_confirm', kwargs={'uidb64': uidb64, 'token': token})
-        )
-        dispatch_result = send_password_reset_email(user, reset_url)
-
-        if dispatch_result.get("smtp_delivered"):
-            return JsonResponse({
-                "status": "success",
-                "smtp_delivered": True,
-                "message": f"Hemos enviado un correo a {user.email} con las instrucciones para restablecer tu contraseña. Por favor revisa tu bandeja de entrada o spam."
-            })
-        else:
-            # En entorno local o si el proveedor de internet bloquea puertos SMTP (587/465)
-            return JsonResponse({
-                "status": "success",
-                "smtp_delivered": False,
-                "reset_url": reset_url,
-                "recipient_email": user.email,
-                "message": "Los puertos de correo saliente (587/465) están bloqueados por tu proveedor de red local. En este entorno de desarrollo puedes acceder directamente con el botón de abajo:",
-            })
+        return JsonResponse({
+            "status": "success",
+            "message": "Si la cuenta existe en el sistema, hemos enviado las instrucciones a tu correo institucional. Por favor revisa tu bandeja de entrada o spam."
+        })
     except Exception as e:
         logger.exception(f"Error procesando solicitud de restablecimiento de contraseña: {e}")
         return JsonResponse({

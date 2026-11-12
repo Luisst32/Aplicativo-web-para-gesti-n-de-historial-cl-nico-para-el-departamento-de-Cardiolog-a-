@@ -116,24 +116,6 @@ h1 {
   line-height: 1.5;
 }
 
-.alert-box .btn-direct-reset {
-  display: inline-block;
-  background: #1b73bc;
-  color: #ffffff !important;
-  padding: 10px 18px;
-  border-radius: 8px;
-  font-weight: 700;
-  font-size: 13px;
-  text-decoration: none;
-  box-shadow: 0 2px 6px rgba(27, 115, 188, 0.3);
-  transition: all 0.2s ease;
-}
-
-.alert-box .btn-direct-reset:hover {
-  background: #155d9b !important;
-  transform: translateY(-1px);
-}
-
 .field {
   margin-bottom: 18px;
 }
