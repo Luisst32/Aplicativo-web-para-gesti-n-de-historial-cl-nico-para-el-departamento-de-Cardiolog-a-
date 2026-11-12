@@ -74,7 +74,7 @@ function apexPctTooltip() {
   };
 }
 
-// Helper para DataLabels en ApexCharts: muestra cantidad y porcentaje de manera visible con estilo unificado de badge oscuro
+// Helper para DataLabels en ApexCharts: muestra cantidad y porcentaje en color negro nítido sin fondo negro
 function apexCountAndPctDataLabel(customTotal, extraOptions = {}) {
   return {
     enabled: true,
@@ -90,23 +90,17 @@ function apexCountAndPctDataLabel(customTotal, extraOptions = {}) {
     style: {
       fontSize: '11px',
       fontWeight: 'bold',
-      colors: ['#1B2A41']
+      colors: ['#000000']
     },
     background: {
-      enabled: true,
-      foreColor: '#FFFFFF',
-      borderRadius: 4,
-      padding: 4,
-      opacity: 0.95,
-      borderWidth: 1,
-      borderColor: '#0F172A'
+      enabled: false
     },
     ...extraOptions
   };
 }
 
 // Configuración de Chart.js y DataLabels
-// Configuración Global de ApexCharts (Desactivar animaciones y forzar relleno sólido para exportaciones 100% nítidas)
+// Configuración Global de ApexCharts (Desactivar animaciones, texto negro en ejes X e Y y relleno sólido)
 if (typeof ApexCharts !== 'undefined' || typeof window.Apex !== 'undefined') {
   window.Apex = {
     chart: {
@@ -120,12 +114,41 @@ if (typeof ApexCharts !== 'undefined' || typeof window.Apex !== 'undefined') {
     fill: {
       type: 'solid',
       opacity: 1
+    },
+    xaxis: {
+      labels: {
+        style: {
+          colors: '#000000',
+          fontSize: '11px',
+          fontWeight: 600
+        }
+      },
+      axisBorder: {
+        color: '#000000'
+      },
+      axisTicks: {
+        color: '#000000'
+      }
+    },
+    yaxis: {
+      labels: {
+        style: {
+          colors: '#000000',
+          fontSize: '11px',
+          fontWeight: 600
+        }
+      }
     }
   };
 }
 
 if (typeof Chart !== 'undefined') {
   Chart.defaults.devicePixelRatio = Math.max(window.devicePixelRatio || 1, 2);
+  Chart.defaults.color = '#000000';
+  if (Chart.defaults.scale && Chart.defaults.scale.ticks) {
+    Chart.defaults.scale.ticks.color = '#000000';
+    Chart.defaults.scale.ticks.font = { weight: '600' };
+  }
   if (typeof ChartDataLabels !== 'undefined') {
     Chart.register(ChartDataLabels);
     Chart.defaults.plugins.datalabels = {
@@ -168,7 +191,7 @@ if (typeof Chart !== 'undefined') {
   }
 }
 
-// Helper para datalabels de Chart.js en barras
+// Helper para datalabels de Chart.js en barras (sin fondo negro, texto negro)
 function chartJsBarDataLabels(showPct = true, customTotal = null) {
   return {
     display: (ctx) => {
@@ -179,12 +202,11 @@ function chartJsBarDataLabels(showPct = true, customTotal = null) {
     align: 'top',
     offset: 5,
     clip: false,
-    color: '#FFFFFF',
-    backgroundColor: '#1B2A41',
-    borderRadius: 4,
-    padding: { top: 3, bottom: 3, left: 6, right: 6 },
-    borderWidth: 1,
-    borderColor: '#0F172A',
+    color: '#000000',
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    padding: { top: 1, bottom: 1, left: 2, right: 2 },
+    borderWidth: 0,
     font: { weight: 'bold', size: 10.5 },
     formatter: (val) => {
       if (!val || val <= 0) return '';
@@ -195,7 +217,7 @@ function chartJsBarDataLabels(showPct = true, customTotal = null) {
   };
 }
 
-// Helper para datalabels de Chart.js en donas/pies (Solución 1: umbral mínimo 8% para evitar colisión en rebanadas estrechas)
+// Helper para datalabels de Chart.js en donas/pies (sin fondo negro, texto negro)
 function chartJsDonutDataLabels(minPct = 0.08) {
   return {
     display: (ctx) => {
@@ -203,12 +225,11 @@ function chartJsDonutDataLabels(minPct = 0.08) {
       const sum = ctx.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
       return typeof v === 'number' && v > 0 && (v / sum) >= minPct;
     },
-    color: '#FFFFFF',
-    backgroundColor: '#1B2A41',
-    borderRadius: 4,
-    padding: { top: 3, bottom: 3, left: 6, right: 6 },
-    borderWidth: 1,
-    borderColor: '#0F172A',
+    color: '#000000',
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    padding: { top: 1, bottom: 1, left: 2, right: 2 },
+    borderWidth: 0,
     font: { weight: 'bold', size: 10 },
     formatter: (val, ctx) => {
       const sum = ctx.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0) || 1;
@@ -553,8 +574,8 @@ function renderTabResumenGeneral() {
         dataLabels: {
           enabled: true,
           formatter: val => `${val} (${formatPct(val, filteredRecords.length)}%)`,
-          style: { fontSize: '11px', fontWeight: 'bold', colors: ['#1B2A41'] },
-          background: { enabled: true, foreColor: '#FFFFFF', borderRadius: 4, padding: 4, opacity: 0.95, borderWidth: 1, borderColor: '#0F172A' }
+          style: { fontSize: '11px', fontWeight: 'bold', colors: ['#000000'] },
+          background: { enabled: false }
         },
         tooltip: apexCountTooltip()
       });
@@ -595,8 +616,8 @@ function renderTabResumenGeneral() {
             const casos = Math.round((parseFloat(val) * total) / 100);
             return `${casos} (${val}%)`;
           },
-          style: { fontSize: '11px', fontWeight: 'bold', colors: ['#1B2A41'] },
-          background: { enabled: true, foreColor: '#FFFFFF', borderRadius: 4, padding: 4, opacity: 0.95, borderWidth: 1, borderColor: '#0F172A' }
+          style: { fontSize: '11px', fontWeight: 'bold', colors: ['#000000'] },
+          background: { enabled: false }
         },
         tooltip: apexPctTooltip()
       });
@@ -677,12 +698,11 @@ function renderTabResumenGeneral() {
             legend: { position: 'bottom' },
             datalabels: {
               display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
-              color: '#FFFFFF',
-              backgroundColor: '#1B2A41',
-              borderRadius: 4,
-              padding: { top: 2.5, bottom: 2.5, left: 5, right: 5 },
-              borderWidth: 1,
-              borderColor: '#0F172A',
+              color: '#000000',
+              backgroundColor: 'transparent',
+              borderRadius: 0,
+              padding: { top: 1, bottom: 1, left: 2, right: 2 },
+              borderWidth: 0,
               font: { weight: 'bold', size: 9.5 },
               clip: false,
               formatter: (val) => {
@@ -1729,15 +1749,9 @@ function renderTabElectrocardiograma() {
             const cnt = opt.seriesIndex === 0 ? sinusalCnt : arritmiaCnt;
             return `${cnt} (${val.toFixed(1)}%)`;
           },
-          style: { fontSize: '11px', fontWeight: 'bold', colors: ['#1B2A41'] },
+          style: { fontSize: '11px', fontWeight: 'bold', colors: ['#000000'] },
           background: {
-            enabled: true,
-            foreColor: '#FFFFFF',
-            borderRadius: 4,
-            padding: 4,
-            opacity: 0.95,
-            borderWidth: 1,
-            borderColor: '#0F172A'
+            enabled: false
           }
         },
         tooltip: apexCountTooltip()
@@ -1787,12 +1801,11 @@ function renderTabElectrocardiograma() {
             legend: { position: 'bottom' },
             datalabels: {
               display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
-              color: '#FFFFFF',
-              backgroundColor: '#1B2A41',
-              borderRadius: 4,
-              padding: { top: 2.5, bottom: 2.5, left: 5, right: 5 },
-              borderWidth: 1,
-              borderColor: '#0F172A',
+              color: '#000000',
+              backgroundColor: 'transparent',
+              borderRadius: 0,
+              padding: { top: 1, bottom: 1, left: 2, right: 2 },
+              borderWidth: 0,
               font: { weight: 'bold', size: 9.5 },
               clip: false,
               formatter: (val) => {
@@ -1871,12 +1884,11 @@ function renderTabElectrocardiograma() {
               anchor: 'end',
               align: 'top',
               font: { weight: 'bold', size: 10.5 },
-              color: '#FFFFFF',
-              backgroundColor: '#1B2A41',
-              borderRadius: 4,
-              padding: { top: 3, bottom: 3, left: 6, right: 6 },
-              borderWidth: 1,
-              borderColor: '#0F172A',
+              color: '#000000',
+              backgroundColor: 'transparent',
+              borderRadius: 0,
+              padding: { top: 1, bottom: 1, left: 2, right: 2 },
+              borderWidth: 0,
               clip: false,
               formatter: (val) => `${val} lpm`
             }

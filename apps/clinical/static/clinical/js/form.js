@@ -2446,3 +2446,24 @@ function exportarFormularioPDF(isBlank = false) {
   }
   window.open(url, '_blank');
 }
+
+function imprimirFormularioPDF() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const pId = urlParams.get('paciente') || (typeof pacienteActual !== 'undefined' && pacienteActual ? pacienteActual.id : null);
+  const hId = urlParams.get('historial');
+
+  let url = '/clinical/ficha/pdf/';
+  const params = [];
+  if (pId) params.push(`paciente=${encodeURIComponent(pId)}`);
+  if (hId) params.push(`historial=${encodeURIComponent(hId)}`);
+
+  if (params.length > 0) {
+    url += '?' + params.join('&');
+  }
+
+  // Abre el Cuestionario Oficial UNEMI en PDF en una nueva pestaña lista para imprimir
+  const win = window.open(url, '_blank');
+  if (win) {
+    win.focus();
+  }
+}

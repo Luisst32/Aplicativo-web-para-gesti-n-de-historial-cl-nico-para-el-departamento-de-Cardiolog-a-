@@ -2,26 +2,44 @@ import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMessage
 
 from security.models import SystemSetting, decrypt_api_key
 
 logger = logging.getLogger(__name__)
 
 
-def _send_smtp_gmail(sender_email: str, app_password: str, recipient_email: str, subject: str, plain_msg: str, html_msg: str) -> tuple[bool, str]:
+def _send_smtp_gmail(sender_email: str, app_password: str, recipient_email: str, subject: str, plain_msg: str, html_msg: str, attachments: list = None) -> tuple[bool, str]:
     """
-    Intenta despachar correo vía Gmail SMTP (probando puertos 587 y 465) con timeout de 3 segundos
+    Intenta despachar correo vía Gmail SMTP (probando puertos 465, 587 y 25) con timeout de 3 segundos
     para evitar bloqueos cuando el proveedor de internet bloquea puertos salientes de correo.
+    Soporta lista de adjuntos [(filename, filebytes), ...].
     """
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = sender_email
-    msg['To'] = recipient_email
+    if attachments:
+        msg = MIMEMultipart('mixed')
+        msg['Subject'] = subject
+        msg['From'] = sender_email
+        msg['To'] = recipient_email
 
-    msg.attach(MIMEText(plain_msg, 'plain', 'utf-8'))
-    msg.attach(MIMEText(html_msg, 'html', 'utf-8'))
+        alt_part = MIMEMultipart('alternative')
+        alt_part.attach(MIMEText(plain_msg, 'plain', 'utf-8'))
+        alt_part.attach(MIMEText(html_msg, 'html', 'utf-8'))
+        msg.attach(alt_part)
+
+        for fname, fbytes in attachments:
+            part = MIMEApplication(fbytes, _subtype="pdf")
+            part.add_header('Content-Disposition', 'attachment', filename=fname)
+            msg.attach(part)
+    else:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = sender_email
+        msg['To'] = recipient_email
+
+        msg.attach(MIMEText(plain_msg, 'plain', 'utf-8'))
+        msg.attach(MIMEText(html_msg, 'html', 'utf-8'))
 
     # Probar puertos estándar de Gmail: 465 (SSL directo), 587 (STARTTLS) y 25
     last_err = ""
@@ -183,3 +201,134 @@ Equipo CARDIOUNEMI
             return {"success": django_sent, "smtp_delivered": False, "method": "console", "error": err_msg}
 
     return {"success": django_sent, "smtp_delivered": False, "method": "console", "error": "SMTP no configurado"}
+
+
+def send_clinical_sheet_email(recipient_emails: list, subject: str, note_message: str, pdf_attachments: list, sender_user=None) -> dict:
+    """
+    Envía una o más fichas clínicas en PDF por correo electrónico a los destinatarios especificados.
+    pdf_attachments: lista de tuplas (filename, pdf_bytes).
+    """
+    if not recipient_emails:
+        return {"success": False, "error": "No se indicaron correos destinatarios."}
+
+    if not pdf_attachments:
+        return {"success": False, "error": "No se proporcionó ningún documento PDF para adjuntar."}
+
+    clean_recipients = []
+    for r in recipient_emails:
+        if isinstance(r, str):
+            for email_part in r.replace(';', ',').split(','):
+                email_clean = email_part.strip()
+                if email_clean and '@' in email_clean and email_clean not in clean_recipients:
+                    clean_recipients.append(email_clean)
+
+    if not clean_recipients:
+        return {"success": False, "error": "Las direcciones de correo proporcionadas no son válidas."}
+
+    cfg = SystemSetting.get_settings()
+    sender_email = (cfg.gmail_sender_email or '').strip()
+    raw_app_password = ''
+    if cfg.gmail_client_secret_encrypted:
+        raw_app_password = decrypt_api_key(cfg.gmail_client_secret_encrypted).replace(' ', '').strip()
+
+    from_email = sender_email or getattr(settings, 'DEFAULT_FROM_EMAIL', 'CARDIOUNEMI <noreply@cardiounemi.edu.ec>')
+    doctor_name = sender_user.full_name or sender_user.username if sender_user else "Departamento de Cardiología"
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>{subject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px; color: #1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+    <!-- Encabezado Institucional -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #1b2a41 0%, #1b73bc 100%); padding: 28px 24px; text-align: center; color: #ffffff;">
+        <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.5px;">CARDIOUNEMI</h1>
+        <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9;">Estudio Cardiovascular Oficial · Universidad Estatal de Milagro</p>
+      </td>
+    </tr>
+    <!-- Contenido Principal -->
+    <tr>
+      <td style="padding: 30px 26px;">
+        <h2 style="font-size: 17px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 12px;">
+          Ficha Clínica Cardiológica Oficial Adjunta
+        </h2>
+        <p style="font-size: 13.5px; line-height: 1.6; color: #475569; margin-bottom: 16px;">
+          Estimado(a), adjunto a este mensaje encontrará el documento oficial en formato PDF correspondiente al Cuestionario de Evaluación Cardiovascular de CARDIOUNEMI.
+        </p>
+
+        {f'<div style="background: #f8fafc; border-left: 4px solid #1b73bc; padding: 12px 16px; border-radius: 4px; margin-bottom: 20px;"><strong style="font-size: 12.5px; color: #1e293b;">Observaciones del Especialista:</strong><p style="margin: 4px 0 0; font-size: 13px; color: #475569; font-style: italic;">{note_message}</p></div>' if note_message else ''}
+
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px;">
+          <p style="margin: 0; font-size: 12.5px; color: #1e40af; line-height: 1.5;">
+            📄 <strong>Documentos adjuntos:</strong> {len(pdf_attachments)} archivo(s) PDF generado(s) desde el repositorio clínico institucional.
+          </p>
+        </div>
+
+        <p style="margin: 0; font-size: 13px; color: #64748b;">
+          Emitido por: <strong>{doctor_name}</strong><br>
+          Universidad Estatal de Milagro (UNEMI)
+        </p>
+      </td>
+    </tr>
+    <!-- Pie -->
+    <tr>
+      <td style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 24px; text-align: center; font-size: 11px; color: #94a3b8;">
+        Este correo contiene información médica confidencial protegida por normas institucionales y bioéticas.
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+    plain_message = f"""CARDIOUNEMI - Ficha Clínica Cardiológica
+Estimado(a), adjunto a este correo encontrará el Cuestionario Oficial UNEMI en formato PDF.
+
+{f'Observaciones: {note_message}' if note_message else ''}
+
+Emitido por: {doctor_name}
+Universidad Estatal de Milagro (UNEMI)
+"""
+
+    # 1. Enviar vía Django EmailMessage (soporta backend consola o locmem en tests)
+    django_ok = False
+    try:
+        msg = EmailMessage(
+            subject=subject,
+            body=html_content,
+            from_email=from_email,
+            to=clean_recipients,
+        )
+        msg.content_subtype = "html"
+        for fname, fbytes in pdf_attachments:
+            msg.attach(fname, fbytes, 'application/pdf')
+        msg.send(fail_silently=False)
+        django_ok = True
+    except Exception as e:
+        logger.exception(f"[CLINICAL_SHEET_EMAIL] Error al enviar correo vía Django: {e}")
+
+    # 2. Si Gmail SMTP está configurado y habilitado, enviar a cada destinatario
+    if sender_email and raw_app_password and cfg.gmail_api_enabled:
+        smtp_errors = []
+        for rcpt in clean_recipients:
+            ok, err = _send_smtp_gmail(
+                sender_email=sender_email,
+                app_password=raw_app_password,
+                recipient_email=rcpt,
+                subject=subject,
+                plain_msg=plain_message,
+                html_msg=html_content,
+                attachments=pdf_attachments
+            )
+            if not ok:
+                smtp_errors.append(f"{rcpt}: {err}")
+
+        if not smtp_errors:
+            return {"success": True, "smtp_delivered": True, "recipients": clean_recipients}
+        else:
+            return {"success": django_ok, "smtp_delivered": False, "recipients": clean_recipients, "error": "; ".join(smtp_errors)}
+
+    return {"success": django_ok, "smtp_delivered": False, "recipients": clean_recipients, "note": "Enviado por consola/backend por falta de SMTP activo"}

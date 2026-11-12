@@ -1592,6 +1592,68 @@ def export_pdf_view(request, visit_id=None):
     return response
 
 
+@login_required
+@require_POST
+def api_send_patient_sheet_email(request):
+    """
+    Despacha por correo electrónico el Cuestionario Oficial UNEMI en PDF
+    para los pacientes seleccionados en el directorio.
+    """
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        return JsonResponse({"success": False, "error": "Cuerpo de solicitud inválido."}, status=400)
+
+    patient_ids = data.get('patient_ids', [])
+    recipients = data.get('recipients', [])
+    subject = (data.get('subject') or 'Ficha Clínica Cardiológica - CARDIOUNEMI').strip()
+    notes = (data.get('notes') or '').strip()
+
+    if not patient_ids:
+        return JsonResponse({"success": False, "error": "Debe seleccionar al menos una ficha para enviar."}, status=400)
+
+    if not recipients:
+        return JsonResponse({"success": False, "error": "Debe ingresar al menos un correo de destino."}, status=400)
+
+    pdf_attachments = []
+    from clinical.pdf import generate_clinical_sheet_pdf
+    from security.services.email_service import send_clinical_sheet_email
+
+    for p_id in patient_ids:
+        clean_id = str(p_id).replace('p', '')
+        visit = None
+        if clean_id.isdigit():
+            visit = Visit.objects.filter(patient__patient_id=int(clean_id)).order_by('-visit_date', '-visit_id').first()
+        if not visit:
+            visit = Visit.objects.filter(patient__id_card=str(p_id)).order_by('-visit_date', '-visit_id').first()
+
+        if visit:
+            pdf_bytes = generate_clinical_sheet_pdf(visit, is_blank=False)
+            code_safe = (visit.study_code or f"V{visit.visit_id}").replace('/', '-').replace(' ', '_')
+            fname = f"Ficha_Clinica_{code_safe}_{visit.patient.last_name1}.pdf"
+            pdf_attachments.append((fname, pdf_bytes))
+
+    if not pdf_attachments:
+        return JsonResponse({"success": False, "error": "No se encontraron visitas médicas para los pacientes seleccionados."}, status=404)
+
+    result = send_clinical_sheet_email(
+        recipient_emails=recipients,
+        subject=subject,
+        note_message=notes,
+        pdf_attachments=pdf_attachments,
+        sender_user=request.user
+    )
+
+    if result.get('success'):
+        msg = f"Ficha(s) enviada(s) exitosamente a {len(result.get('recipients', []))} destinatario(s)."
+        if result.get('smtp_delivered'):
+            msg += " (Despacho verificado por Gmail SMTP)"
+        return JsonResponse({"success": True, "message": msg, "details": result})
+    else:
+        err = result.get('error', 'No fue posible despachar el correo.')
+        return JsonResponse({"success": False, "error": err}, status=500)
+
+
 # =============================================================================
 # IMPORTACION INTELIGENTE DE ARCHIVOS SPSS (.SAV)
 # =============================================================================
@@ -1608,8 +1670,9 @@ def sav_import_analyze_api(request):
 
     uploaded_file = request.FILES['file']
     filename = uploaded_file.name.lower()
-    if not (filename.endswith('.sav') or filename.endswith('.zsav')):
-        return JsonResponse({"success": False, "error": "Formato de archivo inválido. Debe ser un archivo SPSS (.sav o .zsav)."}, status=400)
+    valid_exts = ('.sav', '.zsav', '.rds', '.rdata', '.rda', '.csv')
+    if not any(filename.endswith(ext) for ext in valid_exts):
+        return JsonResponse({"success": False, "error": "Formato de archivo inválido. Debe ser SPSS (.sav, .zsav) o RStudio (.rds, .RData, .rda, .csv)."}, status=400)
 
     analysis_result = analyze_sav_file(uploaded_file, uploaded_file.name)
     if not analysis_result.get('success'):

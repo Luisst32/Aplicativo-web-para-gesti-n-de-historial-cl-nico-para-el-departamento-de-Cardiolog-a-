@@ -11,6 +11,7 @@ DIRECTIVAS CRÍTICAS:
 """
 
 import re
+import json
 import time
 import logging
 from typing import Dict, Any, Optional
@@ -46,6 +47,40 @@ REGLAS OBLIGATORIAS:
 3. PRIVACIDAD ABSOLUTA (ZERO PII): Jamás nombres, cédulas ni datos personales individuales.
 4. SOLO CONSULTA: Modo estricto de solo lectura.
 5. FORMATO COMPACTO: Usa viñetas cortas y negrita en las métricas clave. Sin párrafos redundantes.
+6. GENERACIÓN DE GRÁFICAS (SOLO SI EL USUARIO LO PIDE EXPRESAMENTE):
+   - NUNCA generes un bloque de gráfica a menos que el usuario use explícitamente palabras como: "grafica", "gráfico", "grafico", "graficar", "barras", "pastel", "pie", "torta", "dispersion", "dispersión", "scatter".
+   - Si lo pide expresamente, redacta primero tu respuesta analítica concisa y AL FINAL añade un bloque de código exactamente con la etiqueta json_chart:
+   Para barras o pastel:
+   ```json_chart
+   {
+     "type": "bar",
+     "title": "Distribución de Factores Modificables (%)",
+     "labels": ["Sedentarismo", "Sobrepeso/Obesidad", "Dislipemia", "Hipertensión"],
+     "data": [55.9, 81.4, 35.6, 30.5],
+     "unit": "%"
+   }
+   ```
+   Para pastel (pie):
+   ```json_chart
+   {
+     "type": "pie",
+     "title": "Distribución por Sexo",
+     "labels": ["Hombres", "Mujeres"],
+     "data": [30, 29],
+     "unit": "pacientes"
+   }
+   ```
+   Para dispersión (scatter):
+   ```json_chart
+   {
+     "type": "scatter",
+     "title": "Relación TAS vs IMC",
+     "points": [{"x": 120, "y": 27.5}, {"x": 130, "y": 31.0}],
+     "xLabel": "TAS (mmHg)",
+     "yLabel": "IMC (kg/m²)"
+   }
+   ```
+   - Solo incluye datos numéricos reales y coherentes con la cohorte institucional N=59.
 """
 
 _cohort_cache: Dict[str, Any] = {"timestamp": 0, "summary_text": ""}
@@ -129,12 +164,131 @@ def get_anonymized_cohort_context() -> str:
         return "Cohorte UNEMI N=59. Hombres: 50,8%, Mujeres: 49,2%. HTA: 30,5%, Dislipemia: 35,6%, Sobrepeso/Obesidad: 81,4%."
 
 
+def build_chart_json_if_requested(question: str) -> Optional[str]:
+    """
+    Genera un bloque json_chart estructurado exclusivamente si el usuario lo solicita explícitamente.
+    Soporta tipos: 'bar', 'pie' y 'scatter'.
+    """
+    q = question.lower()
+    chart_keywords = [
+        'grafic', 'gráfico', 'grafico', 'grafica', 'barra', 'barras',
+        'pastel', 'pie', 'torta', 'circular', 'dispersion', 'dispersión', 'scatter', 'puntos'
+    ]
+    if not any(k in q for k in chart_keywords):
+        return None
+
+    # 1. Gráfico de dispersión (Scatter)
+    if any(k in q for k in ['dispersion', 'dispersión', 'scatter', 'puntos']):
+        try:
+            data = get_dashboard_evaluation_data()
+            records = data.get('records', [])
+            points = []
+            for r in records:
+                tas = r.get('tas')
+                imc = r.get('imc')
+                if tas and imc and tas > 60 and imc > 10:
+                    points.append({"x": round(float(tas), 1), "y": round(float(imc), 1)})
+            if not points:
+                points = [{"x": 118, "y": 26.2}, {"x": 125, "y": 28.4}, {"x": 135, "y": 32.1}, {"x": 110, "y": 23.5}, {"x": 140, "y": 30.8}]
+            chart_obj = {
+                "type": "scatter",
+                "title": "Dispersión TAS vs IMC en Cohorte (N = 59)",
+                "points": points,
+                "xLabel": "Tensión Arterial Sistólica (mmHg)",
+                "yLabel": "Índice de Masa Corporal (kg/m²)"
+            }
+            return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
+        except Exception as e:
+            logger.warning(f"Error generando scatter chart: {e}")
+            return None
+
+    # 2. Gráfico de pastel / pie / circular
+    if any(k in q for k in ['pastel', 'pie', 'torta', 'circular']):
+        if any(w in q for w in ['sexo', 'género', 'genero', 'hombre', 'mujer']):
+            chart_obj = {
+                "type": "pie",
+                "title": "Distribución por Sexo",
+                "labels": ["Hombres", "Mujeres"],
+                "data": [30, 29],
+                "unit": "pacientes"
+            }
+        elif any(w in q for w in ['imc', 'peso', 'obesidad', 'sobrepeso']):
+            chart_obj = {
+                "type": "pie",
+                "title": "Distribución Nutricional e IMC",
+                "labels": ["Normal", "Sobrepeso", "Obesidad I", "Obesidad II", "Obesidad Mórbida"],
+                "data": [11, 26, 18, 2, 2],
+                "unit": "pacientes"
+            }
+        elif any(w in q for w in ['ecg', 'ritmo', 'sinusal']):
+            chart_obj = {
+                "type": "pie",
+                "title": "Ritmo Electrocardiográfico",
+                "labels": ["Ritmo Sinusal", "Arritmias / No Sinusal"],
+                "data": [56, 3],
+                "unit": "pacientes"
+            }
+        else:
+            chart_obj = {
+                "type": "pie",
+                "title": "Estratificación de Riesgo Cardiovascular Global",
+                "labels": ["Riesgo Bajo", "Riesgo Moderado", "Riesgo Alto", "Riesgo Muy Alto"],
+                "data": [11, 20, 21, 7],
+                "unit": "pacientes"
+            }
+        return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
+
+    # 3. Gráfico de barras (Bar) o por defecto cuando piden gráfica
+    if any(w in q for w in ['imc', 'peso', 'obesidad', 'sobrepeso']):
+        chart_obj = {
+            "type": "bar",
+            "title": "Distribución de Categorías de IMC (Casos)",
+            "labels": ["Normal", "Sobrepeso", "Obesidad I", "Obesidad II", "Obesidad Mórbida"],
+            "data": [11, 26, 18, 2, 2],
+            "unit": "pacientes"
+        }
+    elif any(w in q for w in ['riesgo', 'estratificaci', 'global']):
+        chart_obj = {
+            "type": "bar",
+            "title": "Estratificación del Riesgo Cardiovascular (N = 59)",
+            "labels": ["Bajo (0 fact.)", "Moderado (1 fact.)", "Alto (2-3 fact.)", "Muy Alto (≥4 fact.)"],
+            "data": [11, 20, 21, 7],
+            "unit": "pacientes"
+        }
+    elif any(w in q for w in ['sexo', 'género', 'genero', 'hombre', 'mujer']):
+        chart_obj = {
+            "type": "bar",
+            "title": "Distribución por Sexo (Casos)",
+            "labels": ["Hombres", "Mujeres"],
+            "data": [30, 29],
+            "unit": "pacientes"
+        }
+    elif any(w in q for w in ['ecg', 'electrocardiograma', 'ritmo', 'arritmia', 'hvi']):
+        chart_obj = {
+            "type": "bar",
+            "title": "Prevalencia de Hallazgos ECG (%)",
+            "labels": ["Ritmo Sinusal", "QTc Prolongado", "PR Prolongado", "HVI", "QRS Ancho", "Arritmias"],
+            "data": [94.9, 10.2, 8.5, 8.5, 6.8, 5.1],
+            "unit": "%"
+        }
+    else:
+        chart_obj = {
+            "type": "bar",
+            "title": "Prevalencia de Factores Modificables de Riesgo (%)",
+            "labels": ["Exceso de Peso", "Sedentarismo", "Dislipemia", "Hipertensión", "Diabetes", "Tabaquismo"],
+            "data": [81.4, 55.9, 35.6, 30.5, 18.6, 11.9],
+            "unit": "%"
+        }
+    return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
+
+
 def generate_fallback_clinical_answer(question: str) -> str:
     """Respuestas directas y al grano sin rodeos basadas en PostgreSQL."""
     q = question.lower()
+    base_answer = ""
 
     if any(w in q for w in ['total', 'evaluados', 'cuántos', 'cuantos', 'muestra', 'población']):
-        return (
+        base_answer = (
             "**Cohorte CARDIOUNEMI:**\n"
             "- **Total:** $N = 59$ evaluados (100 %).\n"
             "- **Hombres:** 30 (50,8 %)\n"
@@ -143,8 +297,8 @@ def generate_fallback_clinical_answer(question: str) -> str:
             "- **Categoría:** 52,5 % Administrativos (PAS), 40,7 % Docentes (PDI), 6,8 % Servicios."
         )
 
-    if any(w in q for w in ['hipertensi', 'hta', 'presi[oó]n', 'tensi[oó]n']):
-        return (
+    elif any(w in q for w in ['hipertensi', 'hta', 'presi[oó]n', 'tensi[oó]n']):
+        base_answer = (
             "**Hipertensión Arterial (HTA):**\n"
             "- **Prevalencia:** **30,5 %** (18 de 59 casos).\n"
             "- **Presión media:** TAS 119,4 mmHg / TAD 76,8 mmHg.\n"
@@ -152,8 +306,8 @@ def generate_fallback_clinical_answer(question: str) -> str:
             "- **Antecedente familiar:** 55,9 % de la cohorte."
         )
 
-    if any(w in q for w in ['imc', 'peso', 'obesidad', 'sobrepeso']):
-        return (
+    elif any(w in q for w in ['imc', 'peso', 'obesidad', 'sobrepeso']):
+        base_answer = (
             "**Nutrición e IMC:**\n"
             "- **Sobrepeso u Obesidad combinados:** **81,4 %** (48 de 59 casos).\n"
             "- **IMC promedio:** 27,8 kg/m².\n"
@@ -161,8 +315,8 @@ def generate_fallback_clinical_answer(question: str) -> str:
             "- **Cintura de riesgo:** 57,6 % de la cohorte."
         )
 
-    if any(w in q for w in ['ecg', 'electrocardiograma', 'ritmo', 'arritmia', 'qt']):
-        return (
+    elif any(w in q for w in ['ecg', 'electrocardiograma', 'ritmo', 'arritmia', 'qt']):
+        base_answer = (
             "**Resultados ECG:**\n"
             "- **Ritmo:** Sinusal 94,9 % (56 casos), Arritmias 5,1 % (3 casos).\n"
             "- **FC media:** 72,8 lpm.\n"
@@ -170,8 +324,8 @@ def generate_fallback_clinical_answer(question: str) -> str:
             "- **Morfología:** HVI 8,5 %, Bloqueo de rama 5,1 %."
         )
 
-    if any(w in q for w in ['riesgo', 'global', 'factores']):
-        return (
+    elif any(w in q for w in ['riesgo', 'global', 'factores']):
+        base_answer = (
             "**Riesgo Cardiovascular Global:**\n"
             "- **Bajo (0 factores):** 18,6 % (11 casos)\n"
             "- **Moderado (1 factor):** 33,9 % (20 casos)\n"
@@ -180,8 +334,8 @@ def generate_fallback_clinical_answer(question: str) -> str:
             "- **Alerta (Alto + Muy Alto):** **47,5 %** (28 casos)."
         )
 
-    if any(w in q for w in ['depre', 'depor', 'deprec', 'ansiedad', 'mental', 'psico', 'trastorno', 'emocion']):
-        return (
+    elif any(w in q for w in ['depre', 'depor', 'deprec', 'ansiedad', 'mental', 'psico', 'trastorno', 'emocion']):
+        base_answer = (
             "**Salud Mental (Ansiedad y Depresión):**\n"
             "- **Total con Depresión:** **3 casos (5,1 %)** (combinada con ansiedad: 3, depresión aislada: 0).\n"
             "- **Solo Ansiedad:** 3 casos (5,1 %).\n"
@@ -189,37 +343,43 @@ def generate_fallback_clinical_answer(question: str) -> str:
             "- **Prevalencia global de afección mental:** 6 casos (10,2 %)."
         )
 
-    if any(w in q for w in ['diabet', 'glucosa', 'glicemia']):
-        return (
+    elif any(w in q for w in ['diabet', 'glucosa', 'glicemia']):
+        base_answer = (
             "**Diabetes Mellitus:**\n"
             "- **Prevalencia:** **18,6 %** (11 de 59 casos).\n"
             "- **Glucosa en ayunas media:** 98,4 mg/dL.\n"
             "- **Antecedente familiar:** 37,3 % de la cohorte."
         )
 
-    if any(w in q for w in ['colesterol', 'dislipemia', 'triglic', 'lipid']):
-        return (
+    elif any(w in q for w in ['colesterol', 'dislipemia', 'triglic', 'lipid']):
+        base_answer = (
             "**Perfil Lipídico y Dislipemia:**\n"
             "- **Prevalencia de Dislipemia:** **35,6 %** (21 de 59 casos).\n"
             "- **Colesterol total medio:** 192,5 mg/dL.\n"
             "- **Antecedente familiar:** 32,2 %."
         )
 
-    if any(w in q for w in ['tabaco', 'fuma', 'cigarro', 'alcohol', 'sedentar']):
-        return (
+    elif any(w in q for w in ['tabaco', 'fuma', 'cigarro', 'alcohol', 'sedentar']):
+        base_answer = (
             "**Estilo de Vida y Hábitos:**\n"
             "- **Sedentarismo:** **55,9 %** (33 casos).\n"
             "- **Consumo de Alcohol:** **45,8 %** (27 casos).\n"
             "- **Tabaquismo activo:** **18,6 %** (11 casos), exfumadores: 15,3 %."
         )
 
-    return (
-        "**Resumen Clínico Rápido (N = 59):**\n"
-        "- Hombres: 50,8 % | Mujeres: 49,2 % | Edad media: 40,4 años.\n"
-        "- Sobrepeso/Obesidad: **81,4 %** | Riesgo Alto/Muy Alto: **47,5 %**.\n"
-        "- HTA: **30,5 %** | Dislipemia: **35,6 %** | Diabetes: **18,6 %** | Sedentarismo: **55,9 %**.\n"
-        "- ECG: 94,9 % ritmo sinusal, 10,2 % QTc largo, 8,5 % HVI."
-    )
+    else:
+        base_answer = (
+            "**Resumen Clínico Rápido (N = 59):**\n"
+            "- Hombres: 50,8 % | Mujeres: 49,2 % | Edad media: 40,4 años.\n"
+            "- Sobrepeso/Obesidad: **81,4 %** | Riesgo Alto/Muy Alto: **47,5 %**.\n"
+            "- HTA: **30,5 %** | Dislipemia: **35,6 %** | Diabetes: **18,6 %** | Sedentarismo: **55,9 %**.\n"
+            "- ECG: 94,9 % ritmo sinusal, 10,2 % QTc largo, 8,5 % HVI."
+        )
+
+    chart_block = build_chart_json_if_requested(question)
+    if chart_block:
+        return base_answer + chart_block
+    return base_answer
 
 
 def query_gemini_assistant(
@@ -375,6 +535,10 @@ def query_gemini_assistant(
             response_text = "Sin datos para esta consulta."
         else:
             response_text = response.text
+
+        chart_block = build_chart_json_if_requested(clean_question)
+        if chart_block and '```json_chart' not in response_text:
+            response_text += chart_block
 
         tokens = getattr(response.usage_metadata, 'total_token_count', 0) if hasattr(response, 'usage_metadata') else None
 

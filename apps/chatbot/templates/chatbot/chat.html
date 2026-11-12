@@ -115,10 +115,11 @@
 {% endblock %}
 
 {% block extra_js %}
-  <!-- Dependencias vendor: Markdown y LaTeX (KaTeX) antes de la lógica del chat -->
+  <!-- Dependencias vendor: Markdown, LaTeX (KaTeX) y Gráficas interactivas Chart.js -->
   <script src="{% static 'chatbot/vendor/marked.min.js' %}"></script>
   <script src="{% static 'chatbot/vendor/katex/katex.min.js' %}"></script>
   <script src="{% static 'chatbot/vendor/katex/auto-render.min.js' %}"></script>
+  <script src="{% static 'dashboard/vendor/chart.umd.min.js' %}"></script>
   <!-- Controlador del Chatbot -->
-  <script src="{% static 'chatbot/js/chat.js' %}?v=20261104_01"></script>
+  <script src="{% static 'chatbot/js/chat.js' %}?v=20261111_02"></script>
 {% endblock %}

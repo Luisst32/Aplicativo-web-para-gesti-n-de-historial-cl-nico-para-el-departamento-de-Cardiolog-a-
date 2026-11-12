@@ -356,15 +356,15 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
         ],
         [
             Paragraph(f"<b>8.- Soplos cardíacos:</b> {chk(not soplos_si)} No &nbsp; {chk(soplos_si)} Sí &nbsp;&nbsp; <b>Grado:</b> {field_txt(val('soplo_grado', val('f_grado_soplo')), 4)} &nbsp;&nbsp; <b>Tipo:</b> {field_txt(val('soplo_tipo'), 10)}", q_style),
-            Paragraph(f"<b>9.- Extra-tonos:</b> {chk(not extratonos_si)} No &nbsp; {chk(extratonos_si)} Sí", q_style)
+            Paragraph(f"<b>9.- Extra-tonos:</b> {chk(not extratonos_si)} No &nbsp; {chk(extratonos_si)} Sí &nbsp; <b>Detalle:</b> {field_txt(val('extratonos_detalle'), 10)}", q_style)
         ],
         [
             Paragraph(f"<b>10.- Pulsos pedios palpables:</b> {chk(pulsos_si)} Sí &nbsp; {chk(not pulsos_si)} No &nbsp;&nbsp;&nbsp; <b>Simétricos:</b> {chk(pulsos_sim_si)} Sí &nbsp; {chk(not pulsos_sim_si)} No", q_style),
             Paragraph(f"<b>11.- Exploración respiratoria normal:</b> {chk(resp_norm_si)} Sí &nbsp; {chk(not resp_norm_si)} No", q_style)
         ],
         [
-            Paragraph(f"<b>12.- Exploración abdominal normal:</b> {chk(abd_norm_si)} Sí &nbsp; {chk(not abd_norm_si)} No &nbsp;&nbsp;&nbsp; <b>Hepatomegalia:</b> {chk(is_yes('hepatomegalia'))} Sí &nbsp; {chk(not is_yes('hepatomegalia'))} No", q_style),
-            Paragraph(f"<b>Organomegalia:</b> {chk(is_yes('organomegalia'))} Sí &nbsp; {chk(not is_yes('organomegalia'))} No", q_style)
+            Paragraph(f"<b>12.- Exploración abdominal normal:</b> {chk(abd_norm_si)} Sí &nbsp; {chk(not abd_norm_si)} No &nbsp;&nbsp; <b>Detalle:</b> {field_txt(val('abd_alteracion_detalle'), 10)}", q_style),
+            Paragraph(f"<b>Hepatomegalia:</b> {chk(is_yes('hepatomegalia'))} Sí &nbsp; {chk(not is_yes('hepatomegalia'))} No &nbsp;&nbsp; <b>Organomegalia:</b> {chk(is_yes('organomegalia'))} Sí", q_style)
         ]
     ]
     t_mod3 = Table(mod3_rows, colWidths=[345, 194])
@@ -396,20 +396,24 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
 
     mod4_rows = [
         [
-            Paragraph(f"<b>1.- Hipertensión (HTA):</b> {chk(not hta_si)} No &nbsp; {chk(hta_si)} Sí &nbsp;&nbsp; <b>Tratada:</b> {chk(is_yes('r_hta_trat'))} Sí &nbsp; <b>Fármacos:</b> {field_txt(val('hta_tto'), 12)}", q_style),
+            Paragraph(f"<b>1.- Hipertensión (HTA):</b> {chk(not hta_si)} No &nbsp; {chk(hta_si)} Sí &nbsp;&nbsp; <b>Fármacos:</b> {field_txt(val('hta_medicamentos', val('hta_tto')), 14)}", q_style),
             Paragraph(f"<b>2.- Prueba de MAPA:</b> {chk(is_no('mapa'))} No &nbsp; {chk(is_yes('mapa'))} Sí &nbsp; {chk(not is_yes('mapa_alt'))} Normal &nbsp; {chk(is_yes('mapa_alt'))} Alterada", q_style)
         ],
         [
-            Paragraph(f"<b>3.- Diabetes mellitus:</b> {chk(not dm_si)} No &nbsp; {chk(dm_si)} Sí &nbsp;&nbsp; <b>Tipo:</b> {field_txt(val('dm_clasificacion', val('dm_tipo')), 8)} &nbsp; <b>Insulina:</b> {chk(is_yes('dm_insulina'))} Sí", q_style),
-            Paragraph(f"<b>4.- Dislipemia:</b> {chk(not dlp_si)} No &nbsp; {chk(dlp_si)} Sí &nbsp;&nbsp; <b>Fármacos:</b> {field_txt(val('dlp_tto'), 12)}", q_style)
+            Paragraph(f"<b>3.- Diabetes mellitus:</b> {chk(not dm_si)} No &nbsp; {chk(dm_si)} Sí &nbsp;&nbsp; <b>Fármacos:</b> {field_txt(val('dm_farmacos', val('dm_clasificacion')), 10)} &nbsp; <b>Insulina:</b> {chk(is_yes('dm_insulina'))} Sí", q_style),
+            Paragraph(f"<b>4.- Dislipemia:</b> {chk(not dlp_si)} No &nbsp; {chk(dlp_si)} Sí &nbsp;&nbsp; <b>Tipo:</b> {field_txt(val('dislip_tipo'), 6)} &nbsp; <b>Fármacos:</b> {field_txt(val('dislip_farmacos', val('dlp_tto')), 10)}", q_style)
         ],
         [
             Paragraph(f"<b>5.- Tabaquismo:</b> {chk(not tab_si)} No &nbsp; {chk(tab_si)} Sí &nbsp;&nbsp; <b>Cigarrillos/día:</b> {field_txt(val('tabaco_cantidad'), 4)} &nbsp; {chk(is_yes('chk_exfumador'))} Exfumador", q_style),
-            Paragraph(f"<b>6.- Alcohol:</b> {chk(not alc_si)} No &nbsp; {chk(alc_si)} Sí &nbsp;&nbsp; <b>Frecuencia:</b> {field_txt(val('alcohol_frecuencia', val('alcohol')), 12)}", q_style)
+            Paragraph(f"<b>6.- Alcohol:</b> {chk(not alc_si)} No &nbsp; {chk(alc_si)} Sí &nbsp;&nbsp; <b>Frecuencia/Unidades:</b> {field_txt(val('alcohol_unidades', val('alcohol_frecuencia')), 10)}", q_style)
         ],
         [
             Paragraph(f"<b>7.- Consumo sustancias / drogas:</b> {chk(not drogas_si)} No &nbsp; {chk(drogas_si)} Sí &nbsp;&nbsp; <b>Cuáles:</b> {field_txt(val('drogas_cuales'), 14)}", q_style),
             Paragraph(f"<b>8.- Obesidad:</b> {chk(not obes_si)} No &nbsp; {chk(obes_si)} Sí &nbsp;&nbsp; <b>9.- Sobrepeso:</b> {chk(not sp_si)} No &nbsp; {chk(sp_si)} Sí", q_style)
+        ],
+        [
+            Paragraph(f"<b>Otros factores de riesgo:</b> {field_txt(val('otros_factores_detalle'), 28)}", q_style),
+            Paragraph("", q_style)
         ],
         [
             Paragraph(f"<b>10.- Arritmias:</b> {chk(not arrit_si)} No &nbsp; {chk(arrit_si)} Sí &nbsp;&nbsp; <b>Tipo:</b> {field_txt(val('arritmias_tipo'), 12)}", q_style),
@@ -570,10 +574,10 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
         ],
         [
             Paragraph(f"<b>5.- Depresión diagnosticada:</b> {chk(not depr_si)} No &nbsp; {chk(depr_si)} Sí &nbsp;&nbsp;&nbsp;&nbsp; <b>6.- Trastorno de ansiedad:</b> {chk(not ans_si)} No &nbsp; {chk(ans_si)} Sí", q_style),
-            Paragraph(f"<b>7.- Alergia a fármacos:</b> {chk(not alergia_si)} No &nbsp; {chk(alergia_si)} Sí &nbsp;&nbsp; <b>Cuáles:</b> {field_txt(val('alergia_medicamentos'), 8)}", q_style)
+            Paragraph(f"<b>7.- Alergia a fármacos:</b> {chk(not alergia_si)} No &nbsp; {chk(alergia_si)} Sí &nbsp;&nbsp; <b>Cuáles:</b> {field_txt(val('alergia_medicamento', val('alergia_medicamentos')), 10)}", q_style)
         ],
         [
-            Paragraph(f"<b>8.- Otras patologías relevantes:</b> {field_txt(val('otras_no_cardio'), 36)}", q_style),
+            Paragraph(f"<b>8.- Otras patologías relevantes:</b> {field_txt(val('otras_enf_detalle', val('otras_no_cardio')), 36)}", q_style),
             Paragraph("", q_style)
         ]
     ]
@@ -601,10 +605,10 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
         ],
         [
             Paragraph(f"<b>3.- Afectación cardiovascular debida al COVID-19:</b> {chk(not covid_cv_si)} No &nbsp; {chk(covid_cv_si)} Sí &nbsp; <b>Detalle:</b> {field_txt(val('covid_cv_detalle'), 10)}", q_style),
-            Paragraph(f"<b>4.- Afectación pulmonar debida al COVID-19:</b> {chk(not covid_pulm_si)} No &nbsp; {chk(covid_pulm_si)} Sí", q_style)
+            Paragraph(f"<b>4.- Afectación pulmonar debida al COVID-19:</b> {chk(not covid_pulm_si)} No &nbsp; {chk(covid_pulm_si)} Sí &nbsp; <b>Detalle:</b> {field_txt(val('covid_pulm_detalle'), 10)}", q_style)
         ],
         [
-            Paragraph(f"<b>5.- Otras secuelas COVID:</b> {field_txt(val('covid_otras'), 28)}", q_style),
+            Paragraph(f"<b>5.- Otras secuelas COVID:</b> {field_txt(val('covid_otras_detalle', val('covid_otras')), 28)}", q_style),
             Paragraph(f"<b>6.- Long-COVID (síntomas persistentes):</b> {chk(not long_covid_si)} No &nbsp; {chk(long_covid_si)} Sí &nbsp; <b>Síntomas:</b> {field_txt(val('long_covid_sintomas', val('long_covid')), 10)}", q_style)
         ]
     ]
@@ -666,42 +670,72 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
     add_section("Cuestionario de Dolor de Pecho de G. Rose y Clasificación NYHA", t_mod10)
 
     # =========================================================================
-    # 11. RESULTADOS DEL ELECTROCARDIOGRAMA (ECG)
+    # 11. RESULTADOS DEL ELECTROCARDIOGRAMA (ECG) - 27 ÍTEMS COMPLETOS
     # =========================================================================
     ecg_norm_si = not is_no('ecg_normal')
     hvi_si = is_yes('ecg_hvi')
-    onda_p_si = is_yes('onda_p_mitral')
-    onda_q_si = is_yes('onda_q_patologica')
-    brugada_si = is_yes('patron_brugada')
-    repol_si = is_yes('repolarizacion_precoz')
-    sobrecarga_si = is_yes('sobrecarga_sistolica')
-    bloqueo_av_si = is_yes('bloqueo_av')
-    bloqueo_rama_si = is_yes('bloqueo_rama') or (val('bloqueo_de_rama_cual') != '' and not is_no('bloqueo_de_rama_cual'))
+    hvd_si = is_yes('ecg_hvd')
+    onda_p_si = is_yes('ecg_p_mitral') or is_yes('onda_p_mitral')
+    bloqueo_av_si = is_yes('ecg_bloqueo_av') or is_yes('bloqueo_av')
+    bloqueo_sa_si = is_yes('ecg_bloqueo_sa') or is_yes('bloqueo_sa')
+    bloqueo_ia_si = is_yes('ecg_bloqueo_ia') or is_yes('bloqueo_ia')
+    hemibloqueo_si = is_yes('ecg_hemibloqueo') or is_yes('hemibloqueo')
+    bloqueo_rama_si = is_yes('ecg_bloqueo_rama_sn') or is_yes('bloqueo_rama') or (val('ecg_bloqueo_rama') != '' and not is_no('ecg_bloqueo_rama'))
+    brugada_si = is_yes('ecg_brugada') or is_yes('patron_brugada')
+    repol_si = is_yes('ecg_repolarizacion_precoz') or is_yes('repolarizacion_precoz')
+    sobrecarga_si = is_yes('ecg_sobrecarga_sistolica') or is_yes('sobrecarga_sistolica')
+    onda_delta_si = is_yes('ecg_onda_delta')
+    cubeta_si = is_yes('ecg_cubeta_digitalica') or is_yes('cubeta_digitalica')
+    onda_q_si = is_yes('ecg_onda_q') or is_yes('onda_q_patologica')
+    t_neg_si = is_yes('ecg_t_negativa')
+    st_asc_si = is_yes('ecg_st_ascenso') or is_yes('ascenso_st_patologico')
+    st_desc_si = is_yes('ecg_st_descenso') or is_yes('descenso_st_patologico')
+    alt_repol_si = is_yes('ecg_alt_repolarizacion')
 
     mod11_rows = [
         [
-            Paragraph(f"<b>1.- Ritmo:</b> {field_txt(val('ecg_ritmo', 'Ritmo Sinusal (RS)'), 14)} &nbsp;&nbsp; <b>2.- FC:</b> {field_txt(val('ecg_fc'), 5)} lpm &nbsp;&nbsp; <b>3.- Eje eléctrico ÂQRS:</b> {field_txt(val('ecg_eje'), 5)} °", q_style),
-            Paragraph(f"<b>4.- Intervalo PR:</b> {field_txt(val('ecg_pr'), 5)} ms &nbsp;&nbsp; <b>5.- Complejo QRS:</b> {field_txt(val('ecg_qrs'), 5)} ms", q_style)
+            Paragraph(f"<b>1.- Ritmo:</b> {field_txt(val('ecg_ritmo', 'Ritmo Sinusal (RS)'), 12)} &nbsp;&nbsp; <b>2.- FC:</b> {field_txt(val('ecg_fc'), 4)} lpm &nbsp;&nbsp; <b>3.- Eje ÂQRS:</b> {field_txt(val('ecg_eje'), 4)} °", q_style),
+            Paragraph(f"<b>4.- Intervalo RR:</b> {field_txt(val('ecg_rr'), 4)} s &nbsp;&nbsp; <b>5.- Onda P:</b> {field_txt(val('ecg_p_mm'), 4)} mm", q_style)
         ],
         [
-            Paragraph(f"<b>6.- Intervalo QT:</b> {field_txt(val('ecg_qt'), 5)} ms &nbsp;&nbsp; <b>QTc (Bazett):</b> {field_txt(val('ecg_qtc'), 5)} ms", q_style),
-            Paragraph(f"<b>7.- Onda P mitral:</b> {chk(not onda_p_si)} No &nbsp; {chk(onda_p_si)} Sí &nbsp;&nbsp; <b>8.- Bloqueo A-V:</b> {chk(not bloqueo_av_si)} No &nbsp; {chk(bloqueo_av_si)} Sí", q_style)
+            Paragraph(f"<b>6.- Intervalo PR:</b> {field_txt(val('ecg_pr'), 4)} ms &nbsp;&nbsp; <b>7.- Complejo QRS:</b> {field_txt(val('ecg_qrs'), 4)} ms", q_style),
+            Paragraph(f"<b>8.- Intervalo QT:</b> {field_txt(val('ecg_qt'), 4)} ms &nbsp;&nbsp; <b>9.- QTc (Bazett):</b> {field_txt(val('ecg_qtc'), 4)} ms", q_style)
         ],
         [
-            Paragraph(f"<b>9.- Bloqueo de rama:</b> {chk(not bloqueo_rama_si)} No &nbsp; {chk(bloqueo_rama_si)} Sí &nbsp; <b>Tipo:</b> {field_txt(val('bloqueo_de_rama_cual', val('ecg_bloqueo')), 12)}", q_style),
-            Paragraph(f"<b>10.- Criterios HVI en ECG:</b> {chk(not hvi_si)} No &nbsp; {chk(hvi_si)} Sí", q_style)
+            Paragraph(f"<b>10.- Onda P mitral:</b> {chk(not onda_p_si)} No &nbsp; {chk(onda_p_si)} Sí", q_style),
+            Paragraph(f"<b>11.- Bloqueo A-V:</b> {chk(not bloqueo_av_si)} No &nbsp; {chk(bloqueo_av_si)} Sí &nbsp; <b>Grado:</b> {field_txt(val('ecg_bloqueo_av_grado'), 10)}", q_style)
         ],
         [
-            Paragraph(f"<b>11.- Patrón Brugada:</b> {chk(not brugada_si)} No &nbsp; {chk(brugada_si)} Sí &nbsp;&nbsp;&nbsp; <b>12.- Repolarización precoz:</b> {chk(not repol_si)} No &nbsp; {chk(repol_si)} Sí", q_style),
-            Paragraph(f"<b>13.- Sobrecarga sistólica:</b> {chk(not sobrecarga_si)} No &nbsp; {chk(sobrecarga_si)} Sí", q_style)
+            Paragraph(f"<b>12.- Bloqueo sinoauricular (SA):</b> {chk(not bloqueo_sa_si)} No &nbsp; {chk(bloqueo_sa_si)} Sí", q_style),
+            Paragraph(f"<b>13.- Bloqueo Interauricular (IA):</b> {chk(not bloqueo_ia_si)} No &nbsp; {chk(bloqueo_ia_si)} Sí", q_style)
         ],
         [
-            Paragraph(f"<b>14.- Onda Q patológica:</b> {chk(not onda_q_si)} No &nbsp; {chk(onda_q_si)} Sí &nbsp;&nbsp;&nbsp; <b>15.- Cubeta digitálica:</b> {chk(is_yes('cubeta_digitalica'))} Sí &nbsp; {chk(not is_yes('cubeta_digitalica'))} No", q_style),
-            Paragraph(f"<b>16.- Alteración ST:</b> Ascenso: {chk(is_yes('ascenso_st_patologico'))} Sí &nbsp; Descenso: {chk(is_yes('descenso_st_patologico'))} Sí", q_style)
+            Paragraph(f"<b>14.- Hemibloqueos:</b> {chk(not hemibloqueo_si)} No &nbsp; {chk(hemibloqueo_si)} Sí &nbsp; <b>Cuál:</b> {field_txt(val('ecg_hemibloqueo_cual'), 10)}", q_style),
+            Paragraph(f"<b>15.- Bloqueo de rama:</b> {chk(not bloqueo_rama_si)} No &nbsp; {chk(bloqueo_rama_si)} Sí &nbsp; <b>Tipo:</b> {field_txt(val('ecg_bloqueo_rama', val('bloqueo_de_rama_cual')), 10)}", q_style)
         ],
         [
-            Paragraph(f"<b>ECG Normal:</b> {chk(ecg_norm_si)} Sí &nbsp; {chk(not ecg_norm_si)} No &nbsp;&nbsp;&nbsp; <b>Comentario del ECG:</b> {field_txt(val('ecg_comentario'), 24)}", q_style),
-            Paragraph("", q_style)
+            Paragraph(f"<b>16.- Patrón Brugada:</b> {chk(not brugada_si)} No &nbsp; {chk(brugada_si)} Sí", q_style),
+            Paragraph(f"<b>17.- Repolarización precoz:</b> {chk(not repol_si)} No &nbsp; {chk(repol_si)} Sí &nbsp;&nbsp; <b>18.- Criterios HVI:</b> {chk(not hvi_si)} No &nbsp; {chk(hvi_si)} Sí", q_style)
+        ],
+        [
+            Paragraph(f"<b>19.- Sobrecarga sistólica:</b> {chk(not sobrecarga_si)} No &nbsp; {chk(sobrecarga_si)} Sí &nbsp; <b>Compl.:</b> {field_txt(val('ecg_sobrecarga_complejos'), 8)}", q_style),
+            Paragraph(f"<b>20.- Deflexión intrinsicoide V5-V6:</b> {field_txt(val('ecg_deflexion_intrinsicoide'), 4)} s &nbsp;&nbsp; <b>21.- HVD:</b> {chk(not hvd_si)} No &nbsp; {chk(hvd_si)} Sí", q_style)
+        ],
+        [
+            Paragraph(f"<b>22.- Onda Delta:</b> {chk(not onda_delta_si)} No &nbsp; {chk(onda_delta_si)} Sí", q_style),
+            Paragraph(f"<b>23.- Cubeta digitálica:</b> {chk(not cubeta_si)} No &nbsp; {chk(cubeta_si)} Sí", q_style)
+        ],
+        [
+            Paragraph(f"<b>24.- Onda Q patológica:</b> {chk(not onda_q_si)} No &nbsp; {chk(onda_q_si)} Sí &nbsp; <b>Ampl.:</b> {field_txt(val('ecg_onda_q_amplitud'), 5)} &nbsp; <b>Volt.:</b> {field_txt(val('ecg_onda_q_voltaje'), 4)} mV &nbsp; <b>Compl.:</b> {field_txt(val('ecg_onda_q_complejos'), 6)}", q_style),
+            Paragraph(f"<b>25.- T negativa:</b> {chk(not t_neg_si)} No &nbsp; {chk(t_neg_si)} Sí &nbsp; <b>Compl.:</b> {field_txt(val('ecg_t_negativa_complejos'), 6)} (Sim.: {chk(is_yes('ecg_t_simetrica'))} Asim.: {chk(is_yes('ecg_t_asimetrica'))})", q_style)
+        ],
+        [
+            Paragraph(f"<b>26.- Ascenso ST patológico:</b> {chk(not st_asc_si)} No &nbsp; {chk(st_asc_si)} Sí &nbsp; <b>Elev.:</b> {field_txt(val('ecg_st_ascenso_mm'), 4)} mm &nbsp; <b>Compl.:</b> {field_txt(val('ecg_st_ascenso_complejos'), 6)}", q_style),
+            Paragraph(f"<b>27.- Descenso ST:</b> {chk(not st_desc_si)} No &nbsp; {chk(st_desc_si)} Sí &nbsp; <b>Depr.:</b> {field_txt(val('ecg_st_descenso_mm'), 4)} mm &nbsp; <b>Compl.:</b> {field_txt(val('ecg_st_descenso_complejos'), 6)}", q_style)
+        ],
+        [
+            Paragraph(f"<b>ECG Normal:</b> {chk(ecg_norm_si)} Sí &nbsp; {chk(not ecg_norm_si)} No &nbsp;&nbsp;&nbsp; <b>Comentario ECG:</b> {field_txt(val('ecg_comentario'), 20)}", q_style),
+            Paragraph(f"<b>Alteraciones de la repolarización:</b> {chk(not alt_repol_si)} No &nbsp; {chk(alt_repol_si)} Sí", q_style)
         ]
     ]
     t_mod11 = Table(mod11_rows, colWidths=[315, 224])
@@ -877,25 +911,37 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
     add_section("Cuestionario de Actividad Física", t_mod15)
 
     # =========================================================================
-    # 16. ESTUDIOS SOLICITADOS AL PACIENTE
+    # 16. ESTUDIOS SOLICITADOS AL PACIENTE (9 ÍTEMS OFICIALES)
     # =========================================================================
-    est_analisis = is_yes('sol_analisis') or not is_no('ac_prueba')
-    est_ergo = is_yes('sol_ergometria')
-    est_tac = is_yes('sol_tac')
-    est_rnm = is_yes('sol_rnm')
-    est_ef = is_yes('sol_electrofisiologia')
+    est_analisis = is_yes('est_analisis_clinicos') or is_yes('sol_analisis') or not is_no('ac_prueba')
+    est_ergo = is_yes('est_ergometria_spect') or is_yes('sol_ergometria')
+    est_tac = is_yes('est_tac_cardiaco') or is_yes('sol_tac')
+    est_rnm = is_yes('est_rnm_cardiaco') or is_yes('sol_rnm')
+    est_ef = is_yes('est_electrofisiologia') or is_yes('sol_electrofisiologia')
+    est_eco = is_yes('est_ecocardiograma') or is_yes('sol_ecocardiograma')
+    est_holter = is_yes('est_holter') or is_yes('sol_holter')
+    est_mapa = is_yes('est_mapa') or is_yes('sol_mapa')
+    est_otros_txt = val('est_otros_detalle', val('sol_otros'))
 
     mod16_rows = [
         [
-            Paragraph(f"<b>1.- Análisis Clínicos / Laboratorio:</b> {chk(not est_analisis)} No &nbsp; {chk(est_analisis)} Sí", q_style),
-            Paragraph(f"<b>2.- Ergometría con SPECT:</b> {chk(not est_ergo)} No &nbsp; {chk(est_ergo)} Sí", q_style)
+            Paragraph(f"<b>1.- Estudios de Análisis Clínicos:</b> {chk(not est_analisis)} No &nbsp; {chk(est_analisis)} Sí", q_style),
+            Paragraph(f"<b>2.- Estudios de ergometría con Spectk:</b> {chk(not est_ergo)} No &nbsp; {chk(est_ergo)} Sí", q_style)
         ],
         [
-            Paragraph(f"<b>3.- TAC cardíaco coronario:</b> {chk(not est_tac)} No &nbsp; {chk(est_tac)} Sí", q_style),
-            Paragraph(f"<b>4.- Resonancia Magnética (RNM):</b> {chk(not est_rnm)} No &nbsp; {chk(est_rnm)} Sí", q_style)
+            Paragraph(f"<b>3.- Estudios de TAC cardíaco:</b> {chk(not est_tac)} No &nbsp; {chk(est_tac)} Sí", q_style),
+            Paragraph(f"<b>4.- Estudios de RNM cardíaco:</b> {chk(not est_rnm)} No &nbsp; {chk(est_rnm)} Sí", q_style)
         ],
         [
-            Paragraph(f"<b>5.- Estudio de Electrofisiología:</b> {chk(not est_ef)} No &nbsp; {chk(est_ef)} Sí", q_style),
+            Paragraph(f"<b>5.- Estudios de Electrofisiología:</b> {chk(not est_ef)} No &nbsp; {chk(est_ef)} Sí", q_style),
+            Paragraph(f"<b>6.- Estudios de Ecocardiografía:</b> {chk(not est_eco)} No &nbsp; {chk(est_eco)} Sí", q_style)
+        ],
+        [
+            Paragraph(f"<b>7.- Estudios de Holter ECG:</b> {chk(not est_holter)} No &nbsp; {chk(est_holter)} Sí", q_style),
+            Paragraph(f"<b>8.- Estudios de MAPA:</b> {chk(not est_mapa)} No &nbsp; {chk(est_mapa)} Sí", q_style)
+        ],
+        [
+            Paragraph(f"<b>9.- Otros estudios indicados / observaciones:</b> {field_txt(est_otros_txt, 34)}", q_style),
             Paragraph("", q_style)
         ]
     ]

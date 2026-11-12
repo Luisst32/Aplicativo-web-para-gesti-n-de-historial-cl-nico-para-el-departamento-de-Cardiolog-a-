@@ -194,11 +194,167 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
     hacerScrollAlFinal();
   }
 
+  function renderizarGraficoEnBurbuja(divContenedor, cfg) {
+    try {
+      const card = document.createElement('div');
+      card.className = 'chat-chart-card';
+      card.style.cssText = 'margin-top: 14px; padding: 12px 14px; background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); width: 100%; box-sizing: border-box;';
+
+      if (cfg.title) {
+        const titleEl = document.createElement('div');
+        titleEl.style.cssText = 'font-weight: 700; font-size: 13px; color: #0F172A; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;';
+        titleEl.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg> <span>${cfg.title}</span>`;
+        card.appendChild(titleEl);
+      }
+
+      const canvasWrap = document.createElement('div');
+      canvasWrap.style.cssText = 'position: relative; height: 230px; width: 100%;';
+      const canvas = document.createElement('canvas');
+      canvasWrap.appendChild(canvas);
+      card.appendChild(canvasWrap);
+      divContenedor.appendChild(card);
+
+      const palette = ['#2563EB', '#0D9488', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#10B981', '#6366F1'];
+      const tipo = (cfg.type || 'bar').toLowerCase();
+
+      if (tipo === 'pie' || tipo === 'doughnut') {
+        new Chart(canvas.getContext('2d'), {
+          type: 'pie',
+          data: {
+            labels: cfg.labels || [],
+            datasets: [{
+              data: cfg.data || [],
+              backgroundColor: palette.slice(0, (cfg.labels || []).length),
+              borderWidth: 2,
+              borderColor: '#FFFFFF'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { color: '#000000', font: { size: 11, weight: 'bold' }, boxWidth: 12, padding: 8 }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (ctx) {
+                    const unit = cfg.unit ? ` ${cfg.unit}` : '';
+                    return ` ${ctx.label}: ${ctx.raw}${unit}`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      } else if (tipo === 'scatter') {
+        new Chart(canvas.getContext('2d'), {
+          type: 'scatter',
+          data: {
+            datasets: [{
+              label: cfg.title || 'Cohorte',
+              data: cfg.points || [],
+              backgroundColor: 'rgba(37, 99, 235, 0.75)',
+              borderColor: '#1D4ED8',
+              pointRadius: 5,
+              pointHoverRadius: 7
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                title: { display: !!cfg.xLabel, text: cfg.xLabel || '', color: '#000000', font: { weight: 'bold', size: 11 } },
+                ticks: { color: '#000000', font: { weight: '600' } },
+                grid: { color: 'rgba(0,0,0,0.06)' }
+              },
+              y: {
+                title: { display: !!cfg.yLabel, text: cfg.yLabel || '', color: '#000000', font: { weight: 'bold', size: 11 } },
+                ticks: { color: '#000000', font: { weight: '600' } },
+                grid: { color: 'rgba(0,0,0,0.06)' }
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function (ctx) {
+                    const xL = cfg.xLabel || 'X';
+                    const yL = cfg.yLabel || 'Y';
+                    return ` ${xL}: ${ctx.raw.x} | ${yL}: ${ctx.raw.y}`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      } else {
+        // Bar chart por defecto
+        new Chart(canvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: cfg.labels || [],
+            datasets: [{
+              data: cfg.data || [],
+              backgroundColor: palette.slice(0, (cfg.labels || []).length),
+              borderRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function (ctx) {
+                    const unit = cfg.unit ? ` ${cfg.unit}` : '';
+                    return ` ${ctx.raw}${unit}`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                ticks: { color: '#000000', font: { weight: '600', size: 11 } },
+                grid: { display: false }
+              },
+              y: {
+                beginAtZero: true,
+                ticks: { color: '#000000', font: { weight: '600' } },
+                grid: { color: 'rgba(0,0,0,0.06)' }
+              }
+            }
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('Error instanciando gráfico Chart.js en chatbot:', err);
+    }
+  }
+
   function agregarBurbujaBot(markdownTexto, incluirSugerencias = false) {
     const conts = [
       document.getElementById('chat-page-messages'),
       document.getElementById('chat-messages')
     ].filter(Boolean);
+
+    // Extraer bloque json_chart si existe
+    const chartRegex = /```json_chart\s*([\s\S]*?)```/i;
+    const chartMatch = (markdownTexto || '').match(chartRegex);
+    let chartConfig = null;
+    let textoMarkdownLimpio = markdownTexto || '';
+
+    if (chartMatch) {
+      try {
+        chartConfig = JSON.parse(chartMatch[1].trim());
+        textoMarkdownLimpio = markdownTexto.replace(chartRegex, '').trim();
+      } catch (e) {
+        console.warn('Error al parsear bloque json_chart:', e);
+      }
+    }
 
     conts.forEach(cont => {
       const div = document.createElement('div');
@@ -206,13 +362,18 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
 
       let htmlContenido = '';
       if (typeof marked !== 'undefined') {
-        htmlContenido = marked.parse(markdownTexto);
+        htmlContenido = marked.parse(textoMarkdownLimpio);
       } else {
-        htmlContenido = `<p>${markdownTexto.replace(/\n/g, '<br>')}</p>`;
+        htmlContenido = `<p>${textoMarkdownLimpio.replace(/\n/g, '<br>')}</p>`;
       }
 
       div.innerHTML = htmlContenido;
       renderLatex(div);
+
+      // Renderizar gráfico interactivo Chart.js si se solicitó
+      if (chartConfig && typeof Chart !== 'undefined') {
+        renderizarGraficoEnBurbuja(div, chartConfig);
+      }
 
       // Si se solicitan chips de sugerencia rápida
       if (incluirSugerencias) {

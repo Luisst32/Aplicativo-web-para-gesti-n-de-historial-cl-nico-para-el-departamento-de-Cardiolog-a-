@@ -27,7 +27,8 @@ urlpatterns = [
     # Exportación Completa de Dataset (342 columnas SPSS .sav y CSV)
     path('api/export-dataset/', views.export_dataset_api, name='api_export_dataset'),
 
-    # Exportación oficial a PDF (HU-17)
+    # Exportación oficial a PDF (HU-17) y envío por correo
     path('ficha/<int:visit_id>/pdf/', views.export_pdf_view, name='export_pdf'),
     path('ficha/pdf/', views.export_pdf_view, name='export_pdf_query'),
+    path('api/ficha/enviar-correo/', views.api_send_patient_sheet_email, name='api_ficha_enviar_correo'),
 ]

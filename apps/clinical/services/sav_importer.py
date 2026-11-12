@@ -817,18 +817,73 @@ def _clean_decimal(val, max_digits=5, decimal_places=2):
 
 
 # -----------------------------------------------------------------------------
-# 1. ANÁLISIS INTELIGENTE DEL ARCHIVO .SAV
+# 1. ANÁLISIS INTELIGENTE DEL ARCHIVO .SAV Y RSTUDIO (.RDS / .RDATA)
 # -----------------------------------------------------------------------------
+
+class DatasetMetadata:
+    """Metadatos estandarizados para archivos SPSS, RStudio y CSV."""
+    def __init__(self, df, variable_value_labels=None, column_labels=None):
+        self.number_rows = len(df)
+        self.number_columns = len(df.columns)
+        self.column_names = [str(c) for c in df.columns]
+        self.column_labels = column_labels or [str(c) for c in df.columns]
+        self.variable_value_labels = variable_value_labels or {}
+
+
+def _read_dataset_file(temp_path: Path, filename: str):
+    """
+    Lee archivos SPSS (.sav, .zsav) mediante pyreadstat,
+    archivos de RStudio (.rds, .RData, .rda) mediante pyreadr,
+    o archivos CSV mediante pandas.
+    """
+    ext = Path(filename).suffix.lower()
+    if ext in ('.rds', '.rdata', '.rda'):
+        try:
+            import pyreadr
+            res = pyreadr.read_r(str(temp_path))
+            df = None
+            if None in res:
+                df = res[None]
+            elif res:
+                dfs = [v for v in res.values() if hasattr(v, 'columns')]
+                if dfs:
+                    df = max(dfs, key=lambda d: len(d))
+            if df is None:
+                raise ValueError("No se encontró ningún DataFrame válido en el archivo de RStudio.")
+
+            df_clean = df.where(df.notnull(), None)
+            df_dict = {str(col): df_clean[col].tolist() for col in df_clean.columns}
+            meta = DatasetMetadata(df_clean)
+            return df_dict, meta
+        except Exception as r_err:
+            raise ValueError(f"Error al leer archivo de RStudio: {str(r_err)}")
+
+    elif ext == '.csv':
+        try:
+            import pandas as pd
+            df = pd.read_csv(str(temp_path))
+            df_clean = df.where(df.notnull(), None)
+            df_dict = {str(col): df_clean[col].tolist() for col in df_clean.columns}
+            meta = DatasetMetadata(df_clean)
+            return df_dict, meta
+        except Exception as csv_err:
+            raise ValueError(f"Error al leer archivo CSV: {str(csv_err)}")
+
+    else:
+        # SPSS .sav / .zsav
+        return pyreadstat.read_sav(str(temp_path), output_format="dict")
+
 
 def analyze_sav_file(file_obj, filename="archivo.sav"):
     """
-    Lee e inspecciona inteligentemente un archivo SPSS .sav.
+    Lee e inspecciona inteligentemente un archivo SPSS .sav o RStudio (.rds/.RData).
     Retorna un informe de diagnóstico para que el usuario confirme antes de guardar.
     """
+    ext = Path(filename).suffix.lower() or ".sav"
     temp_dir = Path(settings.MEDIA_ROOT) / "temp_imports"
     temp_dir.mkdir(parents=True, exist_ok=True)
     temp_token = str(uuid.uuid4())
-    temp_path = temp_dir / f"{temp_token}.sav"
+    temp_path = temp_dir / f"{temp_token}{ext}"
 
     # Guardar temporalmente el archivo subido
     with open(temp_path, "wb") as dest:
@@ -839,13 +894,13 @@ def analyze_sav_file(file_obj, filename="archivo.sav"):
             dest.write(file_obj.read())
 
     try:
-        df_dict, meta = pyreadstat.read_sav(str(temp_path), output_format="dict")
+        df_dict, meta = _read_dataset_file(temp_path, filename)
     except Exception as e:
         if temp_path.exists():
             temp_path.unlink()
         return {
             "success": False,
-            "error": f"No se pudo leer el archivo SPSS: {str(e)}"
+            "error": f"No se pudo leer el archivo de datos: {str(e)}"
         }
 
     total_rows = meta.number_rows
@@ -1059,7 +1114,11 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
     utilizando bulk_create con ON CONFLICT y pre-indexación en memoria.
     """
     temp_dir = Path(settings.MEDIA_ROOT) / "temp_imports"
-    temp_path = temp_dir / f"{temp_token}.sav"
+    matching_files = list(temp_dir.glob(f"{temp_token}.*"))
+    if matching_files:
+        temp_path = matching_files[0]
+    else:
+        temp_path = temp_dir / f"{temp_token}.sav"
 
     if not temp_path.exists():
         return {
@@ -1068,11 +1127,11 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
         }
 
     try:
-        df_dict, meta = pyreadstat.read_sav(str(temp_path), output_format="dict")
+        df_dict, meta = _read_dataset_file(temp_path, temp_path.name)
     except Exception as e:
         return {
             "success": False,
-            "error": f"Error al procesar archivo SPSS: {str(e)}"
+            "error": f"Error al procesar archivo de datos: {str(e)}"
         }
 
     total_rows = meta.number_rows

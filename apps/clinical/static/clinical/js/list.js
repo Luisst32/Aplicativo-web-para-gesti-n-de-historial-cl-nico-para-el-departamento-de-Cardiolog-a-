@@ -629,6 +629,17 @@ function actualizarEstadoSeleccion(filtrados) {
     }
   }
 
+  const btnEnviarCorreo = document.getElementById('btnEnviarCorreoSeleccionados');
+  const countEnviarCorreo = document.getElementById('countSeleccionadosCorreo');
+  if (btnEnviarCorreo) {
+    if (seleccionados.size > 0) {
+      btnEnviarCorreo.style.display = 'inline-flex';
+      if (countEnviarCorreo) countEnviarCorreo.textContent = seleccionados.size;
+    } else {
+      btnEnviarCorreo.style.display = 'none';
+    }
+  }
+
   const countEl = document.getElementById('formulariosCount');
   if (countEl) {
     let texto = `Mostrando ${filtrados.length} de ${pacientes.length} pacientes`;
@@ -906,5 +917,152 @@ function exportarPDFPaciente(pacienteId) {
 function exportarPDFPacienteActivo() {
   if (pacienteActivoExpediente) {
     exportarPDFPaciente(pacienteActivoExpediente.id);
+  }
+}
+
+// =========================================================================
+// ENVÍO DE FICHA OFICIAL POR CORREO ELECTRÓNICO (MODAL REUTILIZABLE)
+// =========================================================================
+
+function abrirModalEnviarCorreo() {
+  const modal = document.getElementById('modalEnviarFichaCorreo');
+  if (!modal) return;
+
+  const arrSeleccionados = Array.from(seleccionados);
+  if (arrSeleccionados.length === 0) {
+    if (typeof mostrarNotificacion === 'function') {
+      mostrarNotificacion('Seleccione al menos una ficha para enviar por correo.', 'warning');
+    } else {
+      alert('Seleccione al menos una ficha para enviar por correo.');
+    }
+    return;
+  }
+
+  const resumenEl = document.getElementById('correoResumenFichas');
+  const inputDest = document.getElementById('correoDestinatariosInput');
+  const inputAsunto = document.getElementById('correoAsuntoInput');
+  const alerta = document.getElementById('correoAlertaEstado');
+  if (alerta) alerta.style.display = 'none';
+
+  if (arrSeleccionados.length === 1) {
+    const pSel = pacientes.find(p => p.id === arrSeleccionados[0]);
+    if (pSel) {
+      if (resumenEl) {
+        resumenEl.innerHTML = `Se adjuntará el PDF oficial de <strong>${pSel.nombre_completo}</strong> (Código: ${pSel.codigo_estudio || pSel.id}).`;
+      }
+      if (inputDest) {
+        inputDest.value = pSel.email || '';
+      }
+      if (inputAsunto) {
+        inputAsunto.value = `Ficha Clínica Cardiológica - ${pSel.nombre_completo} (UNEMI)`;
+      }
+    }
+  } else {
+    if (resumenEl) {
+      resumenEl.innerHTML = `Se adjuntarán los PDFs oficiales de <strong>${arrSeleccionados.length} pacientes seleccionados</strong>.`;
+    }
+    if (inputDest) {
+      // Recoger correos de los seleccionados que tengan correo
+      const correos = pacientes
+        .filter(p => seleccionados.has(p.id) && p.email)
+        .map(p => p.email);
+      inputDest.value = correos.join(', ');
+    }
+    if (inputAsunto) {
+      inputAsunto.value = `Fichas Clínicas Cardiológicas - CARDIOUNEMI (${arrSeleccionados.length} expedientes)`;
+    }
+  }
+
+  modal.style.display = 'flex';
+  if (inputDest) setTimeout(() => inputDest.focus(), 150);
+}
+
+function cerrarModalEnviarCorreo() {
+  const modal = document.getElementById('modalEnviarFichaCorreo');
+  if (modal) modal.style.display = 'none';
+}
+
+async function ejecutarEnvioCorreoFicha() {
+  const inputDest = document.getElementById('correoDestinatariosInput');
+  const inputAsunto = document.getElementById('correoAsuntoInput');
+  const inputNotas = document.getElementById('correoNotasInput');
+  const btnEnviar = document.getElementById('btnEjecutarEnvioCorreo');
+  const btnTxt = document.getElementById('btnTxtEnviarCorreo');
+  const alerta = document.getElementById('correoAlertaEstado');
+
+  const destVal = (inputDest?.value || '').trim();
+  if (!destVal) {
+    if (alerta) {
+      alerta.style.display = 'block';
+      alerta.style.background = '#fef2f2';
+      alerta.style.color = '#991b1b';
+      alerta.style.border = '1px solid #fecaca';
+      alerta.textContent = 'Por favor ingrese al menos una dirección de correo válida.';
+    }
+    inputDest?.focus();
+    return;
+  }
+
+  const destinatarios = destVal.split(',').map(s => s.trim()).filter(Boolean);
+  const arrSeleccionados = Array.from(seleccionados);
+
+  // Estado de carga en el botón
+  if (btnEnviar) btnEnviar.disabled = true;
+  if (btnTxt) btnTxt.textContent = 'Enviando...';
+  if (alerta) {
+    alerta.style.display = 'block';
+    alerta.style.background = '#f0f9ff';
+    alerta.style.color = '#0369a1';
+    alerta.style.border = '1px solid #bae6fd';
+    alerta.textContent = 'Generando documentos PDF y despachando vía SMTP institucional...';
+  }
+
+  try {
+    const csrftoken = (document.cookie.split('; ').find(row => row.startsWith('csrftoken=')) || '').split('=')[1] || '';
+
+    const resp = await fetch('/clinical/api/ficha/enviar-correo/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrftoken
+      },
+      body: JSON.stringify({
+        patient_ids: arrSeleccionados,
+        recipients: destinatarios,
+        subject: inputAsunto?.value || 'Ficha Clínica Cardiológica - CARDIOUNEMI',
+        notes: inputNotas?.value || ''
+      })
+    });
+
+    const data = await resp.json();
+
+    if (resp.ok && data.success) {
+      if (alerta) {
+        alerta.style.display = 'block';
+        alerta.style.background = '#ecfdf5';
+        alerta.style.color = '#065f46';
+        alerta.style.border = '1px solid #a7f3d0';
+        alerta.textContent = data.message || 'Ficha enviada exitosamente por correo.';
+      }
+      if (typeof mostrarNotificacion === 'function') {
+        mostrarNotificacion(data.message || 'Ficha enviada exitosamente por correo.', 'success');
+      }
+      setTimeout(() => {
+        cerrarModalEnviarCorreo();
+      }, 1600);
+    } else {
+      throw new Error(data.error || 'Ocurrió un error al enviar el correo.');
+    }
+  } catch (err) {
+    if (alerta) {
+      alerta.style.display = 'block';
+      alerta.style.background = '#fef2f2';
+      alerta.style.color = '#991b1b';
+      alerta.style.border = '1px solid #fecaca';
+      alerta.textContent = `Error: ${err.message}`;
+    }
+  } finally {
+    if (btnEnviar) btnEnviar.disabled = false;
+    if (btnTxt) btnTxt.textContent = 'Enviar Correo';
   }
 }
