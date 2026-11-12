@@ -269,17 +269,29 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
           }
         });
       } else if (tipo === 'scatter') {
-        canvasWrap.style.height = '240px';
+        canvasWrap.style.height = '270px';
         new Chart(canvas.getContext('2d'), {
           type: 'scatter',
           data: {
             datasets: [{
               label: cfg.title || 'Cohorte',
               data: cfg.points || [],
-              backgroundColor: 'rgba(37, 99, 235, 0.75)',
-              borderColor: '#1D4ED8',
-              pointRadius: 5,
-              pointHoverRadius: 7
+              backgroundColor: function (ctx) {
+                const pt = ctx.raw;
+                if (pt && (pt.x >= 140 || pt.y >= 30)) {
+                  return 'rgba(239, 68, 68, 0.85)'; // Resalta pacientes con TAS >= 140 mmHg o IMC >= 30 kg/m²
+                }
+                return 'rgba(37, 99, 235, 0.8)';
+              },
+              borderColor: function (ctx) {
+                const pt = ctx.raw;
+                if (pt && (pt.x >= 140 || pt.y >= 30)) {
+                  return '#b91c1c';
+                }
+                return '#1d4ed8';
+              },
+              pointRadius: 5.5,
+              pointHoverRadius: 8.5
             }]
           },
           options: {
@@ -304,7 +316,9 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
                   label: function (ctx) {
                     const xL = cfg.xLabel || 'X';
                     const yL = cfg.yLabel || 'Y';
-                    return ` ${xL}: ${ctx.raw.x} | ${yL}: ${ctx.raw.y}`;
+                    const pt = ctx.raw || {};
+                    const prefix = pt.name ? `${pt.name} · ` : '';
+                    return ` ${prefix}${xL}: ${pt.x} | ${yL}: ${pt.y}`;
                   }
                 }
               }
@@ -435,6 +449,13 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
             }
           }]
         });
+      }
+
+      if (cfg.annotation) {
+        const noteEl = document.createElement('div');
+        noteEl.style.cssText = 'margin-top: 10px; font-size: 11px; color: #475569; font-style: italic; line-height: 1.4; border-top: 1px dashed #E2E8F0; padding-top: 6px;';
+        noteEl.textContent = cfg.annotation;
+        card.appendChild(noteEl);
       }
     } catch (err) {
       console.warn('Error instanciando gráfico Chart.js en chatbot:', err);
