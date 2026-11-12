@@ -71,6 +71,62 @@
       </div>
 
       <div class="header-actions">
+        <script>
+          function togglePdfMenu(e) {
+            if (e) e.stopPropagation();
+            var menu = document.getElementById('pdfDropdownMenu');
+            if (menu) {
+              menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+            }
+          }
+
+          function exportarFormularioPDF(isBlank) {
+            var menu = document.getElementById('pdfDropdownMenu');
+            if (menu) menu.style.display = 'none';
+
+            if (isBlank) {
+              var wb = window.open('/clinical/ficha/pdf/?blank=1', '_blank');
+              if (!wb) window.location.href = '/clinical/ficha/pdf/?blank=1';
+              return;
+            }
+
+            var urlParams = new URLSearchParams(window.location.search);
+            var pId = urlParams.get('paciente') || (typeof pacienteActual !== 'undefined' && pacienteActual ? (pacienteActual.id || pacienteActual.codigo) : null);
+            var hId = urlParams.get('historial') || (typeof historialActual !== 'undefined' && historialActual ? historialActual.id : null);
+
+            var url = '/clinical/ficha/pdf/';
+            var params = [];
+            if (pId) params.push('paciente=' + encodeURIComponent(pId));
+            if (hId) params.push('historial=' + encodeURIComponent(hId));
+            if (params.length > 0) url += '?' + params.join('&');
+
+            var w = window.open(url, '_blank');
+            if (!w) window.location.href = url;
+          }
+
+          function imprimirFormularioPDF() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var pId = urlParams.get('paciente') || (typeof pacienteActual !== 'undefined' && pacienteActual ? (pacienteActual.id || pacienteActual.codigo) : null);
+            var hId = urlParams.get('historial') || (typeof historialActual !== 'undefined' && historialActual ? historialActual.id : null);
+
+            var url = '/clinical/ficha/pdf/';
+            var params = [];
+            if (pId) params.push('paciente=' + encodeURIComponent(pId));
+            if (hId) params.push('historial=' + encodeURIComponent(hId));
+            if (params.length > 0) url += '?' + params.join('&');
+
+            var win = window.open(url, '_blank');
+            if (!win) {
+              window.location.href = url;
+            } else {
+              win.focus();
+            }
+          }
+
+          window.togglePdfMenu = togglePdfMenu;
+          window.exportarFormularioPDF = exportarFormularioPDF;
+          window.imprimirFormularioPDF = imprimirFormularioPDF;
+        </script>
         <button type="button" class="btn btn-outline-primary" id="btnImprimirFicha" onclick="imprimirFormularioPDF()" title="Imprimir cuestionario oficial UNEMI en PDF" style="display:inline-flex; align-items:center; gap:6px; font-weight:600; color:var(--color-primary-blue,#1b73bc); border-color:var(--color-primary-blue,#1b73bc);">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
           <span>Imprimir</span>
@@ -2966,6 +3022,6 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261110_06"></script>
-  <script src="{% static 'clinical/js/form.js' %}?v=20261110_06"></script>
+  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261111_08"></script>
+  <script src="{% static 'clinical/js/form.js' %}?v=20261111_08"></script>
 {% endblock %}

@@ -2449,8 +2449,8 @@ function exportarFormularioPDF(isBlank = false) {
 
 function imprimirFormularioPDF() {
   const urlParams = new URLSearchParams(window.location.search);
-  const pId = urlParams.get('paciente') || (typeof pacienteActual !== 'undefined' && pacienteActual ? pacienteActual.id : null);
-  const hId = urlParams.get('historial');
+  const pId = urlParams.get('paciente') || (typeof pacienteActual !== 'undefined' && pacienteActual ? (pacienteActual.id || pacienteActual.codigo) : null);
+  const hId = urlParams.get('historial') || (typeof historialActual !== 'undefined' && historialActual ? historialActual.id : null);
 
   let url = '/clinical/ficha/pdf/';
   const params = [];
@@ -2463,7 +2463,13 @@ function imprimirFormularioPDF() {
 
   // Abre el Cuestionario Oficial UNEMI en PDF en una nueva pestaña lista para imprimir
   const win = window.open(url, '_blank');
-  if (win) {
+  if (!win) {
+    window.location.href = url;
+  } else {
     win.focus();
   }
 }
+
+window.imprimirFormularioPDF = imprimirFormularioPDF;
+window.exportarFormularioPDF = exportarFormularioPDF;
+window.togglePdfMenu = togglePdfMenu;

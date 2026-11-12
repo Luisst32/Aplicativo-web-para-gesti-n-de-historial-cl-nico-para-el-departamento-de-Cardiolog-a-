@@ -1571,9 +1571,11 @@ def export_pdf_view(request, visit_id=None):
             visit = Visit.objects.filter(visit_id=int(clean_vid)).first()
 
     if not visit and patient_id_param:
-        clean_pid = str(patient_id_param).replace('p', '')
+        clean_pid = str(patient_id_param).replace('p_', '').replace('p', '').replace('_', '')
         if clean_pid.isdigit():
             visit = Visit.objects.filter(patient__patient_id=int(clean_pid)).order_by('-visit_date', '-visit_id').first()
+        if not visit:
+            visit = Visit.objects.filter(study_code=patient_id_param).order_by('-visit_date', '-visit_id').first()
         if not visit:
             visit = Visit.objects.filter(patient__id_card=patient_id_param).order_by('-visit_date', '-visit_id').first()
 
