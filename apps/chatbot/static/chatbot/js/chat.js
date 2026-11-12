@@ -194,21 +194,40 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
     hacerScrollAlFinal();
   }
 
+  function dividirEnLineas(texto, maxLongitud = 20) {
+    if (typeof texto !== 'string' || texto.length <= maxLongitud) return texto;
+    const palabras = texto.split(' ');
+    const lineas = [];
+    let lineaActual = '';
+    palabras.forEach(palabra => {
+      if ((lineaActual + ' ' + palabra).trim().length <= maxLongitud) {
+        lineaActual = (lineaActual + ' ' + palabra).trim();
+      } else {
+        if (lineaActual) lineas.push(lineaActual);
+        lineaActual = palabra;
+      }
+    });
+    if (lineaActual) lineas.push(lineaActual);
+    return lineas;
+  }
+
   function renderizarGraficoEnBurbuja(divContenedor, cfg) {
     try {
+      divContenedor.classList.add('mensaje-con-grafico');
+
       const card = document.createElement('div');
       card.className = 'chat-chart-card';
-      card.style.cssText = 'margin-top: 14px; padding: 12px 14px; background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); width: 100%; box-sizing: border-box;';
+      card.style.cssText = 'margin-top: 14px; padding: 14px 16px; background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); width: 100%; box-sizing: border-box; overflow: hidden;';
 
       if (cfg.title) {
         const titleEl = document.createElement('div');
-        titleEl.style.cssText = 'font-weight: 700; font-size: 13px; color: #0F172A; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;';
-        titleEl.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg> <span>${cfg.title}</span>`;
+        titleEl.style.cssText = 'font-weight: 700; font-size: 13.5px; color: #0F172A; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; line-height: 1.35;';
+        titleEl.innerHTML = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" style="flex-shrink:0;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg> <span>${cfg.title}</span>`;
         card.appendChild(titleEl);
       }
 
       const canvasWrap = document.createElement('div');
-      canvasWrap.style.cssText = 'position: relative; height: 230px; width: 100%;';
+      canvasWrap.style.cssText = 'position: relative; width: 100%;';
       const canvas = document.createElement('canvas');
       canvasWrap.appendChild(canvas);
       card.appendChild(canvasWrap);
@@ -218,6 +237,7 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
       const tipo = (cfg.type || 'bar').toLowerCase();
 
       if (tipo === 'pie' || tipo === 'doughnut') {
+        canvasWrap.style.height = '230px';
         new Chart(canvas.getContext('2d'), {
           type: 'pie',
           data: {
@@ -249,6 +269,7 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
           }
         });
       } else if (tipo === 'scatter') {
+        canvasWrap.style.height = '240px';
         new Chart(canvas.getContext('2d'), {
           type: 'scatter',
           data: {
@@ -291,20 +312,39 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
           }
         });
       } else {
-        // Bar chart por defecto
+        // Gráfico de barras inteligente:
+        // Si las etiquetas son descriptivas o largas, usar barras horizontales para legibilidad óptima
+        const rawLabels = cfg.labels || [];
+        const tieneEtiquetaLarga = rawLabels.some(l => typeof l === 'string' && l.length > 9);
+        const esHorizontal = cfg.horizontal || (cfg.indexAxis === 'y') || tieneEtiquetaLarga || (rawLabels.length <= 5);
+
+        const formattedLabels = rawLabels.map(l => dividirEnLineas(l, esHorizontal ? 22 : 14));
+        const numItems = rawLabels.length;
+        const alturaCanvas = esHorizontal 
+          ? Math.max(160, Math.min(360, numItems * 50 + 45))
+          : Math.max(220, 240);
+        canvasWrap.style.height = `${alturaCanvas}px`;
+
         new Chart(canvas.getContext('2d'), {
           type: 'bar',
           data: {
-            labels: cfg.labels || [],
+            labels: formattedLabels,
             datasets: [{
               data: cfg.data || [],
-              backgroundColor: palette.slice(0, (cfg.labels || []).length),
+              backgroundColor: palette.slice(0, numItems),
               borderRadius: 6
             }]
           },
           options: {
+            indexAxis: esHorizontal ? 'y' : 'x',
             responsive: true,
             maintainAspectRatio: false,
+            layout: {
+              padding: {
+                right: esHorizontal ? 32 : 10,
+                top: esHorizontal ? 6 : 18
+              }
+            },
             plugins: {
               legend: { display: false },
               tooltip: {
@@ -316,18 +356,84 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
                 }
               }
             },
-            scales: {
+            scales: esHorizontal ? {
               x: {
-                ticks: { color: '#000000', font: { weight: '600', size: 11 } },
+                beginAtZero: true,
+                suggestedMax: (cfg.unit === '%' || (cfg.data && Math.max(...cfg.data) > 60 && Math.max(...cfg.data) <= 100)) ? 100 : undefined,
+                ticks: {
+                  color: '#000000',
+                  font: { weight: '600', size: 11 },
+                  callback: function (val) {
+                    return (cfg.unit === '%') ? val + '%' : val;
+                  }
+                },
+                grid: { color: 'rgba(0,0,0,0.06)' }
+              },
+              y: {
+                ticks: {
+                  color: '#000000',
+                  font: { weight: '600', size: 11.5 },
+                  autoSkip: false
+                },
+                grid: { display: false }
+              }
+            } : {
+              x: {
+                ticks: {
+                  color: '#000000',
+                  font: { weight: '600', size: 11 },
+                  maxRotation: 0,
+                  minRotation: 0,
+                  autoSkip: false
+                },
                 grid: { display: false }
               },
               y: {
                 beginAtZero: true,
-                ticks: { color: '#000000', font: { weight: '600' } },
+                suggestedMax: (cfg.unit === '%' || (cfg.data && Math.max(...cfg.data) > 60 && Math.max(...cfg.data) <= 100)) ? 100 : undefined,
+                ticks: {
+                  color: '#000000',
+                  font: { weight: '600' },
+                  callback: function (val) {
+                    return (cfg.unit === '%') ? val + '%' : val;
+                  }
+                },
                 grid: { color: 'rgba(0,0,0,0.06)' }
               }
             }
-          }
+          },
+          plugins: [{
+            id: 'barValuesPlugin',
+            afterDatasetsDraw(chart) {
+              const { ctx } = chart;
+              chart.data.datasets.forEach((dataset, datasetIdx) => {
+                const meta = chart.getDatasetMeta(datasetIdx);
+                if (!meta.hidden) {
+                  meta.data.forEach((barEl, idx) => {
+                    const val = dataset.data[idx];
+                    if (val !== undefined && val !== null) {
+                      const unit = cfg.unit ? ` ${cfg.unit}` : '';
+                      const txt = `${val}${unit}`;
+                      ctx.save();
+                      ctx.font = 'bold 11px Inter, sans-serif';
+                      ctx.fillStyle = '#0F172A';
+                      if (esHorizontal) {
+                        const xPos = Math.min(barEl.x + 8, chart.width - 40);
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(txt, xPos, barEl.y);
+                      } else {
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        ctx.fillText(txt, barEl.x, Math.max(barEl.y - 4, 12));
+                      }
+                      ctx.restore();
+                    }
+                  });
+                }
+              });
+            }
+          }]
         });
       }
     } catch (err) {

@@ -192,6 +192,11 @@ body {
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
 }
 
+.chat-page-messages .mensaje-asistente.mensaje-con-grafico {
+  max-width: 92% !important;
+  width: 92% !important;
+}
+
 .chat-page-messages .mensaje-asistente table {
   width: 100%;
   border-collapse: collapse;
