@@ -341,7 +341,8 @@ def send_secure_share_link_email(
     expires_at,
     note_message: str = '',
     subject: str = None,
-    sender_user=None
+    sender_user=None,
+    total_docs: int = 1
 ) -> dict:
     """
     Envía un correo institucional 100% GENÉRICO y SEGURO con enlace único de acceso.
@@ -370,6 +371,8 @@ def send_secure_share_link_email(
 
     expires_text = expires_at.strftime('%d/%m/%Y a las %H:%M') if hasattr(expires_at, 'strftime') else str(expires_at)
 
+    doc_phrase = f"{total_docs} documentos clínicos oficiales" if total_docs > 1 else "un documento clínico oficial"
+
     html_content = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -389,13 +392,13 @@ def send_secure_share_link_email(
     <tr>
       <td style="padding: 30px 26px;">
         <h2 style="font-size: 17px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 12px;">
-          Documento Clínico Disponible en Portal Seguro
+          Documentación Clínica Disponible en Portal Seguro
         </h2>
         <p style="font-size: 13.5px; line-height: 1.6; color: #475569; margin-bottom: 16px;">
-          Estimado(a), se ha puesto a su disposición un documento oficial en el repositorio institucional seguro de CARDIOUNEMI.
+          Estimado(a), se ha puesto a su disposición {doc_phrase} en el repositorio institucional seguro de CARDIOUNEMI.
         </p>
         <p style="font-size: 13.5px; line-height: 1.6; color: #475569; margin-bottom: 20px;">
-          Para acceder y descargar el documento, pulse el botón a continuación e ingrese el <strong>código de verificación de 6 dígitos</strong> que le fue proporcionado por su especialista a través de un canal seguro:
+          Para acceder y descargar la documentación (comprimida en .ZIP o por separado), pulse el botón a continuación e ingrese el <strong>código de verificación de 6 dígitos</strong> que le fue proporcionado por su especialista:
         </p>
 
         <!-- Botón de Acceso -->

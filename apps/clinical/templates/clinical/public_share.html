@@ -11,6 +11,8 @@
     :root {
       --primary: #1b73bc;
       --primary-dark: #1b2a41;
+      --success: #059669;
+      --success-dark: #065f46;
       --bg: #f8fafc;
       --card-bg: #ffffff;
       --border: #e2e8f0;
@@ -34,11 +36,11 @@
       padding: 24px 16px;
     }
     .share-container {
-      max-width: 480px;
+      max-width: 540px;
       width: 100%;
       background: var(--card-bg);
       border-radius: 18px;
-      box-shadow: 0 12px 36px rgba(15, 23, 42, 0.08);
+      box-shadow: 0 14px 40px rgba(15, 23, 42, 0.09);
       border: 1px solid var(--border);
       overflow: hidden;
       animation: fadeIn 0.3s ease-out;
@@ -49,7 +51,7 @@
     }
     .share-header {
       background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
-      padding: 28px 24px;
+      padding: 26px 24px;
       text-align: center;
       color: #ffffff;
     }
@@ -57,54 +59,61 @@
       font-size: 1.28rem;
       font-weight: 800;
       letter-spacing: 0.5px;
-      margin: 0;
     }
     .share-header p {
-      font-size: 0.8rem;
-      opacity: 0.88;
-      margin-top: 4px;
+      margin-top: 5px;
+      font-size: 0.82rem;
+      opacity: 0.9;
     }
     .share-body {
       padding: 28px 24px;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 20px;
     }
     .icon-wrapper {
-      width: 52px;
-      height: 52px;
+      width: 58px;
+      height: 58px;
       border-radius: 50%;
-      background: #eff6ff;
-      color: var(--primary);
       display: flex;
       align-items: center;
       justify-content: center;
       margin: 0 auto;
     }
+    .icon-wrapper.lock {
+      background: #eff6ff;
+      color: var(--primary);
+    }
+    .icon-wrapper.success {
+      background: #ecfdf5;
+      color: var(--success);
+    }
     .instructions {
       text-align: center;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
+      color: #475569;
       line-height: 1.55;
-      color: #334155;
     }
     .alert-error {
       background: #fef2f2;
-      border: 1px solid #fecaca;
-      border-radius: 8px;
+      border-left: 4px solid #ef4444;
+      border-radius: 6px;
       padding: 12px 14px;
       color: #991b1b;
       font-size: 0.84rem;
+      line-height: 1.45;
       display: flex;
       align-items: center;
       gap: 10px;
     }
     .note-box {
       background: #f8fafc;
-      border-left: 3px solid var(--primary);
-      border-radius: 4px;
-      padding: 10px 14px;
-      font-size: 0.82rem;
-      color: #475569;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--primary);
+      border-radius: 6px;
+      padding: 12px 14px;
+      font-size: 0.83rem;
+      color: #334155;
     }
     .code-input-group {
       display: flex;
@@ -160,6 +169,116 @@
       background: #145d99;
       transform: translateY(-1px);
     }
+    .btn-zip-download {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      color: #ffffff;
+      padding: 16px 20px;
+      border-radius: 12px;
+      text-decoration: none;
+      box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+      transition: all 0.2s ease;
+    }
+    .btn-zip-download:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(5, 150, 105, 0.4);
+    }
+    .btn-zip-download strong {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+    }
+    .btn-zip-download span {
+      display: block;
+      font-size: 0.8rem;
+      opacity: 0.92;
+      margin-top: 2px;
+    }
+    .docs-section-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .docs-section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e2e8f0;
+    }
+    .doc-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .doc-item-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px 14px;
+      transition: all 0.15s ease;
+    }
+    .doc-item-card:hover {
+      background: #ffffff;
+      border-color: #cbd5e1;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.04);
+    }
+    .doc-item-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .doc-code-badge {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 1px 7px;
+      border-radius: 4px;
+      width: fit-content;
+    }
+    .doc-patient-name {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    .doc-meta {
+      font-size: 0.76rem;
+      color: #64748b;
+    }
+    .btn-pdf-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      color: #1e293b;
+      padding: 7px 14px;
+      border-radius: 7px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn-pdf-download:hover {
+      background: #1b73bc;
+      border-color: #1b73bc;
+      color: #ffffff;
+    }
     .security-notice {
       font-size: 0.74rem;
       color: var(--text-muted);
@@ -181,84 +300,172 @@
   <div class="share-container">
     <div class="share-header">
       <h1>CARDIOUNEMI</h1>
-      <p>Estudio Cardiovascular Oficial · Universidad Estatal de Milagro</p>
+      <p>Repositorio Cardiovascular Oficial · Universidad Estatal de Milagro</p>
     </div>
 
     <div class="share-body">
-      <div class="icon-wrapper">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-        </svg>
-      </div>
 
-      <div class="instructions">
-        <strong style="font-size: 1.05rem; display: block; margin-bottom: 4px; color: #0f172a;">
-          Acceso a Documento Clínico Protegido
-        </strong>
-        Ingrese el código de acceso de 6 dígitos que le proporcionó su especialista por un canal seguro para validar y descargar su documento oficial.
-      </div>
-
-      {% if error_msg %}
-        <div class="alert-error">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="flex-shrink:0;">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      {% if is_unlocked %}
+        <!-- VISTA DE DESCARGA: CÓDIGO VALIDADO EXITOSAMENTE -->
+        <div class="icon-wrapper success">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
           </svg>
-          <div>{{ error_msg }}</div>
+        </div>
+
+        <div class="instructions">
+          <strong style="font-size: 1.08rem; display: block; margin-bottom: 4px; color: #065f46;">
+            Acceso Autorizado y Documentación Disponible
+          </strong>
+          {% if total_docs > 1 %}
+            Tiene <strong>{{ total_docs }} fichas clínicas oficiales</strong> listas para su descarga. Puede descargarlas en un archivo comprimido (.ZIP) o guardar cada una por separado:
+          {% else %}
+            Su ficha clínica oficial en formato PDF está lista para ser descargada:
+          {% endif %}
+        </div>
+
+        {% if safe_note %}
+          <div class="note-box">
+            <strong style="color: #1e293b; display: block; margin-bottom: 2px;">Observaciones del Especialista:</strong>
+            <em>{{ safe_note }}</em>
+          </div>
+        {% endif %}
+
+        {% if total_docs > 1 %}
+          <!-- OPCION 1: DESCARGAR TODO COMPRIMIDO EN ZIP -->
+          <a href="{{ zip_download_url }}" class="btn-zip-download">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="flex-shrink:0;">
+              <polyline points="21 8 21 21 3 21 3 8"></polyline>
+              <rect x="1" y="3" width="22" height="5"></rect>
+              <line x1="10" y1="12" x2="14" y2="12"></line>
+            </svg>
+            <div>
+              <strong>Descargar Todo Comprimido (.ZIP)</strong>
+              <span>Archivo .zip con los {{ total_docs }} reportes clínicos en PDF</span>
+            </div>
+          </a>
+
+          <!-- OPCION 2: DESCARGAR POR SEPARADO -->
+          <div class="docs-section-title">O descargar cada ficha por separado</div>
+
+          <div class="doc-list">
+            {% for doc in documentos %}
+              <div class="doc-item-card">
+                <div class="doc-item-info">
+                  <span class="doc-code-badge">{{ doc.code }}</span>
+                  <span class="doc-patient-name">{{ doc.patient_name }}</span>
+                  <span class="doc-meta">Atención: {{ doc.date }}</span>
+                </div>
+                <a href="{{ doc.download_url }}" class="btn-pdf-download">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  <span>Descargar PDF</span>
+                </a>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <!-- UN SOLO DOCUMENTO: BOTON DIRECTO DE DESCARGA PDF -->
+          <a href="{{ single_pdf_url }}" class="btn-zip-download" style="background: linear-gradient(135deg, #1b73bc 0%, #145d99 100%);">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="flex-shrink:0;">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+            <div>
+              <strong>Descargar Documento Oficial (.PDF)</strong>
+              <span>Código: {{ documentos.0.code }} · Fecha: {{ documentos.0.date }}</span>
+            </div>
+          </a>
+        {% endif %}
+
+        <div class="security-notice">
+          ⏱️ Este enlace seguro estará vigente hasta el <strong>{{ expires_display }}</strong>.<br>
+          <strong style="color: #059669;">Descargas ilimitadas:</strong> Puede acceder y descargar su documentación cuantas veces requiera dentro del plazo.
+        </div>
+
+      {% else %}
+        <!-- VISTA DE SOLICITUD DE CODIGO DE ACCESO -->
+        <div class="icon-wrapper lock">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </div>
+
+        <div class="instructions">
+          <strong style="font-size: 1.05rem; display: block; margin-bottom: 4px; color: #0f172a;">
+            Acceso a Documentación Clínica Protegida
+          </strong>
+          {% if total_docs > 1 %}
+            Tiene <strong>{{ total_docs }} documentos clínicos protegidos</strong> disponibles. Ingrese el código de acceso de 6 dígitos que le proporcionó su especialista para desbloquear y descargar los reportes.
+          {% else %}
+            Ingrese el código de acceso de 6 dígitos que le proporcionó su especialista por un canal seguro para validar y descargar su documento oficial.
+          {% endif %}
+        </div>
+
+        {% if error_msg %}
+          <div class="alert-error">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="flex-shrink:0;">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <div>{{ error_msg }}</div>
+          </div>
+        {% endif %}
+
+        {% if safe_note %}
+          <div class="note-box">
+            <strong style="color: #1e293b; display: block; margin-bottom: 2px;">Observaciones del Especialista:</strong>
+            <em>{{ safe_note }}</em>
+          </div>
+        {% endif %}
+
+        <form method="POST" action="">
+          <div class="code-input-group">
+            <label for="codeInput" class="code-input-label">Código de Verificación (6 Dígitos)</label>
+            <input
+              type="text"
+              id="codeInput"
+              name="code"
+              class="code-input"
+              maxlength="6"
+              pattern="[0-9]{6}"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              placeholder="······"
+              autofocus
+              required
+            >
+          </div>
+
+          <button type="submit" class="btn-submit" style="margin-top: 18px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>{% if total_docs > 1 %}Validar Código y Acceder a Documentos{% else %}Validar Código y Descargar Documento{% endif %}</span>
+          </button>
+        </form>
+
+        <div class="security-notice">
+          ⏱️ Este enlace caduca el <strong>{{ expires_display }}</strong>.<br>
+          Dispone de <strong>{{ attempts_left }}</strong> intento(s) antes de que el enlace se inhabilite por seguridad.
         </div>
       {% endif %}
 
-      {% if safe_note %}
-        <div class="note-box">
-          <strong style="color: #1e293b; display: block; margin-bottom: 2px;">Observaciones del Especialista:</strong>
-          <em>{{ safe_note }}</em>
-        </div>
-      {% endif %}
-
-      <form method="POST" action="">
-        {% csrf_token %}
-        <div class="code-input-group">
-          <label for="codeInput" class="code-input-label">Código de Verificación (6 Dígitos)</label>
-          <input
-            type="text"
-            id="codeInput"
-            name="code"
-            class="code-input"
-            maxlength="6"
-            pattern="[0-9]{6}"
-            inputmode="numeric"
-            autocomplete="one-time-code"
-            placeholder="······"
-            autofocus
-            required
-          >
-        </div>
-
-        <button type="submit" class="btn-submit" style="margin-top: 18px;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          <span>Validar Código y Descargar Documento</span>
-        </button>
-      </form>
-
-      <div class="security-notice">
-        ⏱️ Este enlace caduca el <strong>{{ expires_display }}</strong>.<br>
-        Dispone de <strong>{{ attempts_left }}</strong> intento(s) antes de que el enlace se inhabilite permanentemente.
-      </div>
     </div>
 
     <div class="share-footer">
-      Este sistema cumple con los estándares institucionales de confidencialidad bioética médica.
+      Este sistema cumple con los estándares institucionales de confidencialidad bioética médica de la UNEMI.
     </div>
   </div>
 
   <script>
-    // Limitar entrada exclusivamente a dígitos numéricos
+    // Limitar entrada de código exclusivamente a dígitos numéricos
     const input = document.getElementById('codeInput');
     if (input) {
       input.addEventListener('input', function(e) {
@@ -268,4 +475,3 @@
   </script>
 </body>
 </html>
-

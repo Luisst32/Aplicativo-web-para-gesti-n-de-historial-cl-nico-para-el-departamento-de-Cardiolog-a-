@@ -15,7 +15,13 @@ class SecureShare(models.Model):
         'clinical.Visit',
         on_delete=models.CASCADE,
         related_name='secure_shares',
-        verbose_name="Visita Médica"
+        verbose_name="Visita Médica Principal"
+    )
+    visits = models.ManyToManyField(
+        'clinical.Visit',
+        related_name='multi_secure_shares',
+        blank=True,
+        verbose_name="Fichas Clínicas Compartidas"
     )
     recipient_email = models.EmailField(
         max_length=254,
@@ -56,14 +62,16 @@ class SecureShare(models.Model):
         verbose_name="Máximo de Intentos Permitidos"
     )
 
-    # Control de descargas
+    # Control de descargas (None = sin límite)
     download_count = models.PositiveSmallIntegerField(
         default=0,
         verbose_name="Descargas Realizadas"
     )
     max_downloads = models.PositiveSmallIntegerField(
-        default=3,
-        verbose_name="Máximo de Descargas Permitidas"
+        null=True,
+        blank=True,
+        default=None,
+        verbose_name="Máximo de Descargas Permitidas (None = ilimitado)"
     )
 
     # Estado y Revocación
@@ -100,12 +108,25 @@ class SecureShare(models.Model):
         verbose_name_plural = "Envíos Seguros de Fichas"
 
     def __str__(self):
-        return f"Share #{self.share_id} ({self.recipient_email}) - V{self.visit_id}"
+        return f"Share #{self.share_id} ({self.recipient_email})"
+
+    def get_visits(self):
+        """
+        Retorna la lista ordenada de visitas médicas asociadas a este envío seguro.
+        Soporta múltiples fichas clínicas seleccionadas y retrocompatibilidad.
+        """
+        m2m_visits = list(self.visits.select_related('patient').order_by('patient__first_names', 'visit_id'))
+        if m2m_visits:
+            return m2m_visits
+        if self.visit:
+            return [self.visit]
+        return []
 
     def is_valid(self) -> bool:
         """
         Determina si el enlace se encuentra vigente, no revocado y dentro de los límites
-        de caducidad, intentos fallidos y cupo de descargas.
+        de caducidad y de intentos fallidos.
+        Sin límite restrictivo de descargas por solicitud del usuario (None = ilimitado).
         """
         if self.is_revoked:
             return False
@@ -113,7 +134,7 @@ class SecureShare(models.Model):
             return False
         if self.attempts >= self.max_attempts:
             return False
-        if self.download_count >= self.max_downloads:
+        if self.max_downloads is not None and self.download_count >= self.max_downloads:
             return False
         return True
 

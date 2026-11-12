@@ -3,6 +3,8 @@ import json
 import datetime
 import secrets
 import hashlib
+import io
+import zipfile
 import logging
 from decimal import Decimal
 from django.shortcuts import render, get_object_or_404
@@ -1609,14 +1611,83 @@ def export_pdf_view(request, visit_id=None):
     return response
 
 
+def _generate_zip_stream(visits):
+    """
+    Genera en memoria un archivo ZIP con todos los PDFs correspondientes a las visitas indicadas.
+    Cada archivo se nombra de forma limpia e inequívoca con su código de estudio y nombre.
+    """
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        used_names = set()
+        for idx, v in enumerate(visits, start=1):
+            pdf_bytes = generate_clinical_sheet_pdf(v, is_blank=False)
+            code_str = (v.study_code or f"V{v.visit_id}").replace('/', '-').replace(' ', '_')
+            p_name = (v.patient.full_name or f"Paciente_{idx}").replace(' ', '_')
+            filename = f"Ficha_Clinica_{code_str}_{p_name}.pdf"
+            if filename in used_names:
+                filename = f"Ficha_Clinica_{code_str}_{p_name}_{idx}.pdf"
+            used_names.add(filename)
+            zf.writestr(filename, pdf_bytes)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+@login_required
+def api_download_batch_pdf(request):
+    """
+    Descarga masiva de fichas clínicas en PDF seleccionadas por el especialista.
+    Si se seleccionó un solo paciente, descarga directamente su PDF oficial.
+    Si se seleccionaron varios pacientes, los empaqueta y descarga en un archivo ZIP.
+    """
+    raw_ids = request.GET.get('patient_ids', '')
+    if not raw_ids:
+        raw_ids = request.POST.get('patient_ids', '')
+
+    ids_list = [i.strip() for i in str(raw_ids).split(',') if i.strip()]
+    if not ids_list:
+        return HttpResponse("No se seleccionaron pacientes para la descarga.", status=400)
+
+    visits_list = []
+    for pid in ids_list:
+        clean_id = str(pid).replace('p_', '').replace('p', '').replace('_', '')
+        v = None
+        if clean_id.isdigit():
+            v = Visit.objects.filter(patient__patient_id=int(clean_id)).order_by('-visit_date', '-visit_id').first()
+        if not v:
+            v = Visit.objects.filter(patient__id_card=str(pid)).order_by('-visit_date', '-visit_id').first()
+        if not v:
+            v = Visit.objects.filter(study_code=str(pid)).order_by('-visit_date', '-visit_id').first()
+        if v and v not in visits_list:
+            visits_list.append(v)
+
+    if not visits_list:
+        return HttpResponse("No se encontraron registros clínicos válidos para los pacientes seleccionados.", status=404)
+
+    if len(visits_list) == 1:
+        v = visits_list[0]
+        pdf_bytes = generate_clinical_sheet_pdf(v, is_blank=False)
+        study_code_clean = (v.study_code or f"V{v.visit_id}").replace('/', '-').replace(' ', '_')
+        filename = f"Cuestionario_UNEMI_{study_code_clean}.pdf"
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    else:
+        zip_bytes = _generate_zip_stream(visits_list)
+        response = HttpResponse(zip_bytes, content_type='application/zip')
+        response['Content-Disposition'] = 'attachment; filename="Fichas_Clinicas_Cardiologia_UNEMI.zip"'
+        return response
+
+
 @login_required
 @require_POST
 def api_send_patient_sheet_email(request):
     """
     Genera un envío seguro individual por cada destinatario especificado (SecureShare).
-    No adjunta ningún PDF. Despacha por correo un enlace seguro con caducidad.
+    Soporta una o múltiples fichas clínicas seleccionadas.
+    No adjunta ningún PDF al correo: despacha solo un enlace protegido con caducidad.
+    Permite descargas ilimitadas (sin cupo restrictivo) mientras el enlace se mantenga vigente.
     Devuelve los códigos de 6 dígitos una única vez en memoria para entrega fuera de banda.
-    Responde estrictamente con Cache-Control: no-store.
+    Responde con Cache-Control: no-store.
     """
     try:
         data = json.loads(request.body.decode('utf-8'))
@@ -1632,7 +1703,7 @@ def api_send_patient_sheet_email(request):
     notes = (data.get('notes') or '').strip()[:300]
 
     if not patient_ids:
-        resp = JsonResponse({"success": False, "error": "Debe seleccionar una ficha clínica para compartir."}, status=400)
+        resp = JsonResponse({"success": False, "error": "Debe seleccionar al menos una ficha clínica para compartir."}, status=400)
         resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         return resp
 
@@ -1670,20 +1741,26 @@ def api_send_patient_sheet_email(request):
 
     expires_at = timezone.now() + datetime.timedelta(hours=duration_hours)
 
-    # Validar en el servidor que la ficha/visita exista y sea legítima
-    p_id = patient_ids[0]
-    clean_id = str(p_id).replace('p', '')
-    visit = None
-    if clean_id.isdigit():
-        visit = Visit.objects.filter(patient__patient_id=int(clean_id)).order_by('-visit_date', '-visit_id').first()
-    if not visit:
-        visit = Visit.objects.filter(patient__id_card=str(p_id)).order_by('-visit_date', '-visit_id').first()
+    # Validar en el servidor que las fichas/visitas seleccionadas existan y sean legítimas
+    visits_list = []
+    for pid in patient_ids:
+        clean_id = str(pid).replace('p_', '').replace('p', '').replace('_', '')
+        v = None
+        if clean_id.isdigit():
+            v = Visit.objects.filter(patient__patient_id=int(clean_id)).order_by('-visit_date', '-visit_id').first()
+        if not v:
+            v = Visit.objects.filter(patient__id_card=str(pid)).order_by('-visit_date', '-visit_id').first()
+        if not v:
+            v = Visit.objects.filter(study_code=str(pid)).order_by('-visit_date', '-visit_id').first()
+        if v and v not in visits_list:
+            visits_list.append(v)
 
-    if not visit:
-        resp = JsonResponse({"success": False, "error": "No se encontró el registro clínico en el sistema."}, status=404)
+    if not visits_list:
+        resp = JsonResponse({"success": False, "error": "No se encontraron fichas clínicas válidas para los pacientes seleccionados."}, status=404)
         resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         return resp
 
+    primary_visit = visits_list[0]
     results = []
     success_count = 0
 
@@ -1703,9 +1780,9 @@ def api_send_patient_sheet_email(request):
             reverse('clinical:public_secure_share', kwargs={'token': raw_token})
         )
 
-        # 4. Crear registro en base de datos (con token_hash y code_hash)
+        # 4. Crear registro en base de datos (con token_hash, code_hash y sin límite restrictivo de descargas)
         share = SecureShare.objects.create(
-            visit=visit,
+            visit=primary_visit,
             recipient_email=email,
             token_hash=token_hash,
             code_hash=code_hash,
@@ -1713,11 +1790,12 @@ def api_send_patient_sheet_email(request):
             attempts=0,
             max_attempts=5,
             download_count=0,
-            max_downloads=3,
+            max_downloads=None,  # Sin límite restrictivo de descargas
             is_revoked=False,
             created_by=request.user,
             note=notes
         )
+        share.visits.set(visits_list)
 
         # 5. Despachar correo electrónico individual genérico (sin PDF adjunto)
         mail_res = send_secure_share_link_email(
@@ -1726,7 +1804,8 @@ def api_send_patient_sheet_email(request):
             expires_at=expires_at,
             note_message=notes,
             subject=subject,
-            sender_user=request.user
+            sender_user=request.user,
+            total_docs=len(visits_list)
         )
 
         if mail_res.get('success'):
@@ -1744,8 +1823,8 @@ def api_send_patient_sheet_email(request):
                     action='INSERT',
                     new_value={
                         'event': 'SECURE_SHARE_CREATED',
-                        'visit_id': visit.visit_id,
-                        'patient_id': visit.patient.patient_id,
+                        'visit_ids': [v.visit_id for v in visits_list],
+                        'total_fichas': len(visits_list),
                         'recipient_email': email,
                         'expires_at': expires_at.isoformat(),
                         'duration_hours': duration_hours
@@ -1759,6 +1838,7 @@ def api_send_patient_sheet_email(request):
                 "email": email,
                 "success": True,
                 "code": raw_code,  # Solo se retorna en memoria para esta respuesta
+                "total_docs": len(visits_list),
                 "expires_at": expires_at.isoformat(),
                 "expires_display": expires_at.strftime("%d/%m/%Y a las %H:%M")
             })
@@ -1782,7 +1862,7 @@ def api_send_patient_sheet_email(request):
     else:
         resp = JsonResponse({
             "success": True,
-            "message": f"Se generaron y enviaron {success_count} de {len(cleaned_recipients)} enlace(s) seguro(s).",
+            "message": f"Se generaron y enviaron {success_count} de {len(cleaned_recipients)} enlace(s) seguro(s) para {len(visits_list)} ficha(s) clínica(s).",
             "results": results
         })
 
@@ -1796,30 +1876,92 @@ def api_send_patient_sheet_email(request):
 @csrf_exempt
 def public_secure_share_view(request, token):
     """
-    Ruta pública del destinatario para validación de código de acceso y descarga segura del PDF.
+    Ruta pública del destinatario para validación de código de acceso y descarga segura.
     - Token verificado por hash SHA-256.
-    - Límite de 5 intentos fallidos y 3 descargas.
-    - El PDF se genera en el servidor solo al validar el código.
-    - Mensajes de error genéricos (404) y Referrer-Policy: no-referrer.
-    - Nombre de archivo descargado genérico: 'documento.pdf'.
+    - Límite de 5 intentos fallidos de código.
+    - SIN límite restrictivo de descargas (descargas ilimitadas durante el periodo de caducidad).
+    - Descarga de todas las fichas comprimidas en .ZIP o cada una por separado en .PDF.
     """
     clean_token = (token or '').strip()
     if not clean_token:
         raise Http404("Documento no encontrado o enlace inválido.")
 
     token_hash = hashlib.sha256(clean_token.encode('utf-8')).hexdigest()
-    share = SecureShare.objects.select_related('visit', 'visit__patient').filter(token_hash=token_hash).first()
+    share = SecureShare.objects.select_related('visit', 'visit__patient').prefetch_related('visits', 'visits__patient').filter(token_hash=token_hash).first()
 
     if not share or not share.is_valid():
         resp = render(request, 'clinical/public_share_error.html', {
             'error_title': 'Enlace no disponible',
-            'error_message': 'El enlace solicitado no existe, ha caducado, ha sido revocado o superó el límite de descargas/intentos permitidos.'
+            'error_message': 'El enlace solicitado no existe, ha caducado o ha sido bloqueado por superar el límite de intentos fallidos permitidos.'
         }, status=404)
         resp['Referrer-Policy'] = 'no-referrer'
         resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         return resp
 
+    visits = share.get_visits()
+    if not visits:
+        raise Http404("No se encontraron documentos asociados a este enlace seguro.")
+
+    is_unlocked = request.session.get(f'share_unlocked_{share.share_id}', False)
     error_msg = None
+
+    # Manejo de descargas directas cuando la sesión ya está desbloqueada
+    descarga_tipo = request.GET.get('descarga') or request.POST.get('descarga')
+    target_vid = request.GET.get('visit_id') or request.POST.get('visit_id')
+
+    if is_unlocked and descarga_tipo:
+        share.download_count += 1
+        share.save(update_fields=['download_count'])
+
+        try:
+            ip_addr = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '127.0.0.1'))
+            if ip_addr and ',' in ip_addr:
+                ip_addr = ip_addr.split(',')[0].strip()
+            register_audit_log(
+                user=None,
+                schema_name='clinical',
+                table_name='clinical_secure_share',
+                record_key=str(share.share_id),
+                action='UPDATE',
+                new_value={
+                    'event': 'SECURE_SHARE_DOWNLOAD',
+                    'descarga_tipo': descarga_tipo,
+                    'target_vid': target_vid,
+                    'recipient_email': share.recipient_email,
+                    'download_count': share.download_count
+                },
+                machine_name=ip_addr
+            )
+        except Exception as audit_err:
+            logger.warning(f"Error registrando descarga en auditoría: {audit_err}")
+
+        if descarga_tipo == 'zip' or (descarga_tipo == 'todo' and len(visits) > 1):
+            zip_bytes = _generate_zip_stream(visits)
+            response = HttpResponse(zip_bytes, content_type='application/zip')
+            response['Content-Disposition'] = 'attachment; filename="documentos_clinicos.zip"'
+            response['Referrer-Policy'] = 'no-referrer'
+            response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0, private'
+            response['Pragma'] = 'no-cache'
+            return response
+
+        elif descarga_tipo == 'pdf':
+            target_visit = None
+            if target_vid:
+                target_visit = next((v for v in visits if str(v.visit_id) == str(target_vid)), None)
+            if not target_visit:
+                target_visit = visits[0]
+
+            pdf_bytes = generate_clinical_sheet_pdf(target_visit, is_blank=False)
+            code_str = (target_visit.study_code or f"V{target_visit.visit_id}").replace('/', '-').replace(' ', '_')
+            filename = f"Ficha_Clinica_{code_str}.pdf" if len(visits) > 1 else "documento.pdf"
+
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Referrer-Policy'] = 'no-referrer'
+            response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0, private'
+            response['Pragma'] = 'no-cache'
+            response['X-Content-Type-Options'] = 'nosniff'
+            return response
 
     if request.method == 'POST':
         raw_code = request.POST.get('code', '').strip()
@@ -1829,14 +1971,14 @@ def public_secure_share_view(request, token):
             if share.attempts >= share.max_attempts:
                 share.is_revoked = True
                 share.revoked_at = timezone.now()
-            share.save()
+            share.save(update_fields=['attempts', 'is_revoked', 'revoked_at'])
             error_msg = f"Ingrese un código de 6 dígitos numéricos. Le quedan {max(0, share.max_attempts - share.attempts)} intento(s)."
         elif not share.verify_code(raw_code):
             share.attempts += 1
             if share.attempts >= share.max_attempts:
                 share.is_revoked = True
                 share.revoked_at = timezone.now()
-            share.save()
+            share.save(update_fields=['attempts', 'is_revoked', 'revoked_at'])
 
             if share.is_revoked:
                 resp = render(request, 'clinical/public_share_error.html', {
@@ -1849,12 +1991,11 @@ def public_secure_share_view(request, token):
             else:
                 error_msg = f"Código de acceso incorrecto. Le quedan {share.max_attempts - share.attempts} intento(s)."
         else:
-            # CÓDIGO VÁLIDO: Registrar descarga y generar PDF en caliente
+            # CÓDIGO VÁLIDO: Marcar sesión desbloqueada y registrar
+            request.session[f'share_unlocked_{share.share_id}'] = True
+            is_unlocked = True
             share.download_count += 1
-            if share.download_count >= share.max_downloads:
-                share.is_revoked = True
-                share.revoked_at = timezone.now()
-            share.save()
+            share.save(update_fields=['download_count'])
 
             try:
                 ip_addr = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '127.0.0.1'))
@@ -1867,30 +2008,53 @@ def public_secure_share_view(request, token):
                     record_key=str(share.share_id),
                     action='UPDATE',
                     new_value={
-                        'event': 'SECURE_SHARE_DOWNLOAD',
+                        'event': 'SECURE_SHARE_UNLOCKED',
                         'recipient_email': share.recipient_email,
-                        'download_count': share.download_count,
-                        'visit_id': share.visit_id
+                        'total_fichas': len(visits)
                     },
                     machine_name=ip_addr
                 )
             except Exception as audit_err:
-                logger.warning(f"Error registrando descarga en auditoría: {audit_err}")
+                logger.warning(f"Error registrando desbloqueo en auditoría: {audit_err}")
 
-            # Generar PDF oficial en el servidor (el PDF no viajó por correo)
-            from clinical.pdf import generate_clinical_sheet_pdf
-            pdf_bytes = generate_clinical_sheet_pdf(share.visit, is_blank=False)
+            # Si el destinatario solicitó descarga directa en el POST
+            if request.POST.get('descarga') == 'zip' and len(visits) > 1:
+                zip_bytes = _generate_zip_stream(visits)
+                response = HttpResponse(zip_bytes, content_type='application/zip')
+                response['Content-Disposition'] = 'attachment; filename="documentos_clinicos.zip"'
+                response['Referrer-Policy'] = 'no-referrer'
+                response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0, private'
+                return response
+            elif len(visits) == 1 and request.POST.get('direct_download') == '1':
+                pdf_bytes = generate_clinical_sheet_pdf(visits[0], is_blank=False)
+                response = HttpResponse(pdf_bytes, content_type='application/pdf')
+                response['Content-Disposition'] = 'attachment; filename="documento.pdf"'
+                response['Referrer-Policy'] = 'no-referrer'
+                response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0, private'
+                return response
 
-            response = HttpResponse(pdf_bytes, content_type='application/pdf')
-            response['Content-Disposition'] = 'attachment; filename="documento.pdf"'
-            response['Referrer-Policy'] = 'no-referrer'
-            response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0, private'
-            response['Pragma'] = 'no-cache'
-            response['X-Content-Type-Options'] = 'nosniff'
-            return response
+    # Preparar datos de las visitas para renderizar la interfaz
+    documentos = []
+    for v in visits:
+        code_str = v.study_code or f"V{v.visit_id}"
+        patient_name = v.patient.full_name if v.patient else "Paciente"
+        date_str = v.visit_date.strftime('%d/%m/%Y') if v.visit_date else 'Fecha no registrada'
+        documentos.append({
+            'visit_id': v.visit_id,
+            'code': code_str,
+            'patient_name': patient_name,
+            'date': date_str,
+            'download_url': f"?descarga=pdf&visit_id={v.visit_id}"
+        })
 
     context = {
         'token': clean_token,
+        'share': share,
+        'is_unlocked': is_unlocked,
+        'total_docs': len(visits),
+        'documentos': documentos,
+        'zip_download_url': "?descarga=zip",
+        'single_pdf_url': f"?descarga=pdf&visit_id={visits[0].visit_id}" if visits else "?descarga=pdf",
         'attempts_left': max(0, share.max_attempts - share.attempts),
         'expires_display': share.expires_at.strftime('%d/%m/%Y a las %H:%M'),
         'error_msg': error_msg,

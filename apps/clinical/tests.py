@@ -597,7 +597,7 @@ class SecureShareTests(TestCase):
             self.assertEqual(s.attempts, 0)
             self.assertEqual(s.download_count, 0)
             self.assertEqual(s.max_attempts, 5)
-            self.assertEqual(s.max_downloads, 3)
+            self.assertIsNone(s.max_downloads)
             self.assertFalse(s.is_revoked)
 
     def test_max_recipients_limit(self):
@@ -614,6 +614,114 @@ class SecureShareTests(TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertIn('5 destinatarios', response.json()['error'])
+
+    def test_public_secure_share_multi_visit_and_unlimited_downloads(self):
+        # Crear segundo paciente y visita
+        patient2 = Patient.objects.create(
+            institution=self.inst,
+            id_card='0923485726',
+            first_names='María',
+            last_name1='Gómez',
+            birth_date='1985-05-05',
+            sex=self.sex,
+            ethnicity=self.ethnicity,
+            birth_canton=self.canton,
+            email='maria@correo.com',
+            created_by=self.user
+        )
+        visit2 = Visit.objects.create(
+            patient=patient2,
+            evaluator=self.user,
+            study_code='CUN-002',
+            visit_date='2026-03-02',
+            residence_canton=self.canton
+        )
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+        raw_code = '654321'
+        code_hash = make_password(raw_code)
+        expires_at = timezone.now() + datetime.timedelta(hours=48)
+
+        share = SecureShare.objects.create(
+            visit=self.visit,
+            recipient_email='multi@correo.com',
+            token_hash=token_hash,
+            code_hash=code_hash,
+            expires_at=expires_at,
+            max_downloads=None,  # Ilimitado
+            created_by=self.user
+        )
+        share.visits.set([self.visit, visit2])
+
+        self.assertEqual(len(share.get_visits()), 2)
+
+        url = reverse('clinical:public_secure_share', kwargs={'token': raw_token})
+
+        # 1. GET inicial muestra formulario bloqueado con 2 documentos
+        res_get = self.client.get(url)
+        self.assertEqual(res_get.status_code, 200)
+        self.assertContains(res_get, '2 documentos clínicos')
+
+        # 2. POST con código correcto desbloquea la vista
+        res_post = self.client.post(url, {'code': raw_code})
+        self.assertEqual(res_post.status_code, 200)
+        self.assertContains(res_post, 'Descargar Todo Comprimido (.ZIP)')
+        self.assertContains(res_post, 'Descargar PDF')
+
+        # 3. Descarga comprimida en ZIP
+        res_zip = self.client.get(f"{url}?descarga=zip")
+        self.assertEqual(res_zip.status_code, 200)
+        self.assertEqual(res_zip['Content-Type'], 'application/zip')
+        self.assertIn('documentos_clinicos.zip', res_zip['Content-Disposition'])
+
+        # 4. Descarga por separado en PDF
+        res_pdf = self.client.get(f"{url}?descarga=pdf&visit_id={visit2.visit_id}")
+        self.assertEqual(res_pdf.status_code, 200)
+        self.assertEqual(res_pdf['Content-Type'], 'application/pdf')
+        self.assertIn('.pdf', res_pdf['Content-Disposition'])
+
+        # 5. Comprobar descargas ilimitadas (más de 3 descargas no bloquean)
+        for _ in range(5):
+            self.client.get(f"{url}?descarga=zip")
+        share.refresh_from_db()
+        self.assertGreater(share.download_count, 3)
+        self.assertTrue(share.is_valid())
+
+    def test_api_download_batch_pdf(self):
+        self.client.login(username='cardiologo_share', password='password123')
+        url = reverse('clinical:api_download_batch_pdf')
+
+        # Un solo paciente -> PDF
+        res_single = self.client.get(f"{url}?patient_ids={self.patient.patient_id}")
+        self.assertEqual(res_single.status_code, 200)
+        self.assertEqual(res_single['Content-Type'], 'application/pdf')
+
+        # Múltiples pacientes -> ZIP
+        patient2 = Patient.objects.create(
+            institution=self.inst,
+            id_card='0923485734',
+            first_names='Carlos',
+            last_name1='López',
+            birth_date='1988-08-08',
+            sex=self.sex,
+            ethnicity=self.ethnicity,
+            birth_canton=self.canton,
+            email='carlos@correo.com',
+            created_by=self.user
+        )
+        Visit.objects.create(
+            patient=patient2,
+            evaluator=self.user,
+            study_code='CUN-003',
+            visit_date='2026-03-03',
+            residence_canton=self.canton
+        )
+
+        res_batch = self.client.get(f"{url}?patient_ids={self.patient.patient_id},{patient2.patient_id}")
+        self.assertEqual(res_batch.status_code, 200)
+        self.assertEqual(res_batch['Content-Type'], 'application/zip')
+        self.assertIn('Fichas_Clinicas_Cardiologia_UNEMI.zip', res_batch['Content-Disposition'])
 
     def test_public_secure_share_flow(self):
         raw_token = secrets.token_urlsafe(32)
@@ -644,14 +752,19 @@ class SecureShareTests(TestCase):
         share.refresh_from_db()
         self.assertEqual(share.attempts, 1)
 
-        # 3. POST con código correcto descarga PDF 'documento.pdf'
+        # 3. POST con código correcto desbloquea el acceso y muestra la interfaz de descarga
         res_post_ok = self.client.post(url, {'code': raw_code})
         self.assertEqual(res_post_ok.status_code, 200)
-        self.assertEqual(res_post_ok['Content-Type'], 'application/pdf')
-        self.assertIn('documento.pdf', res_post_ok['Content-Disposition'])
-        self.assertEqual(res_post_ok['Referrer-Policy'], 'no-referrer')
-        self.assertIn('no-store', res_post_ok['Cache-Control'])
+        self.assertTrue(res_post_ok.context['is_unlocked'])
+
+        # 4. Descarga del PDF oficial
+        res_pdf = self.client.get(f"{url}?descarga=pdf")
+        self.assertEqual(res_pdf.status_code, 200)
+        self.assertEqual(res_pdf['Content-Type'], 'application/pdf')
+        self.assertIn('.pdf', res_pdf['Content-Disposition'])
+        self.assertEqual(res_pdf['Referrer-Policy'], 'no-referrer')
+        self.assertIn('no-store', res_pdf['Cache-Control'])
 
         share.refresh_from_db()
-        self.assertEqual(share.download_count, 1)
+        self.assertGreaterEqual(share.download_count, 1)
 

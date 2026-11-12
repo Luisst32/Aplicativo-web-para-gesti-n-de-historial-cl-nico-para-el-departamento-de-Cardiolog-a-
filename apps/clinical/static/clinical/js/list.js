@@ -657,6 +657,17 @@ function actualizarEstadoSeleccion(filtrados) {
     }
   }
 
+  const btnDescargarZip = document.getElementById('btnDescargarPdfsSeleccionados');
+  const countDescargarZip = document.getElementById('countSeleccionadosDescargar');
+  if (btnDescargarZip) {
+    if (seleccionados.size > 0) {
+      btnDescargarZip.style.display = 'inline-flex';
+      if (countDescargarZip) countDescargarZip.textContent = seleccionados.size;
+    } else {
+      btnDescargarZip.style.display = 'none';
+    }
+  }
+
   const countEl = document.getElementById('formulariosCount');
   if (countEl) {
     let texto = `Mostrando ${filtrados.length} de ${pacientes.length} pacientes`;
@@ -851,6 +862,21 @@ function exportarPDFHistorial(pacienteId, historialId) {
   window.open(url, '_blank');
 }
 
+// Descarga en lote de las fichas clínicas seleccionadas en PDF o ZIP
+function descargarPDFsSeleccionados() {
+  const arr = Array.from(seleccionados);
+  if (arr.length === 0) {
+    if (typeof mostrarNotificacion === 'function') {
+      mostrarNotificacion('Seleccione al menos una ficha clínica para descargar.', 'warning');
+    } else {
+      alert('Seleccione al menos una ficha clínica para descargar.');
+    }
+    return;
+  }
+  const url = `/clinical/api/ficha/descargar-seleccionados/?patient_ids=${encodeURIComponent(arr.join(','))}`;
+  window.open(url, '_blank');
+}
+
 // Impresión PDF del resumen del paciente con sus historiales
 function exportarPDFPaciente(pacienteId) {
   const p = pacientes.find(item => item.id === pacienteId);
@@ -1002,14 +1028,14 @@ function abrirModalEnviarCorreo() {
   if (arrSeleccionados.length === 1) {
     const pSel = pacientes.find(p => String(p.id) === String(arrSeleccionados[0]));
     if (resumenEl) {
-      resumenEl.innerHTML = `Se generará un enlace protegido individual para la ficha seleccionada.`;
+      resumenEl.innerHTML = `Se generará un enlace protegido con código de acceso para <strong>1 ficha clínica</strong>.`;
     }
     if (inputDest) {
       inputDest.value = (pSel && (pSel.correo || pSel.email)) ? (pSel.correo || pSel.email) : '';
     }
   } else {
     if (resumenEl) {
-      resumenEl.innerHTML = `Se generarán enlaces protegidos para los destinatarios indicados (máx. 5).`;
+      resumenEl.innerHTML = `Se generarán enlaces protegidos con código de acceso para <strong>${arrSeleccionados.length} fichas clínicas</strong> (descargables en .ZIP comprimido o por separado).`;
     }
     if (inputDest) {
       const correos = pacientes

@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/ficha/guardar/', views.form_save_api, name='api_form_save'),
     path('api/ficha/eliminar/', views.ficha_eliminar_api, name='api_ficha_eliminar'),
     path('api/ficha/enviar-correo/', views.api_send_patient_sheet_email, name='api_ficha_enviar_correo'),
+    path('api/ficha/descargar-seleccionados/', views.api_download_batch_pdf, name='api_download_batch_pdf'),
     path('api/ficha/<str:patient_id>/', views.form_get_api, name='api_form_get'),
 
     # Importación Inteligente de Datos SPSS .SAV
