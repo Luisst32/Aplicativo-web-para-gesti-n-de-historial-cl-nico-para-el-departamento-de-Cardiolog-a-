@@ -9,7 +9,7 @@ from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse, HttpResponse, Http404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
-from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.db import models, transaction, connection
 from django.core.paginator import Paginator
 from django.core.validators import validate_email
@@ -1793,7 +1793,7 @@ def api_send_patient_sheet_email(request):
 
 
 @require_http_methods(['GET', 'POST'])
-@csrf_protect
+@csrf_exempt
 def public_secure_share_view(request, token):
     """
     Ruta pública del destinatario para validación de código de acceso y descarga segura del PDF.
