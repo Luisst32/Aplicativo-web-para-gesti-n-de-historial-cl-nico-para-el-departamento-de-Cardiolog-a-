@@ -150,7 +150,8 @@ function actualizarOpcionesFiltrosDinamicos() {
   // 2. DINAMISMO INTELIGENTE PARA FILTRO DE ESTAMENTO
   // Solo se agregan los estamentos reales de los pacientes que existen
   if (selEstamento) {
-    const estamentoSeleccionado = (selEstamento.value || 'all').toUpperCase();
+    const rawVal = selEstamento.value ? selEstamento.value.trim() : 'all';
+    const estamentoSeleccionado = (!rawVal || rawVal.toLowerCase() === 'all') ? 'all' : rawVal;
     const estamentosMap = new Map();
 
     const labelsConocidos = {
@@ -165,36 +166,45 @@ function actualizarOpcionesFiltrosDinamicos() {
     if (Array.isArray(pacientes) && pacientes.length > 0) {
       pacientes.forEach(p => {
         if (p && p.estamento && typeof p.estamento === 'string') {
-          const cod = p.estamento.trim().toUpperCase();
-          if (cod && !estamentosMap.has(cod)) {
-            estamentosMap.set(cod, labelsConocidos[cod] || cod);
+          const cod = p.estamento.trim();
+          if (cod && !estamentosMap.has(cod.toUpperCase())) {
+            estamentosMap.set(cod.toUpperCase(), {
+              code: cod,
+              label: labelsConocidos[cod.toUpperCase()] || cod
+            });
           }
         }
       });
     } else {
       // Tomar opciones del HTML renderizado por el servidor
       Array.from(selEstamento.options).forEach(opt => {
-        if (opt.value && opt.value !== 'all') {
-          const cod = opt.value.trim().toUpperCase();
-          if (!estamentosMap.has(cod)) {
-            estamentosMap.set(cod, opt.textContent.trim() || labelsConocidos[cod] || cod);
+        if (opt.value && opt.value.toLowerCase() !== 'all') {
+          const cod = opt.value.trim();
+          if (!estamentosMap.has(cod.toUpperCase())) {
+            estamentosMap.set(cod.toUpperCase(), {
+              code: cod,
+              label: opt.textContent.trim() || labelsConocidos[cod.toUpperCase()] || cod
+            });
           }
         }
       });
     }
 
-    const sortedCodes = Array.from(estamentosMap.keys()).sort();
-
     selEstamento.innerHTML = '<option value="all">Todos los Estamentos</option>';
-    sortedCodes.forEach(code => {
+    Array.from(estamentosMap.values()).sort((a, b) => a.code.localeCompare(b.code)).forEach(item => {
       const opt = document.createElement('option');
-      opt.value = code;
-      opt.textContent = estamentosMap.get(code) || code;
+      opt.value = item.code;
+      opt.textContent = item.label;
       selEstamento.appendChild(opt);
     });
 
-    if (estamentoSeleccionado && Array.from(selEstamento.options).some(o => o.value.toUpperCase() === estamentoSeleccionado)) {
-      selEstamento.value = estamentoSeleccionado;
+    if (estamentoSeleccionado !== 'all') {
+      const matchOpt = Array.from(selEstamento.options).find(o => o.value.toUpperCase() === estamentoSeleccionado.toUpperCase());
+      if (matchOpt) {
+        selEstamento.value = matchOpt.value;
+      } else {
+        selEstamento.value = 'all';
+      }
     } else {
       selEstamento.value = 'all';
     }
@@ -203,9 +213,16 @@ function actualizarOpcionesFiltrosDinamicos() {
 
 function obtenerPacientesFiltrados() {
   const q = document.getElementById('filtroBusqueda').value.trim().toLowerCase();
-  const anio = document.getElementById('filtroAnio').value;
-  const estamento = (document.getElementById('filtroEstamento').value || 'all').toUpperCase();
-  const sexo = (document.getElementById('filtroSexo').value || 'all').toUpperCase();
+  const anio = (document.getElementById('filtroAnio').value || 'all').trim();
+  const rawEstamento = (document.getElementById('filtroEstamento').value || 'all').trim();
+  const rawSexo = (document.getElementById('filtroSexo').value || 'all').trim();
+
+  const isEstamentoAll = !rawEstamento || rawEstamento.toLowerCase() === 'all';
+  const isSexoAll = !rawSexo || rawSexo.toLowerCase() === 'all';
+  const isAnioAll = !anio || anio.toLowerCase() === 'all';
+
+  const estamento = isEstamentoAll ? 'all' : rawEstamento.toUpperCase();
+  const sexo = isSexoAll ? 'all' : rawSexo.toUpperCase();
 
   const filtrados = pacientes.filter(p => {
     const cedula = (p.cedula || '').toLowerCase();
@@ -217,13 +234,13 @@ function obtenerPacientesFiltrados() {
 
     const anioPac = String(anioDePaciente(p));
     const historiales = p.historiales || [];
-    const matchAnio = anio === 'all' || anioPac === anio || historiales.some(h => (h.fechaVisita || '').startsWith(anio));
+    const matchAnio = isAnioAll || anioPac === anio || historiales.some(h => (h.fechaVisita || '').startsWith(anio));
 
     const pEstamento = (p.estamento || '').trim().toUpperCase();
-    const matchEstamento = estamento === 'all' || pEstamento === estamento;
+    const matchEstamento = isEstamentoAll || pEstamento === estamento;
 
     const pSexo = (p.sexo || '').trim().toUpperCase();
-    const matchSexo = sexo === 'all' || pSexo === sexo;
+    const matchSexo = isSexoAll || pSexo === sexo || (sexo === 'H' && pSexo.startsWith('H')) || (sexo === 'M' && pSexo.startsWith('M'));
 
     return matchQuery && matchAnio && matchEstamento && matchSexo;
   });
