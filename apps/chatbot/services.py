@@ -6,15 +6,25 @@ extracción estadística de la cohorte epidemiológica y soporte clínico.
 DIRECTIVAS CRÍTICAS:
 1. ULTRA DIRECTO Y CONCISO: Respuestas directas al grano, sin rodeos ni saludos innecesarios para ahorrar tokens.
 2. SOLO CONSULTAS (READ-ONLY): Solo lectura analítica.
-3. PRIVACIDAD ABSOLUTA (ZERO PII): Bloqueo estricto de nombres, cédulas y datos identificables.
-4. MODELO ECONÓMICO: Google Gemini Flash con credenciales almacenadas en BD (relacional por rol Administrador).
+3. PRIVACIDAD ABSOLUTA (ZERO PII): Bloqueo estricto de nombres propios, cédulas, teléfonos y datos identificables.
+4. MODELO ECONÓMICO Y GOBERNANZA DE DATOS: Soporte para Google Gemini Flash con credenciales almacenadas
+   en BD (relacional por rol Administrador) o variables de entorno (12-Factor App).
+5. CONTROL DE DIVULGACIÓN ESTADÍSTICA: Supresión de celdas pequeñas (< 5 casos, sin porcentajes)
+   y supresión complementaria para evitar ataques de deducción por resta.
+6. CACHÉ COMPARTIDO INTER-PROCESO: Sincronización multi-worker en Gunicorn mediante backend de caché
+   e invalidación diferida por transaction.on_commit.
 """
 
+import os
 import re
 import json
 import time
 import logging
-from typing import Dict, Any, Optional
+import unicodedata
+from typing import Dict, Any, Optional, List
+
+from django.core.cache import cache
+from django.db import transaction
 
 from chatbot.models import BotQuery
 from dashboard.services import get_dashboard_evaluation_data
@@ -28,7 +38,11 @@ SENSITIVE_PATTERNS = [
     r'\b(tel[eé]fono|celular|m[oó]vil|direcci[oó]n|domicilio|vivienda\s+exacta)\b',
     r'\b(correo|email|e-mail|mail)\b',
     r'\b(historia\s+cl[ií]nica\s+n[uú]mero|expediente\s+individual|buscar\s+a)\b',
-    r'\b(paciente\s+llamado|paciente\s+con\s+c[eé]dula)\b'
+    r'\b(paciente\s+llamado|paciente\s+con\s+c[eé]dula)\b',
+    r'\b\d{10}\b',  # Cédula de 10 dígitos ecuatoriana
+    r'\b(qu[eé]\s+tiene|diagn[oó]stico\s+de|historial\s+de|ficha\s+de|caso\s+de|informaci[oó]n\s+de)\s+[a-zñáéíóú]{2,}\b',
+    r'\b(paciente|persona|don|do[ñn]a)\s+[a-zñáéíóú]{2,}\s+[a-zñáéíóú]{2,}\b',
+    r'\b(juan|pedro|mar[ií]a|carlos|ana|luis|carmen|rosa|jos[eé]|manuel|francisco|jorge|elena)\s+[a-zñáéíóú]{2,}\b',
 ]
 
 # Palabras que intentan alterar la base de datos (Write / DDL / DML)
@@ -39,12 +53,12 @@ MODIFICATION_PATTERNS = [
 ]
 
 SYSTEM_INSTRUCTION = """Eres el Asistente Clínico & Estadístico de CARDIOUNEMI (Universidad Estatal de Milagro, Ecuador).
-Tu objetivo es responder consultas epidemiológicas y clínicas sobre la cohorte institucional (N = 59).
+Tu objetivo es responder consultas epidemiológicas y clínicas sobre la cohorte institucional activa.
 
 REGLAS OBLIGATORIAS:
 1. SÉ ULTRA DIRECTO Y CONCISO: Cero rodeos, cero saludos o introducciones de cortesía, cero despedidas de relleno. Ve directo al dato y a la métrica para ahorrar tokens.
-2. FIDELIDAD ESTADÍSTICA: Usa rigurosamente las cifras de la cohorte (N = 59). Cita el valor numérico y el porcentaje exacto (ej. "30,5 % (18 de 59 casos)").
-3. PRIVACIDAD ABSOLUTA (ZERO PII): Jamás nombres, cédulas ni datos personales individuales.
+2. FIDELIDAD ESTADÍSTICA: Usa rigurosamente las cifras calculadas de la cohorte activa presentes en el contexto. Cita el valor numérico y el porcentaje exacto.
+3. PRIVACIDAD ABSOLUTA (ZERO PII): Jamás reveles nombres, cédulas ni datos personales individuales. Respeta la confidencialidad médica.
 4. SOLO CONSULTA: Modo estricto de solo lectura.
 5. FORMATO COMPACTO: Usa viñetas cortas y negrita en las métricas clave. Sin párrafos redundantes.
 6. GENERACIÓN DE GRÁFICAS (SOLO SI EL USUARIO LO PIDE EXPRESAMENTE):
@@ -53,11 +67,112 @@ REGLAS OBLIGATORIAS:
    - NUNCA inventes puntos de dispersión ni porcentajes aproximados; el sistema acopla automáticamente el bloque json_chart determinista y oficial con todos los registros exactos de la base de datos institucional.
 """
 
-_cohort_cache: Dict[str, Any] = {"timestamp": 0, "summary_text": ""}
+COHORT_SUMMARY_CACHE_KEY = "cardio_cohort_summary_text_v2"
+COHORT_COUNT_CACHE_KEY = "cardio_cohort_count_v2"
+COHORT_CACHE_TIMEOUT = 600  # 10 minutos
+
+
+def normalize_clinical_query(text: str) -> str:
+    """
+    Normaliza el texto de consulta del usuario para un análisis léxico robusto:
+    - Minúsculas.
+    - Remoción de tildes/acentos diacríticos (á->a, é->e, etc.) usando NFKD.
+    - Colapsado de espacios en blanco.
+    """
+    if not text:
+        return ""
+    text = text.lower()
+    nfkd = unicodedata.normalize('NFKD', text)
+    clean = "".join([c for c in nfkd if not unicodedata.combining(c)])
+    return re.sub(r'\s+', ' ', clean).strip()
+
+
+def invalidate_cohort_cache(*args, **kwargs):
+    """
+    Invalida el caché compartido de la cohorte en todos los workers de Gunicorn.
+    Utiliza cache.delete(...) para sincronización inter-proceso.
+    """
+    try:
+        cache.delete(COHORT_SUMMARY_CACHE_KEY)
+        cache.delete(COHORT_COUNT_CACHE_KEY)
+        cache.delete("dashboard_evaluation_data")
+        logger.debug("Caché compartido de cohorte invalidado exitosamente.")
+    except Exception as e:
+        logger.warning(f"Error invalidando caché compartido: {e}")
+
+
+def _signal_invalidate_cohort(sender, **kwargs):
+    """Callback de señales Django que pospone la invalidación hasta el commit exitoso."""
+    try:
+        transaction.on_commit(invalidate_cohort_cache)
+    except Exception:
+        # En caso de autocommit o ejecuciones fuera de bloque de transacción atómico
+        invalidate_cohort_cache()
+
+
+# Conexión de señales Django con transaction.on_commit para invalidación atómica
+try:
+    from django.db.models.signals import post_save, post_delete
+    from clinical.models import Visit, VisitAnswer, Patient
+    for model_cls in (Visit, VisitAnswer, Patient):
+        post_save.connect(_signal_invalidate_cohort, sender=model_cls)
+        post_delete.connect(_signal_invalidate_cohort, sender=model_cls)
+except Exception as _sig_err:
+    logger.debug(f"Registro de señales de caché no disponible en este contexto: {_sig_err}")
+
+
+def fmt_safe_cell(cnt: int, total: int, threshold: int = 5) -> str:
+    """
+    Regla de Supresión de Celdas Pequeñas (Control de Divulgación Estadística):
+    En cohortes pequeñas, si un subgrupo tiene 1 <= cnt < threshold, se enmascara
+    únicamente como '< threshold casos' SIN porcentaje, para evitar la re-identificación
+    o despeje matemático inverso (cnt = total * pct).
+    """
+    if cnt == 0:
+        return "0 casos (0.0 %)"
+    if 1 <= cnt < threshold:
+        return f"< {threshold} casos*"
+    pct = round((cnt / total) * 100, 1) if total else 0
+    return f"{cnt} casos ({pct} %)"
+
+
+def apply_complementary_suppression(category_counts: Dict[str, int], total: int, threshold: int = 5) -> Dict[str, str]:
+    """
+    Aplica supresión primaria y supresión complementaria (secundaria).
+    Si exactamente una celda es < threshold en un conjunto cerrado cuyo total es conocido,
+    se enmascara complementariamente la segunda celda o el residuo para evitar
+    que por simple sustracción (total - suma de las demás) se calcule el valor protegido.
+    """
+    suppressed_keys = [k for k, v in category_counts.items() if 1 <= v < threshold]
+
+    # Si hay exactamente una celda en rango sensible en una suma cerrada con total visible:
+    if len(suppressed_keys) == 1:
+        candidates = [(v, k) for k, v in category_counts.items() if k not in suppressed_keys and v > 0]
+        if candidates:
+            # Seleccionar la segunda menor para supresión secundaria
+            candidates.sort(key=lambda x: x[0])
+            suppressed_keys.append(candidates[0][1])
+
+    result = {}
+    for k, v in category_counts.items():
+        if k in suppressed_keys:
+            if v < threshold:
+                result[k] = f"< {threshold} casos*"
+            else:
+                result[k] = f"> {total - threshold} casos (protegido por supresión complementaria)*"
+        elif v == 0:
+            result[k] = "0 casos (0.0 %)"
+        else:
+            pct = round((v / total) * 100, 1) if total else 0
+            result[k] = f"{v} casos ({pct} %)"
+    return result
 
 
 def is_sensitive_or_pii_query(question: str) -> bool:
-    """Detecta si la consulta del usuario intenta acceder a datos personales sensibles."""
+    """
+    Detecta si la consulta del usuario intenta acceder a datos personales sensibles
+    o incluye identificadores / nombres individuales de pacientes.
+    """
     q_norm = question.lower()
     for pat in SENSITIVE_PATTERNS:
         if re.search(pat, q_norm, re.IGNORECASE):
@@ -76,19 +191,36 @@ def is_modification_attempt(question: str) -> bool:
 
 def get_anonymized_cohort_context() -> str:
     """
-    Construye un resumen estadístico compacto y 100% anonimizado de la cohorte (N=59).
-    Caché en memoria de 5 minutos.
+    Construye un resumen estadístico compacto y 100% anonimizado de la cohorte real en PostgreSQL.
+    Utiliza caché compartido inter-proceso para garantizar coherencia en arquitecturas multi-worker (Gunicorn).
     """
-    now = time.time()
-    if _cohort_cache["summary_text"] and (now - _cohort_cache["timestamp"] < 300):
-        return _cohort_cache["summary_text"]
+    try:
+        from clinical.models import Visit
+        current_count = Visit.objects.count()
+    except Exception:
+        current_count = -1
+
+    cached_summary = cache.get(COHORT_SUMMARY_CACHE_KEY)
+    cached_count = cache.get(COHORT_COUNT_CACHE_KEY)
+
+    if cached_summary and cached_count == current_count:
+        return cached_summary
 
     try:
         data = get_dashboard_evaluation_data()
-        total = data.get('total', 59)
+        records = data.get('records', [])
+        total = len(records)
+
+        if total == 0:
+            context_md = "DATOS COHORTE CARDIOUNEMI (N = 0):\nActualmente no existen registros ni fichas clínicas en la base de datos."
+            cache.set(COHORT_SUMMARY_CACHE_KEY, context_md, timeout=COHORT_CACHE_TIMEOUT)
+            cache.set(COHORT_COUNT_CACHE_KEY, 0, timeout=COHORT_CACHE_TIMEOUT)
+            return context_md
+
         summary = data.get('summary_kpis', {})
         modules = data.get('module_kpis', {})
-        records = data.get('records', [])
+
+        pct = lambda cnt: f"{round((cnt / total) * 100, 1)} %"
 
         hombres = sum(1 for r in records if r.get('sexo') == 'Hombre')
         mujeres = sum(1 for r in records if r.get('sexo') == 'Mujer')
@@ -115,23 +247,29 @@ def get_anonymized_cohort_context() -> str:
         hvi_cnt = sum(1 for r in records if r.get('ecg_hvi'))
         qtc_prol_cnt = sum(1 for r in records if 'Prolongado' in r.get('ecg_qtc_cat', ''))
 
-        context_md = f"""DATOS COHORTE CARDIOUNEMI (N = {total}):
-1. Sociodemografía: Hombres: {hombres} (50,8 %), Mujeres: {mujeres} (49,2 %). Edad media: {modules.get('individuo', {}).get('edad_media', '40,4')} años. PAS Administrativos: 52,5 %, PDI Docentes: 40,7 %, Servicios: 6,8 %.
-2. Antropometría: IMC medio: {modules.get('exploracion', {}).get('imc_medio', '27,8')} kg/m². Normal: {norm_cnt} (18,6 %), Sobrepeso: {sp_cnt} (44,1 %), Obesidad I: {ob1_cnt} (30,5 %), Obesidad II: {ob2_cnt} (3,4 %), Obesidad Mórbida: {obm_cnt} (3,4 %). Exceso peso (Sobrepeso+Obesidad): {summary.get('sp_ob_pct', '81,4')} %. Perímetro abdominal de riesgo: {modules.get('exploracion', {}).get('cintura_riesgo_pct', '57,6')} %. TAS media: 119,4 mmHg, TAD media: 76,8 mmHg.
-3. Factores Modificables: HTA: {hta_cnt} ({summary.get('hta_pct', '30,5')} %). Dislipemia: {dlp_cnt} ({summary.get('dl_pct', '35,6')} %). Diabetes: {dm_cnt} (18,6 %). Tabaquismo activo: {fum_cnt} (11,9 %). Sedentarismo: {sed_cnt} (55,9 %). Dieta baja adherencia PREDIMED: {modules.get('modificables', {}).get('predimed_baja_pct', '69,5')} %. Alcohol regular: 16,9 %, Ocasional: 54,2 %.
-4. Factores Emergentes: Estrés laboral: 44,1 %. Salud mental: Ansiedad (5,1 %), Ansiedad+Depresión (5,1 %), Sin trastorno (89,8 %). Sueño malo: 37,3 %. Personalidad D: 39,0 %.
-5. Familiares: Carga HTA materna (39,0 %), paterna (35,6 %), global (55,9 %). Diabetes familiar (32,2 %). Dislipemia familiar (20,3 %). IAM prematuro (<55 años): 11,9 %. Carga alta (>=2 factores): 28,8 %.
-6. No Cardiovascular: Respiratorio (8,5 %: Asma 6,8 %, EPOC 1,7 %). Alergias medicamentos: 13,6 %. Reumatológicas: 5,1 %. Cáncer: 3,4 %.
-7. COVID-19: Infección: 76,3 % (45 casos). Hospitalización: 3,4 % (2 casos). Secuelas post-COVID: 28,8 %. Secuelas cardiovasculares: 6,8 %.
-8. ECG: Ritmo sinusal: {sinusal_cnt} (94,9 %), Arritmias: {arritmia_cnt} (5,1 %). PR prolongado: 8,5 %, QRS prolongado: 6,8 %, QTc prolongado Bazett: {qtc_prol_cnt} (10,2 %). HVI: {hvi_cnt} (8,5 %). Bloqueo de rama: 5,1 %. FC media ECG: 72,8 lpm.
-9. Riesgo Global: Bajo (0 factores): {r_bajo} (18,6 %), Moderado (1 factor): {r_mod} (33,9 %), Alto (2-3 factores): {r_alto} (35,6 %), Muy Alto (>=4 factores): {r_muy_alto} (11,9 %). Total Alto/Muy Alto: {r_alto + r_muy_alto} ({summary.get('riesgo_alto_pct', '47,5')} %)."""
+        dep_cnt = sum(1 for r in records if r.get('depresion'))
+        ans_cnt = sum(1 for r in records if r.get('ansiedad'))
+        ambas_cnt = sum(1 for r in records if r.get('depresion') and r.get('ansiedad'))
+        sin_trastorno = total - sum(1 for r in records if r.get('depresion') or r.get('ansiedad'))
 
-        _cohort_cache["timestamp"] = now
-        _cohort_cache["summary_text"] = context_md.strip()
-        return _cohort_cache["summary_text"]
+        pas_cnt = sum(1 for r in records if 'PAS' in r.get('categoria', '') or 'Admin' in r.get('categoria', ''))
+        pdi_cnt = sum(1 for r in records if 'PDI' in r.get('categoria', '') or 'Docente' in r.get('categoria', ''))
+        serv_cnt = sum(1 for r in records if 'Servicio' in r.get('categoria', ''))
+
+        context_md = f"""DATOS COHORTE CARDIOUNEMI (N = {total}):
+1. Sociodemografía: Hombres: {hombres} ({pct(hombres)}), Mujeres: {mujeres} ({pct(mujeres)}). Edad media: {modules.get('individuo', {}).get('edad_media', 'N/D')} años. PAS Administrativos: {pas_cnt} ({pct(pas_cnt)}), PDI Docentes: {pdi_cnt} ({pct(pdi_cnt)}), Servicios: {serv_cnt} ({pct(serv_cnt)}).
+2. Antropometría: Normal: {norm_cnt} ({pct(norm_cnt)}), Sobrepeso: {sp_cnt} ({pct(sp_cnt)}), Obesidad I: {ob1_cnt} ({pct(ob1_cnt)}), Obesidad II: {ob2_cnt} ({pct(ob2_cnt)}), Obesidad Mórbida: {obm_cnt} ({pct(obm_cnt)}). Exceso de peso (Sobrepeso+Obesidad): {sp_cnt + ob1_cnt + ob2_cnt + obm_cnt} ({pct(sp_cnt + ob1_cnt + ob2_cnt + obm_cnt)}).
+3. Factores Modificables: HTA: {hta_cnt} ({pct(hta_cnt)}). Dislipemia: {dlp_cnt} ({pct(dlp_cnt)}). Diabetes: {dm_cnt} ({pct(dm_cnt)}). Tabaquismo activo: {fum_cnt} ({pct(fum_cnt)}). Sedentarismo: {sed_cnt} ({pct(sed_cnt)}).
+4. Salud Mental y Factores Emergentes: Total con Depresión: {dep_cnt} ({pct(dep_cnt)}), Total con Ansiedad: {ans_cnt} ({pct(ans_cnt)}), Ambas patologías: {ambas_cnt} ({pct(ambas_cnt)}), Sin trastorno: {sin_trastorno} ({pct(sin_trastorno)}).
+5. ECG: Ritmo sinusal: {sinusal_cnt} ({pct(sinusal_cnt)}), Arritmias: {arritmia_cnt} ({pct(arritmia_cnt)}). HVI: {hvi_cnt} ({pct(hvi_cnt)}), QTc prolongado: {qtc_prol_cnt} ({pct(qtc_prol_cnt)}).
+6. Riesgo Cardiovascular Global: Bajo: {r_bajo} ({pct(r_bajo)}), Moderado: {r_mod} ({pct(r_mod)}), Alto: {r_alto} ({pct(r_alto)}), Muy Alto: {r_muy_alto} ({pct(r_muy_alto)}). Total Alto/Muy Alto: {r_alto + r_muy_alto} ({pct(r_alto + r_muy_alto)})."""
+
+        cache.set(COHORT_SUMMARY_CACHE_KEY, context_md.strip(), timeout=COHORT_CACHE_TIMEOUT)
+        cache.set(COHORT_COUNT_CACHE_KEY, total, timeout=COHORT_CACHE_TIMEOUT)
+        return context_md.strip()
     except Exception as e:
-        logger.warning(f"Error generando contexto compacto: {e}")
-        return "Cohorte UNEMI N=59. Hombres: 50,8%, Mujeres: 49,2%. HTA: 30,5%, Dislipemia: 35,6%, Sobrepeso/Obesidad: 81,4%."
+        logger.warning(f"Error generando contexto dinámico: {e}")
+        return "DATOS COHORTE CARDIOUNEMI: No fue posible calcular las métricas agregadas."
 
 
 def build_chart_json_if_requested(question: str, raw_response: Optional[str] = None) -> Optional[str]:
@@ -169,7 +307,7 @@ def build_chart_json_if_requested(question: str, raw_response: Optional[str] = N
     # 1. GRÁFICO DE DISPERSIÓN (SCATTER) CON PUNTOS REALES DE PACIENTES
     if is_scatter:
         is_high_risk = any(w in q for w in ['alto', 'muy alto', 'riesgo', 'riengo', 'problema', 'cardiac', 'cardiovascul', 'peligro'])
-        
+
         if is_high_risk:
             target_records = [
                 r for r in records
@@ -339,98 +477,228 @@ def build_chart_json_if_requested(question: str, raw_response: Optional[str] = N
 
 
 def generate_fallback_clinical_answer(question: str) -> str:
-    """Respuestas directas y al grano sin rodeos basadas en PostgreSQL."""
-    q = question.lower()
+    """
+    Respuestas directas, deterministas y con CERO costo de tokens calculadas
+    dinámicamente a partir de las fichas clínicas reales registradas en la base de datos.
+    Aplica:
+    - Desambiguación léxica estricta (\b) y normalización NFKD.
+    - Supresión de celdas pequeñas (< 5 casos, sin porcentajes).
+    - Supresión complementaria para evitar inferencias por diferencia.
+    """
+    q = normalize_clinical_query(question)
     base_answer = ""
+    has_suppression = False
 
-    if any(w in q for w in ['total', 'evaluados', 'cuántos', 'cuantos', 'muestra', 'población']):
-        base_answer = (
-            "**Cohorte CARDIOUNEMI:**\n"
-            "- **Total:** $N = 59$ evaluados (100 %).\n"
-            "- **Hombres:** 30 (50,8 %)\n"
-            "- **Mujeres:** 29 (49,2 %)\n"
-            "- **Edad promedio:** 40,4 años (24 a 64 años).\n"
-            "- **Categoría:** 52,5 % Administrativos (PAS), 40,7 % Docentes (PDI), 6,8 % Servicios."
+    try:
+        data = get_dashboard_evaluation_data()
+        records = data.get('records', [])
+        total = len(records)
+    except Exception as e:
+        logger.warning(f"Error obteniendo registros clínicos para respuesta determinista: {e}")
+        records = []
+        total = 0
+
+    if total == 0:
+        return (
+            "⚠️ **Sin registros clínicos:**\n"
+            "Actualmente no existen fichas clínicas ni pacientes ingresados en la base de datos. "
+            "Al registrar o importar nuevas fichas, se calcularán y presentarán automáticamente las estadísticas reales correspondientes."
         )
 
-    elif any(w in q for w in ['hipertensi', 'hta', 'presi[oó]n', 'tensi[oó]n']):
+    pct = lambda cnt: round((cnt / total) * 100, 1)
+
+    # 1. SALUD MENTAL (Ansiedad / Depresión) - Evaluado primero con límites estrictos \b
+    if re.search(r'\b(depresi[oó]n|depresiv[oa]s?|ansiedad|salud\s+mental|trastorno\s+mental|psico|animo)\b', q):
+        dep_cnt = sum(1 for r in records if r.get('depresion'))
+        ans_cnt = sum(1 for r in records if r.get('ansiedad'))
+        ambas_cnt = sum(1 for r in records if r.get('depresion') and r.get('ansiedad'))
+        sin_trastorno = total - sum(1 for r in records if r.get('depresion') or r.get('ansiedad'))
+        total_afectados = sum(1 for r in records if r.get('depresion') or r.get('ansiedad'))
+
+        suppressed_dict = apply_complementary_suppression({
+            'depresion': dep_cnt,
+            'ansiedad': ans_cnt,
+            'sin_trastorno': sin_trastorno
+        }, total)
+
+        if any(1 <= c < 5 for c in [dep_cnt, ans_cnt, sin_trastorno, total_afectados]):
+            has_suppression = True
+
+        dep_display = suppressed_dict['depresion']
+        ans_display = suppressed_dict['ansiedad']
+        sin_display = suppressed_dict['sin_trastorno']
+        afectados_display = fmt_safe_cell(total_afectados, total)
+
         base_answer = (
-            "**Hipertensión Arterial (HTA):**\n"
-            "- **Prevalencia:** **30,5 %** (18 de 59 casos).\n"
-            "- **Presión media:** TAS 119,4 mmHg / TAD 76,8 mmHg.\n"
-            "- **Clasificación:** Óptima/Normal: 52,5 %, Prehipertensión: 16,9 %, HTA Grado 1: 18,6 %, HTA Grado 2+: 11,9 %.\n"
-            "- **Antecedente familiar:** 55,9 % de la cohorte."
+            f"**Salud Mental (Ansiedad y Depresión):**\n"
+            f"- **Total con Depresión:** **{dep_display}**"
+            + (f" (ambas: {fmt_safe_cell(ambas_cnt, total)})" if dep_cnt >= 5 and ambas_cnt > 0 else "") + ".\n"
+            f"- **Total con Ansiedad:** {ans_display}.\n"
+            f"- **Sin Trastorno de Salud Mental:** {sin_display}.\n"
+            f"- **Prevalencia global de afección mental:** {afectados_display}."
         )
 
-    elif any(w in q for w in ['imc', 'peso', 'obesidad', 'sobrepeso']):
+    # 2. HIPERTENSIÓN ARTERIAL (Desambiguación médica estricta y límites \b)
+    # Detecta 'hipertensión', 'hta', 'presión arterial', etc.
+    # Excluye 'depresión' y 'tensión emocional/nerviosa/muscular/psicológica'
+    elif (
+        bool(re.search(r'\b(hipertensi[oó]n|hta|hipertenso|hipertensas?|hipertensos?)\b', q)) or
+        bool(re.search(r'\b(presi[oó]n|tensi[oó]n)\s+(arterial|sist[oó]lica|diast[oó]lica|alta|elevada)\b', q)) or
+        bool(re.search(r'\b(cifras\s+tensionales|tas|tad)\b', q)) or
+        (
+            bool(re.search(r'\b(presi[oó]n|tensi[oó]n)\b', q)) and
+            not re.search(r'\bdepresi[oó]n\b', q) and
+            not re.search(r'\btensi[oó]n\s+(emocional|nerviosa|muscular|psicol[oó]gica|mental)\b', q)
+        )
+    ):
+        hta_cnt = sum(1 for r in records if r.get('hipertension'))
+        tas_vals = [float(r.get('tas')) for r in records if r.get('tas') and float(r.get('tas')) > 0]
+        tas_med = round(sum(tas_vals) / len(tas_vals), 1) if tas_vals else 0
+        hta_fam = sum(1 for r in records if r.get('ant_fam_hta') or r.get('ant_fam_hta_madre') or r.get('ant_fam_hta_padre'))
+
+        if 1 <= hta_cnt < 5:
+            has_suppression = True
+            hta_str = fmt_safe_cell(hta_cnt, total)
+        else:
+            hta_str = f"**{pct(hta_cnt)} %** ({hta_cnt} de {total} casos evaluados)"
+
         base_answer = (
-            "**Nutrición e IMC:**\n"
-            "- **Sobrepeso u Obesidad combinados:** **81,4 %** (48 de 59 casos).\n"
-            "- **IMC promedio:** 27,8 kg/m².\n"
-            "- **Desglose:** Normal 18,6 %, Sobrepeso 44,1 %, Obesidad I 30,5 %, Obesidad II 3,4 %, Obesidad Mórbida 3,4 %.\n"
-            "- **Cintura de riesgo:** 57,6 % de la cohorte."
+            f"**Hipertensión Arterial (HTA):**\n"
+            f"- **Prevalencia:** {hta_str}.\n"
+            f"- **Presión Sistólica media:** {tas_med} mmHg.\n"
+            f"- **Antecedente familiar de HTA:** {pct(hta_fam)} % ({hta_fam} casos)."
         )
 
-    elif any(w in q for w in ['ecg', 'electrocardiograma', 'ritmo', 'arritmia', 'qt']):
+    # 3. NUTRICIÓN E IMC
+    elif re.search(r'\b(imc|sobrepeso|obesidad|obeso|obesa|peso|nutrici[oó]n|antropometr[ií]a)\b', q):
+        sp_cnt = sum(1 for r in records if r.get('imc_cat') == 'Sobrepeso')
+        ob1_cnt = sum(1 for r in records if r.get('imc_cat') == 'Obesidad I')
+        ob2_cnt = sum(1 for r in records if r.get('imc_cat') == 'Obesidad II')
+        obm_cnt = sum(1 for r in records if r.get('imc_cat') == 'Obesidad Mórbida')
+        norm_cnt = sum(1 for r in records if r.get('imc_cat') == 'Normal')
+        sp_ob = sp_cnt + ob1_cnt + ob2_cnt + obm_cnt
+
+        imcs = [float(r.get('imc')) for r in records if r.get('imc') and float(r.get('imc')) > 0]
+        imc_med = round(sum(imcs) / len(imcs), 1) if imcs else 0
+
+        cint_riesgo = sum(1 for r in records if 'Elevado' in r.get('abd_riesgo', '') or 'Medio' in r.get('abd_riesgo', ''))
+
         base_answer = (
-            "**Resultados ECG:**\n"
-            "- **Ritmo:** Sinusal 94,9 % (56 casos), Arritmias 5,1 % (3 casos).\n"
-            "- **FC media:** 72,8 lpm.\n"
-            "- **Intervalos:** PR prolongado: 8,5 %, QRS ancho: 6,8 %, QTc prolongado (Bazett): 10,2 %.\n"
-            "- **Morfología:** HVI 8,5 %, Bloqueo de rama 5,1 %."
+            f"**Nutrición e IMC:**\n"
+            f"- **Sobrepeso u Obesidad combinados:** **{pct(sp_ob)} %** ({sp_ob} de {total} casos).\n"
+            f"- **IMC promedio:** {imc_med} kg/m².\n"
+            f"- **Desglose:** Normal {pct(norm_cnt)} % ({norm_cnt} casos), Sobrepeso {pct(sp_cnt)} % ({sp_cnt} casos), Obesidad Grado I {pct(ob1_cnt)} % ({ob1_cnt} casos), Obesidad II/Mórbida {pct(ob2_cnt + obm_cnt)} % ({ob2_cnt + obm_cnt} casos).\n"
+            f"- **Perímetro de cintura en riesgo:** {pct(cint_riesgo)} % ({cint_riesgo} casos)."
         )
 
-    elif any(w in q for w in ['riesgo', 'global', 'factores']):
+    # 4. ELECTROCARDIOGRAMA
+    elif re.search(r'\b(ecg|electrocardiograma|ritmo|sinusal|arritmias?|qt|qtc|hvi|bloqueo)\b', q):
+        sinusal_cnt = sum(1 for r in records if r.get('ecg_es_sinusal'))
+        arritmia_cnt = sum(1 for r in records if r.get('ecg_arritmia'))
+        hvi_cnt = sum(1 for r in records if r.get('ecg_hvi'))
+        qtc_cnt = sum(1 for r in records if 'Prolongado' in r.get('ecg_qtc_cat', ''))
+
+        suppressed_ecg = apply_complementary_suppression({
+            'sinusal': sinusal_cnt,
+            'arritmia': arritmia_cnt
+        }, total)
+
+        if (1 <= arritmia_cnt < 5) or (1 <= hvi_cnt < 5) or (1 <= qtc_cnt < 5):
+            has_suppression = True
+
         base_answer = (
-            "**Riesgo Cardiovascular Global:**\n"
-            "- **Bajo (0 factores):** 18,6 % (11 casos)\n"
-            "- **Moderado (1 factor):** 33,9 % (20 casos)\n"
-            "- **Alto (2-3 factores):** 35,6 % (21 casos)\n"
-            "- **Muy Alto (>=4 factores):** 11,9 % (7 casos)\n"
-            "- **Alerta (Alto + Muy Alto):** **47,5 %** (28 casos)."
+            f"**Resultados ECG:**\n"
+            f"- **Ritmo Sinusal:** {suppressed_ecg['sinusal']}.\n"
+            f"- **Arritmias:** {suppressed_ecg['arritmia']}.\n"
+            f"- **Hipertrofia Ventricular Izquierda (HVI):** {fmt_safe_cell(hvi_cnt, total)}.\n"
+            f"- **QTc Prolongado:** {fmt_safe_cell(qtc_cnt, total)}."
         )
 
-    elif any(w in q for w in ['depre', 'depor', 'deprec', 'ansiedad', 'mental', 'psico', 'trastorno', 'emocion']):
+    # 5. RIESGO CARDIOVASCULAR GLOBAL
+    elif re.search(r'\b(riesgo|global|estratificaci[oó]n|factores\s+de\s+riesgo)\b', q):
+        r_bajo = sum(1 for r in records if 'Bajo' in r.get('riesgo_global', ''))
+        r_mod = sum(1 for r in records if 'Moderado' in r.get('riesgo_global', ''))
+        r_alto = sum(1 for r in records if 'Alto' in r.get('riesgo_global', '') and 'Muy' not in r.get('riesgo_global', ''))
+        r_muy_alto = sum(1 for r in records if 'Muy Alto' in r.get('riesgo_global', ''))
+        alerta = r_alto + r_muy_alto
+
         base_answer = (
-            "**Salud Mental (Ansiedad y Depresión):**\n"
-            "- **Total con Depresión:** **3 casos (5,1 %)** (combinada con ansiedad: 3, depresión aislada: 0).\n"
-            "- **Solo Ansiedad:** 3 casos (5,1 %).\n"
-            "- **Sin Trastorno Mental:** 53 casos (89,8 %).\n"
-            "- **Prevalencia global de afección mental:** 6 casos (10,2 %)."
+            f"**Riesgo Cardiovascular Global:**\n"
+            f"- **Bajo (0 factores):** {pct(r_bajo)} % ({r_bajo} casos)\n"
+            f"- **Moderado (1 factor):** {pct(r_mod)} % ({r_mod} casos)\n"
+            f"- **Alto (2-3 factores):** {pct(r_alto)} % ({r_alto} casos)\n"
+            f"- **Muy Alto (>=4 factores):** {pct(r_muy_alto)} % ({r_muy_alto} casos)\n"
+            f"- **Alerta Institucional (Alto + Muy Alto):** **{pct(alerta)} %** ({alerta} casos)."
         )
 
-    elif any(w in q for w in ['diabet', 'glucosa', 'glicemia']):
+    # 6. DIABETES Y GLUCOSA
+    elif re.search(r'\b(diabetes|diab[eé]tic[oa]s?|glucosa|glicemia)\b', q):
+        dm_cnt = sum(1 for r in records if r.get('diabetes'))
         base_answer = (
-            "**Diabetes Mellitus:**\n"
-            "- **Prevalencia:** **18,6 %** (11 de 59 casos).\n"
-            "- **Glucosa en ayunas media:** 98,4 mg/dL.\n"
-            "- **Antecedente familiar:** 37,3 % de la cohorte."
+            f"**Diabetes Mellitus:**\n"
+            f"- **Prevalencia:** **{pct(dm_cnt)} %** ({dm_cnt} de {total} casos evaluados)."
         )
 
-    elif any(w in q for w in ['colesterol', 'dislipemia', 'triglic', 'lipid']):
+    # 7. PERFIL LIPÍDICO Y DISLIPEMIA
+    elif re.search(r'\b(dislipemia|colesterol|triglic[eé]ridos?|l[ií]pidos?)\b', q):
+        dlp_cnt = sum(1 for r in records if r.get('dislipemia'))
         base_answer = (
-            "**Perfil Lipídico y Dislipemia:**\n"
-            "- **Prevalencia de Dislipemia:** **35,6 %** (21 de 59 casos).\n"
-            "- **Colesterol total medio:** 192,5 mg/dL.\n"
-            "- **Antecedente familiar:** 32,2 %."
+            f"**Perfil Lipídico y Dislipemia:**\n"
+            f"- **Prevalencia de Dislipemia:** **{pct(dlp_cnt)} %** ({dlp_cnt} de {total} casos evaluados)."
         )
 
-    elif any(w in q for w in ['tabaco', 'fuma', 'cigarro', 'alcohol', 'sedentar']):
+    # 8. ESTILO DE VIDA Y HÁBITOS
+    elif re.search(r'\b(tabaquismo|fumador|fuma|cigarro|alcohol|sedentarismo|sedentario)\b', q):
+        sed_cnt = sum(1 for r in records if not r.get('actividad_fisica'))
+        fum_cnt = sum(1 for r in records if r.get('fumador_activo'))
+        alc_cnt = sum(1 for r in records if r.get('alcohol') and r.get('alcohol') != 'No consume')
+
         base_answer = (
-            "**Estilo de Vida y Hábitos:**\n"
-            "- **Sedentarismo:** **55,9 %** (33 casos).\n"
-            "- **Consumo de Alcohol:** **45,8 %** (27 casos).\n"
-            "- **Tabaquismo activo:** **18,6 %** (11 casos), exfumadores: 15,3 %."
+            f"**Estilo de Vida y Hábitos:**\n"
+            f"- **Sedentarismo:** **{pct(sed_cnt)} %** ({sed_cnt} casos).\n"
+            f"- **Consumo de Alcohol:** **{pct(alc_cnt)} %** ({alc_cnt} casos).\n"
+            f"- **Tabaquismo activo:** **{pct(fum_cnt)} %** ({fum_cnt} casos)."
+        )
+
+    # 9. TOTALES Y POBLACIÓN GENERAL
+    elif re.search(r'\b(total|evaluados?|pacientes?|muestra|poblaci[oó]n|cu[aá]ntos?)\b', q):
+        hombres = sum(1 for r in records if r.get('sexo') == 'Hombre')
+        mujeres = sum(1 for r in records if r.get('sexo') == 'Mujer')
+        edades = [float(r.get('edad')) for r in records if r.get('edad') and float(r.get('edad')) > 0]
+        edad_media = round(sum(edades) / len(edades), 1) if edades else 0
+        min_e = int(min(edades)) if edades else 0
+        max_e = int(max(edades)) if edades else 0
+
+        pas_cnt = sum(1 for r in records if 'PAS' in r.get('categoria', '') or 'Admin' in r.get('categoria', ''))
+        pdi_cnt = sum(1 for r in records if 'PDI' in r.get('categoria', '') or 'Docente' in r.get('categoria', ''))
+        serv_cnt = sum(1 for r in records if 'Servicio' in r.get('categoria', ''))
+
+        base_answer = (
+            f"**Cohorte CARDIOUNEMI:**\n"
+            f"- **Total evaluados:** $N = {total}$ pacientes.\n"
+            f"- **Hombres:** {hombres} ({pct(hombres)} %)\n"
+            f"- **Mujeres:** {mujeres} ({pct(mujeres)} %)\n"
+            f"- **Edad promedio:** {edad_media} años ({min_e} a {max_e} años).\n"
+            f"- **Distribución:** {pct(pas_cnt)} % Administrativos (PAS), {pct(pdi_cnt)} % Docentes (PDI), {pct(serv_cnt)} % Servicios."
         )
 
     else:
+        hombres = sum(1 for r in records if r.get('sexo') == 'Hombre')
+        mujeres = sum(1 for r in records if r.get('sexo') == 'Mujer')
+        sp_ob = sum(1 for r in records if r.get('imc_cat') in ['Sobrepeso', 'Obesidad I', 'Obesidad II', 'Obesidad Mórbida'])
+        hta_cnt = sum(1 for r in records if r.get('hipertension'))
+        dlp_cnt = sum(1 for r in records if r.get('dislipemia'))
+        dm_cnt = sum(1 for r in records if r.get('diabetes'))
+
         base_answer = (
-            "**Resumen Clínico Rápido (N = 59):**\n"
-            "- Hombres: 50,8 % | Mujeres: 49,2 % | Edad media: 40,4 años.\n"
-            "- Sobrepeso/Obesidad: **81,4 %** | Riesgo Alto/Muy Alto: **47,5 %**.\n"
-            "- HTA: **30,5 %** | Dislipemia: **35,6 %** | Diabetes: **18,6 %** | Sedentarismo: **55,9 %**.\n"
-            "- ECG: 94,9 % ritmo sinusal, 10,2 % QTc largo, 8,5 % HVI."
+            f"**Resumen Clínico Actual (N = {total}):**\n"
+            f"- **Distribución:** Hombres: {pct(hombres)} % | Mujeres: {pct(mujeres)} %.\n"
+            f"- **Sobrepeso/Obesidad:** **{pct(sp_ob)} %** ({sp_ob} casos).\n"
+            f"- **Hipertensión:** **{pct(hta_cnt)} %** ({hta_cnt} casos) | Dislipemia: **{pct(dlp_cnt)} %** ({dlp_cnt} casos) | Diabetes: **{pct(dm_cnt)} %** ({dm_cnt} casos)."
         )
+
+    if has_suppression:
+        base_answer += "\n\n> *\*Nota de confidencialidad médica (supresión de celdas pequeñas / control de divulgación estadística): Conteos menores a 5 se presentan como '< 5' sin porcentaje para salvaguardar la privacidad de datos clínicos en cohortes reducidas.*"
 
     chart_block = build_chart_json_if_requested(question, raw_response=base_answer)
     if chart_block:
@@ -475,11 +743,11 @@ def query_gemini_assistant(
     except Exception as e:
         logger.warning(f"No se pudo consultar estado del chatbot en SystemSetting: {e}")
 
-    # 1. Filtro estricto de privacidad (Zero PII) - Corto y directo
+    # 1. Filtro estricto de privacidad (Zero PII) - Bloquea nombres, cédulas y preguntas individuales
     if is_sensitive_or_pii_query(clean_question):
         privacy_refusal = (
             "🔒 **Protección de Datos Médicos (Zero PII):**\n"
-            "Acceso denegado a datos individuales (nombres, cédulas o contactos personales). "
+            "Acceso denegado a datos individuales (nombres propios, cédulas o contactos personales). "
             "Este asistente opera bajo estricta anonimización y solo responde métricas agregadas de la cohorte."
         )
         elapsed_ms = int((time.time() - start_time) * 1000)
@@ -491,7 +759,7 @@ def query_gemini_assistant(
             "execution_time_ms": elapsed_ms
         }
 
-    # 2. Modo solo consulta - Corto y directo
+    # 2. Modo solo consulta - Bloquea intenciones de escritura DDL/DML
     if is_modification_attempt(clean_question):
         modification_refusal = (
             "🛡️ **Modo Solo Consulta:**\n"
@@ -506,7 +774,7 @@ def query_gemini_assistant(
             "execution_time_ms": elapsed_ms
         }
 
-    # 3. Leer clave de API encriptada únicamente desde security.system_setting (asociada al rol Administrador)
+    # 3. Leer clave de API: primero desde BD encriptada (SystemSetting), luego variable de entorno (12-Factor App)
     db_key = ""
     db_model = "gemini-3.5-flash-lite"
     has_admin_access = False
@@ -525,7 +793,8 @@ def query_gemini_assistant(
     except Exception as e:
         logger.warning(f"Error consultando SystemSetting: {e}")
 
-    api_key = db_key.strip()
+    env_key = os.getenv('GEMINI_API_KEY', '').strip()
+    api_key = db_key.strip() or env_key
     model_name = db_model.strip()
 
     cohort_context = get_anonymized_cohort_context()
@@ -537,7 +806,7 @@ def query_gemini_assistant(
         elif key_configured and not has_admin_access:
             note = "\n\n> 🔒 *(Modo estadístico local: el uso de credenciales de Gemini AI está restringido al rol Administrador)*"
         else:
-            note = "\n\n> ℹ️ *(No se detectó clave de Gemini configurada en la base de datos. Un Administrador puede configurarla en Ajustes del Sistema)*"
+            note = "\n\n> ℹ️ *(No se detectó clave de Gemini configurada. Un Administrador puede configurarla en Ajustes del Sistema o en la variable de entorno GEMINI_API_KEY)*"
         final_answer = fallback_answer + note
         elapsed_ms = int((time.time() - start_time) * 1000)
 
@@ -560,7 +829,6 @@ def query_gemini_assistant(
 
         # Probar con el modelo configurado o fallback a modelos flash estándar de Google
         models_to_try = [model_name, 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest']
-        # Eliminar duplicados preservando orden
         seen = set()
         models_to_try = [m for m in models_to_try if m and not (m in seen or seen.add(m))]
 
@@ -583,7 +851,6 @@ def query_gemini_assistant(
                     break
             except Exception as model_err:
                 last_err = model_err
-                # Si es 402 créditos agotados, romper de inmediato para no reintentar en vano
                 if '402' in str(model_err) or 'RESOURCE_EXHAUSTED' in str(model_err):
                     raise model_err
 

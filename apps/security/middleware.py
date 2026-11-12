@@ -47,6 +47,21 @@ class RequireLoginMiddleware:
             except Resolver404:
                 pass
 
+            # Para peticiones asíncronas / API / JSON (ej. fetch desde el frontend),
+            # retornar 401 JSON en lugar de redirección 302 que rompería el parser JSON del cliente.
+            if (
+                request.content_type == 'application/json'
+                or request.headers.get('x-requested-with') == 'XMLHttpRequest'
+                or path.startswith('/chatbot/query')
+                or '/api/' in path
+            ):
+                from django.http import JsonResponse
+                return JsonResponse({
+                    'status': 'unauthorized',
+                    'message': 'No autenticado. Por favor inicie sesión.',
+                    'response': '🔒 Debe iniciar sesión para acceder al sistema.'
+                }, status=401)
+
             # Solo conservar ?next= si la ruta destino existe y es segura.
             try:
                 resolve(path)

@@ -47,3 +47,7 @@ PROGRESS.md
 *.sav
 *.zsav
 *.sav.*
+
+# Storage de Caché local Django
+.cache_storage/
+.cache/

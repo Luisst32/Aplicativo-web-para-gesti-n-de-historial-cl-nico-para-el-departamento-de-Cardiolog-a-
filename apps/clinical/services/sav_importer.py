@@ -2036,6 +2036,13 @@ def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="up
             except Exception:
                 pass
 
+        # Invalidar caché compartido de la cohorte tras importación masiva exitosa (bulk_create)
+        try:
+            from chatbot.services import invalidate_cohort_cache
+            transaction.on_commit(invalidate_cohort_cache)
+        except Exception:
+            pass
+
     # Limpiar archivo temporal
     if temp_path.exists():
         try: temp_path.unlink()
