@@ -205,19 +205,42 @@ body {
 .slicers-container {
   display: flex;
   align-items: flex-end;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  gap: 0.65rem;
+  flex-wrap: nowrap;
   background: var(--slate-50);
-  padding: 0.65rem 1rem;
+  padding: 0.6rem 0.85rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--slate-200);
   transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .slicer-group {
   display: flex;
   flex-direction: column;
   gap: 3px;
+  min-width: 0;
+}
+
+.slicer-group.slicer-buscar {
+  flex: 1.6 1 180px;
+}
+
+.slicer-group.slicer-anio {
+  flex: 0.85 1 95px;
+}
+
+.slicer-group.slicer-estamento {
+  flex: 1.3 1 145px;
+}
+
+.slicer-group.slicer-sexo {
+  flex: 0.85 1 95px;
+}
+
+.slicer-group.slicer-ordenar {
+  flex: 1.25 1 140px;
 }
 
 .slicer-group label {
@@ -226,14 +249,27 @@ body {
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slicer-group .form-input,
+.slicer-group .slicer-select {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .slicer-select {
-  min-width: 140px;
+  min-width: 0;
 }
 
 #filtroBusqueda {
-  min-width: 240px;
+  min-width: 0;
 }
 
 .export-group {
@@ -1339,18 +1375,9 @@ body {
   }
 
   .slicers-container {
-    gap: 0.6rem;
-    padding: 0.65rem 0.85rem;
-  }
-
-  #filtroBusqueda {
-    min-width: 0;
-    flex: 1 1 200px;
-  }
-
-  .slicer-select {
-    min-width: 0;
-    flex: 1 1 130px;
+    gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    flex-wrap: nowrap;
   }
 
   .stats-overview-grid { grid-template-columns: 1fr; }
