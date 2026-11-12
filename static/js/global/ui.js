@@ -696,8 +696,9 @@ async function cargarAjustesSistema() {
   const switchGmailEnabled = document.getElementById('switchGmailEnabled');
 
   try {
-    const res = await fetch('/security/api/settings/', {
-      headers: { 'Accept': 'application/json' }
+    const res = await fetch(`/security/api/settings/?_=${Date.now()}`, {
+      headers: { 'Accept': 'application/json' },
+      cache: 'no-store'
     });
     const data = await res.json();
 
@@ -721,10 +722,11 @@ async function cargarAjustesSistema() {
         inputGeminiKey.value = data.gemini_api_key_masked || data.api_key_masked || '';
       }
       window._geminiConfigurada = Boolean(data.gemini_api_key_configured);
+      const geminiHab = Boolean(data.gemini_enabled);
       if (switchGeminiEnabled) {
-        switchGeminiEnabled.checked = data.gemini_enabled !== false;
+        switchGeminiEnabled.checked = geminiHab;
       }
-      actualizarBadgeEstadoApi('badgeEstadoGemini', window._geminiConfigurada, switchGeminiEnabled ? switchGeminiEnabled.checked : true);
+      actualizarBadgeEstadoApi('badgeEstadoGemini', window._geminiConfigurada, geminiHab);
 
       // 4. OpenAI
       if (selectOpenAIModel && data.openai_model) {
@@ -734,10 +736,11 @@ async function cargarAjustesSistema() {
         inputOpenAIKey.value = data.openai_api_key_masked || '';
       }
       window._openaiConfigurada = Boolean(data.openai_api_key_configured);
+      const openaiHab = Boolean(data.openai_enabled);
       if (switchOpenAIEnabled) {
-        switchOpenAIEnabled.checked = data.openai_enabled !== false;
+        switchOpenAIEnabled.checked = openaiHab;
       }
-      actualizarBadgeEstadoApi('badgeEstadoOpenAI', window._openaiConfigurada, switchOpenAIEnabled ? switchOpenAIEnabled.checked : true);
+      actualizarBadgeEstadoApi('badgeEstadoOpenAI', window._openaiConfigurada, openaiHab);
 
       // 5. Claude
       if (selectClaudeModel && data.claude_model) {
@@ -747,19 +750,21 @@ async function cargarAjustesSistema() {
         inputClaudeKey.value = data.claude_api_key_masked || '';
       }
       window._claudeConfigurada = Boolean(data.claude_api_key_configured);
+      const claudeHab = Boolean(data.claude_enabled);
       if (switchClaudeEnabled) {
-        switchClaudeEnabled.checked = data.claude_enabled !== false;
+        switchClaudeEnabled.checked = claudeHab;
       }
-      actualizarBadgeEstadoApi('badgeEstadoClaude', window._claudeConfigurada, switchClaudeEnabled ? switchClaudeEnabled.checked : true);
+      actualizarBadgeEstadoApi('badgeEstadoClaude', window._claudeConfigurada, claudeHab);
 
       // 6. Gmail SMTP
       if (inputGmailSender) inputGmailSender.value = data.gmail_sender_email || '';
       if (inputGmailSecret) inputGmailSecret.value = data.gmail_secret_masked || '';
       window._gmailConfigurada = Boolean(data.gmail_sender_email && data.gmail_secret_configured);
+      const gmailHab = Boolean(data.gmail_api_enabled);
       if (switchGmailEnabled) {
-        switchGmailEnabled.checked = data.gmail_api_enabled !== false;
+        switchGmailEnabled.checked = gmailHab;
       }
-      actualizarBadgeEstadoApi('badgeEstadoGmail', window._gmailConfigurada, switchGmailEnabled ? switchGmailEnabled.checked : true);
+      actualizarBadgeEstadoApi('badgeEstadoGmail', window._gmailConfigurada, gmailHab);
 
       // Listeners de cambio en tiempo real para badges
       if (switchGeminiEnabled && !switchGeminiEnabled._listenerAdded) {
@@ -938,22 +943,32 @@ async function guardarAjustesSistema(event) {
         btnFlotante.style.display = data.chatbot_enabled ? 'flex' : 'none';
       }
 
+      // Sincronizar checkboxes con la respuesta real del servidor
+      const sGemini = document.getElementById('switchGeminiEnabled');
+      if (sGemini && typeof data.gemini_enabled !== 'undefined') sGemini.checked = Boolean(data.gemini_enabled);
+      const sOpenAI = document.getElementById('switchOpenAIEnabled');
+      if (sOpenAI && typeof data.openai_enabled !== 'undefined') sOpenAI.checked = Boolean(data.openai_enabled);
+      const sClaude = document.getElementById('switchClaudeEnabled');
+      if (sClaude && typeof data.claude_enabled !== 'undefined') sClaude.checked = Boolean(data.claude_enabled);
+      const sGmail = document.getElementById('switchGmailEnabled');
+      if (sGmail && typeof data.gmail_api_enabled !== 'undefined') sGmail.checked = Boolean(data.gmail_api_enabled);
+
       // Actualizar badges con estado y habilitación
       if (typeof data.gemini_api_key_configured !== 'undefined') {
         window._geminiConfigurada = Boolean(data.gemini_api_key_configured);
-        actualizarBadgeEstadoApi('badgeEstadoGemini', window._geminiConfigurada, data.gemini_enabled !== false);
+        actualizarBadgeEstadoApi('badgeEstadoGemini', window._geminiConfigurada, Boolean(data.gemini_enabled));
       }
       if (typeof data.openai_api_key_configured !== 'undefined') {
         window._openaiConfigurada = Boolean(data.openai_api_key_configured);
-        actualizarBadgeEstadoApi('badgeEstadoOpenAI', window._openaiConfigurada, data.openai_enabled !== false);
+        actualizarBadgeEstadoApi('badgeEstadoOpenAI', window._openaiConfigurada, Boolean(data.openai_enabled));
       }
       if (typeof data.claude_api_key_configured !== 'undefined') {
         window._claudeConfigurada = Boolean(data.claude_api_key_configured);
-        actualizarBadgeEstadoApi('badgeEstadoClaude', window._claudeConfigurada, data.claude_enabled !== false);
+        actualizarBadgeEstadoApi('badgeEstadoClaude', window._claudeConfigurada, Boolean(data.claude_enabled));
       }
       if (typeof data.gmail_secret_configured !== 'undefined') {
         window._gmailConfigurada = Boolean(data.gmail_secret_configured);
-        actualizarBadgeEstadoApi('badgeEstadoGmail', window._gmailConfigurada, data.gmail_api_enabled !== false);
+        actualizarBadgeEstadoApi('badgeEstadoGmail', window._gmailConfigurada, Boolean(data.gmail_api_enabled));
       }
 
       // Solo mantener la notificación flotante (toast) a la derecha

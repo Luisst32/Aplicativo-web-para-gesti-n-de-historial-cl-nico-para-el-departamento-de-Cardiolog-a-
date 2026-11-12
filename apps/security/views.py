@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from django.urls import Resolver404, resolve, reverse
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_decode, urlsafe_base64_encode
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods, require_POST
 
 from .models import User, SystemSetting
@@ -243,6 +244,7 @@ def _mask_api_key(raw_key: str) -> str:
 
 
 @login_required
+@never_cache
 @require_http_methods(["GET", "POST"])
 def api_settings_view(request):
     """
