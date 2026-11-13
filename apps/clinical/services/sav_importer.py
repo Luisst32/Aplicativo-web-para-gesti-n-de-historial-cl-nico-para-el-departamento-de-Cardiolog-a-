@@ -1867,9 +1867,6 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                     ordered.cardiac_ct = _eval_bool_val('est_tac_cardiaco')
                     ordered.cardiac_mri = _eval_bool_val('est_rnm_cardiaco')
                     ordered.electrophysiology = _eval_bool_val('est_electrofisiologia')
-                    ordered.echocardiogram_ordered = _eval_bool_val('est_ecocardiograma')
-                    ordered.holter_ordered = _eval_bool_val('est_holter')
-                    ordered.mapa_ordered = _eval_bool_val('est_mapa')
                     ordered.save()
                     visit.ordered_studies = ordered
 

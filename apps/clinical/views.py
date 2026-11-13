@@ -742,10 +742,6 @@ def _build_form_datos(patient, visit):
         "est_tac_cardiaco": "No",
         "est_rnm_cardiaco": "No",
         "est_electrofisiologia": "No",
-        "est_ecocardiograma": "No",
-        "est_holter": "No",
-        "est_mapa": "No",
-        "est_otros_detalle": "",
     }
 
     if visit:
@@ -779,10 +775,6 @@ def _build_form_datos(patient, visit):
             datos['est_tac_cardiaco'] = "Si" if ordered.cardiac_ct else "No"
             datos['est_rnm_cardiaco'] = "Si" if ordered.cardiac_mri else "No"
             datos['est_electrofisiologia'] = "Si" if ordered.electrophysiology else "No"
-            datos['est_ecocardiograma'] = "Si" if ordered.echocardiogram_ordered else "No"
-            datos['est_holter'] = "Si" if ordered.holter_ordered else "No"
-            datos['est_mapa'] = "Si" if ordered.mapa_ordered else "No"
-            datos['est_otros_detalle'] = ordered.other_studies or ""
 
         # Cargar todas las respuestas guardadas en VisitAnswer
         ans_dict = {}

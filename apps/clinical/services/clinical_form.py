@@ -450,14 +450,6 @@ def update_clinical_record(patient, raw_data, user, client_ip):
                 ordered.cardiac_mri = (raw_data.get('est_rnm_cardiaco') == 'Si')
             if any(key in raw_data for key in ('est_electrofisiologia',)):
                 ordered.electrophysiology = (raw_data.get('est_electrofisiologia') == 'Si')
-            if any(key in raw_data for key in ('est_ecocardiograma',)):
-                ordered.echocardiogram_ordered = (raw_data.get('est_ecocardiograma') == 'Si')
-            if any(key in raw_data for key in ('est_holter',)):
-                ordered.holter_ordered = (raw_data.get('est_holter') == 'Si')
-            if any(key in raw_data for key in ('est_mapa',)):
-                ordered.mapa_ordered = (raw_data.get('est_mapa') == 'Si')
-            if any(key in raw_data for key in ('est_otros_detalle',)):
-                ordered.other_studies = (raw_data.get('est_otros_detalle') or '')[:300]
             ordered.save()
 
 

@@ -412,28 +412,6 @@ class OrderedStudies(models.Model):
         db_column='electrophysiology',
         help_text="5- Estudios de Electrofisiología (No/Sí)"
     )
-    echocardiogram_ordered = models.BooleanField(
-        default=False,
-        db_column='echocardiogram_ordered',
-        help_text="Estudios de Ecocardiografía (No/Sí)"
-    )
-    holter_ordered = models.BooleanField(
-        default=False,
-        db_column='holter_ordered',
-        help_text="Estudios de Holter ECG (No/Sí)"
-    )
-    mapa_ordered = models.BooleanField(
-        default=False,
-        db_column='mapa_ordered',
-        help_text="Estudios de MAPA (No/Sí)"
-    )
-    other_studies = models.CharField(
-        max_length=300,
-        blank=True,
-        null=True,
-        db_column='other_studies',
-        help_text="Otros estudios indicados / observaciones"
-    )
 
     class Meta:
         db_table = 'clinical"."ordered_studies'
