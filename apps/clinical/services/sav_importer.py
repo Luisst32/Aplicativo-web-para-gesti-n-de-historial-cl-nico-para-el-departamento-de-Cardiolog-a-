@@ -124,8 +124,6 @@ SPSS_QUESTION_ALIASES = {
     'f_sat_o2': 'saturacion_o2',
     'f_fc': 'frecuencia_cardiaca_ipm',
     'soplos': 'soplos_cardiacos',
-    'soplo_grado': 'soplos_cardiacos',
-    'soplo_tipo': 'soplos_cardiacos',
     'pulsos_palp': 'pulsospedios',
     'pulsos_sim': 'pulsospedios',
     'pulsos_pedios': 'pulsospedios',

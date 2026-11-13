@@ -54,14 +54,29 @@ def save_measurements(visit, data):
             ):
                 if key in data and data[key] not in ('',None):
                     values[field] = data[key] == truth
+            tiene_soplos = values.get('systolic_murmur') or values.get('diastolic_murmur') or (data.get('soplos') in ('1', 'Si', 'si', 'sistolico', 'diastolico'))
             for key in ('soplo_grado','f_grado_soplo'):
                 if key in data:
-                    try:
-                        value = None if data[key] in ('',None) else int(data[key])
-                    except (TypeError,ValueError):
-                        raise ValidationError('Grado de soplo invalido.')
-                    if value is not None and not 1 <= value <= 6:
-                        raise ValidationError('Grado de soplo fuera de rango.')
+                    raw_val = data[key]
+                    if raw_val in ('', None, 'No tiene soplo', 'No', 'no', 'none', 'None', 'ninguno', '0', 'N/A'):
+                        value = None
+                    elif not tiene_soplos:
+                        value = None
+                    else:
+                        try:
+                            import re
+                            match = re.search(r'([1-6])', str(raw_val))
+                            if match:
+                                value = int(match.group(1))
+                            else:
+                                romans = {'i': 1, 'ii': 2, 'iii': 3, 'iv': 4, 'v': 5, 'vi': 6}
+                                value = romans.get(str(raw_val).strip().lower())
+                                if value is None:
+                                    raise ValidationError('Grado de soplo invalido.')
+                        except (TypeError, ValueError):
+                            raise ValidationError('Grado de soplo invalido.')
+                        if value is not None and not 1 <= value <= 6:
+                            raise ValidationError('Grado de soplo fuera de rango.')
                     values['murmur_grade'] = value
         if values:
             if obj is None:

@@ -802,7 +802,36 @@ def _build_form_datos(patient, visit):
                         datos[spss_k] = val
 
         # Inyecciones y deducciones inteligentes para compatibilidad total con SPSS:
-        # 0. Edad real reportada en SPSS/VisitAnswer
+        # 0. Soplos cardiacos (normalizar grado y tipo sin volcar texto crudo)
+        if 'soplos_cardiacos' in ans_dict:
+            sop_val = str(ans_dict['soplos_cardiacos']).lower().strip()
+            if 'no tiene' in sop_val or sop_val in ('no', '0', '0.0'):
+                datos['soplos'] = 'No'
+                datos['soplo_grado'] = ''
+                datos['soplo_tipo'] = ''
+                datos['f_soplo_sistolico'] = 'No'
+                datos['f_soplo_diastolico'] = 'No'
+                datos['f_grado_soplo'] = ''
+            elif 'tiene' in sop_val or 'soplo' in sop_val or sop_val in ('si', 'sí', '1', '1.0'):
+                datos['soplos'] = 'Si'
+                mg = re.search(r'grado\s*([1-6])', sop_val)
+                if mg:
+                    datos['soplo_grado'] = mg.group(1)
+                    datos['f_grado_soplo'] = mg.group(1)
+                else:
+                    datos['soplo_grado'] = str(vs.murmur_grade) if (vs and vs.murmur_grade) else ''
+                    datos['f_grado_soplo'] = str(vs.murmur_grade) if (vs and vs.murmur_grade) else ''
+
+                if 'sist' in sop_val:
+                    datos['soplo_tipo'] = 'Sistólico'
+                    datos['f_soplo_sistolico'] = 'Si'
+                    datos['f_soplo_diastolico'] = 'No'
+                elif 'diast' in sop_val:
+                    datos['soplo_tipo'] = 'Diastólico'
+                    datos['f_soplo_diastolico'] = 'Si'
+                    datos['f_soplo_sistolico'] = 'No'
+
+        # 0.1. Edad real reportada en SPSS/VisitAnswer
         if ans_dict.get('edad'):
             try:
                 edad_num = str(ans_dict.get('edad')).split('.')[0].strip()

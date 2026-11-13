@@ -846,6 +846,14 @@ async function guardarFichaCompleta() {
     if (el) formData.append(id, el.value);
   });
 
+  // Si soplos es No o no está marcado Sí, limpiar soplo_grado y soplo_tipo para evitar texto residual
+  const soplosVal = formData.get('soplos');
+  if (soplosVal !== 'Si' && soplosVal !== '1') {
+    formData.set('soplo_grado', '');
+    formData.set('soplo_tipo', '');
+    formData.set('f_grado_soplo', '');
+  }
+
   if (pacienteActual && pacienteActual.id) {
     formData.append('idPaciente', pacienteActual.id);
   } else if (idPacienteUrl) {
