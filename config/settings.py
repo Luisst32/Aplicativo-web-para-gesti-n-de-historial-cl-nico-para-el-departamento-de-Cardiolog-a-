@@ -8,12 +8,13 @@ import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
-
-# Cargar variables de entorno desde .env
-load_dotenv()
+from .secret_settings import read_encryption_keys, read_secret_key
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# El entorno del proceso tiene prioridad; no buscar archivos .env en otras carpetas.
+load_dotenv(BASE_DIR / '.env')
 
 # Agregar directorio apps/ al PYTHONPATH para importaciones limpias
 sys.path.insert(0, str(BASE_DIR / 'apps'))
@@ -23,7 +24,7 @@ sys.path.insert(0, str(BASE_DIR / 'apps'))
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-xn=bxnw0_!=zkd*@4a7!hau_wvsbf$+!dh5rp*gnz5+_%m9wpc')
+SECRET_KEY = read_secret_key(os.environ)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
@@ -178,5 +179,4 @@ MAILERS = {
 
 # Claves dedicadas para cifrado simétrico en BD (Fernet / MultiFernet).
 # Permite rotación agregando claves separadas por coma en FIELD_ENCRYPTION_KEYS.
-_raw_enc_keys = os.getenv('FIELD_ENCRYPTION_KEYS') or os.getenv('FIELD_ENCRYPTION_KEY', '')
-FIELD_ENCRYPTION_KEYS = [k.strip() for k in _raw_enc_keys.split(',') if k.strip()]
+FIELD_ENCRYPTION_KEYS = read_encryption_keys(os.environ)

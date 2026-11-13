@@ -1,12 +1,10 @@
-import base64
-import hashlib
 import logging
 
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.core.cache import cache
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.db import models
 
 logger = logging.getLogger(__name__)
@@ -203,23 +201,18 @@ class UserRole(models.Model):
         return f"{self.user.username} - {self.role.name}"
 
 
-def _derive_secret_key_fernet() -> bytes:
-    """Deriva una clave Fernet válida desde settings.SECRET_KEY para compatibilidad de rotación."""
-    key_bytes = hashlib.sha256(settings.SECRET_KEY.encode('utf-8')).digest()
-    return base64.urlsafe_b64encode(key_bytes)
-
-
 def _get_fernet_cipher() -> MultiFernet:
     """
-    Construye un MultiFernet usando las claves dedicadas de settings.FIELD_ENCRYPTION_KEYS
-    (para cifrado y rotación) y la derivada de settings.SECRET_KEY como respaldo de descifrado.
+    La primera clave dedicada cifra; las restantes permiten leer durante una rotación.
+    SECRET_KEY no participa en el cifrado ni sirve como respaldo implícito.
     """
-    ciphers = [
-        Fernet(k.encode('utf-8') if isinstance(k, str) else k)
-        for k in getattr(settings, 'FIELD_ENCRYPTION_KEYS', [])
-        if k
-    ]
-    ciphers.append(Fernet(_derive_secret_key_fernet()))
+    keys = getattr(settings, 'FIELD_ENCRYPTION_KEYS', [])
+    if not keys:
+        raise ImproperlyConfigured("Se requiere una clave dedicada FIELD_ENCRYPTION_KEYS.")
+    try:
+        ciphers = [Fernet(key.encode('ascii') if isinstance(key, str) else key) for key in keys]
+    except (ValueError, UnicodeError):
+        raise ImproperlyConfigured("FIELD_ENCRYPTION_KEYS contiene una clave inválida.") from None
     return MultiFernet(ciphers)
 
 

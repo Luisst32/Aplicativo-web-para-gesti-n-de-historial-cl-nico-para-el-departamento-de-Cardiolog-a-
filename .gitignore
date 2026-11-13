@@ -19,7 +19,6 @@ staticfiles/
 
 # Variables de entorno
 .env
-.env.example
 local_settings.py
 
 # Editores y Entornos

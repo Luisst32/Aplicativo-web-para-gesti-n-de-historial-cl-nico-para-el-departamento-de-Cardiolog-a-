@@ -102,27 +102,57 @@ pip install gunicorn
 
 ## 4. Configuración de Variables de Entorno (.env)
 
-Crear el archivo `.env` en la raíz del proyecto:
+Para una **instalación nueva**, copiar la plantilla sin secretos y generar dos claves independientes. No ejecutar este bloque sobre una instalación existente: usar el procedimiento de rotación que aparece más abajo.
 
 ```bash
-cat > .env << 'EOF'
-# Django Settings
-SECRET_KEY=django-insecure-xn=bxnw0_!=zkd*@4a7!hau_wvsbf$+!dh5rp*gnz5+_%m9wpc
-DEBUG=True
-ALLOWED_HOSTS=milanesa.sbs,www.milanesa.sbs,localhost,127.0.0.1
+cp .env.example .env
+python - <<'PY'
+import secrets
+from cryptography.fernet import Fernet
+from dotenv import set_key
 
-# Database Configuration (PostgreSQL)
-DB_NAME=cardiounemi_db
-DB_USER=postgres
-DB_PASSWORD=
-DB_HOST=localhost
-DB_PORT=5432
-EOF
+set_key('.env', 'SECRET_KEY', secrets.token_urlsafe(64))
+set_key('.env', 'FIELD_ENCRYPTION_KEYS', Fernet.generate_key().decode('ascii'))
+PY
+chmod 600 .env
 ```
+
+Editar después las variables de conexión y `ALLOWED_HOSTS` de `.env` para ese servidor. El entorno del proceso tiene prioridad sobre `.env`, que se carga exclusivamente desde la raíz de la aplicación.
+
+`SECRET_KEY` es obligatoria, privada, de al menos 50 caracteres y no puede comenzar por `django-insecure-`. `FIELD_ENCRYPTION_KEYS` es obligatoria y contiene claves Fernet independientes, separadas por coma. Si falta una clave o tiene formato inválido, la aplicación se detiene con un error de configuración; nunca utiliza un secreto compartido ni deriva el cifrado desde `SECRET_KEY`.
 
 > **Nota:** La clave API de Gemini y el modelo se configuran directamente desde el panel **Ajustes del Sistema** en la interfaz web (almacenados encriptados en `security.system_setting` asociados al rol **Administrador**).
 
 > **Nota:** Reemplaza `milanesa.sbs` por tu dominio correspondiente.
+
+### 4.1. Rotación de claves en una instalación existente
+
+Preparar una copia protegida de la configuración y un respaldo de la BD antes de rotar. No publicar claves, ciphertexts ni respaldos en Git o en logs.
+
+1. Mantener la `SECRET_KEY` actual mientras se rota el cifrado. Configurar temporalmente `FIELD_ENCRYPTION_KEYS` como `NUEVA,ANTERIOR_1,ANTERIOR_2`: la primera clave cifra y las restantes permiten leer datos anteriores.
+2. Si la instalación antigua no tenía claves dedicadas, su clave de lectura anterior se obtiene **localmente** de la antigua `SECRET_KEY` con la siguiente expresión. Escribir el resultado directamente en el almacén de secretos; no imprimirlo ni incorporarlo al código:
+
+   ```python
+   legacy_read_key = base64.urlsafe_b64encode(
+       hashlib.sha256(old_secret_key.encode('utf-8')).digest()
+   ).decode('ascii')
+   ```
+
+   Requiere `import base64, hashlib`. Esa clave anterior se añade explícitamente al final de la lista temporal. La aplicación nueva no la calcula por su cuenta.
+
+3. Con las claves temporales configuradas, comprobar y rotar todas las credenciales:
+
+   ```bash
+   python manage.py rotate_encrypted_settings --check
+   python manage.py rotate_encrypted_settings
+   ```
+
+   El comando verifica todos los valores antes de escribir, bloquea las filas durante la operación y revierte la transacción si encuentra un valor ilegible. Abarca Gemini, OpenAI, Claude, el secreto Gmail y el refresh token; sólo muestra cantidades.
+
+4. Retirar las claves antiguas de `FIELD_ENCRYPTION_KEYS`, repetir `--check` y reiniciar todos los procesos de la aplicación. Conservar claves antiguas únicamente en los respaldos protegidos que aún las necesiten.
+5. Generar una `SECRET_KEY` nueva e independiente y reiniciar los procesos. Esta rotación invalida sesiones y enlaces de restablecimiento previos, pero no afecta al cifrado de credenciales.
+
+Si se migra desde una clave Django de desarrollo, generar la nueva `SECRET_KEY` antes de iniciar la versión nueva y conservar explícitamente la clave de lectura anterior del paso 2 hasta terminar el recifrado. No configurar como fallback la clave de desarrollo comprometida.
 
 ---
 
