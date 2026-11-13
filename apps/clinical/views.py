@@ -438,11 +438,20 @@ def patient_create_api(request):
                 created_by=request.user
             )
 
-            # Generar siguiente código de estudio en orden ascendente (1, 2, 3, 4, 5...)
-            existing_codes = Visit.objects.values_list('study_code', flat=True)
-            numeric_codes = [int(c) for c in existing_codes if c and c.isdigit()]
-            siguiente_numero = (max(numeric_codes) + 1) if numeric_codes else 1
-            nuevo_codigo = str(siguiente_numero)
+            # Código de estudio / N.° Ficha Clínica (manual o autogenerado)
+            codigo_suministrado = str(data.get('codigo') or data.get('study_code') or '').strip()
+            if codigo_suministrado:
+                if Visit.objects.filter(patient__institution=inst, study_code=codigo_suministrado).exists():
+                    return JsonResponse({
+                        "success": False,
+                        "error": f"El N.° de Ficha Clínica '{codigo_suministrado}' ya está asignado a otro paciente de esta institución. Ingrese un número diferente o déjelo en blanco para auto-asignar."
+                    }, status=409)
+                nuevo_codigo = codigo_suministrado
+            else:
+                existing_codes = Visit.objects.filter(patient__institution=inst).values_list('study_code', flat=True)
+                numeric_codes = [int(c) for c in existing_codes if c and c.isdigit()]
+                siguiente_numero = (max(numeric_codes) + 1) if numeric_codes else 1
+                nuevo_codigo = str(siguiente_numero)
 
             visita = Visit.objects.create(
                 patient=paciente,

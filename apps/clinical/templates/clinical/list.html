@@ -86,7 +86,7 @@
       <div class="slicers-container" id="slicersFiltros">
         <div class="slicer-group slicer-buscar">
           <label for="filtroBusqueda">Buscar</label>
-          <input type="search" class="form-input" id="filtroBusqueda" name="buscar_paciente_q" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly');" onmousedown="this.removeAttribute('readonly');" placeholder="Buscar por código, nombre o cédula...">
+          <input type="search" class="form-input" id="filtroBusqueda" name="buscar_paciente_q" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly');" onmousedown="this.removeAttribute('readonly');" placeholder="Buscar por N.° de ficha clínica, nombre o cédula...">
         </div>
 
         <div class="slicer-group slicer-anio">
@@ -121,8 +121,8 @@
         <div class="slicer-group slicer-ordenar">
           <label for="ordenarPor">Ordenar por</label>
           <select id="ordenarPor" class="form-select slicer-select">
-            <option value="codigo_asc" selected>Código (1, 2, 3...)</option>
-            <option value="codigo_desc">Código (Descendente)</option>
+            <option value="codigo_asc" selected>N.° Ficha Clínica (1, 2, 3...)</option>
+            <option value="codigo_desc">N.° Ficha Clínica (Descendente)</option>
             <option value="nombre_asc">Nombre (A-Z)</option>
             <option value="nombre_desc">Nombre (Z-A)</option>
             <option value="fecha_desc">Fecha más reciente</option>
@@ -529,6 +529,6 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261113_remaining"></script>
-  <script src="{% static 'clinical/js/list.js' %}?v=20261113_a03"></script>
+  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261113_priv01"></script>
+  <script src="{% static 'clinical/js/list.js' %}?v=20261113_priv01"></script>
 {% endblock %}

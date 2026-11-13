@@ -241,6 +241,33 @@ def api_change_password_view(request):
         return JsonResponse({"status": "error", "message": f"Error al cambiar contraseña: {str(e)}"}, status=500)
 
 
+@login_required
+@never_cache
+@require_POST
+def api_verify_password_view(request):
+    """
+    Verifica la contraseña institucional del usuario autenticado
+    para autorizar acciones sensibles (ej. alternar Modo de Privacidad).
+    """
+    try:
+        if request.content_type == 'application/json':
+            data = json.loads(request.body.decode('utf-8'))
+        else:
+            data = request.POST
+
+        password = data.get('password', '')
+        if not password:
+            return JsonResponse({"status": "error", "message": "Debe ingresar su contraseña actual."}, status=400)
+
+        if not request.user.check_password(password):
+            return JsonResponse({"status": "error", "message": "La contraseña ingresada es incorrecta. Verifíquela e intente nuevamente."}, status=400)
+
+        return JsonResponse({"status": "success", "message": "Contraseña verificada correctamente."})
+    except Exception as e:
+        logger.exception("Error verificando contraseña: %s", e)
+        return JsonResponse({"status": "error", "message": "Error interno al verificar la contraseña."}, status=500)
+
+
 def _mask_api_key(raw_key: str) -> str:
     if raw_key and len(raw_key) > 8:
         return f"{raw_key[:6]}...{'*' * 8}...{raw_key[-4:]}"

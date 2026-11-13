@@ -103,11 +103,11 @@ def update_clinical_record(patient, raw_data, user, client_ip):
         f_raza = raw_data.get('f_raza')
         f_municipio = raw_data.get('f_municipio')
 
-        if f_nom: patient.first_names = f_nom.strip()
-        if f_ap1: patient.last_name1 = f_ap1.strip()
-        if f_ap2 is not None: patient.last_name2 = f_ap2.strip()
-        if f_tel is not None: patient.phone = f_tel.strip()
-        if f_cor is not None: patient.email = f_cor.strip()
+        if f_nom and f_nom.strip() != 'Paciente': patient.first_names = f_nom.strip()
+        if f_ap1 and f_ap1.strip() != '[Protegido]' and not f_ap1.strip().isdigit(): patient.last_name1 = f_ap1.strip()
+        if f_ap2 is not None and f_ap2.strip() != '[Protegido]': patient.last_name2 = f_ap2.strip()
+        if f_tel is not None and '***' not in f_tel: patient.phone = f_tel.strip()
+        if f_cor is not None and '***' not in f_cor: patient.email = f_cor.strip()
         if f_fecha_nac:
             try: patient.birth_date = datetime.date.fromisoformat(f_fecha_nac.strip())
             except ValueError:
@@ -142,9 +142,13 @@ def update_clinical_record(patient, raw_data, user, client_ip):
         if not visit:
             with connection.cursor() as cursor:
                 cursor.execute('SELECT pg_advisory_xact_lock(71342001)')
-            existing_codes = Visit.objects.values_list('study_code', flat=True)
-            numeric_codes = [int(c) for c in existing_codes if c and c.isdigit()]
-            auto_codigo = str((max(numeric_codes) + 1) if numeric_codes else 1)
+            codigo_suministrado = str(raw_data.get('f_codigo') or '').strip()
+            if codigo_suministrado and not Visit.objects.filter(patient__institution=patient.institution, study_code=codigo_suministrado).exists():
+                auto_codigo = codigo_suministrado
+            else:
+                existing_codes = Visit.objects.filter(patient__institution=patient.institution).values_list('study_code', flat=True)
+                numeric_codes = [int(c) for c in existing_codes if c and c.isdigit()]
+                auto_codigo = str((max(numeric_codes) + 1) if numeric_codes else 1)
 
             visit = Visit.objects.create(
                 patient=patient,
@@ -154,6 +158,12 @@ def update_clinical_record(patient, raw_data, user, client_ip):
                 residence_canton=patient.birth_canton or Canton.objects.first(),
                 status=Visit.Status.COMPLETED
             )
+        else:
+            f_codigo = raw_data.get('f_codigo')
+            if f_codigo and str(f_codigo).strip():
+                nuevo_sc = str(f_codigo).strip()
+                if visit.study_code != nuevo_sc and not Visit.objects.filter(patient__institution=patient.institution, study_code=nuevo_sc).exclude(pk=visit.pk).exists():
+                    visit.study_code = nuevo_sc
 
         f_visita = raw_data.get('f_visita')
         if f_visita and str(f_visita).strip().isdigit():

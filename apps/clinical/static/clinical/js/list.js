@@ -440,7 +440,12 @@ function crearFilaPaciente(p) {
     tr.classList.add('seleccionada');
   }
 
-  const inits = inicialesDe(p.nombre);
+  const privacidad = typeof esModoPrivacidadActivo === 'function' && esModoPrivacidadActivo();
+  const nombreMostrar = privacidad ? `Paciente ${p.codigo || p.id}` : p.nombre;
+  const inits = privacidad ? `P${p.codigo || ''}` : inicialesDe(p.nombre);
+  const cedulaMostrar = privacidad ? (typeof censurarCedula === 'function' ? censurarCedula(p.cedula) : '09******00') : (p.cedula || '0900000000');
+  const contactoMostrar = privacidad ? '[Protegido por privacidad]' : (p.correo || (p.telefono ? 'Tel: ' + p.telefono : 'UNEMI'));
+
   const historiales = obtenerHistorialesPaciente(p);
   const ultHistorial = historiales[0] || null;
   const fechaUltima = ultHistorial ? formatearFechaLegible(ultHistorial.fechaVisita) : '--';
@@ -453,17 +458,17 @@ function crearFilaPaciente(p) {
       <div class="celda-paciente">
         <div class="avatar-paciente">${escapeHtml(inits)}</div>
         <div class="info-paciente">
-          <span class="nombre-paciente" title="Haga clic para ver el expediente y ficha médica de este paciente"><span style="display:inline-block; min-width:24px; padding:2px 8px; margin-right:8px; border-radius:6px; background:#eff6ff; color:#1d4ed8; font-size:0.82rem; font-weight:800; border:1px solid #bfdbfe;">#${escapeHtml(p.codigo)}</span>${escapeHtml(p.nombre)}</span>
+          <span class="nombre-paciente" title="Haga clic para ver el expediente y ficha médica de este paciente"><span style="display:inline-block; min-width:24px; padding:2px 8px; margin-right:8px; border-radius:6px; background:#eff6ff; color:#1d4ed8; font-size:0.82rem; font-weight:800; border:1px solid #bfdbfe;">#${escapeHtml(p.codigo)}</span>${escapeHtml(nombreMostrar)}</span>
           <div class="meta-secundaria">
-            <span>C.I: ${escapeHtml(p.cedula || '0900000000')}</span>
+            <span>C.I: ${escapeHtml(cedulaMostrar)}</span>
             <span>·</span>
-            <span>${escapeHtml(p.correo || (p.telefono ? 'Tel: ' + p.telefono : 'UNEMI'))}</span>
+            <span>${escapeHtml(contactoMostrar)}</span>
           </div>
         </div>
       </div>
     </td>
     <td class="td-acciones" style="text-align: right; padding-right: 18px;" onclick="event.stopPropagation()">
-      <button type="button" class="btn btn-sm btn-icon-eliminar" data-clinical-action="delete" title="Eliminar ficha clínica de ${escapeHtml(p.nombre)}">
+      <button type="button" class="btn btn-sm btn-icon-eliminar" data-clinical-action="delete" title="Eliminar ficha clínica de ${escapeHtml(nombreMostrar)}">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
       </button>
     </td>
@@ -506,12 +511,15 @@ function abrirHistorialesPaciente(pacienteId) {
   if (topBarActions) topBarActions.classList.add('oculto');
 
   // Actualizar título superior
-  document.getElementById('topPageTitle').textContent = `Expediente Clínico · ${p.nombre}`;
+  const privacidadExp = typeof esModoPrivacidadActivo === 'function' && esModoPrivacidadActivo();
+  const nombreMostrarExp = privacidadExp ? `Paciente ${p.codigo || p.id}` : p.nombre;
+  const initsExp = privacidadExp ? `P${p.codigo || ''}` : inicialesDe(p.nombre);
+
+  document.getElementById('topPageTitle').textContent = `Expediente Clínico · ${nombreMostrarExp}`;
 
   // 2. Llenar datos limpios del encabezado del paciente (sin código ni datos saturados)
-  const inits = inicialesDe(p.nombre);
-  document.getElementById('expAvatar').textContent = inits;
-  document.getElementById('expNombre').textContent = p.nombre;
+  document.getElementById('expAvatar').textContent = initsExp;
+  document.getElementById('expNombre').textContent = nombreMostrarExp;
   document.getElementById('expEdadSexo').textContent = `${calcAgeStr(p.fechaNac)} · ${p.sexo === 'H' ? 'Hombre' : 'Mujer'}`;
   document.getElementById('expEstamentoFacultad').textContent = `${p.estamento} · ${p.facultad || 'UNEMI'}`;
 
@@ -1288,3 +1296,14 @@ function enviarOtraFichaDesdeModal() {
 
   if (inputDest) setTimeout(() => inputDest.focus(), 150);
 }
+
+// Reactividad inmediata al cambiar el Modo de Privacidad en Ajustes
+window.addEventListener('cardio_privacy_mode_changed', () => {
+  renderPacientesTabla();
+  if (pacienteActivoExpediente && pacienteActivoExpediente.id) {
+    const vistaExp = document.getElementById('vistaExpedientePaciente');
+    if (vistaExp && !vistaExp.classList.contains('oculto')) {
+      abrirHistorialesPaciente(pacienteActivoExpediente.id);
+    }
+  }
+});

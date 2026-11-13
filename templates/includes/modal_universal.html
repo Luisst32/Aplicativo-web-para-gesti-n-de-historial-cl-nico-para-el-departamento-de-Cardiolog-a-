@@ -117,13 +117,13 @@
           <div style="width: 50px; height: 50px; border-radius: 50%; background: #f1f5f9; color: #1b2a41; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px; border: 1.5px solid #cbd5e1;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
           </div>
-          <h4 style="margin: 0 0 6px; font-size: 1.05rem; font-weight: 700; color: #0f172a;">Confirmar actualización de datos</h4>
-          <p style="margin: 0; font-size: 0.82rem; color: #64748b; line-height: 1.4;">
+          <h4 id="confirmPasswordModalTitle" style="margin: 0 0 6px; font-size: 1.05rem; font-weight: 700; color: #0f172a;">Confirmar actualización de datos</h4>
+          <p id="confirmPasswordModalDesc" style="margin: 0; font-size: 0.82rem; color: #64748b; line-height: 1.4;">
             Por seguridad institucional, ingrese su contraseña actual para autorizar la actualización de sus datos.
           </p>
         </div>
 
-        <form id="formConfirmarGuardadoPerfil" autocomplete="off" onsubmit="ejecutarGuardadoPerfilConPassword(event)">
+        <form id="formConfirmarGuardadoPerfil" autocomplete="off" onsubmit="ejecutarAccionConPassword(event)">
           <div style="margin-bottom: 16px;">
             <label for="perfilPasswordConfirmModal" style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Contraseña actual *</label>
             <div style="position: relative;">
@@ -154,7 +154,7 @@
             <button 
               type="button" 
               class="btn btn-modal-cancel" 
-              onclick="volverAFormularioPerfil()"
+              onclick="cancelarAccionConPassword()"
               style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 18px; font-size: 0.88rem; font-weight: 600; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer; transition: all 0.2s ease;"
             >
               Volver
@@ -165,7 +165,7 @@
               class="btn btn-modal-primary"
               style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 20px; font-size: 0.88rem; font-weight: 700; border-radius: 8px; border: 1px solid #1b2a41; background: #1b2a41; color: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);"
             >
-              Confirmar y Guardar
+              <span id="btnEjecutarPasswordTexto">Confirmar y Guardar</span>
             </button>
           </div>
         </form>
@@ -276,6 +276,29 @@
                SUB-SECCIÓN 1: AJUSTES GENERALES (CHATBOT & PROVEEDOR IA)
                ========================================================= -->
           <div id="subseccionAjustesGeneral">
+            <!-- Control Master: Modo de Privacidad y Protección de Datos Clínicos -->
+            <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+              <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 32px; height: 32px; border-radius: 8px; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: #1b2a41;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                  </div>
+                  <span style="font-size: 0.95rem; font-weight: 700; color: #0f172a;">Modo de Privacidad y Protección de Datos</span>
+                  <span id="badgePrivacidadEstado" style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #f1f5f9; color: #64748b;">INACTIVO</span>
+                </div>
+                <p style="margin: 6px 0 0 40px; font-size: 0.8rem; color: #64748b; line-height: 1.4;">
+                  Protege la identidad clínica en pantalla: anonimiza los nombres de pacientes como <em>"Paciente [N.° Ficha]"</em> y censura cédulas, correos y teléfonos en consultas y formularios. Requiere confirmación con contraseña para cambiar de estado.
+                </p>
+              </div>
+              <!-- Switch toggle interactivo con contraseña -->
+              <label style="position: relative; display: inline-block; width: 50px; height: 28px; flex-shrink: 0; cursor: pointer;">
+                <input type="checkbox" id="switchModoPrivacidad" onchange="solicitarToggleModoPrivacidad(this)" style="opacity: 0; width: 0; height: 0;">
+                <span id="sliderSwitchPrivacidad" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .25s ease; border-radius: 28px;">
+                  <span id="circuloSwitchPrivacidad" style="position: absolute; content: ''; height: 22px; width: 22px; left: 3px; bottom: 3px; background-color: white; transition: .25s ease; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
+                </span>
+              </label>
+            </div>
+
             <!-- Control Master: Switch de Activación del Chatbot Clínico -->
             <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
               <div style="flex: 1;">

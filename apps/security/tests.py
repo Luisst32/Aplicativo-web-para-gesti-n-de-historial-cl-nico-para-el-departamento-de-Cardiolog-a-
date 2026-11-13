@@ -620,3 +620,58 @@ class PasswordResetFlowTests(TestCase):
             self.assertEqual(res_post_expired.status_code, 400)
             self.assertIn('ha caducado', res_post_expired.json()['message'])
 
+
+class VerifyPasswordApiTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='authdoc',
+            email='authdoc@unemi.edu.ec',
+            password='TestPassword123!',
+            first_name='Doctor',
+            last_name='Seguro'
+        )
+
+    def test_verify_password_success(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('security:api_verify_password'),
+            data=json.dumps({'password': 'TestPassword123!'}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data.get('status'), 'success')
+
+    def test_verify_password_invalid(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('security:api_verify_password'),
+            data=json.dumps({'password': 'WrongPassword999!'}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertEqual(data.get('status'), 'error')
+        self.assertIn('incorrecta', data.get('message', ''))
+
+    def test_verify_password_empty(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('security:api_verify_password'),
+            data=json.dumps({'password': ''}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertEqual(data.get('status'), 'error')
+
+    def test_verify_password_unauthenticated(self):
+        response = self.client.post(
+            reverse('security:api_verify_password'),
+            data=json.dumps({'password': 'TestPassword123!'}),
+            content_type='application/json'
+        )
+        self.assertIn(response.status_code, (302, 401))
+
+

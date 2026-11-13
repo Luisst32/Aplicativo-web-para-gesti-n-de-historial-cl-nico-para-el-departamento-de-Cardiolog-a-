@@ -556,24 +556,40 @@ function onBirthDateChange(dateStr) {
 
 // SELECCIÓN Y CARGA DE DATOS DEL PACIENTE E HISTORIAL
 function seleccionarPaciente(p, h) {
+  const codFicha = (h && h.codigoEstudio) ? h.codigoEstudio : (p.codigo || p.id);
+  const privacidad = typeof esModoPrivacidadActivo === 'function' && esModoPrivacidadActivo();
+  const nombreMostrar = privacidad ? `Paciente ${codFicha}` : p.nombre;
+  const inits = privacidad ? `P${codFicha}` : (p.nombre || '').split(' ').map(n => n[0]).slice(0, 2).join('');
 
-  document.getElementById('heroNombre').textContent = p.nombre;
+  document.getElementById('heroNombre').textContent = nombreMostrar;
   const edadStr = calcAgeStr(p.fechaNac);
   document.getElementById('heroEdad').textContent = edadStr;
-  document.getElementById('heroCodigo').textContent = (h && h.codigoEstudio) ? h.codigoEstudio : p.codigo;
+  document.getElementById('heroCodigo').textContent = codFicha;
   document.getElementById('heroFechaNac').textContent = p.fechaNac;
   document.getElementById('heroSexo').textContent = p.sexo === 'H' ? 'Hombre' : 'Mujer';
   document.getElementById('heroEstamento').textContent = p.estamento;
   document.getElementById('heroFacultad').textContent = p.facultad || 'UNEMI';
-
-  const inits = p.nombre.split(' ').map(n => n[0]).slice(0, 2).join('');
   document.getElementById('heroAvatar').textContent = inits;
 
-  document.getElementById('f_codigo').value = (h && h.codigoEstudio) ? h.codigoEstudio : p.codigo;
-  const trozos = (p.nombre || '').trim().split(/\s+/);
-  document.getElementById('f_nombre').value = trozos.slice(0, trozos.length > 2 ? 1 : 1).join(' ');
-  document.getElementById('f_apellido1').value = trozos[1] || '';
-  document.getElementById('f_apellido2').value = trozos.slice(2).join(' ');
+  document.getElementById('f_codigo').value = codFicha;
+  if (privacidad) {
+    document.getElementById('f_nombre').value = 'Paciente';
+    document.getElementById('f_apellido1').value = String(codFicha);
+    document.getElementById('f_apellido2').value = '';
+    if (document.getElementById('f_cedula')) document.getElementById('f_cedula').value = (typeof censurarCedula === 'function') ? censurarCedula(p.cedula) : '09******00';
+    if (document.getElementById('f_telefono')) document.getElementById('f_telefono').value = '09******XX';
+    if (document.getElementById('f_correo')) document.getElementById('f_correo').value = '***@***.***';
+    if (document.getElementById('f_direccion')) document.getElementById('f_direccion').value = '[Protegido por Privacidad]';
+  } else {
+    const trozos = (p.nombre || '').trim().split(/\s+/);
+    document.getElementById('f_nombre').value = trozos.slice(0, trozos.length > 2 ? 1 : 1).join(' ');
+    document.getElementById('f_apellido1').value = trozos[1] || '';
+    document.getElementById('f_apellido2').value = trozos.slice(2).join(' ');
+    if (document.getElementById('f_cedula')) document.getElementById('f_cedula').value = p.cedula || '';
+    if (document.getElementById('f_telefono')) document.getElementById('f_telefono').value = p.telefono || '';
+    if (document.getElementById('f_correo')) document.getElementById('f_correo').value = p.correo || '';
+    if (document.getElementById('f_direccion')) document.getElementById('f_direccion').value = p.direccion || '';
+  }
   document.getElementById('f_fecha_nac').value = p.fechaNac;
   document.getElementById('f_edad').value = edadStr;
 
@@ -734,6 +750,19 @@ async function guardarFichaCompleta() {
     formData.append('idPaciente', pacienteActual.id);
   } else if (idPacienteUrl) {
     formData.append('idPaciente', idPacienteUrl);
+  }
+
+  // Preservar datos de identidad reales si el modo de privacidad está activo al guardar
+  if (typeof esModoPrivacidadActivo === 'function' && esModoPrivacidadActivo() && pacienteActual) {
+    if (pacienteActual.nombre) {
+      const trozos = pacienteActual.nombre.trim().split(/\s+/);
+      formData.set('f_nombre', trozos[0] || '');
+      formData.set('f_apellido1', trozos[1] || '');
+      formData.set('f_apellido2', trozos.slice(2).join(' '));
+    }
+    if (pacienteActual.cedula) formData.set('f_cedula', pacienteActual.cedula);
+    if (pacienteActual.telefono) formData.set('f_telefono', pacienteActual.telefono);
+    if (pacienteActual.correo) formData.set('f_correo', pacienteActual.correo);
   }
 
   try {
@@ -2473,3 +2502,10 @@ function imprimirFormularioPDF() {
 window.imprimirFormularioPDF = imprimirFormularioPDF;
 window.exportarFormularioPDF = exportarFormularioPDF;
 window.togglePdfMenu = togglePdfMenu;
+
+// Reactividad inmediata al cambiar el Modo de Privacidad en Ajustes
+window.addEventListener('cardio_privacy_mode_changed', () => {
+  if (typeof pacienteActual !== 'undefined' && pacienteActual) {
+    seleccionarPaciente(pacienteActual, typeof historialActual !== 'undefined' ? historialActual : null);
+  }
+});

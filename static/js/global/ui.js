@@ -314,14 +314,104 @@ function solicitarConfirmacionPasswordPerfil(event) {
     return;
   }
 
-  // Transicionar al paso de confirmación de contraseña
-  const vPerfil = document.getElementById('vistaModalPerfil');
+  // Transicionar al paso de confirmación de contraseña para Perfil
+  solicitarConfirmacionPasswordPerfil();
+}
+
+// =========================================================================
+// MODO DE PRIVACIDAD Y PROTECCIÓN DE DATOS SENSIBLES
+// =========================================================================
+
+let accionPendientePassword = null; // { origen: 'perfil'|'privacidad', meta: any }
+
+function esModoPrivacidadActivo() {
+  try {
+    return localStorage.getItem('cardio_privacy_mode') === 'true';
+  } catch (e) {
+    return false;
+  }
+}
+
+function setModoPrivacidad(activo) {
+  try {
+    localStorage.setItem('cardio_privacy_mode', activo ? 'true' : 'false');
+  } catch (e) {}
+  actualizarBadgeSwitchPrivacidad(activo);
+  window.dispatchEvent(new CustomEvent('cardio_privacy_mode_changed', { detail: { enabled: activo } }));
+}
+
+function censurarCedula(cedula) {
+  if (!cedula) return '09******00';
+  const c = String(cedula).trim();
+  if (c.length <= 4) return '******';
+  return c.slice(0, 2) + '******' + c.slice(-2);
+}
+
+function censurarNombre(nombre, codigo) {
+  if (esModoPrivacidadActivo()) {
+    return `Paciente ${codigo || 'N/A'}`;
+  }
+  return nombre || 'Paciente';
+}
+
+function actualizarBadgeSwitchPrivacidad(activo) {
+  const badge = document.getElementById('badgePrivacidadEstado');
+  const slider = document.getElementById('sliderSwitchPrivacidad');
+  const circulo = document.getElementById('circuloSwitchPrivacidad');
+  const switchEl = document.getElementById('switchModoPrivacidad');
+
+  if (switchEl) switchEl.checked = activo;
+
+  if (badge) {
+    badge.textContent = activo ? 'ACTIVO' : 'INACTIVO';
+    badge.style.background = activo ? '#dcfce7' : '#f1f5f9';
+    badge.style.color = activo ? '#15803d' : '#64748b';
+  }
+  if (slider) {
+    slider.style.backgroundColor = activo ? '#166534' : '#cbd5e1';
+  }
+  if (circulo) {
+    circulo.style.transform = activo ? 'translateX(22px)' : 'translateX(0)';
+  }
+}
+
+function solicitarToggleModoPrivacidad(checkboxEl) {
+  const targetChecked = checkboxEl.checked;
+  // Revertir temporalmente el switch visual en DOM hasta autenticar con contraseña
+  checkboxEl.checked = !targetChecked;
+
+  accionPendientePassword = {
+    origen: 'privacidad',
+    targetChecked: targetChecked,
+    checkboxEl: checkboxEl
+  };
+
+  // Reutilizar el modal universal de confirmación con contraseña
+  const vAjustes = document.getElementById('vistaModalAjustes');
   const vConfirmar = document.getElementById('vistaModalConfirmarPasswordPerfil');
+  const titleEl = document.getElementById('confirmPasswordModalTitle');
+  const descEl = document.getElementById('confirmPasswordModalDesc');
+  const btnTextEl = document.getElementById('btnEjecutarPasswordTexto');
   const passInp = document.getElementById('perfilPasswordConfirmModal');
   const errPass = document.getElementById('confirmPasswordErrorMsg');
+  const card = document.getElementById('modalUniversalCard');
 
-  if (vPerfil) vPerfil.style.display = 'none';
+  if (card) card.style.maxWidth = '520px';
+  if (vAjustes) vAjustes.style.display = 'none';
   if (vConfirmar) vConfirmar.style.display = 'block';
+
+  if (titleEl) {
+    titleEl.textContent = targetChecked ? 'Activar Modo de Privacidad' : 'Desactivar Modo de Privacidad';
+  }
+  if (descEl) {
+    descEl.textContent = targetChecked
+      ? 'Por protección de datos, ingrese su contraseña actual para anonimizar los pacientes en pantalla y censurar datos sensibles.'
+      : 'Ingrese su contraseña actual para desactivar el modo de privacidad y mostrar los datos identificativos del paciente.';
+  }
+  if (btnTextEl) {
+    btnTextEl.textContent = targetChecked ? 'Autorizar y Activar' : 'Autorizar y Desactivar';
+  }
+
   if (errPass) errPass.style.display = 'none';
   if (passInp) {
     passInp.value = '';
@@ -330,14 +420,130 @@ function solicitarConfirmacionPasswordPerfil(event) {
   }
 }
 
-/**
- * Vuelve al formulario de perfil desde la pantalla de confirmación
- */
-function volverAFormularioPerfil() {
-  const vPerfil = document.getElementById('vistaModalPerfil');
+function cancelarAccionConPassword() {
   const vConfirmar = document.getElementById('vistaModalConfirmarPasswordPerfil');
   if (vConfirmar) vConfirmar.style.display = 'none';
-  if (vPerfil) vPerfil.style.display = 'block';
+
+  if (accionPendientePassword && accionPendientePassword.origen === 'privacidad') {
+    const vAjustes = document.getElementById('vistaModalAjustes');
+    const card = document.getElementById('modalUniversalCard');
+    if (card) card.style.maxWidth = '920px';
+    if (vAjustes) vAjustes.style.display = 'block';
+    actualizarBadgeSwitchPrivacidad(esModoPrivacidadActivo());
+  } else {
+    // Por defecto vuelve al perfil
+    const vPerfil = document.getElementById('vistaModalPerfil');
+    const card = document.getElementById('modalUniversalCard');
+    if (card) card.style.maxWidth = '540px';
+    if (vPerfil) vPerfil.style.display = 'block';
+  }
+  accionPendientePassword = null;
+}
+
+function volverAFormularioPerfil() {
+  cancelarAccionConPassword();
+}
+
+function solicitarConfirmacionPasswordPerfil(event) {
+  if (event) event.preventDefault();
+  accionPendientePassword = { origen: 'perfil' };
+
+  const vPerfil = document.getElementById('vistaModalPerfil');
+  const vConfirmar = document.getElementById('vistaModalConfirmarPasswordPerfil');
+  const titleEl = document.getElementById('confirmPasswordModalTitle');
+  const descEl = document.getElementById('confirmPasswordModalDesc');
+  const btnTextEl = document.getElementById('btnEjecutarPasswordTexto');
+  const passInp = document.getElementById('perfilPasswordConfirmModal');
+  const errPass = document.getElementById('confirmPasswordErrorMsg');
+  const card = document.getElementById('modalUniversalCard');
+
+  if (card) card.style.maxWidth = '540px';
+  if (vPerfil) vPerfil.style.display = 'none';
+  if (vConfirmar) vConfirmar.style.display = 'block';
+
+  if (titleEl) titleEl.textContent = 'Confirmar actualización de datos';
+  if (descEl) descEl.textContent = 'Por seguridad institucional, ingrese su contraseña actual para autorizar la actualización de sus datos.';
+  if (btnTextEl) btnTextEl.textContent = 'Confirmar y Guardar';
+
+  if (errPass) errPass.style.display = 'none';
+  if (passInp) {
+    passInp.value = '';
+    if (passInp.dataset.secretInput === 'true') passInp.classList.add('masked-secret-input');
+    setTimeout(() => passInp.focus(), 100);
+  }
+}
+
+async function ejecutarAccionConPassword(event) {
+  if (event) event.preventDefault();
+
+  const errPass = document.getElementById('confirmPasswordErrorMsg');
+  const btnEjecutar = document.getElementById('btnEjecutarGuardarPerfil');
+  const passInp = document.getElementById('perfilPasswordConfirmModal');
+  const password = passInp?.value;
+
+  if (errPass) errPass.style.display = 'none';
+
+  if (!password) {
+    if (errPass) {
+      errPass.textContent = 'Debe ingresar su contraseña actual para autorizar la acción.';
+      errPass.style.display = 'block';
+    }
+    return;
+  }
+
+  // Caso 1: Modo de Privacidad
+  if (accionPendientePassword && accionPendientePassword.origen === 'privacidad') {
+    if (btnEjecutar) {
+      btnEjecutar.disabled = true;
+      btnEjecutar.textContent = 'Verificando...';
+    }
+
+    try {
+      const res = await fetch('/security/api/verify-password/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.status === 'success') {
+        const targetChecked = accionPendientePassword.targetChecked;
+        setModoPrivacidad(targetChecked);
+        showToast(`Modo de privacidad ${targetChecked ? 'activado' : 'desactivado'} exitosamente.`, 'success');
+
+        if (passInp) passInp.value = '';
+        cancelarAccionConPassword(); // Vuelve a Ajustes con switch actualizado
+      } else {
+        if (errPass) {
+          errPass.textContent = data.message || 'Contraseña incorrecta. Intente nuevamente.';
+          errPass.style.display = 'block';
+        }
+        if (passInp) {
+          passInp.select();
+          passInp.focus();
+        }
+      }
+    } catch (err) {
+      console.error('Error verificando contraseña para privacidad:', err);
+      if (errPass) {
+        errPass.textContent = 'Error de conexión con el servidor.';
+        errPass.style.display = 'block';
+      }
+    } finally {
+      if (btnEjecutar) {
+        btnEjecutar.disabled = false;
+        const btnTextEl = document.getElementById('btnEjecutarPasswordTexto');
+        btnEjecutar.textContent = btnTextEl ? btnTextEl.textContent : 'Confirmar';
+      }
+    }
+    return;
+  }
+
+  // Caso 2: Guardado de Perfil (código original)
+  await ejecutarGuardadoPerfilConPassword(event);
 }
 
 /**
@@ -670,6 +876,9 @@ function actualizarBadgeEstadoApi(badgeId, configurada, habilitada) {
  * Cargar configuración global del sistema y credenciales de APIs
  */
 async function cargarAjustesSistema() {
+  // Inicializar estado del Modo de Privacidad en Ajustes
+  actualizarBadgeSwitchPrivacidad(esModoPrivacidadActivo());
+
   const switchChatbot = document.getElementById('switchChatbotActivo');
 
   // Gemini

@@ -173,13 +173,17 @@ function montarModalAgregarPaciente(onListo) {
         <button class="modal-close-btn" id="btnCancelX" title="Cerrar">&times;</button>
       </div>
       <div class="modal-body pac-modal-body">
-        <!-- Fila 1: Nombre (8 cols) y Cédula (4 cols) -->
+        <!-- Fila 1: N.° Ficha Clínica (3 cols), Nombre (6 cols) y Cédula (3 cols) -->
         <div class="pac-form-row">
-          <div class="form-field pac-col-8">
+          <div class="form-field pac-col-3">
+            <label class="field-label">N.° Ficha Clínica</label>
+            <input type="text" class="form-input" id="m_codigo" placeholder="Ej: 1 (o auto)" name="m_codigo" autocomplete="off" title="Código numérico o identificador de ficha clínica. Si se deja en blanco se asignará automáticamente.">
+          </div>
+          <div class="form-field pac-col-6">
             <label class="field-label">Nombre y Apellidos Completos *</label>
             <input type="text" class="form-input" id="m_nombre" placeholder="Ej: Carmen Villacrés Moreira" name="m_nombre" required>
           </div>
-          <div class="form-field pac-col-4">
+          <div class="form-field pac-col-3">
             <label class="field-label">Cédula de Identidad (10 dígitos)</label>
             <input type="text" class="form-input" id="m_cedula" placeholder="Ej: 0928475615" maxlength="10" name="m_cedula">
           </div>
@@ -300,6 +304,7 @@ function cerrarModalAgregarPaciente() {
  * enviando una petición POST a /clinical/api/pacientes/crear/ (Sprint 4 / HU-15).
  */
 async function guardarPacienteDelModal() {
+  const codigo = document.getElementById('m_codigo')?.value.trim() || '';
   const nombre = document.getElementById('m_nombre').value.trim();
   const fn = document.getElementById('m_fecha_nac').value;
   const cedula = document.getElementById('m_cedula').value.trim();
@@ -316,6 +321,8 @@ async function guardarPacienteDelModal() {
   }
 
   const payload = {
+    codigo: codigo,
+    study_code: codigo,
     nombre: nombre,
     cedula: cedula,
     fecha_nac: fn,

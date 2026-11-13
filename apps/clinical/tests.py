@@ -484,6 +484,51 @@ class PatientCreateApiTests(TestCase):
         resp = self.client.post('/clinical/api/pacientes/crear/', data=payload, content_type='application/json')
         self.assertEqual(resp.status_code, 400)
 
+    def test_create_patient_with_manual_study_code_success(self):
+        payload = {
+            'codigo': '777',
+            'nombre': 'Valeria Santos Mera',
+            'cedula': '0928475631',
+            'fecha_nac': '1995-07-14',
+            'sexo': 'M',
+            'estamento': 'PDI',
+            'universidad': 'UNEMI',
+            'facultad': 'FACS',
+            'telefono': '0981112233',
+            'correo': 'vsantos@unemi.edu.ec'
+        }
+        resp = self.client.post('/clinical/api/pacientes/crear/', data=payload, content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data.get('success'))
+        p = Patient.objects.get(id_card='0928475631')
+        self.assertEqual(p.visit.study_code, '777')
+        self.assertEqual(data['paciente']['codigo'], '777')
+
+    def test_create_patient_with_duplicate_manual_code_returns_conflict(self):
+        payload1 = {
+            'codigo': '888',
+            'nombre': 'Primer Paciente Con Codigo',
+            'cedula': '0928475649',
+            'fecha_nac': '1990-01-01',
+            'sexo': 'H',
+            'universidad': 'UNEMI'
+        }
+        resp1 = self.client.post('/clinical/api/pacientes/crear/', data=payload1, content_type='application/json')
+        self.assertEqual(resp1.status_code, 200)
+
+        payload2 = {
+            'codigo': '888',
+            'nombre': 'Segundo Paciente Mismo Codigo',
+            'cedula': '0928475656',
+            'fecha_nac': '1991-02-02',
+            'sexo': 'M',
+            'universidad': 'UNEMI'
+        }
+        resp2 = self.client.post('/clinical/api/pacientes/crear/', data=payload2, content_type='application/json')
+        self.assertEqual(resp2.status_code, 409)
+        self.assertIn('ya está asignado', resp2.json().get('error', ''))
+
     def test_same_study_code_across_different_institutions(self):
         # UNEMI y ESPOL pueden compartir el mismo study_code ("1") con IDs autogeneradas distintas
         p_unemi = Patient.objects.create(

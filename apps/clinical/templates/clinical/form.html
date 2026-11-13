@@ -183,7 +183,7 @@
             <span class="badge-estamento" id="heroEstamento">--</span>
           </div>
           <div class="patient-meta-details">
-            <span>Código: <strong id="heroCodigo" style="font-family: 'Consolas', 'Courier New', monospace;">--</strong></span>
+            <span>N.° Ficha Clínica: <strong id="heroCodigo" style="font-family: 'Consolas', 'Courier New', monospace;">--</strong></span>
             <span>F. Nacimiento: <strong id="heroFechaNac">--</strong></span>
             <span>Sexo: <strong id="heroSexo">--</strong></span>
             <span>Facultad: <strong id="heroFacultad">--</strong></span>
@@ -281,8 +281,8 @@
             </div>
             <div class="grid form-grid-3" style="margin-bottom: 16px;">
               <div class="form-field">
-                <label class="field-label">&bull; Código</label>
-                <input type="text" class="form-input" id="f_codigo" name="f_codigo" placeholder="1" readonly style="background-color: #f1f5f9; color: #334155; font-weight: 700; cursor: not-allowed; border-color: #cbd5e1;" >
+                <label class="field-label">&bull; N.&deg; Ficha Cl&iacute;nica</label>
+                <input type="text" class="form-input" id="f_codigo" name="f_codigo" placeholder="1" style="font-weight: 700; border-color: #cbd5e1;" title="Número de ficha clínica del paciente en el estudio.">
               </div>
               <div class="form-field">
                 <label class="field-label">N.&deg; de visita</label>
@@ -3191,6 +3191,6 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261113_remaining"></script>
-  <script src="{% static 'clinical/js/form.js' %}?v=20261111_08"></script>
+  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261113_priv01"></script>
+  <script src="{% static 'clinical/js/form.js' %}?v=20261113_priv01"></script>
 {% endblock %}

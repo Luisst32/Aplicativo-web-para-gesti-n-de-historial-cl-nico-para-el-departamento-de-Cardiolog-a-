@@ -13,4 +13,5 @@ urlpatterns = [
     path('api/profile/', views.api_profile_view, name='api_profile'),
     path('api/change-password/', views.api_change_password_view, name='api_change_password'),
     path('api/settings/', views.api_settings_view, name='api_settings'),
+    path('api/verify-password/', views.api_verify_password_view, name='api_verify_password'),
 ]
