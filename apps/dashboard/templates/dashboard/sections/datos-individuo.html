@@ -1,0 +1,51 @@
+<section id="tab-datos-individuo" class="tab-view">
+        <div class="kpi-row" style="margin-bottom: 1.25rem;">
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Edad Promedio</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-palette-navy" id="kpi-ind-edad">{{ module_kpis.individuo.edad_media }} años</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Proporción Hombres</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-primary-blue" id="kpi-ind-hombres">{{ module_kpis.individuo.hombres_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Proporción Mujeres</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-primary-blue" id="kpi-ind-mujeres">{{ module_kpis.individuo.mujeres_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Estudios de Postgrado</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-green" id="kpi-ind-postgrado">{{ module_kpis.individuo.postgrado_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Casados / Unión Libre</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-palette-navy" id="kpi-ind-casados">{{ module_kpis.individuo.casados_pct }} %</div></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Pirámide Poblacional: Grupos Etarios por Género</h3></div></div>
+            <div id="chart-ind-edad-sexo" class="chart-container"></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Nivel de Instrucción Educativa</h3></div></div>
+            <div class="chart-container"><canvas id="chart-ind-educacion"></canvas></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Distribución por Estado Civil</h3></div></div>
+            <div class="chart-container"><canvas id="chart-ind-estado-civil"></canvas></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Régimen de Vivienda y Convivencia</h3></div></div>
+            <div id="chart-ind-vivienda" class="chart-container"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PESTAÑA 2: EXPLORACIÓN FÍSICA                  -->
+      <!-- ============================================== -->
+

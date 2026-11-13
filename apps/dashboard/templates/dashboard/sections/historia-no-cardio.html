@@ -1,0 +1,51 @@
+<section id="tab-historia-no-cardio" class="tab-view">
+        <div class="kpi-row" style="margin-bottom: 1.25rem;">
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Patología Respiratoria (Asma/EPOC)</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-nc-resp">{{ module_kpis.no_cardio.respiratorio_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Salud Mental (Ansiedad/Depresión)</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-nc-mental">{{ module_kpis.no_cardio.salud_mental_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Enfermedad Reumatológica</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-palette-navy" id="kpi-nc-reuma">{{ module_kpis.no_cardio.reuma_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Alergias Medicamentosas</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-palette-navy" id="kpi-nc-alergias">{{ module_kpis.no_cardio.alergias_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Insuficiencia Renal Crónica</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-green" id="kpi-nc-cancer-irc">0,0 %</div></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Prevalencia de Comorbilidades Médicas No Cardiovasculares</h3></div></div>
+            <div id="chart-nc-comorbilidades" class="chart-container"></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Evaluación de Salud Mental (Ansiedad y Depresión)</h3></div></div>
+            <div class="chart-container"><canvas id="chart-nc-salud-mental"></canvas></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Distribución de Patología Respiratoria Crónica</h3></div></div>
+            <div class="chart-container"><canvas id="chart-nc-respiratorio"></canvas></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Afectación Inmunológica y Alergológica</h3></div></div>
+            <div id="chart-nc-reuma-alergia" class="chart-container"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PESTAÑA 7: COVID-19 Y SECUELAS                 -->
+      <!-- ============================================== -->
+

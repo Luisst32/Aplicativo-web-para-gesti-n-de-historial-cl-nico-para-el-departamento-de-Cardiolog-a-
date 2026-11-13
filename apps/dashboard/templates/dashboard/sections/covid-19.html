@@ -1,0 +1,51 @@
+<section id="tab-covid-19" class="tab-view">
+        <div class="kpi-row" style="margin-bottom: 1.25rem;">
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Infección Confirmada COVID-19</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-cov-infeccion">{{ module_kpis.covid.covid_inf_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Hospitalizados por COVID</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-palette-navy" id="kpi-cov-hosp">{{ module_kpis.covid.covid_hosp_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Presentan Secuelas Post-COVID</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-red" id="kpi-cov-secuelas">{{ module_kpis.covid.covid_sec_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Long-COVID / Fatiga Persistente</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-red" id="kpi-cov-fatiga">{{ module_kpis.covid.covid_fatiga_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Recuperación Sin Secuelas</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-green" id="kpi-cov-recuperados">98,3 %</div></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Historial de Infección por COVID-19 y Manejo Clínico</h3></div></div>
+            <div id="chart-cov-historia" class="chart-container"></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Espectro de Síntomas Persistentes y Secuelas (Long-COVID)</h3></div></div>
+            <div class="chart-container"><canvas id="chart-cov-secuelas"></canvas></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Infección y Hospitalización por Categoría de Personal</h3></div></div>
+            <div id="chart-cov-por-categoria" class="chart-container"></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Prevalencia de Infección COVID por Género y Grupo Etario</h3></div></div>
+            <div class="chart-container"><canvas id="chart-cov-por-genero"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PESTAÑA 8: RESULTADOS DEL ELECTROCARDIOGRAMA   -->
+      <!-- ============================================== -->
+

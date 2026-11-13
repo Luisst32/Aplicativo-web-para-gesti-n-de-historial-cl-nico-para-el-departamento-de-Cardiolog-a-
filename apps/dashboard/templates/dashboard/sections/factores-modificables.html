@@ -1,0 +1,51 @@
+<section id="tab-factores-modificables" class="tab-view">
+        <div class="kpi-row" style="margin-bottom: 1.25rem;">
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Prevalencia Hipertensión</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-red" id="kpi-mod-hta">{{ module_kpis.modificables.hta_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Prevalencia Diabetes Mellitus</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-mod-dm">{{ module_kpis.modificables.dm_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Prevalencia Dislipemia</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-mod-dl">{{ module_kpis.modificables.dl_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Tabaquismo Activo</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-green" id="kpi-mod-tabaco">{{ module_kpis.modificables.tabaco_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Actividad Física Habitual</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-green" id="kpi-mod-act-fisica">{{ module_kpis.modificables.act_fisica_pct }} %</div></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Control Terapéutico de Patologías Crónicas (Tratada vs No Tratada)</h3></div></div>
+            <div id="chart-mod-control-tto" class="chart-container"></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Hábitos Tóxicos: Consumo de Tabaco y Alcohol</h3></div></div>
+            <div class="chart-container"><canvas id="chart-mod-toxicos"></canvas></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Actividad Física por Categoría de Personal</h3></div></div>
+            <div id="chart-mod-actividad-cat" class="chart-container"></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Adherencia a Patrón Mediterráneo (Cuestionario PREDIMED)</h3></div></div>
+            <div class="chart-container"><canvas id="chart-mod-predimed"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PESTAÑA 4: FACTORES EMERGENTES                 -->
+      <!-- ============================================== -->
+

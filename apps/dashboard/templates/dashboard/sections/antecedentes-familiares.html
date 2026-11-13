@@ -1,0 +1,51 @@
+<section id="tab-antecedentes-familiares" class="tab-view">
+        <div class="kpi-row" style="margin-bottom: 1.25rem;">
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Antecedente Familiar HTA</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-red" id="kpi-fam-hta">{{ module_kpis.familiares.fam_hta_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Antecedente Familiar Diabetes</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-fam-dm">{{ module_kpis.familiares.fam_dm_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Antecedente Familiar Dislipemia</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-fam-dlp">{{ module_kpis.familiares.fam_dlp_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Evento CV Mayor (IAM / Ictus Padres)</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-red" id="kpi-fam-cv-mayor">{{ module_kpis.familiares.fam_cv_mayor_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Cualquier Antecedente Familiar</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-palette-navy" id="kpi-fam-total">{{ module_kpis.familiares.fam_hta_pct }} %</div></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Carga Genética Cardiovascular: Rama Paterna vs. Materna</h3></div></div>
+            <div id="chart-fam-padres-madres" class="chart-container"></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Grado de Agregación Familiar de Patologías Cardiovasculares</h3></div></div>
+            <div class="chart-container"><canvas id="chart-fam-carga-global"></canvas></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Historia Familiar de HTA y Diabetes por Grupo Etario</h3></div></div>
+            <div id="chart-fam-por-edad" class="chart-container"></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Coexistencia de Factores de Riesgo en Progenitores</h3></div></div>
+            <div class="chart-container"><canvas id="chart-fam-coexistencia"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PESTAÑA 6: HISTORIA NO CARDIOVASCULAR          -->
+      <!-- ============================================== -->
+

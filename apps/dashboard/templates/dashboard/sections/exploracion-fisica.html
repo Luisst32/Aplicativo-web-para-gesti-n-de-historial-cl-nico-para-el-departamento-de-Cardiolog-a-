@@ -1,0 +1,51 @@
+<section id="tab-exploracion-fisica" class="tab-view">
+        <div class="kpi-row" style="margin-bottom: 1.25rem;">
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">IMC Promedio</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-exp-imc">{{ module_kpis.exploracion.imc_medio }} kg/m²</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Perímetro Abdominal de Riesgo</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-red" id="kpi-exp-cintura">{{ module_kpis.exploracion.cintura_riesgo_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Tensión Sistólica Media (TAS)</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-palette-navy" id="kpi-exp-tas">{{ module_kpis.exploracion.tas_media }} mmHg</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Tensión Diastólica Media (TAD)</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-palette-navy" id="kpi-exp-tad">{{ module_kpis.exploracion.tad_media }} mmHg</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Saturación O2 Promedio</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-green" id="kpi-exp-sato2">{{ module_kpis.exploracion.sat_o2_media }} %</div></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Clasificación Nutricional por Índice de Masa Corporal (IMC)</h3></div></div>
+            <div id="chart-exp-imc-cat" class="chart-container"></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Correlación Antropométrica: IMC vs. Perímetro Abdominal</h3></div></div>
+            <div class="chart-container"><canvas id="chart-scatter-imc-cintura"></canvas></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Estratificación de Presión Arterial en Consulta</h3></div></div>
+            <div class="chart-container"><canvas id="chart-exp-pa-cat"></canvas></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Hallazgos Auscultatorios y Soplos Cardíacos</h3></div></div>
+            <div id="chart-exp-auscultacion" class="chart-container"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PESTAÑA 3: FACTORES DE RIESGO MODIFICABLES     -->
+      <!-- ============================================== -->
+

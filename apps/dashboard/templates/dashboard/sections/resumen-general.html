@@ -1,0 +1,52 @@
+<section id="tab-resumen-general" class="tab-view active">
+        <!-- FILA DE 5 KPI CARDS -->
+        <div class="kpi-row" style="margin-bottom: 1.25rem;">
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Total Evaluados</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-palette-navy" id="kpi-total">{{ summary_kpis.total|default:"0" }}</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Prevalencia Hipertensión</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-red" id="kpi-hta">{{ summary_kpis.hta_pct|default:"0,0" }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Prevalencia Dislipemia</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-dl">{{ summary_kpis.dl_pct|default:"0,0" }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Sobrepeso y Obesidad</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-sp-ob">{{ summary_kpis.sp_ob_pct|default:"0,0" }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Riesgo Alto (≥2 Factores)</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-red" id="kpi-riesgo-alto">{{ summary_kpis.riesgo_alto_pct|default:"0,0" }} %</div></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Tendencia de Tamizaje Cardiovascular por Año</h3></div></div>
+            <div id="chart-tendencia-temporal" class="chart-container"></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Prevalencia de Factores Modificables Globales</h3></div></div>
+            <div id="chart-factores-modificables" class="chart-container"></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols-equal">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Distribución por Categoría de Personal</h3></div></div>
+            <div class="chart-container"><canvas id="chart-categoria-personal"></canvas></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Distribución por Género y Nivel de Riesgo</h3></div></div>
+            <div class="chart-container"><canvas id="chart-genero-riesgo"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PESTAÑA 1: DATOS DEL INDIVIDUO                 -->
+      <!-- ============================================== -->
+

@@ -1,0 +1,51 @@
+<section id="tab-factores-emergentes" class="tab-view">
+        <div class="kpi-row" style="margin-bottom: 1.25rem;">
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Mala Calidad de Sueño</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-red" id="kpi-em-sueno-malo">{{ module_kpis.emergentes.sueno_malo_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Estrés Declarado</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-em-estres">{{ module_kpis.emergentes.estres_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Mal Clima / Ambiente Laboral</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-em-mal-amb">{{ module_kpis.emergentes.mal_ambiente_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Personalidad Tipo A</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-em-pers-a">{{ module_kpis.emergentes.personalidad_a_pct }} %</div></div>
+          </div>
+          <div class="card card-kpi">
+            <div class="kpi-header-row"><span class="kpi-title">Exposición a Tóxicos Laborales</span></div>
+            <div class="kpi-main-body"><div class="kpi-value color-semaforo-green" id="kpi-em-toxicos">{{ module_kpis.emergentes.toxicos_pct }} %</div></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Arquitectura del Sueño: Calidad Subjetiva y Horas de Descanso</h3></div></div>
+            <div id="chart-em-sueno" class="chart-container"></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Espectro de Estrés Percibido (Laboral vs. Familiar)</h3></div></div>
+            <div class="chart-container"><canvas id="chart-em-estres"></canvas></div>
+          </div>
+        </div>
+
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Prevalencia de Personalidad Tipo A y Perfeccionismo</h3></div></div>
+            <div class="chart-container"><canvas id="chart-em-personalidad-a"></canvas></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Factores Ginecológicos y Exposición Laboral</h3></div></div>
+            <div id="chart-em-hormonas-ambiente" class="chart-container"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- PESTAÑA 5: ANTECEDENTES FAMILIARES             -->
+      <!-- ============================================== -->
+
