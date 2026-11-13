@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import subprocess
 from urllib.parse import urlsplit
-from urllib.request import build_opener, HTTPRedirectHandler
+from urllib.request import build_opener, HTTPRedirectHandler, Request
 
 
 class NoRedirects(HTTPRedirectHandler):
@@ -16,7 +16,8 @@ class NoRedirects(HTTPRedirectHandler):
 
 
 def check_health(url):
-    with build_opener(NoRedirects).open(url, timeout=15) as response:
+    request = Request(url, headers={'User-Agent': 'CardioUNEMI-DeploymentHealthcheck/1.0', 'Cache-Control': 'no-cache'})
+    with build_opener(NoRedirects).open(request, timeout=15) as response:
         if response.status != 200:
             raise RuntimeError('Health check did not return HTTP 200.')
 

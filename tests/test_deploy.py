@@ -87,7 +87,11 @@ class DeploymentGateTests(unittest.TestCase):
             response = opener.return_value.open.return_value.__enter__.return_value
             response.status = 200
             check_health(URL)
-            opener.return_value.open.assert_called_once_with(URL, timeout=15)
+            request = opener.return_value.open.call_args.args[0]
+            self.assertEqual(request.full_url, URL)
+            self.assertEqual(request.get_header('User-agent'), 'CardioUNEMI-DeploymentHealthcheck/1.0')
+            self.assertEqual(request.get_header('Cache-control'), 'no-cache')
+            self.assertEqual(opener.return_value.open.call_args.kwargs['timeout'], 15)
             response.status = 301
             with self.assertRaises(RuntimeError):
                 check_health(URL)
