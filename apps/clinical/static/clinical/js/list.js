@@ -447,29 +447,35 @@ function crearFilaPaciente(p) {
 
   tr.innerHTML = `
     <td class="td-check" onclick="event.stopPropagation()">
-      <input type="checkbox" data-id="${p.id}" ${seleccionados.has(p.id) ? 'checked' : ''} onchange="toggleSeleccion('${p.id}', this.checked)">
+      <input type="checkbox" data-id="${escapeHtml(p.id)}" ${seleccionados.has(p.id) ? 'checked' : ''}>
     </td>
     <td>
       <div class="celda-paciente">
-        <div class="avatar-paciente">${inits}</div>
+        <div class="avatar-paciente">${escapeHtml(inits)}</div>
         <div class="info-paciente">
-          <span class="nombre-paciente" title="Haga clic para ver el expediente y ficha médica de este paciente"><span style="display:inline-block; min-width:24px; padding:2px 8px; margin-right:8px; border-radius:6px; background:#eff6ff; color:#1d4ed8; font-size:0.82rem; font-weight:800; border:1px solid #bfdbfe;">#${p.codigo}</span>${p.nombre}</span>
+          <span class="nombre-paciente" title="Haga clic para ver el expediente y ficha médica de este paciente"><span style="display:inline-block; min-width:24px; padding:2px 8px; margin-right:8px; border-radius:6px; background:#eff6ff; color:#1d4ed8; font-size:0.82rem; font-weight:800; border:1px solid #bfdbfe;">#${escapeHtml(p.codigo)}</span>${escapeHtml(p.nombre)}</span>
           <div class="meta-secundaria">
-            <span>C.I: ${p.cedula || '0900000000'}</span>
+            <span>C.I: ${escapeHtml(p.cedula || '0900000000')}</span>
             <span>·</span>
-            <span>${p.correo || (p.telefono ? 'Tel: ' + p.telefono : 'UNEMI')}</span>
+            <span>${escapeHtml(p.correo || (p.telefono ? 'Tel: ' + p.telefono : 'UNEMI'))}</span>
           </div>
         </div>
       </div>
     </td>
     <td class="td-acciones" style="text-align: right; padding-right: 18px;" onclick="event.stopPropagation()">
-      <button type="button" class="btn btn-sm btn-icon-eliminar" onclick="solicitarEliminarFicha('${p.id}', '${p.nombre}', '${p.codigo}')" title="Eliminar ficha clínica de ${p.nombre}">
+      <button type="button" class="btn btn-sm btn-icon-eliminar" data-clinical-action="delete" title="Eliminar ficha clínica de ${escapeHtml(p.nombre)}">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
       </button>
     </td>
   `;
 
   // Al hacer clic en la fila se abre el expediente en la página (sin modal)
+  tr.querySelector('input[type="checkbox"]').addEventListener('change', event => {
+    toggleSeleccion(p.id, event.target.checked);
+  });
+  tr.querySelector('[data-clinical-action="delete"]').addEventListener('click', () => {
+    solicitarEliminarFicha(p.id, p.nombre, p.codigo);
+  });
   tr.addEventListener('click', () => {
     abrirHistorialesPaciente(p.id);
   });
@@ -524,30 +530,32 @@ function abrirHistorialesPaciente(pacienteId) {
       <div class="historial-info-principal">
         <div class="historial-encabezado-linea">
           <span class="historial-tag-numero">Historial Clínico Único</span>
-          <span style="font-size:0.84rem; color:var(--color-text-muted); font-weight:600;">Última atención: ${fechaFmt}</span>
+          <span style="font-size:0.84rem; color:var(--color-text-muted); font-weight:600;">Última atención: ${escapeHtml(fechaFmt)}</span>
           <span style="font-size:0.75rem; background:var(--color-ice-blue); color:var(--color-primary-blue); padding:2px 8px; border-radius:4px; font-weight:600;">Ficha Médica Activa</span>
         </div>
 
         <div class="historial-evaluador-linea">
-          <span><strong>Evaluador:</strong> ${h.medico || 'Médico Especialista'}</span>
+          <span><strong>Evaluador:</strong> ${escapeHtml(h.medico || 'Médico Especialista')}</span>
         </div>
       </div>
 
       <div class="historial-acciones-derecha">
-        <button type="button" class="btn btn-sm" onclick="exportarPDFHistorial('${p.id}', '${h.id}')" title="Imprimir reporte en PDF">
+        <button type="button" class="btn btn-sm" data-clinical-action="export" title="Imprimir reporte en PDF">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
           <span>PDF</span>
         </button>
         <a class="btn btn-sm btn-primary" href="/clinical/formulario/?paciente=${encodeURIComponent(p.id)}" title="Abrir la ficha médica completa para analizar antecedentes y registrar atención">
           <span>Abrir Ficha Médica Completa &rarr;</span>
         </a>
-        <button type="button" class="btn btn-sm btn-outline-danger" onclick="solicitarEliminarFicha('${p.id}', '${p.nombre}', '${p.codigo}')" title="Eliminar ficha clínica">
+        <button type="button" class="btn btn-sm btn-outline-danger" data-clinical-action="delete" title="Eliminar ficha clínica">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
           <span>Eliminar Ficha</span>
         </button>
       </div>
     `;
 
+    cardH.querySelector('[data-clinical-action="export"]').addEventListener('click', () => exportarPDFHistorial(p.id, h.id));
+    cardH.querySelector('[data-clinical-action="delete"]').addEventListener('click', () => solicitarEliminarFicha(p.id, p.nombre, p.codigo));
     containerTimeline.appendChild(cardH);
   });
 
@@ -887,13 +895,13 @@ function exportarPDFPaciente(pacienteId) {
 
   const filasHistoriales = historiales.map(h => `
     <tr style="border-bottom:1px solid #e2e8f0;">
-      <td style="padding:8px 6px;"><strong>#${h.numeroVisita}</strong></td>
-      <td style="padding:8px 6px;">${formatearFechaLegible(h.fechaVisita)}</td>
-      <td style="padding:8px 6px;">${h.tipo}</td>
-      <td style="padding:8px 6px;">${h.tas || '--'}/${h.tsi || '--'} mmHg</td>
-      <td style="padding:8px 6px;">${h.peso || '--'} kg</td>
-      <td style="padding:8px 6px;">${h.imc || calcIMCValor(h.peso, h.talla)}</td>
-      <td style="padding:8px 6px;"><strong>${h.riesgoGlobal || 'Bajo'}</strong></td>
+      <td style="padding:8px 6px;"><strong>#${escapeHtml(h.numeroVisita)}</strong></td>
+      <td style="padding:8px 6px;">${escapeHtml(formatearFechaLegible(h.fechaVisita))}</td>
+      <td style="padding:8px 6px;">${escapeHtml(h.tipo)}</td>
+      <td style="padding:8px 6px;">${escapeHtml(h.tas || '--')}/${escapeHtml(h.tsi || '--')} mmHg</td>
+      <td style="padding:8px 6px;">${escapeHtml(h.peso || '--')} kg</td>
+      <td style="padding:8px 6px;">${escapeHtml(h.imc || calcIMCValor(h.peso, h.talla))}</td>
+      <td style="padding:8px 6px;"><strong>${escapeHtml(h.riesgoGlobal || 'Bajo')}</strong></td>
     </tr>
   `).join('');
 
@@ -905,27 +913,27 @@ function exportarPDFPaciente(pacienteId) {
       <div class="print-form-grid" style="margin-bottom:20px;">
         <div class="print-field">
           <span class="print-field-label">Código del Paciente</span>
-          <span class="print-field-value">${p.codigo}</span>
+          <span class="print-field-value">${escapeHtml(p.codigo)}</span>
         </div>
         <div class="print-field">
           <span class="print-field-label">Cédula</span>
-          <span class="print-field-value">${p.cedula || '0900000000'}</span>
+          <span class="print-field-value">${escapeHtml(p.cedula || '0900000000')}</span>
         </div>
         <div class="print-field print-field-full">
           <span class="print-field-label">Nombre y Apellidos</span>
-          <span class="print-field-value">${p.nombre}</span>
+          <span class="print-field-value">${escapeHtml(p.nombre)}</span>
         </div>
         <div class="print-field">
           <span class="print-field-label">Edad / Sexo</span>
-          <span class="print-field-value">${calcAgeStr(p.fechaNac)} · ${p.sexo === 'H' ? 'Hombre' : 'Mujer'}</span>
+          <span class="print-field-value">${escapeHtml(calcAgeStr(p.fechaNac))} · ${escapeHtml(p.sexo === 'H' ? 'Hombre' : 'Mujer')}</span>
         </div>
         <div class="print-field">
           <span class="print-field-label">Estamento / Facultad</span>
-          <span class="print-field-value">${p.estamento} · ${p.facultad}</span>
+          <span class="print-field-value">${escapeHtml(p.estamento)} · ${escapeHtml(p.facultad)}</span>
         </div>
         <div class="print-field print-field-full">
           <span class="print-field-label">Contacto</span>
-          <span class="print-field-value">${p.telefono || 'Sin teléfono'} · ${p.correo || 'Sin correo'}</span>
+          <span class="print-field-value">${escapeHtml(p.telefono || 'Sin teléfono')} · ${escapeHtml(p.correo || 'Sin correo')}</span>
         </div>
       </div>
 
@@ -950,7 +958,7 @@ function exportarPDFPaciente(pacienteId) {
         </tbody>
       </table>
 
-      <div class="print-form-footer">Documento generado el ${new Date().toLocaleString('es-EC')} — Sistema CARDIOUNEMI</div>
+      <div class="print-form-footer">Documento generado el ${escapeHtml(new Date().toLocaleString('es-EC'))} — Sistema CARDIOUNEMI</div>
     </section>
   `;
 
@@ -1180,7 +1188,7 @@ function renderizarResultadosCodigos(results) {
       card.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
           <div style="font-size:0.84rem; font-weight:700; color:#1e293b;">
-            ✉️ ${r.email}
+            ✉️ ${escapeHtml(r.email)}
           </div>
           <span style="font-size:0.75rem; color:#059669; background:#ecfdf5; border:1px solid #a7f3d0; padding:2px 8px; border-radius:12px; font-weight:600;">
             Enviado con éxito
@@ -1190,18 +1198,18 @@ function renderizarResultadosCodigos(results) {
         <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 14px;">
           <div>
             <div style="font-size:0.7rem; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Código de Acceso</div>
-            <div style="font-family:'JetBrains Mono', monospace, courier; font-size:1.6rem; font-weight:800; letter-spacing:5px; color:#0f172a;" id="codeText_${idx}">
-              ${r.code}
+            <div style="font-family:'JetBrains Mono', monospace, courier; font-size:1.6rem; font-weight:800; letter-spacing:5px; color:#0f172a;" id="codeText_${escapeHtml(idx)}">
+              ${escapeHtml(r.code)}
             </div>
           </div>
-          <button type="button" class="btn" onclick="copiarCodigoAcceso(this, '${r.code}', '${r.email}')" style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; font-size:0.82rem; font-weight:700; border-radius:6px; border:1px solid #0284c7; background:#0284c7; color:#ffffff; cursor:pointer; transition:all 0.15s ease;">
+          <button type="button" class="btn" data-copy-code style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; font-size:0.82rem; font-weight:700; border-radius:6px; border:1px solid #0284c7; background:#0284c7; color:#ffffff; cursor:pointer; transition:all 0.15s ease;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
             <span>Copiar código</span>
           </button>
         </div>
 
         <div style="display:flex; justify-content:space-between; font-size:0.74rem; color:#64748b;">
-          <span>⏱️ Caduca el: <strong>${r.expires_display || '48 horas'}</strong></span>
+          <span>⏱️ Caduca el: <strong>${escapeHtml(r.expires_display || '48 horas')}</strong></span>
           <span>Máx. 5 intentos · 3 descargas</span>
         </div>
       `;
@@ -1209,18 +1217,20 @@ function renderizarResultadosCodigos(results) {
       card.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <div style="font-size:0.84rem; font-weight:700; color:#1e293b;">
-            ✉️ ${r.email}
+            ✉️ ${escapeHtml(r.email)}
           </div>
           <span style="font-size:0.75rem; color:#dc2626; background:#fef2f2; border:1px solid #fecaca; padding:2px 8px; border-radius:12px; font-weight:600;">
             Error de envío
           </span>
         </div>
         <div style="font-size:0.78rem; color:#991b1b; background:#fff1f2; padding:8px 12px; border-radius:6px;">
-          No se generó código para este destinatario debido al fallo de entrega: ${r.error || 'Fallo de entrega SMTP'}.
+          No se generó código para este destinatario debido al fallo de entrega: ${escapeHtml(r.error || 'Fallo de entrega SMTP')}.
         </div>
       `;
     }
 
+    const copyButton = card.querySelector('[data-copy-code]');
+    if (copyButton) copyButton.addEventListener('click', () => copiarCodigoAcceso(copyButton, r.code, r.email));
     container.appendChild(card);
   });
 }

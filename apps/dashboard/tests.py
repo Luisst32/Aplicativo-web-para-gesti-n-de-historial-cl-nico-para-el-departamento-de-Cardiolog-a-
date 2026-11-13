@@ -2,6 +2,7 @@ import datetime
 from decimal import Decimal
 from django.test import TestCase, Client
 from django.urls import reverse
+from django.contrib.auth.models import Permission
 
 from security.models import User
 from catalog.models import Country, Province, Canton, Institution, Sex, Ethnicity, StaffCategory
@@ -21,6 +22,9 @@ class DashboardServicesAndViewsTestCase(TestCase):
         )
         self.user.set_password("testpassword123")
         self.user.save()
+        self.user.user_permissions.set(Permission.objects.filter(
+            content_type__app_label='clinical', codename__in=['view_patient', 'view_visit'],
+        ))
 
         self.client = Client()
         self.client.login(username="doctor_dash_test", password="testpassword123")
@@ -154,7 +158,7 @@ class DashboardServicesAndViewsTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
 
         # Context contains real database payload
-        self.assertIn('records_json', response.context)
+        self.assertIn('records', response.context)
         self.assertIn('available_years', response.context)
         self.assertEqual(response.context['total_evaluated'], 2)
 

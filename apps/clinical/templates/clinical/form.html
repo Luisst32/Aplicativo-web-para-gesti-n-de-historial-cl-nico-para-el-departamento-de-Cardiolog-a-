@@ -5,7 +5,7 @@
 
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'clinical/css/pacientes.css' %}?v=20261111_07">
-  <link rel="stylesheet" href="{% static 'clinical/css/form.css' %}?v=20261110_02">
+  <link rel="stylesheet" href="{% static 'clinical/css/form.css' %}?v=20261113_01">
 {% endblock %}
 
 {% block content %}
@@ -47,7 +47,12 @@
 
       <button class="nav-btn" id="sideBtn-mod6" onclick="scrollToModule('mod-estilovida')">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-        <span>6. Estilo de Vida y Estudios</span>
+        <span>6. Estilo de Vida</span>
+      </button>
+
+      <button class="nav-btn" id="sideBtn-mod7" onclick="scrollToModule('mod-estudios')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="2"></rect><path d="m9 14 2 2 4-4"></path></svg>
+        <span>7. Estudios Prescritos</span>
       </button>
     </div>
 
@@ -62,12 +67,17 @@
 
     <!-- TOP HEADER -->
     <header class="top-header">
-      <div class="header-left" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-        <h1 class="header-title" style="margin:0;">Ficha Clínica</h1>
-        <div id="badgeHistorialActivo" style="display:inline-flex; align-items:center; gap:6px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:0.78rem; font-weight:700; padding:4px 10px; border-radius:999px;">
-          <span style="width:7px; height:7px; border-radius:50%; background:#3aa0ff; box-shadow:0 0 6px #3aa0ff;"></span>
-          <span id="textoHistorialActivo">Historial Clínico</span>
+      <div class="top-header-bar">
+        <div class="header-left">
+          <h1 class="header-title" style="margin:0;">Ficha Clínica</h1>
+          <div id="badgeHistorialActivo" style="display:inline-flex; align-items:center; gap:6px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:0.78rem; font-weight:700; padding:4px 10px; border-radius:999px;">
+            <span style="width:7px; height:7px; border-radius:50%; background:#3aa0ff; box-shadow:0 0 6px #3aa0ff;"></span>
+            <span id="textoHistorialActivo">Historial Clínico</span>
+          </div>
         </div>
+
+        <!-- Foto de perfil anclada a la esquina derecha en el filo de la pantalla -->
+        <div class="user-corner-slot" data-user-menu title="Menú de usuario"></div>
       </div>
 
       <div class="header-actions">
@@ -127,18 +137,18 @@
           window.exportarFormularioPDF = exportarFormularioPDF;
           window.imprimirFormularioPDF = imprimirFormularioPDF;
         </script>
-        <button type="button" class="btn btn-outline-primary" id="btnImprimirFicha" onclick="imprimirFormularioPDF()" title="Imprimir cuestionario oficial UNEMI en PDF" style="display:inline-flex; align-items:center; gap:6px; font-weight:600; color:var(--color-primary-blue,#1b73bc); border-color:var(--color-primary-blue,#1b73bc);">
+        <button type="button" class="btn" id="btnImprimirFicha" data-clinical-action="export" onclick="imprimirFormularioPDF()" title="Imprimir cuestionario oficial UNEMI en PDF">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
           <span>Imprimir</span>
         </button>
         <div class="dropdown" style="display:inline-block; position:relative;">
-          <button type="button" class="btn btn-outline-primary" id="btnExportarPdfDropdown" onclick="togglePdfMenu(event)" title="Exportar cuestionario UNEMI oficial en PDF" style="display:inline-flex; align-items:center; gap:6px; font-weight:600; color:var(--color-primary-blue,#1b73bc); border-color:var(--color-primary-blue,#1b73bc);">
+          <button type="button" class="btn" id="btnExportarPdfDropdown" onclick="togglePdfMenu(event)" title="Exportar cuestionario UNEMI oficial en PDF">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
             <span>Cuestionario PDF</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </button>
-          <div id="pdfDropdownMenu" class="dropdown-menu-pdf" style="display:none; position:absolute; right:0; top:calc(100% + 4px); background:#ffffff; min-width:230px; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.15); border:1px solid #e2e8f0; z-index:1050; padding:6px 0;">
-            <a href="javascript:void(0)" onclick="exportarFormularioPDF(false)" style="display:flex; align-items:center; gap:8px; padding:9px 14px; color:#1e293b; text-decoration:none; font-size:13px; font-weight:600;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+          <div id="pdfDropdownMenu" class="dropdown-menu-pdf" style="display:none; position:absolute; left:0; top:calc(100% + 4px); background:#ffffff; min-width:230px; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.15); border:1px solid #e2e8f0; z-index:1050; padding:6px 0;">
+            <a href="javascript:void(0)" onclick="exportarFormularioPDF(false)" data-clinical-action="export" style="display:flex; align-items:center; gap:8px; padding:9px 14px; color:#1e293b; text-decoration:none; font-size:13px; font-weight:600;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1b73bc" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
               <span>Exportar Ficha Actual</span>
             </a>
@@ -148,18 +158,20 @@
             </a>
           </div>
         </div>
-        <button type="button" class="btn btn-outline-danger" id="btnEliminarFichaHeader" onclick="solicitarEliminarFichaActual()" title="Eliminar ficha clínica" style="display: inline-flex; align-items: center; gap: 6px;">
+        <button type="button" class="btn btn-outline-danger" id="btnEliminarFichaHeader" data-clinical-action="delete" onclick="solicitarEliminarFichaActual()" title="Eliminar ficha clínica" style="display: inline-flex; align-items: center; gap: 6px;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
           <span>Eliminar Ficha</span>
         </button>
-        <button type="button" class="btn btn-primary" id="btnGuardarFicha" onclick="guardarFichaCompleta()" style="display:inline-flex; align-items:center; gap:6px; font-weight:700;">
+        <button type="button" class="btn btn-primary" id="btnGuardarFicha" data-clinical-action="change" onclick="guardarFichaCompleta()" style="display:inline-flex; align-items:center; gap:6px; font-weight:700;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
           <span>Guardar Cambios</span>
         </button>
-        <div class="user-corner-slot" data-user-menu title="Menú de usuario"></div>
       </div>
     </header>
 
+    {% if not clinical_access.change %}
+      <p role="status" style="padding: 12px 24px;">Modo de consulta: no tiene permiso para guardar cambios.</p>
+    {% endif %}
     <!-- PATIENT HERO STRIP (ejemplo.png) -->
     <div class="patient-strip">
       <div class="patient-profile">
@@ -215,6 +227,7 @@
       <button type="button" class="mobile-mod-pill" id="mobileBtn-mod4" onclick="scrollToModule('mod-nocardio')">4. No Cardio</button>
       <button type="button" class="mobile-mod-pill" id="mobileBtn-mod5" onclick="scrollToModule('mod-laboratorio')">5. Lab y ECG</button>
       <button type="button" class="mobile-mod-pill" id="mobileBtn-mod6" onclick="scrollToModule('mod-estilovida')">6. Estilo de Vida</button>
+      <button type="button" class="mobile-mod-pill" id="mobileBtn-mod7" onclick="scrollToModule('mod-estudios')">7. Estudios Prescritos</button>
     </nav>
 
     <!-- MAIN FORM BODY -->
@@ -224,9 +237,17 @@
 
         <!-- ================= MÓDULO 1: FICHA Y SOCIODEMOGRÁFICO ================= -->
         <div class="module-section" id="mod-sociodemo">
+          <div class="module-group-divider">
+            <div class="module-group-tag">
+              <span class="module-group-num">MÓDULO 1</span>
+              <span class="module-group-title">Ficha y Sociodemográfico</span>
+            </div>
+            <div class="module-group-line"></div>
+          </div>
+
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Datos del Individuo <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">1.1</span> Datos del Individuo <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -350,7 +371,7 @@
 
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Cuestionario Sociodemográfico <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">1.2</span> Cuestionario Sociodemográfico <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -547,9 +568,17 @@
 
         <!-- ================= MÓDULO 2: EXPLORACIÓN FÍSICA ================= -->
         <div class="module-section" id="mod-exploracion">
+          <div class="module-group-divider">
+            <div class="module-group-tag">
+              <span class="module-group-num">MÓDULO 2</span>
+              <span class="module-group-title">Exploración y Signos</span>
+            </div>
+            <div class="module-group-line"></div>
+          </div>
+
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Exploración Física <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">2.1</span> Exploración Física <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -696,11 +725,18 @@
 
         <!-- ================= MÓDULO 3: RIESGO E HISTORIA CARDIOVASCULAR (UNIFICADO) ================= -->
         <div class="module-section" id="mod-cardio">
+          <div class="module-group-divider">
+            <div class="module-group-tag">
+              <span class="module-group-num">MÓDULO 3</span>
+              <span class="module-group-title">Riesgo e Historia Cardio</span>
+            </div>
+            <div class="module-group-line"></div>
+          </div>
 
           <!-- SUB-BLOQUE 1: FACTORES DE RIESGO MODIFICABLES (1 AL 18) -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Factores de Riesgo Modificables <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">3.1</span> Factores de Riesgo Modificables <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -803,7 +839,7 @@
                 <input type="number" class="form-input" id="tabaco_cantidad" style="width: 65px;" value="" min="0" oninput="onTabacoCantidadInput()" name="tabaco_cantidad">
                 <label class="field-label" style="margin-left: 12px; cursor: pointer;">
                   <input type="checkbox" id="chk_exfumador" onchange="setEstadoTabaquismo('chk_exfumador')" name="chk_exfumador">
-                  Exfumador &gt; 1 año
+                  Exfumador &gt; 10 años
                 </label>
                 <label class="field-label" style="cursor: pointer;">
                   <input type="checkbox" id="chk_nunca_fumo" checked onchange="setEstadoTabaquismo('chk_nunca')" name="chk_nunca_fumo">
@@ -826,6 +862,7 @@
                 <select class="form-select" id="alcohol_frecuencia" style="width: 210px;" name="alcohol_frecuencia">
                   <option value="">-- Seleccionar --</option>
                   <option value="Consume alcohol de manera ocasional">De manera ocasional</option>
+                  <option value="Consume alcohol mensualmente">Mensualmente</option>
                   <option value="Consume alcohol semanalmente">Semanalmente</option>
                   <option value="Consume alcohol diariamente">Diariamente</option>
                 </select>
@@ -835,7 +872,7 @@
               </div>
             </div>
 
-            <!-- 7. Drogas -->
+            <!-- 7. Drogas (Actualizado Cuestionario UNEMI 2026) -->
             <div class="condition-row" id="row_drogas" style="margin-bottom: 10px;">
               <div class="condition-header">
                 <span class="condition-title">7.- Drogas:</span>
@@ -844,17 +881,27 @@
                   <label class="yes"><input type="radio" name="r_drogas" id="drogas_toggle_si" value="Si" onchange="setEstadoDrogas('toggle_si')"> Sí</label>
                 </div>
               </div>
-              <div class="condition-details">
-                <span class="field-label">Cuáles:</span>
-                <input type="text" class="form-input" id="drogas_cuales" style="width: 120px;" placeholder="Sustancia..." name="drogas_cuales">
-                <span class="field-label">Frecuencia:</span>
-                <select class="form-select" id="drogas_frecuencia" style="width: 170px;" name="drogas_frecuencia">
-                  <option value="">-- Seleccionar --</option>
-                  <option value="Consume drogas ocasionalmente">Ocasionalmente</option>
-                  <option value="Consume drogas semanalmente">Semanalmente</option>
-                  <option value="Consume drogas diariamente">Diariamente</option>
-                </select>
-                <label class="field-label" style="margin-left: 10px;"><input type="checkbox" id="chk_ex_drogas" onchange="setEstadoDrogas('chk_ex')" name="chk_ex_drogas"> Ex consumidor &gt; 1 año</label>
+              <div class="condition-details" style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                  <span class="field-label">Cuáles:</span>
+                  <input type="text" class="form-input" id="drogas_cuales" style="width: 160px;" placeholder="Sustancia..." name="drogas_cuales">
+                  <span class="field-label">Frecuencia:</span>
+                  <select class="form-select" id="drogas_frecuencia" style="width: 160px;" name="drogas_frecuencia">
+                    <option value="">-- Seleccionar --</option>
+                    <option value="Consume drogas ocasionalmente">Ocasionalmente</option>
+                    <option value="Consume drogas semanalmente">Semanalmente</option>
+                    <option value="Consume drogas diariamente">Diariamente</option>
+                  </select>
+                  <label class="field-label" style="margin-left: 6px;"><input type="checkbox" id="chk_ex_drogas" onchange="setEstadoDrogas('chk_ex')" name="chk_ex_drogas"> Ex consumidor &gt; 1 año</label>
+                </div>
+                <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+                  <span class="field-label">Dosis diaria:</span>
+                  <input type="text" class="form-input" id="drogas_dosis_diaria" name="drogas_dosis_diaria" style="width: 120px;" placeholder="Ej: 1 dosis">
+                  <span class="field-label">Dosis semanal:</span>
+                  <input type="text" class="form-input" id="drogas_dosis_semanal" name="drogas_dosis_semanal" style="width: 120px;" placeholder="Ej: 2 dosis">
+                  <span class="field-label">Dosis ocasional:</span>
+                  <input type="text" class="form-input" id="drogas_dosis_ocasional" name="drogas_dosis_ocasional" style="width: 120px;" placeholder="Ej: Esporádica">
+                </div>
               </div>
             </div>
 
@@ -1063,7 +1110,7 @@
           <!-- SUB-BLOQUE 2: FACTORES EMERGENTES (1 AL 9) -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Factores Emergentes <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">3.2</span> Factores Emergentes <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -1180,13 +1227,16 @@
                     <label class="yes"><input type="radio" name="em_pers_a" value="Si" onchange="toggleCondition('row_pers_a', true)"> Si</label>
                   </div>
                 </div>
-                <div class="condition-details" style="flex-direction: column; align-items: stretch;">
-
-
-
-
-
-
+                <div class="condition-details" style="display: flex; flex-direction: column; gap: 8px;">
+                  <span class="field-label" style="font-weight: 600; font-size: 0.8rem;">Características conductuales (marque las que apliquen):</span>
+                  <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+                    <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="em_exigente" id="em_exigente" value="1"> Exigente con uno mismo y con los demás</label>
+                    <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="em_perfeccionista" id="em_perfeccionista" value="1"> Perfeccionista</label>
+                    <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="em_hiperactivo" id="em_hiperactivo" value="1"> Hiperactivo en la consecución de logros</label>
+                    <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="em_ambicioso" id="em_ambicioso" value="1"> Ambicioso</label>
+                    <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="em_hostilidad" id="em_hostilidad" value="1"> Hostilidad (impaciente, opositor, impulsivo)</label>
+                    <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="em_aislamiento" id="em_aislamiento" value="1"> Aislamiento social</label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1197,7 +1247,7 @@
           <!-- SUB-BLOQUE 3: OTROS FACTORES DE RIESGO NO MODIFICABLES -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Otros Factores de Riesgo No Modificables <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">3.3</span> Otros Factores de Riesgo No Modificables <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -1229,7 +1279,7 @@
           <!-- SUB-BLOQUE 3b: ANTECEDENTES FAMILIARES -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Antecedentes Familiares <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">3.4</span> Antecedentes Familiares <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -1269,18 +1319,15 @@
             </div>
           </div>
 
-          <!-- SUB-BLOQUE 4: HISTORIA CLÍNICA ACTUAL CARDIOVASCULAR (ÍTEM 1 DEL ORIGINAL;
-               los ítems 2 a 6 -Cardiopatía isquémica, Revascularización, Insuficiencia
-               cardíaca, Valvulopatía, Ingreso hospitalario- se quitaron a pedido del
-               usuario) -->
+          <!-- SUB-BLOQUE 4: HISTORIA CLÍNICA ACTUAL CARDIOVASCULAR (Ítems 1 al 6 - Cuestionario UNEMI 2026) -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Historia Clínica Actual Cardiovascular <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">3.5</span> Historia Clínica Actual Cardiovascular <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
             <!-- 1. Problema del corazon -->
-            <div class="condition-row" id="row_hc_prob">
+            <div class="condition-row" id="row_hc_prob" style="margin-bottom: 10px;">
               <div class="condition-header">
                 <span class="condition-title">1.- Historia de cualquier problema del corazón:</span>
                 <div class="toggle-pills">
@@ -1289,20 +1336,87 @@
                 </div>
               </div>
               <div class="condition-details">
-                <span class="field-label">Cuales:</span>
+                <span class="field-label">Cuáles:</span>
                 <input type="text" class="form-input" id="prob_corazon_detalle" name="prob_corazon_detalle" style="flex: 1;" placeholder="Detalles de problemas del corazón...">
               </div>
             </div>
 
+            <!-- 2. Cardiopatía isquémica -->
+            <div class="condition-row" id="row_hc_isquemica" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">2.- Cardiopatía isquémica:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="hc_isquemica" value="No" checked onchange="toggleCondition('row_hc_isquemica', false)"> No</label>
+                  <label class="yes"><input type="radio" name="hc_isquemica" value="Si" onchange="toggleCondition('row_hc_isquemica', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details" style="display: flex; gap: 18px; align-items: center; flex-wrap: wrap;">
+                <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="hc_isquemica_angina" id="hc_isquemica_angina" value="1"> Angina</label>
+                <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="hc_isquemica_infarto" id="hc_isquemica_infarto" value="1"> Infarto de miocardio</label>
+              </div>
+            </div>
 
+            <!-- 3. Revascularización coronaria -->
+            <div class="condition-row" id="row_hc_revasc" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">3.- Revascularización coronaria:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="hc_revasc" value="No" checked onchange="toggleCondition('row_hc_revasc', false)"> No</label>
+                  <label class="yes"><input type="radio" name="hc_revasc" value="Si" onchange="toggleCondition('row_hc_revasc', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details" style="display: flex; gap: 18px; align-items: center; flex-wrap: wrap;">
+                <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="radio" name="hc_revasc_tipo" value="angioplastia"> Con angioplastia</label>
+                <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="radio" name="hc_revasc_tipo" value="bypass"> Con Bypass</label>
+                <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="radio" name="hc_revasc_tipo" value="ambas"> Con ambas</label>
+              </div>
+            </div>
 
+            <!-- 4. Historia de Insuficiencia cardiaca -->
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">4.- Historia de Insuficiencia cardiaca:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="hc_insuf_cardiaca" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="hc_insuf_cardiaca" value="Si"> Sí</label>
+                </div>
+              </div>
+            </div>
 
+            <!-- 5. Historia de valvulopatía -->
+            <div class="condition-row" id="row_hc_valvulopatia" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">5.- Historia de valvulopatía:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="hc_valvulopatia" value="No" checked onchange="toggleCondition('row_hc_valvulopatia', false)"> No</label>
+                  <label class="yes"><input type="radio" name="hc_valvulopatia" value="Si" onchange="toggleCondition('row_hc_valvulopatia', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details" style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+                <span class="field-label">¿Cuáles?</span>
+                <input type="text" class="form-input" id="hc_valvulopatia_cuales" name="hc_valvulopatia_cuales" style="flex: 1; min-width: 160px;" placeholder="Válvula o afección...">
+                <span class="field-label" style="margin-left: 10px;">Operado por este motivo:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="hc_valvulopatia_operado" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="hc_valvulopatia_operado" value="Si"> Sí</label>
+                </div>
+              </div>
+            </div>
 
-
-
-
-
-
+            <!-- 6. Ingreso hospitalario por problema cardiaco -->
+            <div class="condition-row" id="row_hc_ingresado" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">6.- Ha estado ingresado en el hospital por algún problema cardiaco:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="hc_ingresado" value="No" checked onchange="toggleCondition('row_hc_ingresado', false)"> No</label>
+                  <label class="yes"><input type="radio" name="hc_ingresado" value="Si" onchange="toggleCondition('row_hc_ingresado', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details" style="display: flex; gap: 14px; align-items: center;">
+                <span class="field-label">¿Cuál?</span>
+                <input type="text" class="form-input" id="hc_ingresado_cual" name="hc_ingresado_cual" style="flex: 1;" placeholder="Motivo o causa de ingreso...">
+              </div>
+            </div>
 
             </div>
           </div>
@@ -1317,11 +1431,18 @@
              Clasificación NYHA se deja solo como selección de clase, sin el texto
              descriptivo de cada clase. -->
         <div class="module-section" id="mod-nocardio">
+          <div class="module-group-divider">
+            <div class="module-group-tag">
+              <span class="module-group-num">MÓDULO 4</span>
+              <span class="module-group-title">No Cardio y Cuestionarios</span>
+            </div>
+            <div class="module-group-line"></div>
+          </div>
 
           <!-- SUB-BLOQUE A: HISTORIA CLÍNICA NO CARDIOVASCULAR -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Historia Clínica No Cardiovascular <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">4.1</span> Historia Clínica No Cardiovascular <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -1340,22 +1461,48 @@
               </div>
             </div>
 
-            <!-- 2. Historia de cáncer (el detalle de tipo/Qt/Rt está tachado en el
-                 escaneo original, así que no se digitaliza) -->
-            <div class="grid form-grid-2" style="margin-bottom: 10px;">
-              <!-- 2. Historia de cáncer. El tipo y el tratamiento estaban tachados en
-                   azul en el escaneo (pág. 5); se reponen porque la base guarda
-                   TRATAMIENTO_CANCER. -->
-              <div class="condition-row" id="row_nc_cancer">
-                <div class="condition-header">
-                  <span class="condition-title">2.- Historia de cáncer:</span>
-                  <div class="toggle-pills">
-                    <label><input type="radio" name="nc_cancer" value="No" checked onchange="toggleCondition('row_nc_cancer', false)"> No</label>
-                    <label class="yes"><input type="radio" name="nc_cancer" value="Si" onchange="toggleCondition('row_nc_cancer', true)"> Sí</label>
+                        <!-- 2. Historia de cáncer (Actualizado Cuestionario UNEMI 2026) -->
+            <div class="condition-row" id="row_nc_cancer" style="margin-bottom: 12px;">
+              <div class="condition-header">
+                <span class="condition-title">2.- Historia de cáncer:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="nc_cancer" value="No" checked onchange="toggleCondition('row_nc_cancer', false)"> No</label>
+                  <label class="yes"><input type="radio" name="nc_cancer" value="Si" onchange="toggleCondition('row_nc_cancer', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details" style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+                  <span class="field-label" style="font-weight: 600;">Tipo de cáncer:</span>
+                  <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="cancer_pulmon" id="cancer_pulmon" value="1"> Pulmón</label>
+                  <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="cancer_prostata" id="cancer_prostata" value="1"> Próstata</label>
+                  <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="cancer_colon" id="cancer_colon" value="1"> Colon</label>
+                  <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="cancer_mama" id="cancer_mama" value="1"> Mama</label>
+                  <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="cancer_vejiga" id="cancer_vejiga" value="1"> Vejiga</label>
+                  <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="cancer_utero" id="cancer_utero" value="1"> Útero</label>
+                  <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="cancer_ovario" id="cancer_ovario" value="1"> Ovario</label>
+                  <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="cancer_otro" id="cancer_otro" value="1" onchange="document.getElementById('cancer_otro_detalle').style.display = this.checked ? 'inline-block' : 'none'"> Otro:</label>
+                  <input type="text" class="form-input" id="cancer_otro_detalle" name="cancer_otro_detalle" style="display:none; width: 140px;" placeholder="Especificar...">
+                </div>
+                <div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap; padding-top: 4px; border-top: 1px dashed #e2e8f0;">
+                  <div style="display: flex; gap: 10px; align-items: center;">
+                    <span class="field-label">¿Recibió Qt (Quimioterapia)?:</span>
+                    <div class="toggle-pills">
+                      <label><input type="radio" name="cancer_qt" value="No" checked> No</label>
+                      <label class="yes"><input type="radio" name="cancer_qt" value="Si"> Sí</label>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 10px; align-items: center;">
+                    <span class="field-label">¿Recibió RT (Radioterapia)?:</span>
+                    <div class="toggle-pills">
+                      <label><input type="radio" name="cancer_rt" value="No" checked> No</label>
+                      <label class="yes"><input type="radio" name="cancer_rt" value="Si"> Sí</label>
+                    </div>
                   </div>
                 </div>
-
               </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
 
               <div class="condition-row">
                 <div class="condition-header">
@@ -1434,7 +1581,7 @@
           <!-- SUB-BLOQUE B: COVID-19 -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">COVID-19 <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">4.2</span> COVID-19 <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -1506,7 +1653,7 @@
           <!-- SUB-BLOQUE Bb: LONG-COVID -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Long-COVID <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">4.3</span> Long-COVID <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -1530,7 +1677,7 @@
           <!-- SUB-BLOQUE C: CUESTIONARIO DE DOLOR DE PECHO DE G. ROSE -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Cuestionario de Dolor de Pecho de G. Rose <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">4.4</span> Cuestionario de Dolor de Pecho de G. Rose <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -1679,7 +1826,7 @@
                (Intervalo QT) que se había conservado como excepción. -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Clasificación Funcional NYHA <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">4.5</span> Clasificación Funcional NYHA <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -1711,11 +1858,18 @@
              Factores analíticos emergentes, Función Hepática), que no tiene
              ninguna marca de exclusión. -->
         <div class="module-section" id="mod-laboratorio">
+          <div class="module-group-divider">
+            <div class="module-group-tag">
+              <span class="module-group-num">MÓDULO 5</span>
+              <span class="module-group-title">Laboratorio y ECG</span>
+            </div>
+            <div class="module-group-line"></div>
+          </div>
 
           <!-- SUB-BLOQUE A: RESULTADOS DEL ELECTROCARDIOGRAMA (27 ÍTEMS DEFINITIVOS) -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Resultados del Electrocardiograma (27 Ítems) <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">5.1</span> Resultados del Electrocardiograma <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -2038,7 +2192,7 @@
                "Analisis Clinicos", no secciones aparte) -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Análisis Clínicos <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">5.2</span> Análisis Clínicos <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -2297,7 +2451,7 @@
                grande y no se incluyen; se empieza justo donde termina esa X. -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Insuficiencia Pulmonar <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">5.3</span> Insuficiencia Pulmonar <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -2324,7 +2478,7 @@
           <!-- SUB-BLOQUE H: PERICARDIO -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Pericardio <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">5.4</span> Pericardio <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -2349,7 +2503,7 @@
           <!-- SUB-BLOQUE I: RESULTADOS (Ecocardiograma) -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Resultados <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">5.5</span> Resultados <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -2572,17 +2726,20 @@
 
         </div>
 
-        <!-- ================= MÓDULO 6: CUESTIONARIOS DE ESTILO DE VIDA Y ESTUDIOS ================= -->
-        <!-- Fuente: escaneo/img0007.pdf (págs. 17-18 de 19). "Estudios que se le
-             ha mandado al paciente": los ítems 2 al 5 están tachados con una X
-             grande en el escaneo (Ergometría, TAC, RNM, Electrofisiología); solo
-             se incluye el ítem 1 (Análisis clínicos). -->
+        <!-- ================= MÓDULO 6: CUESTIONARIOS DE ESTILO DE VIDA ================= -->
         <div class="module-section" id="mod-estilovida">
+          <div class="module-group-divider">
+            <div class="module-group-tag">
+              <span class="module-group-num">MÓDULO 6</span>
+              <span class="module-group-title">Estilo de Vida</span>
+            </div>
+            <div class="module-group-line"></div>
+          </div>
 
           <!-- SUB-BLOQUE A: CUESTIONARIO PREDIMED -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">6.1</span> Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -2835,7 +2992,7 @@
           <!-- SUB-BLOQUE B: CUESTIONARIO DE ACTIVIDAD FÍSICA -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Cuestionario de Actividad Física <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">6.2</span> Cuestionario de Actividad Física <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -2905,10 +3062,22 @@
             </div>
           </div>
 
-          <!-- SUB-BLOQUE C: ESTUDIOS QUE SE LE HA MANDADO AL PACIENTE (PÁG. 19 CUESTIONARIO DEFINITIVO) -->
+        </div>
+
+        <!-- ================= MÓDULO 7: ESTUDIOS PRESCRITOS ================= -->
+        <div class="module-section" id="mod-estudios">
+          <div class="module-group-divider">
+            <div class="module-group-tag">
+              <span class="module-group-num">MÓDULO 7</span>
+              <span class="module-group-title">Estudios Prescritos</span>
+            </div>
+            <div class="module-group-line"></div>
+          </div>
+
+          <!-- SUB-BLOQUE A: ESTUDIOS PRESCRITOS (PÁG. 19 CUESTIONARIO DEFINITIVO) -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
-              <span class="card-title-text">Estudios que se le ha mandado al paciente <span class="card-toggle-icon"></span></span>
+              <span class="card-title-text"><span class="card-apartado-badge">7.1</span> Estudios Prescritos <span class="card-toggle-icon"></span></span>
             </div>
             <div class="card-body">
 
@@ -3022,6 +3191,6 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261111_13"></script>
+  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261113_remaining"></script>
   <script src="{% static 'clinical/js/form.js' %}?v=20261111_08"></script>
 {% endblock %}

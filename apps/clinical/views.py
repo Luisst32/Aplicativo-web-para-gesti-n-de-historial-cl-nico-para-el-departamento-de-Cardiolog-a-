@@ -1,3 +1,4 @@
+from clinical.services.clinical_form import update_clinical_record, _resolve_canton
 from .services.sav_importer import analyze_sav_file, execute_sav_import
 import json
 import datetime
@@ -32,9 +33,15 @@ from clinical.models import (
     Electrocardiogram, Echocardiogram, Laboratory, OrderedStudies, VisitAnswer,
     SecureShare
 )
+from clinical.services.measurements import save_measurements
 from clinical.validators import validate_ecuadorian_id, validate_clinical_ranges
 from clinical.pdf import generate_clinical_sheet_pdf
-from audit.services import register_audit_log
+from audit.services import AuditLogError, register_audit_log
+from security.access import clinical_access_required, require_clinical_access
+
+from clinical.services.record_selection import (
+    RecordSelectionError, record_id, selected_patients, selected_visits, selection_errors,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,14 +79,14 @@ def _patient_to_dict(patient, visit=None):
             "motivo": "Control Anual Cardiovascular & Dieta Mediterránea",
             "medico": visit.evaluator.full_name if visit.evaluator else "Médico Especialista",
             "estado": "Completada" if visit.status == Visit.Status.COMPLETED else "En proceso",
-            "peso": float(ant.weight_kg) if (ant and ant.weight_kg) else 70,
-            "talla": float(ant.height_cm) if (ant and ant.height_cm) else 170,
-            "imc": float(ant.bmi) if (ant and ant.bmi) else 24.2,
-            "asc": float(ant.body_surface_area) if (ant and ant.body_surface_area) else 1.82,
-            "tas": vs.systolic_bp if (vs and vs.systolic_bp) else 120,
-            "tsi": vs.diastolic_bp if (vs and vs.diastolic_bp) else 80,
-            "satO2": vs.oxygen_saturation if (vs and vs.oxygen_saturation) else 98,
-            "perimetro": float(ant.waist_circumference_cm) if (ant and ant.waist_circumference_cm) else 85,
+            "peso": float(ant.weight_kg) if (ant and ant.weight_kg) else None,
+            "talla": float(ant.height_cm) if (ant and ant.height_cm) else None,
+            "imc": float(ant.bmi) if (ant and ant.bmi) else None,
+            "asc": float(ant.body_surface_area) if (ant and ant.body_surface_area) else None,
+            "tas": vs.systolic_bp if (vs and vs.systolic_bp) else None,
+            "tsi": vs.diastolic_bp if (vs and vs.diastolic_bp) else None,
+            "satO2": vs.oxygen_saturation if (vs and vs.oxygen_saturation) else None,
+            "perimetro": float(ant.waist_circumference_cm) if (ant and ant.waist_circumference_cm) else None,
             "riesgoGlobal": "Bajo"
         })
 
@@ -148,12 +155,12 @@ def _patient_to_dict(patient, visit=None):
         "profesion": pc_val,
         "vivienda": ht_val,
         "ingresos": ir_val,
-        "peso": float(ant.weight_kg) if (ant and ant.weight_kg) else 70,
-        "talla": float(ant.height_cm) if (ant and ant.height_cm) else 170,
-        "tas": vs.systolic_bp if (vs and vs.systolic_bp) else 120,
-        "tsi": vs.diastolic_bp if (vs and vs.diastolic_bp) else 80,
-        "satO2": vs.oxygen_saturation if (vs and vs.oxygen_saturation) else 98,
-        "perimetro": float(ant.waist_circumference_cm) if (ant and ant.waist_circumference_cm) else 85,
+        "peso": float(ant.weight_kg) if (ant and ant.weight_kg) else None,
+        "talla": float(ant.height_cm) if (ant and ant.height_cm) else None,
+        "tas": vs.systolic_bp if (vs and vs.systolic_bp) else None,
+        "tsi": vs.diastolic_bp if (vs and vs.diastolic_bp) else None,
+        "satO2": vs.oxygen_saturation if (vs and vs.oxygen_saturation) else None,
+        "perimetro": float(ant.waist_circumference_cm) if (ant and ant.waist_circumference_cm) else None,
         "historiales": historiales
     }
 
@@ -163,6 +170,7 @@ def _patient_to_dict(patient, visit=None):
 # =============================================================================
 
 @login_required
+@clinical_access_required('read')
 def form_view(request):
     """
     Renders the clinical evaluation form template.
@@ -172,6 +180,7 @@ def form_view(request):
 
 
 @login_required
+@clinical_access_required('read')
 def list_view(request):
     """
     Renders the patients directory and medical evaluations list.
@@ -234,6 +243,7 @@ def list_view(request):
 
 @login_required
 @require_GET
+@clinical_access_required('read', api=True)
 def patient_list_api(request):
     """
     JSON endpoint for listing, searching, filtering and sorting patients (HU-15, HU-16).
@@ -246,9 +256,11 @@ def patient_list_api(request):
       - direccion: 'asc' or 'desc'
     """
     qs = Patient.objects.filter(status=Patient.Status.ACTIVE).select_related(
-        'sex', 'ethnicity', 'birth_canton', 'institution',
-        'visit', 'visit__staff_category', 'visit__residence_canton', 'visit__evaluator',
-        'visit__anthropometry', 'visit__vital_signs'
+        'sex', 'ethnicity', 'birth_canton', 'birth_canton__province', 'institution',
+        'visit', 'visit__staff_category', 'visit__residence_canton', 'visit__residence_canton__province', 'visit__evaluator',
+        'visit__anthropometry', 'visit__vital_signs', 'visit__marital_status',
+        'visit__living_situation', 'visit__education_level', 'visit__work_schedule',
+        'visit__professional_category', 'visit__housing_type', 'visit__income_range'
     )
 
     q = request.GET.get('q', '').strip()
@@ -288,42 +300,37 @@ def patient_list_api(request):
     prefix = '' if direccion == 'asc' else '-'
 
     if ordenar_por == 'nombre':
-        qs = qs.order_by(f"{prefix}first_names", f"{prefix}last_name1")
+        qs = qs.order_by(f"{prefix}first_names", f"{prefix}last_name1", "patient_id")
     elif ordenar_por == 'fecha':
-        qs = qs.order_by(f"{prefix}visit__visit_date")
+        qs = qs.order_by(f"{prefix}visit__visit_date", "patient_id")
     elif ordenar_por == 'codigo':
         qs = qs.order_by(f"{prefix}patient_id")
     else:
         qs = qs.order_by(f"{prefix}patient_id")
 
-    pacientes_list = [_patient_to_dict(p) for p in qs]
+    try:
+        page = int(request.GET.get('page', 1))
+        size = int(request.GET.get('page_size', 100))
+        if page < 1 or not 1 <= size <= 200:
+            raise ValueError
+    except ValueError:
+        return JsonResponse({'success': False, 'error': 'Paginacion invalida.'}, status=400)
+    total = qs.count()
+    pacientes_list = [_patient_to_dict(p) for p in qs[(page-1)*size:page*size]]
+    return JsonResponse({'success': True, 'total': total, 'pacientes': pacientes_list,
+                         'next_page': page+1 if page*size < total else None})
 
-    return JsonResponse({
-        "success": True,
-        "total": len(pacientes_list),
-        "pacientes": pacientes_list
-    })
 
 
 @login_required
 @require_GET
+@clinical_access_required('read', api=True)
+@selection_errors
 def patient_detail_api(request, patient_id):
     """
     Returns full details for a single patient and their clinical visit.
     """
-    # patient_id can be 'p1', numeric, or study code
-    clean_id = patient_id.replace('p', '') if patient_id.startswith('p') else patient_id
-
-    patient = None
-    if clean_id.isdigit():
-        patient = Patient.objects.filter(patient_id=int(clean_id)).first()
-    if not patient:
-        patient = Patient.objects.filter(visit__study_code=patient_id).first()
-    if not patient:
-        patient = Patient.objects.filter(id_card=patient_id).first()
-
-    if not patient:
-        return JsonResponse({"success": False, "error": "Paciente no encontrado"}, status=404)
+    patient = selected_patients([patient_id])[0]
 
     return JsonResponse({
         "success": True,
@@ -333,6 +340,7 @@ def patient_detail_api(request, patient_id):
 
 @login_required
 @require_POST
+@clinical_access_required('create', api=True)
 def patient_create_api(request):
     """
     Quick patient registration from modal (HU-15).
@@ -396,6 +404,8 @@ def patient_create_api(request):
             last_name2 = partes[-1]
 
         with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute('SELECT pg_advisory_xact_lock(71342001)')
             # Catálogos base
             inst = (
                 Institution.objects.filter(acronym__iexact=universidad_str).first() or
@@ -447,23 +457,6 @@ def patient_create_api(request):
                 status=Visit.Status.PENDING
             )
 
-            Anthropometry.objects.create(
-                visit=visita,
-                weight_kg=Decimal("70.00"),
-                height_cm=Decimal("170.0"),
-                waist_circumference_cm=Decimal("85.0")
-            )
-
-            VitalSigns.objects.create(
-                visit=visita,
-                systolic_bp=120,
-                diastolic_bp=80,
-                oxygen_saturation=98,
-                heart_rate=72,
-                pulmonary_auscultation_normal=True,
-                abdominal_auscultation_normal=True
-            )
-
             # Registrar auditoría
             register_audit_log(
                 user=request.user,
@@ -480,9 +473,8 @@ def patient_create_api(request):
         })
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
+        logger.error("Clinical operation failed (%s).", type(e).__name__)
+        return JsonResponse({"success": False, "error": "No se pudo completar la operacion."}, status=500)
 
 
 # =============================================================================
@@ -689,6 +681,48 @@ def _build_form_datos(patient, visit):
         "r_vasc_fem": "No",
         "hta_medicamentos": "",
         "dislip_farmacos": "",
+
+        # Personalidad Tipo A extendida (Cuestionario UNEMI 2026)
+        "em_exigente": "",
+        "em_perfeccionista": "",
+        "em_hiperactivo": "",
+        "em_ambicioso": "",
+        "em_hostilidad": "",
+        "em_aislamiento": "",
+
+        # Drogas detalladas (Cuestionario UNEMI 2026)
+        "drogas_dosis_diaria": "",
+        "drogas_dosis_semanal": "",
+        "drogas_dosis_ocasional": "",
+        "chk_ex_drogas": "",
+
+        # Historia Clínica Actual Cardiovascular (ítems 1 al 6 - Cuestionario UNEMI 2026)
+        "hc_prob": "No",
+        "prob_corazon_detalle": "",
+        "hc_isquemica": "No",
+        "hc_isquemica_angina": "",
+        "hc_isquemica_infarto": "",
+        "hc_revasc": "No",
+        "hc_revasc_tipo": "",
+        "hc_insuf_cardiaca": "No",
+        "hc_valvulopatia": "No",
+        "hc_valvulopatia_cuales": "",
+        "hc_valvulopatia_operado": "No",
+        "hc_ingresado": "No",
+        "hc_ingresado_cual": "",
+
+        # Historia de Cáncer y Oncología (Cuestionario UNEMI 2026)
+        "cancer_pulmon": "",
+        "cancer_prostata": "",
+        "cancer_colon": "",
+        "cancer_mama": "",
+        "cancer_vejiga": "",
+        "cancer_utero": "",
+        "cancer_ovario": "",
+        "cancer_otro": "",
+        "cancer_otro_detalle": "",
+        "cancer_qt": "No",
+        "cancer_rt": "No",
 
         # Estudios que se le han mandado al paciente (Pág. 19 Cuestionario UNEMI 2026)
         "est_analisis_clinicos": "No",
@@ -971,22 +1005,13 @@ def _build_form_datos(patient, visit):
 
 @login_required
 @require_GET
+@clinical_access_required('read', api=True)
+@selection_errors
 def form_get_api(request, patient_id):
     """
     Fetches the full database record for a patient to populate form.html fields.
     """
-    clean_id = patient_id.replace('p', '') if patient_id.startswith('p') else patient_id
-
-    patient = None
-    if clean_id.isdigit():
-        patient = Patient.objects.filter(patient_id=int(clean_id)).first()
-    if not patient:
-        patient = Patient.objects.filter(visit__study_code=patient_id).first()
-    if not patient:
-        patient = Patient.objects.filter(id_card=patient_id).first()
-
-    if not patient:
-        return JsonResponse({"success": False, "error": "Paciente no encontrado"}, status=404)
+    patient = selected_patients([patient_id])[0]
 
     visit = getattr(patient, 'visit', None)
     datos = _build_form_datos(patient, visit)
@@ -998,81 +1023,12 @@ def form_get_api(request, patient_id):
     })
 
 
-def _resolve_canton(canton_name, province_name):
-    """
-    Busca o crea de forma segura un cantón asociado a su provincia
-    garantizando un dpa_code único para evitar colisiones con uq_canton_province_dpa_code.
-    Soporta insensibilidad a mayúsculas y acentos (Pujili == Pujilí).
-    """
-    if not canton_name or not str(canton_name).strip():
-        return None
-    import unicodedata
-    def _fold(s):
-        return ''.join(ch for ch in unicodedata.normalize('NFD', str(s)) if unicodedata.category(ch) != 'Mn').lower()
-
-    c_clean = str(canton_name).strip()
-    p_clean = str(province_name or '').strip()
-    c_fold = _fold(c_clean)
-    p_fold = _fold(p_clean)
-
-    # 1. Buscar provincia por coincidencia exacta o con tildes normalizadas
-    prov_obj = None
-    if p_clean:
-        prov_obj = Province.objects.filter(name__iexact=p_clean).first()
-        if not prov_obj:
-            prov_obj = Province.objects.filter(name__icontains=p_clean).first()
-        if not prov_obj:
-            for p in Province.objects.all():
-                if _fold(p.name) == p_fold or p_fold in _fold(p.name):
-                    prov_obj = p
-                    break
-    if not prov_obj:
-        prov_obj = Province.objects.first()
-
-    # 2. Buscar cantón en la provincia identificada (con tildes normalizadas)
-    cant_obj = None
-    if prov_obj:
-        cant_obj = Canton.objects.filter(province=prov_obj, name__iexact=c_clean).first()
-        if not cant_obj:
-            cant_obj = Canton.objects.filter(province=prov_obj, name__icontains=c_clean).first()
-        if not cant_obj:
-            for cand in Canton.objects.filter(province=prov_obj):
-                if _fold(cand.name) == c_fold or c_fold in _fold(cand.name):
-                    cant_obj = cand
-                    break
-
-    # 3. Buscar cantón a nivel nacional si no se encontró en la provincia
-    if not cant_obj:
-        cant_obj = Canton.objects.filter(name__iexact=c_clean).first()
-    if not cant_obj:
-        cant_obj = Canton.objects.filter(name__icontains=c_clean).first()
-    if not cant_obj:
-        for cand in Canton.objects.all():
-            if _fold(cand.name) == c_fold:
-                cant_obj = cand
-                break
-
-    # 4. Si aún no existe, crearlo asignándole un dpa_code único dentro de la provincia
-    if not cant_obj and prov_obj:
-        existing_dpas = set(Canton.objects.filter(province=prov_obj).values_list('dpa_code', flat=True))
-        pref = (prov_obj.iso_code or 'EC-99')[-2:].replace('-', '0')
-        new_dpa = None
-        for i in range(1, 100):
-            cand = f"{pref}{i:02d}"[:4]
-            if cand not in existing_dpas:
-                new_dpa = cand
-                break
-        cant_obj = Canton.objects.create(
-            name=c_clean,
-            province=prov_obj,
-            dpa_code=new_dpa or f"{pref}99"[:4]
-        )
-
-    return cant_obj
 
 
 @login_required
 @require_POST
+@clinical_access_required('change', api=True)
+@selection_errors
 def form_save_api(request):
     """
     CRUD Ficha Clínica integral (HU-11, HU-12, HU-13, HU-14, HU-18).
@@ -1087,23 +1043,16 @@ def form_save_api(request):
             raw_data = request.POST.dict()
 
         # Extraer campos clave
-        cedula = raw_data.get('f_cedula', '').strip()
-        codigo = raw_data.get('f_codigo', '').strip()
-        patient_id_param = request.GET.get('paciente') or raw_data.get('idPaciente') or raw_data.get('paciente_id')
-
-        # Buscar paciente
-        patient = None
-        if patient_id_param:
-            clean_id = str(patient_id_param).replace('p', '')
-            if clean_id.isdigit():
-                patient = Patient.objects.filter(patient_id=int(clean_id)).first()
-        if not patient and cedula:
-            patient = Patient.objects.filter(id_card=cedula).first()
-        if not patient and codigo:
-            patient = Patient.objects.filter(visit__study_code=codigo).first()
-
-        if not patient:
-            return JsonResponse({"success": False, "error": "No se encontró el paciente para guardar la ficha."}, status=404)
+        selectors = [source[key] for source, key in (
+            (request.GET, 'paciente'), (raw_data, 'idPaciente'), (raw_data, 'paciente_id')
+        ) if key in source]
+        if not selectors:
+            raise RecordSelectionError('Seleccione un paciente por su clave primaria.')
+        ids = {record_id(value) for value in selectors}
+        if len(ids) != 1:
+            raise RecordSelectionError('Identificadores de paciente contradictorios.')
+        # Demographic fields never select a record for update.
+        patient = selected_patients(list(ids))[0]
 
         # Validaciones de rangos clínicos (HU-18)
         peso_raw = raw_data.get('f_peso')
@@ -1127,419 +1076,7 @@ def form_save_api(request):
             return JsonResponse({"success": False, "error": " | ".join(errores_clinicos)}, status=400)
 
         # Transacción Atómica Completa (HU-11, HU-12, HU-13)
-        with transaction.atomic():
-            # 1. Actualizar Paciente (Módulo 1)
-            f_nom = raw_data.get('f_nombre')
-            f_ap1 = raw_data.get('f_apellido1')
-            f_ap2 = raw_data.get('f_apellido2')
-            f_tel = raw_data.get('f_telefono')
-            f_cor = raw_data.get('f_correo')
-            f_sex = raw_data.get('f_sexo')
-            f_fecha_nac = raw_data.get('f_fecha_nac')
-            f_raza = raw_data.get('f_raza')
-            f_municipio = raw_data.get('f_municipio')
-
-            if f_nom: patient.first_names = f_nom.strip()
-            if f_ap1: patient.last_name1 = f_ap1.strip()
-            if f_ap2 is not None: patient.last_name2 = f_ap2.strip()
-            if f_tel is not None: patient.phone = f_tel.strip()
-            if f_cor is not None: patient.email = f_cor.strip()
-            if f_fecha_nac:
-                try: patient.birth_date = datetime.date.fromisoformat(f_fecha_nac.strip())
-                except ValueError: pass
-            if f_sex:
-                s_obj = Sex.objects.filter(name__istartswith=f_sex.strip()[0]).first()
-                if s_obj: patient.sex = s_obj
-            if f_raza:
-                eth_map = {'MESTIZO': 'Mestizo', 'BLANCA': 'Blanco', 'AFRICANA': 'Afroecuatoriano', 'INDÍGENA': 'Indígena', 'MONTUBIA': 'Montuvio', 'OTRA': 'Otro'}
-                eth_name = eth_map.get(f_raza.upper().strip(), f_raza.strip())
-                eth_obj = Ethnicity.objects.filter(name__icontains=eth_name).first()
-                if eth_obj: patient.ethnicity = eth_obj
-
-            f_uni = raw_data.get('f_universidad')
-            if f_uni:
-                inst_obj = Institution.objects.filter(acronym__iexact=f_uni.strip()).first()
-                if not inst_obj:
-                    inst_obj = Institution.objects.filter(name__icontains=f_uni.strip()).first()
-                if inst_obj:
-                    patient.institution = inst_obj
-
-            f_prov_nac = raw_data.get('f_provincia_nac')
-            if f_municipio:
-                cant_obj = _resolve_canton(f_municipio, f_prov_nac)
-                if cant_obj:
-                    patient.birth_canton = cant_obj
-
-            patient.save()
-
-            # 2. Actualizar / Crear Visita (Módulo 1)
-            visit = getattr(patient, 'visit', None)
-            if not visit:
-                existing_codes = Visit.objects.values_list('study_code', flat=True)
-                numeric_codes = [int(c) for c in existing_codes if c and c.isdigit()]
-                auto_codigo = str((max(numeric_codes) + 1) if numeric_codes else 1)
-
-                visit = Visit.objects.create(
-                    patient=patient,
-                    evaluator=request.user,
-                    study_code=auto_codigo,
-                    visit_date=datetime.date.today(),
-                    residence_canton=patient.birth_canton or Canton.objects.first(),
-                    status=Visit.Status.COMPLETED
-                )
-
-            f_visita = raw_data.get('f_visita')
-            if f_visita and str(f_visita).strip().isdigit():
-                visit.visit_number = int(str(f_visita).strip())
-
-            f_fecha_vis = raw_data.get('f_fecha_visita')
-            if f_fecha_vis:
-                try:
-                    visit.visit_date = datetime.date.fromisoformat(f_fecha_vis.strip())
-                except ValueError:
-                    pass
-
-            f_fac = raw_data.get('f_facultad')
-            if f_fac: visit.faculty = f_fac.strip()
-
-            f_estam = raw_data.get('f_estamento')
-            if f_estam:
-                sc_obj = StaffCategory.objects.filter(name__icontains=f_estam.strip()).first()
-                if sc_obj: visit.staff_category = sc_obj
-
-            f_ciudad = raw_data.get('f_ciudad')
-            f_prov_res = raw_data.get('f_provincia')
-            if f_ciudad:
-                res_cant = _resolve_canton(f_ciudad, f_prov_res)
-                if res_cant:
-                    visit.residence_canton = res_cant
-
-            f_hijos = raw_data.get('f_hijos') or raw_data.get('f_num_hijos')
-            if f_hijos and str(f_hijos).isdigit():
-                visit.num_children = int(f_hijos)
-
-            f_conviv = raw_data.get('f_convivientes') or raw_data.get('f_num_convivientes')
-            if f_conviv and str(f_conviv).isdigit():
-                visit.num_cohabitants = int(f_conviv)
-
-            f_estado_civil = raw_data.get('f_estado_civil')
-            if f_estado_civil:
-                ms_map = {'1_soltero': 'Soltero', '2_casado': 'Casado', '3_divorciado': 'Divorciado', '4_viudo': 'Viudo', '5_union_libre': 'Unión de hecho'}
-                ms_name = ms_map.get(f_estado_civil.strip(), f_estado_civil.strip())
-                ms_obj = MaritalStatus.objects.filter(name__icontains=ms_name).first()
-                if ms_obj: visit.marital_status = ms_obj
-
-            f_convive_con = raw_data.get('f_convive_con')
-            if f_convive_con:
-                ls_map = {'1': 'Solo', '2': 'Con pareja', '3': 'Con pareja', '4': 'Con familia', '5': 'Con familia', '6': 'Con familia', '7': 'Con amigos'}
-                ls_name = ls_map.get(f_convive_con.strip(), f_convive_con.strip())
-                ls_obj = LivingSituation.objects.filter(name__icontains=ls_name).first()
-                if ls_obj: visit.living_situation = ls_obj
-
-            f_estudios = raw_data.get('f_estudios')
-            if f_estudios:
-                ed_map = {'1': 'Primaria', '2': 'Primaria', '3': 'Primaria', '4': 'Secundaria', '5': 'Secundaria', '6': 'Tercer Nivel', '7': 'Cuarto Nivel'}
-                ed_name = ed_map.get(f_estudios.strip(), f_estudios.strip())
-                ed_obj = EducationLevel.objects.filter(name__icontains=ed_name).first()
-                if ed_obj: visit.education_level = ed_obj
-
-            f_horario = raw_data.get('f_horario')
-            if f_horario:
-                ws_map = {'1': 'Tiempo Completo', '2': 'Tiempo Completo', '3': 'Parcial', '4': 'Turnos'}
-                ws_name = ws_map.get(f_horario.strip(), f_horario.strip())
-                ws_obj = WorkSchedule.objects.filter(name__icontains=ws_name).first()
-                if ws_obj: visit.work_schedule = ws_obj
-
-            f_profesion = raw_data.get('f_profesion')
-            if f_profesion:
-                pc_map = {'1': 'Docente Titular', '2': 'Docente Ocasional', '3': 'Servidor Público', '4': 'Auxiliar', '5': 'Otro', '6': 'Estudiante', '7': 'Otro'}
-                pc_name = pc_map.get(f_profesion.strip(), f_profesion.strip())
-                pc_obj = ProfessionalCategory.objects.filter(name__icontains=pc_name).first()
-                if pc_obj: visit.professional_category = pc_obj
-
-            f_vivienda = raw_data.get('f_vivienda')
-            if f_vivienda:
-                ht_map = {'1': 'Propia', '2': 'Arrendada', '3': 'Familiar', '4': 'Prestada'}
-                ht_name = ht_map.get(f_vivienda.strip(), f_vivienda.strip())
-                ht_obj = HousingType.objects.filter(name__icontains=ht_name).first()
-                if ht_obj: visit.housing_type = ht_obj
-
-            f_ingresos = raw_data.get('f_ingresos')
-            if f_ingresos:
-                ir_map = {'1': 'Menos de $500', '2': '$500 - $1000', '3': '$1001 - $2000', '4': '$1001 - $2000', '5': 'Más de $2000', '6': 'Más de $2000', '7': 'Más de $2000', '8': 'Más de $2000'}
-                ir_name = ir_map.get(f_ingresos.strip(), f_ingresos.strip())
-                ir_obj = IncomeRange.objects.filter(name__icontains=ir_name).first()
-                if ir_obj: visit.income_range = ir_obj
-
-            visit.status = Visit.Status.COMPLETED
-            visit.save()
-
-            # 3. Antropometría (Módulo 2 - HU-11)
-            peso_dec = Decimal(str(peso_raw)) if peso_raw else Decimal("70.00")
-            talla_dec = Decimal(str(talla_raw)) if talla_raw else Decimal("170.0")
-            perim_dec = Decimal(str(perimetro_raw)) if perimetro_raw else Decimal("85.0")
-
-            ant, _ = Anthropometry.objects.get_or_create(visit=visit, defaults={
-                "weight_kg": peso_dec,
-                "height_cm": talla_dec,
-                "waist_circumference_cm": perim_dec,
-            })
-            ant.weight_kg = peso_dec
-            ant.height_cm = talla_dec
-            ant.waist_circumference_cm = perim_dec
-            ant.save()
-
-            # 4. Signos Vitales (Módulo 2 - HU-11)
-            tas_int = int(tas_raw) if tas_raw else 120
-            tsi_int = int(tsi_raw) if tsi_raw else 80
-            sat_int = int(sat_raw) if sat_raw else 98
-            fc_int = int(fc_raw) if fc_raw else 72
-
-            vs, _ = VitalSigns.objects.get_or_create(visit=visit, defaults={
-                "systolic_bp": tas_int,
-                "diastolic_bp": tsi_int,
-                "oxygen_saturation": sat_int,
-                "heart_rate": fc_int,
-            })
-            vs.systolic_bp = tas_int
-            vs.diastolic_bp = tsi_int
-            vs.oxygen_saturation = sat_int
-            vs.heart_rate = fc_int
-            vs.systolic_murmur = (raw_data.get('f_soplo_sistolico') == 'Si' or raw_data.get('soplos') in ['1', 'Si', 'sistolico'])
-            vs.diastolic_murmur = (raw_data.get('f_soplo_diastolico') == 'Si' or raw_data.get('soplos') in ['2', 'diastolico'])
-            grado_raw = raw_data.get('f_grado_soplo') or raw_data.get('soplo_grado')
-            if grado_raw and str(grado_raw).strip().isdigit():
-                vs.murmur_grade = int(grado_raw.strip())
-            vs.pulmonary_auscultation_normal = (raw_data.get('f_auscultacion_pulmonar') != 'Alterada' and raw_data.get('resp_norm') != 'No')
-            vs.abdominal_auscultation_normal = (raw_data.get('f_auscultacion_abdominal') != 'Alterada' and raw_data.get('abdom_norm') != 'No')
-            vs.pedal_pulses_symmetric = (raw_data.get('f_pulsos_pedios') != 'No' and raw_data.get('pulsos_sim') != 'No')
-            vs.save()
-
-            # 5. Electrocardiograma (Módulo 5 - HU-13 y Cuestionario UNEMI 2026 Completo)
-            ecg_ritmo_nom = raw_data.get('ecg_ritmo', 'Ritmo Sinusal (RS)')
-            rhythm_obj = EcgRhythm.objects.filter(name__icontains=ecg_ritmo_nom[:10]).first() or EcgRhythm.objects.first()
-            ecg, _ = Electrocardiogram.objects.get_or_create(visit=visit, defaults={"rhythm": rhythm_obj})
-            ecg.rhythm = rhythm_obj
-            if raw_data.get('ecg_fc') and str(raw_data.get('ecg_fc')).isdigit():
-                ecg.heart_rate = int(raw_data.get('ecg_fc'))
-            if raw_data.get('ecg_pr') and str(raw_data.get('ecg_pr')).isdigit():
-                ecg.pr_interval_ms = int(raw_data.get('ecg_pr'))
-            if raw_data.get('ecg_qrs') and str(raw_data.get('ecg_qrs')).isdigit():
-                ecg.qrs_duration_ms = int(raw_data.get('ecg_qrs'))
-            if raw_data.get('ecg_qt') and str(raw_data.get('ecg_qt')).isdigit():
-                ecg.qt_interval_ms = int(raw_data.get('ecg_qt'))
-            if raw_data.get('ecg_qtc') and str(raw_data.get('ecg_qtc')).isdigit():
-                ecg.qtc_bazett_ms = int(raw_data.get('ecg_qtc'))
-            if raw_data.get('ecg_eje') and str(raw_data.get('ecg_eje')).replace('-', '').isdigit():
-                ecg.qrs_axis_degrees = int(raw_data.get('ecg_eje'))
-
-            # Campos exhaustivos del ECG
-            if raw_data.get('ecg_rr'):
-                try:
-                    val_rr = float(raw_data['ecg_rr'])
-                    if val_rr > 10.0:  # Ingresado en milisegundos (ej. 800 ms -> 0.800 s)
-                        val_rr = val_rr / 1000.0
-                    ecg.rr_interval_sec = Decimal(str(round(val_rr, 3)))
-                except Exception: pass
-            if raw_data.get('ecg_p_mm'):
-                try: ecg.p_wave_mm = Decimal(str(raw_data['ecg_p_mm']))
-                except Exception: pass
-            ecg.p_mitrale = (raw_data.get('ecg_p_mitral') == 'Si')
-            ecg.av_block = (raw_data.get('ecg_bloqueo_av') == 'Si')
-            ecg.av_block_grade = raw_data.get('ecg_bloqueo_av_grado') or ''
-            ecg.sa_block = (raw_data.get('ecg_bloqueo_sa') == 'Si')
-            ecg.interatrial_block = (raw_data.get('ecg_bloqueo_ia') == 'Si')
-            ecg.hemiblock = (raw_data.get('ecg_hemibloqueo') == 'Si')
-            ecg.hemiblock_detail = raw_data.get('ecg_hemibloqueo_cual') or ''
-            ecg.has_bundle_branch_block = (raw_data.get('ecg_bloqueo_rama_sn') == 'Si')
-            ecg.bundle_branch_block = raw_data.get('ecg_bloqueo_rama', '')
-            ecg.brugada_pattern = (raw_data.get('ecg_brugada') == 'Si')
-            ecg.early_repolarization = (raw_data.get('ecg_repolarizacion_precoz') == 'Si')
-            ecg.left_ventricular_hypertrophy = (raw_data.get('ecg_hvi') == 'Si')
-            ecg.systolic_overload = (raw_data.get('ecg_sobrecarga_sistolica') == 'Si')
-            ecg.systolic_overload_complexes = raw_data.get('ecg_sobrecarga_complejos') or ''
-            if raw_data.get('ecg_deflexion_intrinsicoide'):
-                try:
-                    val_def = float(raw_data['ecg_deflexion_intrinsicoide'])
-                    if val_def > 5.0:  # Ingresado en milisegundos (ej. 45 ms -> 0.045 s)
-                        val_def = val_def / 1000.0
-                    ecg.intrinsicoid_deflection_sec = Decimal(str(round(val_def, 3)))
-                except Exception: pass
-            ecg.right_ventricular_hypertrophy = (raw_data.get('ecg_hvd') == 'Si')
-            ecg.delta_wave = (raw_data.get('ecg_onda_delta') == 'Si')
-            ecg.digitalis_effect = (raw_data.get('ecg_cubeta_digitalica') == 'Si')
-            ecg.pathological_q_wave = (raw_data.get('ecg_onda_q') == 'Si')
-            ecg.q_wave_amplitude = raw_data.get('ecg_onda_q_amplitud') or ''
-            if raw_data.get('ecg_onda_q_voltaje'):
-                try: ecg.q_wave_voltage_mv = Decimal(str(raw_data['ecg_onda_q_voltaje']))
-                except Exception: pass
-            ecg.q_wave_complexes = raw_data.get('ecg_onda_q_complejos') or ''
-            ecg.negative_t_wave = (raw_data.get('ecg_t_negativa') == 'Si')
-            ecg.negative_t_complexes = raw_data.get('ecg_t_negativa_complejos') or ''
-            ecg.negative_t_symmetric = (raw_data.get('ecg_t_simetrica') == 'Si')
-            ecg.negative_t_asymmetric = (raw_data.get('ecg_t_asimetrica') == 'Si')
-            ecg.st_elevation_pathological = (raw_data.get('ecg_st_ascenso') == 'Si')
-            if raw_data.get('ecg_st_ascenso_mm'):
-                try: ecg.st_elevation_mm = Decimal(str(raw_data['ecg_st_ascenso_mm']))
-                except Exception: pass
-            ecg.st_elevation_complexes = raw_data.get('ecg_st_ascenso_complejos') or ''
-            ecg.st_depression = (raw_data.get('ecg_st_descenso') == 'Si')
-            if raw_data.get('ecg_st_descenso_mm'):
-                try: ecg.st_depression_mm = Decimal(str(raw_data['ecg_st_descenso_mm']))
-                except Exception: pass
-            ecg.st_depression_complexes = raw_data.get('ecg_st_descenso_complejos') or ''
-            ecg.is_normal = (raw_data.get('ecg_normal') != 'No')
-            ecg.repolarization_abnormalities = (raw_data.get('ecg_alt_repolarizacion') == 'Si' or ecg.early_repolarization)
-            ecg.ecg_comments = raw_data.get('ecg_comentario', '')
-            ecg.save()
-
-            # 6. Ecocardiograma (Módulo 5 - HU-13)
-            echo, _ = Echocardiogram.objects.get_or_create(visit=visit)
-            eco_val = raw_data.get('eco_ddvi') or raw_data.get('ip_medida_chorro')
-            if eco_val:
-                try: echo.lv_dimension_mm = Decimal(str(eco_val))
-                except Exception: pass
-            if raw_data.get('eco_fey'):
-                try: echo.lvef_percentage = Decimal(str(raw_data['eco_fey']))
-                except Exception: pass
-            echo.ventricular_hypertrophy = (raw_data.get('res_vi_hipertrofico') == 'Si')
-            echo.diastolic_dysfunction = (raw_data.get('eco_disfuncion_diastolica') == 'Si' or raw_data.get('res_fdvi') == 'Si')
-            echo.aortic_valve_calcification = (raw_data.get('eco_calcificacion_aortica') == 'Si')
-            if raw_data.get('valvulopatia_tipo_detalle'):
-                echo.valvular_regurgitation_detail = raw_data.get('valvulopatia_tipo_detalle')[:200]
-            echo.save()
-
-            # 7. Laboratorio (Módulo 5 - HU-13)
-            lab, _ = Laboratory.objects.get_or_create(visit=visit)
-            lab_fields = [
-                ('hemo_hematies', 'rbc_millions'),
-                ('hemo_hemoglobina', 'hemoglobin_g_dl'),
-                ('hemo_hematocrito', 'hematocrit_percentage'),
-                ('hemo_vcm', 'mcv_fl'),
-                ('hemo_leucocitos', 'wbc_thousands'),
-                ('hemo_plaquetas', 'platelets_thousands'),
-                ('hemo_inr', 'prothrombin_time_sec'),
-                ('diab_glucosa', 'glucose_mg_dl'),
-                ('renal_urea', 'urea_mg_dl'),
-                ('renal_creatinina', 'creatinine_mg_dl'),
-                ('riesgo_colesterol', 'total_cholesterol_mg_dl'),
-                ('riesgo_hdl', 'hdl_mg_dl'),
-                ('riesgo_ldl', 'ldl_mg_dl'),
-                ('riesgo_trigliceridos', 'triglycerides_mg_dl'),
-                ('hepatica_got', 'ast_got_u_l'),
-                ('hepatica_gpt', 'alt_gpt_u_l'),
-                ('hepatica_ggt', 'ggt_u_l'),
-                ('tiroidea_tsh', 'tsh_u_iu_ml'),
-            ]
-            for html_key, model_key in lab_fields:
-                val = raw_data.get(html_key)
-                if val:
-                    try:
-                        setattr(lab, model_key, Decimal(str(val)))
-                    except Exception:
-                        pass
-            lab.save()
-
-            # 7.5. Estudios Solicitados / Mandados al Paciente (Pág. 19 Cuestionario UNEMI 2026)
-            ordered, _ = OrderedStudies.objects.get_or_create(visit=visit)
-            ordered.clinical_analysis = (raw_data.get('est_analisis_clinicos') == 'Si')
-            ordered.ergometry_spect = (raw_data.get('est_ergometria_spect') == 'Si')
-            ordered.cardiac_ct = (raw_data.get('est_tac_cardiaco') == 'Si')
-            ordered.cardiac_mri = (raw_data.get('est_rnm_cardiaco') == 'Si')
-            ordered.electrophysiology = (raw_data.get('est_electrofisiologia') == 'Si')
-            ordered.echocardiogram_ordered = (raw_data.get('est_ecocardiograma') == 'Si')
-            ordered.holter_ordered = (raw_data.get('est_holter') == 'Si')
-            ordered.mapa_ordered = (raw_data.get('est_mapa') == 'Si')
-            ordered.other_studies = (raw_data.get('est_otros_detalle') or '')[:300]
-            ordered.save()
-
-            # 8. Persistencia Universal y Bidireccional de Todos los Campos del Formulario (VisitAnswer)
-            ignore_keys = {'csrfmiddlewaretoken', 'idPaciente', 'paciente_id', 'f_codigo'}
-            sections_by_code = {s.code: s for s in QuestionnaireSection.objects.all()}
-            default_section = sections_by_code.get('MOD_3_FACTORES_MOD') or QuestionnaireSection.objects.first()
-
-            for k, v in raw_data.items():
-                if k in ignore_keys or not k.strip():
-                    continue
-                val_str = str(v).strip()
-                k_clean = k.strip()
-
-                target_sec_code = classify_spss_question_section(k_clean)
-                target_sec = sections_by_code.get(target_sec_code, default_section)
-
-                q = Question.objects.filter(code=k_clean).first()
-                if not q and len(k_clean) <= 30:
-                    q = Question.objects.create(
-                        section=target_sec,
-                        code=k_clean,
-                        text=f"Campo {k_clean}",
-                        response_type=Question.ResponseType.TEXTO,
-                        display_order=999
-                    )
-                elif q and q.section == default_section and q.section != target_sec:
-                    q.section = target_sec
-                    q.save(update_fields=['section'])
-
-                if q:
-                    if val_str != '':
-                        VisitAnswer.objects.update_or_create(
-                            visit=visit,
-                            question=q,
-                            defaults={
-                                "text_value": val_str[:250],
-                                "numeric_value": None,
-                                "selected_option": None
-                            }
-                        )
-                    else:
-                        VisitAnswer.objects.filter(visit=visit, question=q).delete()
-
-                # Sincronización bidireccional de alias (Formulario HTML <-> SPSS)
-                alias_code = QUESTION_ALIASES.get(k_clean) or REVERSE_QUESTION_ALIASES.get(k_clean)
-                if alias_code and len(alias_code) <= 30:
-                    alias_sec_code = classify_spss_question_section(alias_code)
-                    alias_sec = sections_by_code.get(alias_sec_code, default_section)
-                    q_alias = Question.objects.filter(code=alias_code).first()
-                    if not q_alias:
-                        q_alias = Question.objects.create(
-                            section=alias_sec,
-                            code=alias_code,
-                            text=f"Campo {alias_code}",
-                            response_type=Question.ResponseType.TEXTO,
-                            display_order=999
-                        )
-                    elif q_alias and q_alias.section == default_section and q_alias.section != alias_sec:
-                        q_alias.section = alias_sec
-                        q_alias.save(update_fields=['section'])
-
-                    if q_alias:
-                        if val_str != '':
-                            VisitAnswer.objects.update_or_create(
-                                visit=visit,
-                                question=q_alias,
-                                defaults={
-                                    "text_value": val_str[:250],
-                                    "numeric_value": None,
-                                    "selected_option": None
-                                }
-                            )
-                        else:
-                            VisitAnswer.objects.filter(visit=visit, question=q_alias).delete()
-
-            # 9. Auditoría Automática (HU-14)
-            register_audit_log(
-                user=request.user,
-                table_name='visit',
-                record_key=visit.visit_id,
-                action='UPDATE',
-                new_value={
-                    'study_code': visit.study_code,
-                    'patient': patient.full_name,
-                    'peso': float(ant.weight_kg) if (ant and ant.weight_kg) else None,
-                    'tas': vs.systolic_bp if (vs and vs.systolic_bp) else None
-                },
-                machine_name=getattr(request, 'client_ip', '127.0.0.1')
-            )
+        visit = update_clinical_record(patient, raw_data, request.user, getattr(request, 'client_ip', 'unknown'))
 
         # Generar snapshot completo de todos los datos actualizados
         datos = _build_form_datos(patient, visit)
@@ -1551,10 +1088,13 @@ def form_save_api(request):
             "datos": datos
         })
 
+    except ValidationError as error:
+        return JsonResponse({'success': False, 'error': ' | '.join(error.messages)}, status=400)
+    except RecordSelectionError:
+        raise
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
+        logger.error("Clinical operation failed (%s).", type(e).__name__)
+        return JsonResponse({"success": False, "error": "No se pudo completar la operacion."}, status=500)
 
 
 # =============================================================================
@@ -1562,6 +1102,8 @@ def form_save_api(request):
 # =============================================================================
 
 @login_required
+@clinical_access_required('read')
+@selection_errors
 def export_pdf_view(request, visit_id=None):
     """
     Genera y descarga el Cuestionario Clínico Oficial UNEMI en formato PDF (HU-17).
@@ -1577,30 +1119,22 @@ def export_pdf_view(request, visit_id=None):
         response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
         return response
 
+    require_clinical_access(request.user, 'export')
     patient_id_param = request.GET.get('paciente')
     historial_param = request.GET.get('historial')
-    visit = None
-
-    target_visit_id = visit_id or historial_param
-    if target_visit_id:
-        clean_vid = str(target_visit_id).replace('h_', '').replace('h', '')
-        if clean_vid.isdigit():
-            visit = Visit.objects.filter(visit_id=int(clean_vid)).first()
-
-    if not visit and patient_id_param:
-        clean_pid = str(patient_id_param).replace('p_', '').replace('p', '').replace('_', '')
-        if clean_pid.isdigit():
-            visit = Visit.objects.filter(patient__patient_id=int(clean_pid)).order_by('-visit_date', '-visit_id').first()
-        if not visit:
-            visit = Visit.objects.filter(study_code=patient_id_param).order_by('-visit_date', '-visit_id').first()
-        if not visit:
-            visit = Visit.objects.filter(patient__id_card=patient_id_param).order_by('-visit_date', '-visit_id').first()
-
-    if not visit:
-        visit = Visit.objects.order_by('-visit_date', '-visit_id').first()
-
-    if not visit:
-        return HttpResponse("No se encontró ninguna ficha clínica para generar el PDF.", status=404)
+    target_visit_id = visit_id if visit_id is not None else historial_param
+    if target_visit_id is not None:
+        visit = Visit.objects.filter(pk=record_id(target_visit_id, 'h')).first()
+        if visit is None:
+            raise RecordSelectionError('Ficha cl?nica no encontrada.', 404)
+        if patient_id_param is not None and visit.patient_id != record_id(patient_id_param):
+            raise RecordSelectionError('La ficha no pertenece al paciente seleccionado.', 404)
+        if visit_id is not None and historial_param is not None and visit.pk != record_id(historial_param, 'h'):
+            raise RecordSelectionError('Identificadores de ficha contradictorios.')
+    elif patient_id_param is not None:
+        visit = selected_visits([patient_id_param])[0]
+    else:
+        raise RecordSelectionError('Seleccione un paciente o una ficha cl?nica.')
 
     pdf_bytes = generate_clinical_sheet_pdf(visit, is_blank=False)
     study_code_clean = (visit.study_code or f"V{visit.visit_id}").replace('/', '-').replace(' ', '_')
@@ -1633,6 +1167,8 @@ def _generate_zip_stream(visits):
 
 
 @login_required
+@clinical_access_required('export', api=True)
+@selection_errors
 def api_download_batch_pdf(request):
     """
     Descarga masiva de fichas clínicas en PDF seleccionadas por el especialista.
@@ -1643,25 +1179,7 @@ def api_download_batch_pdf(request):
     if not raw_ids:
         raw_ids = request.POST.get('patient_ids', '')
 
-    ids_list = [i.strip() for i in str(raw_ids).split(',') if i.strip()]
-    if not ids_list:
-        return HttpResponse("No se seleccionaron pacientes para la descarga.", status=400)
-
-    visits_list = []
-    for pid in ids_list:
-        clean_id = str(pid).replace('p_', '').replace('p', '').replace('_', '')
-        v = None
-        if clean_id.isdigit():
-            v = Visit.objects.filter(patient__patient_id=int(clean_id)).order_by('-visit_date', '-visit_id').first()
-        if not v:
-            v = Visit.objects.filter(patient__id_card=str(pid)).order_by('-visit_date', '-visit_id').first()
-        if not v:
-            v = Visit.objects.filter(study_code=str(pid)).order_by('-visit_date', '-visit_id').first()
-        if v and v not in visits_list:
-            visits_list.append(v)
-
-    if not visits_list:
-        return HttpResponse("No se encontraron registros clínicos válidos para los pacientes seleccionados.", status=404)
+    visits_list = selected_visits(raw_ids)
 
     if len(visits_list) == 1:
         v = visits_list[0]
@@ -1680,6 +1198,8 @@ def api_download_batch_pdf(request):
 
 @login_required
 @require_POST
+@clinical_access_required('share', api=True)
+@selection_errors
 def api_send_patient_sheet_email(request):
     """
     Genera un envío seguro individual por cada destinatario especificado (SecureShare).
@@ -1742,23 +1262,7 @@ def api_send_patient_sheet_email(request):
     expires_at = timezone.now() + datetime.timedelta(hours=duration_hours)
 
     # Validar en el servidor que las fichas/visitas seleccionadas existan y sean legítimas
-    visits_list = []
-    for pid in patient_ids:
-        clean_id = str(pid).replace('p_', '').replace('p', '').replace('_', '')
-        v = None
-        if clean_id.isdigit():
-            v = Visit.objects.filter(patient__patient_id=int(clean_id)).order_by('-visit_date', '-visit_id').first()
-        if not v:
-            v = Visit.objects.filter(patient__id_card=str(pid)).order_by('-visit_date', '-visit_id').first()
-        if not v:
-            v = Visit.objects.filter(study_code=str(pid)).order_by('-visit_date', '-visit_id').first()
-        if v and v not in visits_list:
-            visits_list.append(v)
-
-    if not visits_list:
-        resp = JsonResponse({"success": False, "error": "No se encontraron fichas clínicas válidas para los pacientes seleccionados."}, status=404)
-        resp['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-        return resp
+    visits_list = selected_visits(patient_ids)
 
     primary_visit = visits_list[0]
     results = []
@@ -1766,6 +1270,7 @@ def api_send_patient_sheet_email(request):
 
     from security.services.email_service import send_secure_share_link_email
 
+    deliveries = []
     for email in cleaned_recipients:
         # 1. Generar token criptoseguro para el enlace (32 bytes URL-safe)
         raw_token = secrets.token_urlsafe(32)
@@ -1797,6 +1302,36 @@ def api_send_patient_sheet_email(request):
         )
         share.visits.set(visits_list)
 
+        # Registrar auditoría (NO se registra el código ni el token en texto claro)
+        try:
+            ip_addr = getattr(request, 'client_ip', 'unknown')
+            if ip_addr and ',' in ip_addr:
+                ip_addr = ip_addr.split(',')[0].strip()
+            register_audit_log(
+                user=request.user,
+                schema_name='clinical',
+                table_name='clinical_secure_share',
+                record_key=str(share.share_id),
+                action='INSERT',
+                new_value={
+                    'event': 'SECURE_SHARE_CREATED',
+                    'visit_ids': [v.visit_id for v in visits_list],
+                    'total_fichas': len(visits_list),
+                    'recipient_email': email,
+                    'expires_at': expires_at.isoformat(),
+                    'duration_hours': duration_hours
+                },
+                machine_name=ip_addr
+            )
+        except AuditLogError:
+            raise
+        except Exception as audit_err:
+            logger.warning(f"Error registrando auditoría de SecureShare: {audit_err}")
+
+        deliveries.append((email, share, access_url, raw_code))
+
+    # Prepare and audit the complete batch before sending the first email.
+    for email, share, access_url, raw_code in deliveries:
         # 5. Despachar correo electrónico individual genérico (sin PDF adjunto)
         mail_res = send_secure_share_link_email(
             recipient_email=email,
@@ -1810,30 +1345,6 @@ def api_send_patient_sheet_email(request):
 
         if mail_res.get('success'):
             success_count += 1
-            # Registrar auditoría (NO se registra el código ni el token en texto claro)
-            try:
-                ip_addr = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '127.0.0.1'))
-                if ip_addr and ',' in ip_addr:
-                    ip_addr = ip_addr.split(',')[0].strip()
-                register_audit_log(
-                    user=request.user,
-                    schema_name='clinical',
-                    table_name='clinical_secure_share',
-                    record_key=str(share.share_id),
-                    action='INSERT',
-                    new_value={
-                        'event': 'SECURE_SHARE_CREATED',
-                        'visit_ids': [v.visit_id for v in visits_list],
-                        'total_fichas': len(visits_list),
-                        'recipient_email': email,
-                        'expires_at': expires_at.isoformat(),
-                        'duration_hours': duration_hours
-                    },
-                    machine_name=ip_addr
-                )
-            except Exception as audit_err:
-                logger.warning(f"Error registrando auditoría de SecureShare: {audit_err}")
-
             results.append({
                 "email": email,
                 "success": True,
@@ -1874,6 +1385,8 @@ def api_send_patient_sheet_email(request):
 
 @require_http_methods(['GET', 'POST'])
 @csrf_exempt
+@transaction.atomic
+@selection_errors
 def public_secure_share_view(request, token):
     """
     Ruta pública del destinatario para validación de código de acceso y descarga segura.
@@ -1887,7 +1400,9 @@ def public_secure_share_view(request, token):
         raise Http404("Documento no encontrado o enlace inválido.")
 
     token_hash = hashlib.sha256(clean_token.encode('utf-8')).hexdigest()
-    share = SecureShare.objects.select_related('visit', 'visit__patient').prefetch_related('visits', 'visits__patient').filter(token_hash=token_hash).first()
+    # Serialize checks and counter changes for this token only. Lock the share,
+    # not its joined clinical records; release on response creation or rollback.
+    share = SecureShare.objects.select_for_update(of=('self',)).select_related('visit', 'visit__patient').prefetch_related('visits', 'visits__patient').filter(token_hash=token_hash).first()
 
     if not share or not share.is_valid():
         resp = render(request, 'clinical/public_share_error.html', {
@@ -1909,12 +1424,24 @@ def public_secure_share_view(request, token):
     descarga_tipo = request.GET.get('descarga') or request.POST.get('descarga')
     target_vid = request.GET.get('visit_id') or request.POST.get('visit_id')
 
-    if is_unlocked and descarga_tipo:
+    is_download = descarga_tipo in ('zip', 'pdf') or (descarga_tipo == 'todo' and len(visits) > 1)
+    if is_unlocked and is_download:
+        target_visit = None
+        if descarga_tipo == 'pdf':
+            if target_vid is not None:
+                pk = record_id(target_vid, 'h')
+                target_visit = next((v for v in visits if v.pk == pk), None)
+                if target_visit is None:
+                    raise RecordSelectionError('Documento no incluido en este enlace.', 404)
+            elif len(visits) == 1:
+                target_visit = visits[0]
+            else:
+                raise RecordSelectionError('Seleccione el documento que desea descargar.')
         share.download_count += 1
         share.save(update_fields=['download_count'])
 
         try:
-            ip_addr = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '127.0.0.1'))
+            ip_addr = getattr(request, 'client_ip', 'unknown')
             if ip_addr and ',' in ip_addr:
                 ip_addr = ip_addr.split(',')[0].strip()
             register_audit_log(
@@ -1932,6 +1459,8 @@ def public_secure_share_view(request, token):
                 },
                 machine_name=ip_addr
             )
+        except AuditLogError:
+            raise
         except Exception as audit_err:
             logger.warning(f"Error registrando descarga en auditoría: {audit_err}")
 
@@ -1945,12 +1474,6 @@ def public_secure_share_view(request, token):
             return response
 
         elif descarga_tipo == 'pdf':
-            target_visit = None
-            if target_vid:
-                target_visit = next((v for v in visits if str(v.visit_id) == str(target_vid)), None)
-            if not target_visit:
-                target_visit = visits[0]
-
             pdf_bytes = generate_clinical_sheet_pdf(target_visit, is_blank=False)
             code_str = (target_visit.study_code or f"V{target_visit.visit_id}").replace('/', '-').replace(' ', '_')
             filename = f"Ficha_Clinica_{code_str}.pdf" if len(visits) > 1 else "documento.pdf"
@@ -1994,11 +1517,9 @@ def public_secure_share_view(request, token):
             # CÓDIGO VÁLIDO: Marcar sesión desbloqueada y registrar
             request.session[f'share_unlocked_{share.share_id}'] = True
             is_unlocked = True
-            share.download_count += 1
-            share.save(update_fields=['download_count'])
 
             try:
-                ip_addr = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '127.0.0.1'))
+                ip_addr = getattr(request, 'client_ip', 'unknown')
                 if ip_addr and ',' in ip_addr:
                     ip_addr = ip_addr.split(',')[0].strip()
                 register_audit_log(
@@ -2014,11 +1535,15 @@ def public_secure_share_view(request, token):
                     },
                     machine_name=ip_addr
                 )
+            except AuditLogError:
+                raise
             except Exception as audit_err:
                 logger.warning(f"Error registrando desbloqueo en auditoría: {audit_err}")
 
             # Si el destinatario solicitó descarga directa en el POST
             if request.POST.get('descarga') == 'zip' and len(visits) > 1:
+                share.download_count += 1
+                share.save(update_fields=['download_count'])
                 zip_bytes = _generate_zip_stream(visits)
                 response = HttpResponse(zip_bytes, content_type='application/zip')
                 response['Content-Disposition'] = 'attachment; filename="documentos_clinicos.zip"'
@@ -2026,6 +1551,10 @@ def public_secure_share_view(request, token):
                 response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0, private'
                 return response
             elif len(visits) == 1 and request.POST.get('direct_download') == '1':
+                if target_vid is not None and record_id(target_vid, 'h') != visits[0].pk:
+                    raise RecordSelectionError('Documento no incluido en este enlace.', 404)
+                share.download_count += 1
+                share.save(update_fields=['download_count'])
                 pdf_bytes = generate_clinical_sheet_pdf(visits[0], is_blank=False)
                 response = HttpResponse(pdf_bytes, content_type='application/pdf')
                 response['Content-Disposition'] = 'attachment; filename="documento.pdf"'
@@ -2072,6 +1601,7 @@ def public_secure_share_view(request, token):
 
 @login_required
 @require_POST
+@clinical_access_required('import', api=True)
 def sav_import_analyze_api(request):
     """
     Recibe un archivo .sav / .zsav y realiza un diagnostico inteligente
@@ -2086,7 +1616,7 @@ def sav_import_analyze_api(request):
     if not any(filename.endswith(ext) for ext in valid_exts):
         return JsonResponse({"success": False, "error": "Formato de archivo inválido. Debe ser SPSS (.sav, .zsav) o RStudio (.rds, .RData, .rda, .csv)."}, status=400)
 
-    analysis_result = analyze_sav_file(uploaded_file, uploaded_file.name)
+    analysis_result = analyze_sav_file(uploaded_file, uploaded_file.name, user=request.user)
     if not analysis_result.get('success'):
         return JsonResponse(analysis_result, status=400)
 
@@ -2095,6 +1625,7 @@ def sav_import_analyze_api(request):
 
 @login_required
 @require_POST
+@clinical_access_required('import', api=True)
 def sav_import_execute_api(request):
     """
     Ejecuta transaccionalmente la importacion del archivo previamente analizado,
@@ -2106,9 +1637,9 @@ def sav_import_execute_api(request):
         else:
             data = request.POST.dict()
 
-        temp_token = data.get('temp_token', '').strip()
+        temp_token = data.get('temp_token', '')
         duplicate_action = data.get('duplicate_action', 'update').strip()
-        if not temp_token:
+        if not isinstance(temp_token, str) or not temp_token or len(temp_token) > 2048:
             return JsonResponse({"success": False, "error": "Token de importación no válido o ausente."}, status=400)
 
         import_result = execute_sav_import(temp_token, request.user, duplicate_action=duplicate_action)
@@ -2123,6 +1654,8 @@ def sav_import_execute_api(request):
 
 @login_required
 @require_POST
+@clinical_access_required('delete', api=True)
+@selection_errors
 def ficha_eliminar_api(request):
     """
     Eliminacion segura y transaccional de Fichas Clinicas (individual o en lote).
@@ -2163,28 +1696,11 @@ def ficha_eliminar_api(request):
                 "error": "Seleccione al menos una ficha clínica para eliminar."
             }, status=400)
 
-        if isinstance(raw_ids, str):
-            raw_ids = [x.strip() for x in raw_ids.split(',') if x.strip()]
-
-        clean_ids = [str(x).replace('p', '').strip() for x in raw_ids if str(x).strip()]
-        numeric_ids = [int(x) for x in clean_ids if x.isdigit()]
-
-        patients_qs = Patient.objects.filter(
-            models.Q(patient_id__in=numeric_ids) |
-            models.Q(visit__study_code__in=clean_ids) |
-            models.Q(id_card__in=clean_ids)
-        ).distinct()
-
-        patients_list = list(patients_qs)
-        if not patients_list:
-            return JsonResponse({
-                "success": False,
-                "error": "No se encontraron las fichas clínicas a eliminar."
-            }, status=404)
+        patients_list = selected_patients(raw_ids)
 
         deleted_ids = []
         deleted_names = []
-        ip_addr = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '127.0.0.1')
+        ip_addr = getattr(request, 'client_ip', 'unknown')
 
         # 4. Transaccion atomica de eliminacion
         with transaction.atomic():
@@ -2223,6 +1739,8 @@ def ficha_eliminar_api(request):
             "deleted_count": len(deleted_ids)
         })
 
+    except RecordSelectionError:
+        raise
     except Exception as e:
         return JsonResponse({
             "success": False,
@@ -2234,6 +1752,8 @@ from .services.sav_exporter import generate_export_dataset
 
 
 @login_required
+@clinical_access_required('export', api=True)
+@selection_errors
 def export_dataset_api(request):
     """
     Exporta el dataset completo de pacientes y visitas a formato SPSS (.sav) o CSV
@@ -2250,11 +1770,15 @@ def export_dataset_api(request):
 
         format_type = data.get('format', 'sav').strip().lower()
         patient_ids = data.get('patient_ids', [])
-        if isinstance(patient_ids, str):
-            try:
-                patient_ids = json.loads(patient_ids)
-            except Exception:
-                patient_ids = [x.strip() for x in patient_ids.split(',') if x.strip()]
+        if isinstance(patient_ids, str) and patient_ids.lstrip().startswith('['):
+            patient_ids = json.loads(patient_ids)
+
+        if data.get('scope') in ('all', 'todos'):
+            if patient_ids not in ([], None, ''):
+                raise RecordSelectionError('No combine alcance completo con IDs de pacientes.')
+            patient_ids = None
+        elif not patient_ids:
+            raise RecordSelectionError('Indique pacientes o scope=all para exportar la cohorte activa.')
 
         file_bytes, filename, content_type = generate_export_dataset(
             patient_ids=patient_ids,
@@ -2266,5 +1790,7 @@ def export_dataset_api(request):
         response['Content-Length'] = len(file_bytes)
         return response
 
+    except RecordSelectionError:
+        raise
     except Exception as e:
         return JsonResponse({"success": False, "error": f"Error al generar exportación: {str(e)}"}, status=500)

@@ -153,7 +153,7 @@ def get_dashboard_evaluation_data():
         answers_dict = {}
         for a in v.answers.all():
             q_code = a.question.code.lower()
-            val = a.selected_option.option_text if a.selected_option else (a.text_value or a.numeric_value)
+            val = a.selected_option.label if a.selected_option else (a.text_value if a.text_value is not None else a.numeric_value)
             answers_dict[q_code] = str(val).strip() if val is not None else ''
 
         # Estado civil

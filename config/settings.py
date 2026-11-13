@@ -8,12 +8,14 @@ import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
-
-# Cargar variables de entorno desde .env
-load_dotenv()
+from .secret_settings import read_encryption_keys, read_secret_key
+from .http_security import read_http_security
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# El entorno del proceso tiene prioridad; no buscar archivos .env en otras carpetas.
+load_dotenv(BASE_DIR / '.env')
 
 # Agregar directorio apps/ al PYTHONPATH para importaciones limpias
 sys.path.insert(0, str(BASE_DIR / 'apps'))
@@ -23,18 +25,16 @@ sys.path.insert(0, str(BASE_DIR / 'apps'))
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-xn=bxnw0_!=zkd*@4a7!hau_wvsbf$+!dh5rp*gnz5+_%m9wpc')
+SECRET_KEY = read_secret_key(os.environ)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
-
-ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',') if host.strip()]
+globals().update(read_http_security(os.environ))
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    'security.admin_config.ClinicalAdminConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -58,6 +58,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'security.request_limits.RequestLimitMiddleware',
     'security.middleware.RequireLoginMiddleware',
     'audit.middleware.PostgreSQLAuditMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -78,6 +79,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'security.context_processors.global_system_settings',
+                'security.context_processors.clinical_access',
             ],
         },
     },
@@ -88,6 +90,10 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
+
+if APP_ENV == 'production' and not os.getenv('DB_USER'):
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured('DB_USER runtime es obligatorio en production.')
 
 DATABASES = {
     'default': {
@@ -178,5 +184,12 @@ MAILERS = {
 
 # Claves dedicadas para cifrado simétrico en BD (Fernet / MultiFernet).
 # Permite rotación agregando claves separadas por coma en FIELD_ENCRYPTION_KEYS.
-_raw_enc_keys = os.getenv('FIELD_ENCRYPTION_KEYS') or os.getenv('FIELD_ENCRYPTION_KEY', '')
-FIELD_ENCRYPTION_KEYS = [k.strip() for k in _raw_enc_keys.split(',') if k.strip()]
+FIELD_ENCRYPTION_KEYS = read_encryption_keys(os.environ)
+
+
+IMPORT_MAX_BYTES = 50 * 1024 * 1024
+FILE_UPLOAD_HANDLERS = [
+    'clinical.upload_limits.ImportSizeLimitHandler',
+    'django.core.files.uploadhandler.MemoryFileUploadHandler',
+    'django.core.files.uploadhandler.TemporaryFileUploadHandler',
+]

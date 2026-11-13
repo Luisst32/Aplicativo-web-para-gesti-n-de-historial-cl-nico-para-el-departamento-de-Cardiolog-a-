@@ -8,6 +8,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.core.cache import cache
 
 from chatbot.services import query_gemini_assistant
+from security.access import has_clinical_access
 
 logger = logging.getLogger(__name__)
 
@@ -17,17 +18,7 @@ def is_user_clinically_authorized(user) -> bool:
     Verifica que el usuario tenga rol o permisos activos para acceder
     a estadísticas y expedientes clínicos de la cohorte.
     """
-    if not user or not getattr(user, 'is_authenticated', False):
-        return False
-    if not getattr(user, 'is_active', False):
-        return False
-    if getattr(user, 'is_superuser', False) or getattr(user, 'is_staff', False):
-        return True
-    try:
-        from security.models import UserRole
-        return UserRole.objects.filter(user=user, status=UserRole.Status.ACTIVE).exists()
-    except Exception:
-        return False
+    return has_clinical_access(user, 'read')
 
 
 @login_required
@@ -71,18 +62,6 @@ def query_api_view(request):
             'response': '⛔ No cuenta con los privilegios clínicos o rol requerido para consultar estadísticas de la cohorte.'
         }, status=403)
 
-    # 3. Rate Limiting: máximo 20 consultas por minuto por usuario
-    ip_addr = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '127.0.0.1')).split(',')[0].strip()
-    rate_key = f"ratelimit_bot_{request.user.pk}_{ip_addr}"
-    current_requests = cache.get(rate_key, 0)
-    if current_requests >= 20:
-        return JsonResponse({
-            'status': 'rate_limited',
-            'message': 'Límite de solicitudes alcanzado. Por favor espere un momento.',
-            'response': '⏳ Ha alcanzado el límite de consultas permitidas por minuto (20 req/min). Por favor espere un momento antes de formular otra pregunta.'
-        }, status=429)
-    cache.set(rate_key, current_requests + 1, timeout=60)
-
     try:
         if request.content_type == 'application/json':
             body_data = json.loads(request.body.decode('utf-8'))
@@ -123,7 +102,7 @@ def query_api_view(request):
             'response': 'La solicitud no pudo ser procesada debido a un error de formato.'
         }, status=400)
     except Exception as e:
-        logger.exception(f"Error procesando consulta de chatbot: {e}")
+        logger.error("Chatbot request failed.")
         return JsonResponse({
             'status': 'error',
             'message': 'Error interno del servidor.',

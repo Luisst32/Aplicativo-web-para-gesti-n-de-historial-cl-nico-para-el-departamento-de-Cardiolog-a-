@@ -7,7 +7,6 @@ Diseñado para la base de datos de investigación cardiovascular (UNEMI / ESPOL)
 
 import os
 import re
-import uuid
 import datetime
 import unicodedata
 from decimal import Decimal
@@ -16,6 +15,8 @@ from pathlib import Path
 import pyreadstat
 from django.conf import settings
 from django.db import transaction
+from security.access import require_clinical_access
+from clinical.services.import_tickets import store_upload, claim_upload, InvalidImportTicket, ERROR_MESSAGE
 
 from catalog.models import (
     Institution, Sex, Ethnicity, Canton, Province, Country,
@@ -205,7 +206,19 @@ SPSS_QUESTION_ALIASES = {
     'nm_fallecido': 'af_muerte_subita',
 
     # Módulo 4: Historia Cardiovascular y Rose
+    'hc_prob': 'problema_corazon',
+    'prob_corazon_detalle': 'problema_corazon_detalle',
+    'hc_isquemica': 'cardiopatia_isquemica',
+    'hc_revasc': 'revascularizacion_coronaria',
+    'hc_insuf_cardiaca': 'insuficiencia_cardiaca',
+    'hc_valvulopatia': 'valvulopatia',
+    'hc_valvulopatia_cuales': 'valvulopatia_cuales',
+    'hc_valvulopatia_operado': 'valvulopatia_operado',
+    'hc_ingresado': 'ingreso_hospitalario_cardiaco',
+    'hc_ingresado_cual': 'ingreso_hospitalario_motivo',
     'nc_cancer': 'historia_cancer',
+    'cancer_qt': 'cancer_quimioterapia',
+    'cancer_rt': 'cancer_radioterapia',
     'nc_epoc': 'problemas_respiratorios',
     'nc_asma': 'problemas_respiratorios',
     'nc_reuma': 'enfermedad_reumatologicas',
@@ -360,11 +373,11 @@ def classify_spss_question_section(col_name):
         return 'MOD_3_ANTECEDENTES_FAM'
 
     # 6. Historia Cardiovascular y Rose
-    if any(k in norm for k in ['problema_corazon', 'revascularizacion', 'insuficiencia_cardiaca', 'ingreso_hospitalario', 'dolor_pecho', 'molestia_caminar', 'reaccion_dolor', 'clase_nyha', 'rose', 'estudios_clinicos', 'estudios_ecocardio', 'estudios_de_mapa', 'estudios_de_ergonometria', 'estudios_de_tac', 'estudios_de_rnm', 'estudios_de_electrofisiologia', 'holter']):
+    if any(k in norm for k in ['problema_corazon', 'revascularizacion', 'insuficiencia_cardiaca', 'ingreso_hospitalario', 'dolor_pecho', 'molestia_caminar', 'reaccion_dolor', 'clase_nyha', 'rose', 'estudios_clinicos', 'estudios_ecocardio', 'estudios_de_mapa', 'estudios_de_ergonometria', 'estudios_de_tac', 'estudios_de_rnm', 'estudios_de_electrofisiologia', 'holter', 'hc_', 'isquemica', 'revasc', 'valvulopatia', 'ingresado']):
         return 'MOD_4_HISTORIA_CARDIO'
 
     # 7. Historia No Cardiovascular
-    if any(k in norm for k in ['cancer', 'problemas_respiratorios', 'salud_mental', 'alergias', 'otras', 'reumatolog', 'nc_']):
+    if any(k in norm for k in ['cancer', 'problemas_respiratorios', 'salud_mental', 'alergias', 'otras', 'reumatolog', 'nc_', 'oncolog', 'quimio', 'radioter']):
         return 'MOD_4_HISTORIA_NO_CARDIO'
 
     # 8. Factores Modificables (Predeterminado para factores de riesgo tradicionales)
@@ -827,6 +840,7 @@ class DatasetMetadata:
         self.number_columns = len(df.columns)
         self.column_names = [str(c) for c in df.columns]
         self.column_labels = column_labels or [str(c) for c in df.columns]
+        self.column_names_to_labels = dict(zip(self.column_names, self.column_labels))
         self.variable_value_labels = variable_value_labels or {}
 
 
@@ -874,25 +888,27 @@ def _read_dataset_file(temp_path: Path, filename: str):
         return pyreadstat.read_sav(str(temp_path), output_format="dict")
 
 
-def analyze_sav_file(file_obj, filename="archivo.sav"):
+def analyze_sav_file(file_obj, filename="archivo.sav", user=None):
+    require_clinical_access(user, 'import')
+    try:
+        temp_token, temp_path = store_upload(file_obj, filename, user)
+    except InvalidImportTicket:
+        return {'success': False, 'error': ERROR_MESSAGE}
+    try:
+        result = _analyze_staged_dataset(temp_path, filename, temp_token)
+        if not result.get('success'):
+            temp_path.unlink(missing_ok=True)
+        return result
+    except Exception:
+        temp_path.unlink(missing_ok=True)
+        raise
+
+
+def _analyze_staged_dataset(temp_path, filename, temp_token):
     """
     Lee e inspecciona inteligentemente un archivo SPSS .sav o RStudio (.rds/.RData).
     Retorna un informe de diagnóstico para que el usuario confirme antes de guardar.
     """
-    ext = Path(filename).suffix.lower() or ".sav"
-    temp_dir = Path(settings.MEDIA_ROOT) / "temp_imports"
-    temp_dir.mkdir(parents=True, exist_ok=True)
-    temp_token = str(uuid.uuid4())
-    temp_path = temp_dir / f"{temp_token}{ext}"
-
-    # Guardar temporalmente el archivo subido
-    with open(temp_path, "wb") as dest:
-        if hasattr(file_obj, 'chunks'):
-            for chunk in file_obj.chunks():
-                dest.write(chunk)
-        else:
-            dest.write(file_obj.read())
-
     try:
         df_dict, meta = _read_dataset_file(temp_path, filename)
     except Exception as e:
@@ -1108,24 +1124,20 @@ def analyze_sav_file(file_obj, filename="archivo.sav"):
 # -----------------------------------------------------------------------------
 
 def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="update"):
+    require_clinical_access(user, 'import')
+    try:
+        with claim_upload(temp_token, user) as temp_path:
+            return _execute_staged_dataset(temp_path, user, current_year, duplicate_action)
+    except InvalidImportTicket:
+        return {'success': False, 'error': ERROR_MESSAGE}
+
+
+def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action="update"):
     """
     Importa transaccionalmente todas las filas del archivo SPSS a PostgreSQL a máxima velocidad.
     Crea/actualiza Paciente, Visita, Antropometría, Signos Vitales, ECG, Eco, Lab y VisitAnswers
     utilizando bulk_create con ON CONFLICT y pre-indexación en memoria.
     """
-    temp_dir = Path(settings.MEDIA_ROOT) / "temp_imports"
-    matching_files = list(temp_dir.glob(f"{temp_token}.*"))
-    if matching_files:
-        temp_path = matching_files[0]
-    else:
-        temp_path = temp_dir / f"{temp_token}.sav"
-
-    if not temp_path.exists():
-        return {
-            "success": False,
-            "error": "El archivo de importación temporal ha expirado o no fue encontrado. Por favor súbalo nuevamente."
-        }
-
     try:
         df_dict, meta = _read_dataset_file(temp_path, temp_path.name)
     except Exception as e:

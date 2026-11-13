@@ -56,16 +56,16 @@ function initUserMenu() {
 
   slot.innerHTML = `
     <div class="user-menu" id="userMenu">
-      <button type="button" class="user-menu-trigger" aria-haspopup="menu" aria-expanded="false" title="${u.nombre}">
-        ${iniciales}
+      <button type="button" class="user-menu-trigger" aria-haspopup="menu" aria-expanded="false" title="${escapeHtml(u.nombre)}">
+        ${escapeHtml(iniciales)}
       </button>
       <div class="user-menu-panel" role="menu">
         <div class="user-menu-info">
-          <span class="user-menu-avatar">${iniciales}</span>
+          <span class="user-menu-avatar">${escapeHtml(iniciales)}</span>
           <span class="user-menu-texts">
-            <span class="user-menu-info-name">${u.nombre}</span>
-            <span class="user-menu-info-role">${u.rol}</span>
-            <span class="user-menu-info-mail">${u.correo}</span>
+            <span class="user-menu-info-name">${escapeHtml(u.nombre)}</span>
+            <span class="user-menu-info-role">${escapeHtml(u.rol)}</span>
+            <span class="user-menu-info-mail">${escapeHtml(u.correo)}</span>
           </span>
         </div>
         <a href="#" class="user-menu-option" role="menuitem" onclick="abrirModalPerfil(); return false;">
@@ -696,7 +696,7 @@ async function cargarAjustesSistema() {
   const switchGmailEnabled = document.getElementById('switchGmailEnabled');
 
   try {
-    const res = await fetch(`/security/api/settings/?_=${Date.now()}`, {
+    const res = await fetch(`/security/api/settings/?_=${escapeHtml(Date.now())}`, {
       headers: { 'Accept': 'application/json' },
       cache: 'no-store'
     });

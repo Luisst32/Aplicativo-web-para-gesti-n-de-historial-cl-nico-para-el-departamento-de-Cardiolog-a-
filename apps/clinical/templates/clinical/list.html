@@ -47,7 +47,7 @@
 
       <!-- Barra de acciones y herramientas (se oculta al entrar al expediente) -->
       <div class="top-bar-actions" id="topBarActions">
-        <button type="button" class="btn-nuevo-paciente" id="btnNuevoPacienteTop" onclick="abrirModalAgregarPaciente()" title="Registrar un nuevo paciente en el sistema">
+        <button type="button" class="btn-nuevo-paciente" id="btnNuevoPacienteTop" data-clinical-action="create" onclick="abrirModalAgregarPaciente()" title="Registrar un nuevo paciente en el sistema">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           <span>Nuevo Paciente</span>
         </button>
@@ -57,27 +57,27 @@
           Seleccionar todos
         </label>
 
-        <button type="button" class="btn btn-outline-danger" id="btnEliminarSeleccionados" onclick="solicitarEliminarSeleccionados()" title="Eliminar fichas clínicas seleccionadas" style="display: none;">
+        <button type="button" class="btn btn-outline-danger" id="btnEliminarSeleccionados" data-clinical-action="delete" onclick="solicitarEliminarSeleccionados()" title="Eliminar fichas clínicas seleccionadas" style="display: none;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
           <span>Eliminar (<span id="countSeleccionadosEliminar">0</span>)</span>
         </button>
 
-        <button type="button" class="btn btn-exportar-modal" id="btnDescargarPdfsSeleccionados" onclick="descargarPDFsSeleccionados()" title="Descargar fichas clínicas seleccionadas en PDF (.ZIP)" style="display: none;">
+        <button type="button" class="btn btn-exportar-modal" id="btnDescargarPdfsSeleccionados" data-clinical-action="export" onclick="descargarPDFsSeleccionados()" title="Descargar fichas clínicas seleccionadas en PDF (.ZIP)" style="display: none;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           <span>Descargar PDFs (<span id="countSeleccionadosDescargar">0</span>)</span>
         </button>
 
-        <button type="button" class="btn btn-exportar-modal" id="btnEnviarCorreoSeleccionados" onclick="abrirModalEnviarCorreo()" title="Enviar ficha clínica oficial por correo electrónico" style="display: none;">
+        <button type="button" class="btn btn-exportar-modal" id="btnEnviarCorreoSeleccionados" data-clinical-action="share" onclick="abrirModalEnviarCorreo()" title="Enviar ficha clínica oficial por correo electrónico" style="display: none;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
           <span>Enviar enlace (<span id="countSeleccionadosCorreo">0</span>)</span>
         </button>
 
-        <button type="button" class="btn btn-exportar-modal" id="btnImportarSavTop" onclick="abrirModalImportarSav()" title="Importar archivo SPSS (.sav)">
+        <button type="button" class="btn btn-exportar-modal" id="btnImportarSavTop" data-clinical-action="import" onclick="abrirModalImportarSav()" title="Importar archivo SPSS (.sav)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
           <span>Importar .SAV</span>
         </button>
 
-        <button type="button" class="btn btn-exportar-modal" id="btnExportarInteligente" onclick="abrirModalExportar()" title="Exportación avanzada con filtros y formatos inteligentes">
+        <button type="button" class="btn btn-exportar-modal" id="btnExportarInteligente" data-clinical-action="export" onclick="abrirModalExportar()" title="Exportación avanzada con filtros y formatos inteligentes">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           <span>Exportar Datos</span>
         </button>
@@ -529,6 +529,6 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261111_13"></script>
-  <script src="{% static 'clinical/js/list.js' %}?v=20261111_12"></script>
+  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261113_remaining"></script>
+  <script src="{% static 'clinical/js/list.js' %}?v=20261113_a03"></script>
 {% endblock %}

@@ -5,6 +5,15 @@ from security.models import DEFAULT_GEMINI_MODEL, SystemSetting
 logger = logging.getLogger(__name__)
 
 
+def clinical_access(request):
+    from security.access import clinical_capabilities
+
+    capabilities = getattr(request, 'clinical_capabilities', None)
+    if capabilities is None:
+        capabilities = clinical_capabilities(request.user)
+    return {'clinical_access': capabilities}
+
+
 def global_system_settings(request):
     """
     Context processor para exponer el estado del chatbot en las plantillas.

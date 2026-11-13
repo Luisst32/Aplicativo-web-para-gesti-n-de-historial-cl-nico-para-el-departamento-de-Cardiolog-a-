@@ -5,7 +5,8 @@ from django.conf import settings
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
-from django.core.exceptions import PermissionDenied
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import JsonResponse
 from django.urls import Resolver404, resolve, reverse
 from django.utils.encoding import force_bytes, force_str
@@ -216,12 +217,15 @@ def api_change_password_view(request):
             return JsonResponse({"status": "error", "message": "La contraseña actual es incorrecta."}, status=400)
         if not new_password:
             return JsonResponse({"status": "error", "message": "Debe ingresar la nueva contraseña."}, status=400)
-        if len(new_password) < 8:
-            return JsonResponse({"status": "error", "message": "La nueva contraseña debe tener al menos 8 caracteres."}, status=400)
         if new_password != confirm_password:
             return JsonResponse({"status": "error", "message": "Las nuevas contraseñas no coinciden."}, status=400)
         if old_password == new_password:
             return JsonResponse({"status": "error", "message": "La nueva contraseña debe ser diferente a la actual."}, status=400)
+
+        try:
+            validate_password(new_password, user=user)
+        except ValidationError as exc:
+            return JsonResponse({"status": "error", "message": " ".join(exc.messages), "errors": exc.messages}, status=400)
 
         user.set_password(new_password)
         user.save()
@@ -492,10 +496,13 @@ def password_reset_confirm_view(request, uidb64, token):
 
             if not new_password:
                 return JsonResponse({"status": "error", "message": "Debe ingresar una nueva contraseña."}, status=400)
-            if len(new_password) < 8:
-                return JsonResponse({"status": "error", "message": "La nueva contraseña debe tener al menos 8 caracteres."}, status=400)
             if new_password != confirm_password:
                 return JsonResponse({"status": "error", "message": "Las contraseñas ingresadas no coinciden."}, status=400)
+
+            try:
+                validate_password(new_password, user=user)
+            except ValidationError as exc:
+                return JsonResponse({"status": "error", "message": " ".join(exc.messages), "errors": exc.messages}, status=400)
 
             user.set_password(new_password)
             user.save()

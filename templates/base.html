@@ -20,6 +20,15 @@
   <link rel="stylesheet" href="{% static 'css/global/utilities.css' %}?v=20261104_02">
 
   {% block extra_css %}{% endblock %}
+  <script src="{% static 'vendor/dompurify/purify.min.js' %}?v=3.4.17"></script>
+  <style>
+    {% if not clinical_access.create %}[data-clinical-action="create"] { display: none !important; }{% endif %}
+    {% if not clinical_access.change %}[data-clinical-action="change"] { display: none !important; }{% endif %}
+    {% if not clinical_access.delete %}[data-clinical-action="delete"] { display: none !important; }{% endif %}
+    {% if not clinical_access.import %}[data-clinical-action="import"] { display: none !important; }{% endif %}
+    {% if not clinical_access.export %}[data-clinical-action="export"] { display: none !important; }{% endif %}
+    {% if not clinical_access.share %}[data-clinical-action="share"] { display: none !important; }{% endif %}
+  </style>
 </head>
 <body>
   {% block content %}{% endblock %}
@@ -46,13 +55,22 @@
       is_admin: {% if request.user.is_administrator %}true{% else %}false{% endif %}
     };
     window.CHATBOT_ENABLED = {{ chatbot_enabled|yesno:"true,false" }};
+    window.CLINICAL_ACCESS = {
+      read: {{ clinical_access.read|yesno:"true,false" }},
+      create: {{ clinical_access.create|yesno:"true,false" }},
+      change: {{ clinical_access.change|yesno:"true,false" }},
+      delete: {{ clinical_access.delete|yesno:"true,false" }},
+      import: {{ clinical_access.import|yesno:"true,false" }},
+      export: {{ clinical_access.export|yesno:"true,false" }},
+      share: {{ clinical_access.share|yesno:"true,false" }}
+    };
     {% endif %}
   </script>
-  <script src="{% static 'js/global/utils.js' %}?v=20261104_02"></script>
+  <script src="{% static 'js/global/utils.js' %}?v=20261113_a03"></script>
   <script src="{% static 'js/global/api.js' %}?v=20261104_02"></script>
-  <script src="{% static 'js/global/ui.js' %}?v=20261111_11"></script>
+  <script src="{% static 'js/global/ui.js' %}?v=20261113_a03"></script>
   <script src="{% static 'js/global/sav_importer.js' %}?v=20261104_20"></script>
-  <script src="{% static 'js/global/eliminar_ficha.js' %}?v=20261028_4"></script>
+  <script src="{% static 'js/global/eliminar_ficha.js' %}?v=20261113_a03"></script>
 
   {% block extra_js %}{% endblock %}
 </body>

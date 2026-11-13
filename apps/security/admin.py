@@ -5,6 +5,7 @@ from .models import Role, User, UserRole, SystemSetting
 
 @admin.register(Role)
 class RoleAdmin(admin.ModelAdmin):
+    filter_horizontal = ('permissions',)
     list_display = ('role_id', 'name', 'status', 'description')
     list_filter = ('status',)
     search_fields = ('name',)
