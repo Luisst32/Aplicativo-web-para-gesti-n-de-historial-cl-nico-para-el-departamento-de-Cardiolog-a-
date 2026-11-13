@@ -929,37 +929,25 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
     add_section("Cuestionario de Actividad Física", t_mod15)
 
     # =========================================================================
-    # 16. ESTUDIOS SOLICITADOS AL PACIENTE (9 ÍTEMS OFICIALES)
+    # 16. ESTUDIOS QUE SE LE HA MANDADO AL PACIENTE (5 ÍTEMS SEGÚN CUESTIONARIO OFICIAL WORD)
     # =========================================================================
     est_analisis = is_yes('est_analisis_clinicos') or is_yes('sol_analisis') or not is_no('ac_prueba')
     est_ergo = is_yes('est_ergometria_spect') or is_yes('sol_ergometria')
     est_tac = is_yes('est_tac_cardiaco') or is_yes('sol_tac')
     est_rnm = is_yes('est_rnm_cardiaco') or is_yes('sol_rnm')
     est_ef = is_yes('est_electrofisiologia') or is_yes('sol_electrofisiologia')
-    est_eco = is_yes('est_ecocardiograma') or is_yes('sol_ecocardiograma')
-    est_holter = is_yes('est_holter') or is_yes('sol_holter')
-    est_mapa = is_yes('est_mapa') or is_yes('sol_mapa')
-    est_otros_txt = val('est_otros_detalle', val('sol_otros'))
 
     mod16_rows = [
         [
             Paragraph(f"<b>1.- Estudios de Análisis Clínicos:</b> {chk(not est_analisis)} No &nbsp; {chk(est_analisis)} Sí", q_style),
-            Paragraph(f"<b>2.- Estudios de ergometría con Spectk:</b> {chk(not est_ergo)} No &nbsp; {chk(est_ergo)} Sí", q_style)
+            Paragraph(f"<b>2.- Estudios de Ergometría con Speth:</b> {chk(not est_ergo)} No &nbsp; {chk(est_ergo)} Sí", q_style)
         ],
         [
             Paragraph(f"<b>3.- Estudios de TAC cardíaco:</b> {chk(not est_tac)} No &nbsp; {chk(est_tac)} Sí", q_style),
             Paragraph(f"<b>4.- Estudios de RNM cardíaco:</b> {chk(not est_rnm)} No &nbsp; {chk(est_rnm)} Sí", q_style)
         ],
         [
-            Paragraph(f"<b>5.- Estudios de Electrofisiología:</b> {chk(not est_ef)} No &nbsp; {chk(est_ef)} Sí", q_style),
-            Paragraph(f"<b>6.- Estudios de Ecocardiografía:</b> {chk(not est_eco)} No &nbsp; {chk(est_eco)} Sí", q_style)
-        ],
-        [
-            Paragraph(f"<b>7.- Estudios de Holter ECG:</b> {chk(not est_holter)} No &nbsp; {chk(est_holter)} Sí", q_style),
-            Paragraph(f"<b>8.- Estudios de MAPA:</b> {chk(not est_mapa)} No &nbsp; {chk(est_mapa)} Sí", q_style)
-        ],
-        [
-            Paragraph(f"<b>9.- Otros estudios indicados / observaciones:</b> {field_txt(est_otros_txt, 34)}", q_style),
+            Paragraph(f"<b>5.- Estudios de Electrofisiología Cardíaca:</b> {chk(not est_ef)} No &nbsp; {chk(est_ef)} Sí", q_style),
             Paragraph("", q_style)
         ]
     ]

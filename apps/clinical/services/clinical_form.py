@@ -103,9 +103,9 @@ def update_clinical_record(patient, raw_data, user, client_ip):
         f_raza = raw_data.get('f_raza')
         f_municipio = raw_data.get('f_municipio')
 
-        if f_nom and f_nom.strip() != 'Paciente': patient.first_names = f_nom.strip()
-        if f_ap1 and f_ap1.strip() != '[Protegido]' and not f_ap1.strip().isdigit(): patient.last_name1 = f_ap1.strip()
-        if f_ap2 is not None and f_ap2.strip() != '[Protegido]': patient.last_name2 = f_ap2.strip()
+        if f_nom and not f_nom.strip().startswith('Paciente') and '***' not in f_nom: patient.first_names = f_nom.strip()
+        if f_ap1 and f_ap1.strip() != '[Protegido]' and not f_ap1.strip().isdigit() and '***' not in f_ap1: patient.last_name1 = f_ap1.strip()
+        if f_ap2 is not None and f_ap2.strip() != '[Protegido]' and '***' not in f_ap2: patient.last_name2 = f_ap2.strip()
         if f_tel is not None and '***' not in f_tel: patient.phone = f_tel.strip()
         if f_cor is not None and '***' not in f_cor: patient.email = f_cor.strip()
         if f_fecha_nac:
