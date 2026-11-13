@@ -14,6 +14,11 @@ from .http_security import read_http_security
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Herramientas del sistema host (ej. en Windows) pueden definir DEBUG=release, lo cual bloquearía
+# la carga de DEBUG desde el .env local.
+if os.environ.get('DEBUG', '').strip().lower() == 'release':
+    os.environ.pop('DEBUG', None)
+
 # El entorno del proceso tiene prioridad; no buscar archivos .env en otras carpetas.
 load_dotenv(BASE_DIR / '.env')
 
