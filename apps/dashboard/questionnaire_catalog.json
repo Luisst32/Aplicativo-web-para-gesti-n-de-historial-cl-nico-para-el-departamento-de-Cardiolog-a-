@@ -1,0 +1,2996 @@
+{
+  "source": "CUESTIONAR UNEMI 2026.docx; clinical/form.html and Django model serializer",
+  "fields": {
+    "f_universidad": {
+      "label": "Universidad",
+      "section": "Datos del Individuo",
+      "kind": "category",
+      "options": {
+        "UNEMI": "UNEMI",
+        "ESPOL": "ESPOL"
+      }
+    },
+    "f_facultad": {
+      "label": "Facultad de la Universidad",
+      "section": "Datos del Individuo",
+      "kind": "text",
+      "options": {}
+    },
+    "f_estamento": {
+      "label": "Estamento UNEMI",
+      "section": "Datos del Individuo",
+      "kind": "category",
+      "options": {
+        "PDI": "PDI",
+        "AD": "AD",
+        "PAS": "PAS (Personal de Administración y Servicios)",
+        "SERVICIO": "SERVICIO",
+        "ESTUDIANTES": "ESTUDIANTES"
+      }
+    },
+    "f_codigo": {
+      "label": "N.° Ficha Clínica",
+      "section": "Datos del Individuo",
+      "kind": "text",
+      "options": {}
+    },
+    "f_visita": {
+      "label": "N.° de visita",
+      "section": "Datos del Individuo",
+      "kind": "number",
+      "options": {}
+    },
+    "f_fecha_visita": {
+      "label": "Fecha visita (Calendario editable)",
+      "section": "Datos del Individuo",
+      "kind": "text",
+      "options": {}
+    },
+    "f_nombre": {
+      "label": "Nombres del paciente",
+      "section": "Datos del Individuo",
+      "kind": "text",
+      "options": {}
+    },
+    "f_apellido1": {
+      "label": "Primer apellido",
+      "section": "Datos del Individuo",
+      "kind": "text",
+      "options": {}
+    },
+    "f_apellido2": {
+      "label": "Segundo apellido",
+      "section": "Datos del Individuo",
+      "kind": "text",
+      "options": {}
+    },
+    "f_provincia": {
+      "label": "Provincia de residencia",
+      "section": "Datos del Individuo",
+      "kind": "category",
+      "options": {
+        "AZUAY": "Azuay",
+        "BOLIVAR": "Bolívar",
+        "CANAR": "Cañar",
+        "CARCHI": "Carchi",
+        "CHIMBORAZO": "Chimborazo",
+        "COTOPAXI": "Cotopaxi",
+        "EL ORO": "El Oro",
+        "ESMERALDAS": "Esmeraldas",
+        "GALAPAGOS": "Galápagos",
+        "GUAYAS": "Guayas",
+        "IMBABURA": "Imbabura",
+        "LOJA": "Loja",
+        "LOS RIOS": "Los Ríos",
+        "MANABI": "Manabí",
+        "MORONA SANTIAGO": "Morona Santiago",
+        "NAPO": "Napo",
+        "ORELLANA": "Orellana",
+        "PASTAZA": "Pastaza",
+        "PICHINCHA": "Pichincha",
+        "SANTA ELENA": "Santa Elena",
+        "SANTO DOMINGO DE LOS TSACHILAS": "Santo Domingo de los Tsáchilas",
+        "SUCUMBIOS": "Sucumbíos",
+        "TUNGURAHUA": "Tungurahua",
+        "ZAMORA CHINCHIPE": "Zamora Chinchipe"
+      }
+    },
+    "f_ciudad": {
+      "label": "Ciudad de residencia / Cantón",
+      "section": "Datos del Individuo",
+      "kind": "text",
+      "options": {}
+    },
+    "f_cedula": {
+      "label": "C.I. / Cédula",
+      "section": "Datos del Individuo",
+      "kind": "text",
+      "options": {}
+    },
+    "f_telefono": {
+      "label": "Teléfono (con prefijo)",
+      "section": "Datos del Individuo",
+      "kind": "text",
+      "options": {}
+    },
+    "f_correo": {
+      "label": "Correo electrónico",
+      "section": "Datos del Individuo",
+      "kind": "text",
+      "options": {}
+    },
+    "f_provincia_nac": {
+      "label": "Provincia de nacimiento",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "category",
+      "options": {
+        "AZUAY": "Azuay",
+        "BOLIVAR": "Bolívar",
+        "CANAR": "Cañar",
+        "CARCHI": "Carchi",
+        "CHIMBORAZO": "Chimborazo",
+        "COTOPAXI": "Cotopaxi",
+        "EL ORO": "El Oro",
+        "ESMERALDAS": "Esmeraldas",
+        "GALAPAGOS": "Galápagos",
+        "GUAYAS": "Guayas",
+        "IMBABURA": "Imbabura",
+        "LOJA": "Loja",
+        "LOS RIOS": "Los Ríos",
+        "MANABI": "Manabí",
+        "MORONA SANTIAGO": "Morona Santiago",
+        "NAPO": "Napo",
+        "ORELLANA": "Orellana",
+        "PASTAZA": "Pastaza",
+        "PICHINCHA": "Pichincha",
+        "SANTA ELENA": "Santa Elena",
+        "SANTO DOMINGO DE LOS TSACHILAS": "Santo Domingo de los Tsáchilas",
+        "SUCUMBIOS": "Sucumbíos",
+        "TUNGURAHUA": "Tungurahua",
+        "ZAMORA CHINCHIPE": "Zamora Chinchipe",
+        "EXTRANJERO": "Otro país (especificar)"
+      }
+    },
+    "f_municipio": {
+      "label": "Lugar nac. Municipio / Cantón",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "text",
+      "options": {}
+    },
+    "f_pais_nac": {
+      "label": "País de nacimiento",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "text",
+      "options": {}
+    },
+    "f_fecha_nac": {
+      "label": "Fecha de nacimiento (Calendario)",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "text",
+      "options": {}
+    },
+    "f_edad": {
+      "label": "Edad (Calculada automáticamente)",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "text",
+      "options": {}
+    },
+    "f_sexo": {
+      "label": "Sexo",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "category",
+      "options": {
+        "H": "H (Hombre)",
+        "M": "M (Mujer)"
+      }
+    },
+    "f_raza": {
+      "label": "Raza",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "category",
+      "options": {
+        "MESTIZO": "Mestizo/a",
+        "AFRICANA": "Afroecuatoriano/a / Africana",
+        "BLANCA": "Blanco/a",
+        "INDÍGENA": "Indígena",
+        "MONTUBIA": "Montubio/a",
+        "OTRA": "Otra"
+      }
+    },
+    "f_estado_civil": {
+      "label": "Estado Civil",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "category",
+      "options": {
+        "1_soltero": "1 Soltero/a.",
+        "2_casado": "2 Casado/a.",
+        "3_divorciado": "3 Divorciado/a a separado/a.",
+        "4_viudo": "4 Viudo/a",
+        "5_union_libre": "5 Unión Libre / Conviviente"
+      }
+    },
+    "f_hijos": {
+      "label": "¿Cuántos hijos tiene?",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "number",
+      "options": {}
+    },
+    "f_convive_con": {
+      "label": "¿Con quién vive usted ahora?",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "category",
+      "options": {
+        "1": "1 Sólo/a",
+        "2": "2 Con su pareja",
+        "3": "3 Con su pareja e hijos",
+        "4": "4 Con sus hijos",
+        "5": "5 Con su pareja, hijos y otros familiares",
+        "6": "6 Con sus padres y hermanos/as.",
+        "7": "7 Con otros no familiares"
+      }
+    },
+    "f_convivientes": {
+      "label": "Personas convivientes",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "number",
+      "options": {}
+    },
+    "f_estudios": {
+      "label": "Mayor nivel de estudios",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "category",
+      "options": {
+        "1": "1 No sabe leer o escribir.",
+        "2": "2 Preescolar",
+        "3": "3 Estudios Primarios",
+        "4": "4 Estudios secundarios",
+        "5": "5 Ciclo post-bachillerato",
+        "6": "6 Estudios superiores",
+        "7": "7 Postgrado"
+      }
+    },
+    "f_horario": {
+      "label": "Horario laboral",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "category",
+      "options": {
+        "1": "1 Jornada partida (Mañana/tarde)",
+        "2": "2 Jornada continua en mañanas y tarde",
+        "3": "3 Jornada continua en tardes",
+        "4": "4 Turnos rotativos"
+      }
+    },
+    "f_profesion": {
+      "label": "Categoría profesión",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "category",
+      "options": {
+        "1": "1 Profesor permanente",
+        "2": "2 Profesor no permanente",
+        "3": "3 Personal de administración.",
+        "4": "4 Personal de servicios",
+        "5": "5 Otra categoría.",
+        "6": "6 Estudiante",
+        "7": "7 Jubilado"
+      }
+    },
+    "f_vivienda": {
+      "label": "Su vivienda es",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "category",
+      "options": {
+        "1": "1 Propia",
+        "2": "2 Alquilada",
+        "3": "3 Vivienda familiar",
+        "4": "4 Otro"
+      }
+    },
+    "f_ingresos": {
+      "label": "Ingresos totales familia",
+      "section": "Cuestionario Sociodemográfico",
+      "kind": "category",
+      "options": {
+        "1": "1.- Menos de 500 dólares/mes",
+        "2": "2.- Entre 500-1.000 dólares/mes",
+        "3": "3.- 1001-1500 dólares /mes",
+        "4": "4.- 1501 -2000 dólares/mes",
+        "5": "5.- 2001-2500 dólares/mes",
+        "6": "6. 2501-3000 dólares/mes",
+        "7": "7.- 3001-3500 ............dólares/mes",
+        "8": "8.- Otras....................."
+      }
+    },
+    "f_peso": {
+      "label": "Peso (kg)",
+      "section": "Exploración Física",
+      "kind": "number",
+      "options": {}
+    },
+    "f_talla": {
+      "label": "Talla (cm)",
+      "section": "Exploración Física",
+      "kind": "number",
+      "options": {}
+    },
+    "f_perimetro": {
+      "label": "Perímetro Abdominal (cm)",
+      "section": "Exploración Física",
+      "kind": "number",
+      "options": {}
+    },
+    "f_imc": {
+      "label": "IMC (kg/m²) (Calculado automáticamente)",
+      "section": "Exploración Física",
+      "kind": "text",
+      "options": {}
+    },
+    "f_asc": {
+      "label": "ASC (m²) (Calculada automáticamente)",
+      "section": "Exploración Física",
+      "kind": "text",
+      "options": {}
+    },
+    "f_sat_o2": {
+      "label": "Saturación O2 (%)",
+      "section": "Exploración Física",
+      "kind": "number",
+      "options": {}
+    },
+    "f_tas": {
+      "label": "TAS - Sistólica (mm Hg)",
+      "section": "Exploración Física",
+      "kind": "number",
+      "options": {}
+    },
+    "f_tsi": {
+      "label": "TSI - Diastólica/Contralateral (mm Hg)",
+      "section": "Exploración Física",
+      "kind": "number",
+      "options": {}
+    },
+    "soplos": {
+      "label": "Soplos cardiacos",
+      "section": "Exploración Física",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Si"
+      }
+    },
+    "soplo_grado": {
+      "label": "Grado",
+      "section": "Exploración Física",
+      "kind": "text",
+      "options": {}
+    },
+    "soplo_tipo": {
+      "label": "Grado",
+      "section": "Exploración Física",
+      "kind": "text",
+      "options": {}
+    },
+    "extratonos": {
+      "label": "Extra-tonos",
+      "section": "Exploración Física",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Si"
+      }
+    },
+    "extratonos_detalle": {
+      "label": "Extratonos: descripción",
+      "section": "Exploración Física",
+      "kind": "text",
+      "options": {}
+    },
+    "pulsos_palp": {
+      "label": "Pulsos pedios palpables",
+      "section": "Exploración Física",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pulsos_sim": {
+      "label": "Pulsos pedios palpables",
+      "section": "Exploración Física",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Si"
+      }
+    },
+    "resp_norm": {
+      "label": "Exploración respiratoria normal",
+      "section": "Exploración Física",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Si"
+      }
+    },
+    "estert": {
+      "label": "Existe Estertores",
+      "section": "Exploración Física",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Si"
+      }
+    },
+    "sibil": {
+      "label": "Existe Estertores",
+      "section": "Exploración Física",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Si"
+      }
+    },
+    "abdom_norm": {
+      "label": "Exploración abdominal normal",
+      "section": "Exploración Física",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "hepatomegalia": {
+      "label": "Tiene hepatomegalia",
+      "section": "Exploración Física",
+      "kind": "category",
+      "options": {
+        "on": "Tiene hepatomegalia"
+      }
+    },
+    "organomegalia": {
+      "label": "Tiene hepatomegalia",
+      "section": "Exploración Física",
+      "kind": "category",
+      "options": {
+        "on": "Tiene organomegalia."
+      }
+    },
+    "abd_alteracion_detalle": {
+      "label": "Tiene hepatomegalia",
+      "section": "Exploración Física",
+      "kind": "text",
+      "options": {}
+    },
+    "r_hta": {
+      "label": "• 1.- Hipertensión",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "r_hta_trat": {
+      "label": "No tratada",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No tratada",
+        "Si": "Sí tratada"
+      }
+    },
+    "hta_medicamentos": {
+      "label": "No tratada",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "text",
+      "options": {}
+    },
+    "r_mapa": {
+      "label": "Prueba de MAPA",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "mapa_resultado": {
+      "label": "Resultado de MAPA",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "Normal": "Normal",
+        "Alterada": "Alterada"
+      }
+    },
+    "r_dm": {
+      "label": "Diabetes mellitus",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "dm_clasificacion": {
+      "label": "Clasificación",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "Diabetes tipo 2, tratada solo con antidiabéticos orales.": "Diabetes tipo 2, tratada solo con antidiabéticos orales",
+        "Diabetes tipo 2, tratada con insulina y antidiabéticos orales": "Diabetes tipo 2, tratada con insulina y antidiabéticos orales",
+        "Diabetes tipo 2, no tratada.": "Diabetes tipo 2, no tratada",
+        "Diabetes tipo 1, tratada con insulina": "Diabetes tipo 1, tratada con insulina",
+        "Diabetes tipo 1, no tratada.": "Diabetes tipo 1, no tratada",
+        "Tiene diabetes pero no especifica tipo": "Tiene diabetes pero no especifica tipo"
+      }
+    },
+    "dm_farmacos": {
+      "label": "Clasificación",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "text",
+      "options": {}
+    },
+    "r_dislip": {
+      "label": "Dislipemia",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "r_dislip_trat": {
+      "label": "No tratada con fármacos",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No tratada con fármacos",
+        "Si": "Sí tratada con fármacos"
+      }
+    },
+    "dislip_tipo": {
+      "label": "No tratada con fármacos",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "text",
+      "options": {}
+    },
+    "dislip_farmacos": {
+      "label": "No tratada con fármacos",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "text",
+      "options": {}
+    },
+    "r_tabaco": {
+      "label": "Tabaquismo",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "tabaco_frecuencia": {
+      "label": "Frecuencia",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "Sí, menos de 5 al día": "Menos de 5 al día",
+        "Sí, entre 5 y 10 al día": "Entre 5 y 10 al día",
+        "Sí, entre 10 y 20 al día": "Entre 10 y 20 al día",
+        "Sí, más de 20 al día": "Más de 20 al día"
+      }
+    },
+    "tabaco_cantidad": {
+      "label": "Frecuencia",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "number",
+      "options": {}
+    },
+    "chk_exfumador": {
+      "label": "Frecuencia",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "on": "Exfumador > 10 años"
+      }
+    },
+    "chk_nunca_fumo": {
+      "label": "Frecuencia",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "on": "nunca fumó"
+      }
+    },
+    "r_alcohol": {
+      "label": "Alcohol",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "alcohol_frecuencia": {
+      "label": "Frecuencia",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "Consume alcohol de manera ocasional": "De manera ocasional",
+        "Consume alcohol mensualmente": "Mensualmente",
+        "Consume alcohol semanalmente": "Semanalmente",
+        "Consume alcohol diariamente": "Diariamente"
+      }
+    },
+    "chk_ex_alcohol": {
+      "label": "Frecuencia",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "on": "Ex tomador > 1 año"
+      }
+    },
+    "alcohol_unidades": {
+      "label": "Frecuencia",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "text",
+      "options": {}
+    },
+    "r_drogas": {
+      "label": "Drogas",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "drogas_cuales": {
+      "label": "Cuáles",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "text",
+      "options": {}
+    },
+    "drogas_frecuencia": {
+      "label": "Cuáles",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "Consume drogas ocasionalmente": "Ocasionalmente",
+        "Consume drogas semanalmente": "Semanalmente",
+        "Consume drogas diariamente": "Diariamente"
+      }
+    },
+    "chk_ex_drogas": {
+      "label": "Cuáles",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "on": "Ex consumidor > 1 año"
+      }
+    },
+    "drogas_dosis_diaria": {
+      "label": "Dosis diaria",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "text",
+      "options": {}
+    },
+    "drogas_dosis_semanal": {
+      "label": "Dosis diaria",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "text",
+      "options": {}
+    },
+    "drogas_dosis_ocasional": {
+      "label": "Dosis diaria",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "text",
+      "options": {}
+    },
+    "r_obesidad": {
+      "label": "Obesidad",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "obesidad_grado": {
+      "label": "Grado según base",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "Obesidad grado 1 (leve)": "Obesidad grado 1 (leve)",
+        "Obesidad grado 2 (moderada)": "Obesidad grado 2 (moderada)",
+        "Obesidad grado 3 (mórbida)": "Obesidad grado 3 (mórbida)"
+      }
+    },
+    "r_sobrepeso": {
+      "label": "Sobrepeso",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "r_arritmias": {
+      "label": "Arritmias",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "arritmias_tipo": {
+      "label": "Tipo de arritmia",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "Sí, arritmia tipo taquicardia": "Taquicardia",
+        "Sí, arritmia tipo bradicardia": "Bradicardia",
+        "Sí, arritmia tipo extrasístoles": "Extrasístoles",
+        "Sí, arritmia tipo palpitaciones": "Palpitaciones",
+        "Sí, arritmia tipo BCRDHH": "BCRDHH",
+        "Sí, arritmia tipo extensible aislada": "Extensible aislada",
+        "Sí, no especifica": "No especifica"
+      }
+    },
+    "r_sincopes": {
+      "label": "Síncopes",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "sincopes_tipo": {
+      "label": "Tipo de síncope",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "Sí, síncope vasovagal": "Síncope vasovagal",
+        "Sí, síncope ortostático": "Síncope ortostático",
+        "Sí, síncope cardíaco": "Síncope cardíaco",
+        "Sí, síncope neurológico": "Síncope neurológico",
+        "Sí, no especifica tipo": "No especifica tipo"
+      }
+    },
+    "r_holter": {
+      "label": "Prueba de Holter (A arritmias y/o síncope se indicará Holter 24h)",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "holter_resultado": {
+      "label": "Resultado de Holter",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "Normal": "Normal",
+        "Alterada": "Alterada"
+      }
+    },
+    "r_vasc_perif": {
+      "label": "Vasculopatía periférica",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "r_vasc_carot": {
+      "label": "Vasculopatía carotídea",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "r_vasc_fem": {
+      "label": "Vasculopatía femoral",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "r_irc": {
+      "label": "Insuficiencia renal crónica",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "r_irc_tipo": {
+      "label": "Diálisis",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "dialisis": "Diálisis",
+        "trasplante": "Trasplante renal"
+      }
+    },
+    "r_ictus": {
+      "label": "Antecedentes ictus/AIT",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "r_disfunc": {
+      "label": "Disfunción eréctil",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "r_higado": {
+      "label": "Hígado graso",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "r_apnea": {
+      "label": "Apnea del sueño",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "r_otros": {
+      "label": "Otros",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "otros_factores_detalle": {
+      "label": "Cuáles",
+      "section": "Factores de Riesgo Modificables",
+      "kind": "text",
+      "options": {}
+    },
+    "sueno_cantidad": {
+      "label": "Cantidad de sueño",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "Buena": "Buena",
+        "Regular": "Regular",
+        "Mala": "Mala"
+      }
+    },
+    "sueno_calidad": {
+      "label": "Calidad del sueño",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "Buena": "Buena",
+        "Regular": "Regular",
+        "Mala": "Mala"
+      }
+    },
+    "em_toxicos": {
+      "label": "Trabaja con tóxicos",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "toxicos_cuales": {
+      "label": "Cuales",
+      "section": "Factores Emergentes",
+      "kind": "text",
+      "options": {}
+    },
+    "em_estrogenos": {
+      "label": "– Niveles bajos de estrógenos en la mujer",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Si"
+      }
+    },
+    "em_estrogenos_menopausia": {
+      "label": "menopausia.",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "1": "menopausia."
+      }
+    },
+    "em_estrogenos_otras": {
+      "label": "menopausia.",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "1": "Otras causas"
+      }
+    },
+    "em_anticonceptivos": {
+      "label": "Usa anticonceptivo >35 años",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Si"
+      }
+    },
+    "em_estres_trab": {
+      "label": "— Tiene estrés en el trabajo",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Si"
+      }
+    },
+    "em_estres_fam": {
+      "label": "— Tiene estrés en la vida familiar",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Si"
+      }
+    },
+    "em_mal_amb": {
+      "label": "Mal ambiente laboral",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Si"
+      }
+    },
+    "em_pers_a": {
+      "label": "Personalidad tipo A",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Si"
+      }
+    },
+    "em_exigente": {
+      "label": "Exigente con uno mismo y con los demás",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "1": "Exigente con uno mismo y con los demás"
+      }
+    },
+    "em_perfeccionista": {
+      "label": "Exigente con uno mismo y con los demás",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "1": "Perfeccionista"
+      }
+    },
+    "em_hiperactivo": {
+      "label": "Exigente con uno mismo y con los demás",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "1": "Hiperactivo en la consecución de logros"
+      }
+    },
+    "em_ambicioso": {
+      "label": "Exigente con uno mismo y con los demás",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "1": "Ambicioso"
+      }
+    },
+    "em_hostilidad": {
+      "label": "Exigente con uno mismo y con los demás",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "1": "Hostilidad (impaciente, opositor, impulsivo)"
+      }
+    },
+    "em_aislamiento": {
+      "label": "Exigente con uno mismo y con los demás",
+      "section": "Factores Emergentes",
+      "kind": "category",
+      "options": {
+        "1": "Aislamiento social"
+      }
+    },
+    "nm_cardiopatia": {
+      "label": "Antecedentes familiares de cardiopatía Isquémica (Angina, infarto, muerte súbita)",
+      "section": "Otros Factores de Riesgo No Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "S i"
+      }
+    },
+    "nm_fallecido": {
+      "label": "Algún familiar directo ha fallecido cardiopatía Isquémica (<55v / <65m)",
+      "section": "Otros Factores de Riesgo No Modificables",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ant_padre_hta": {
+      "label": "HTA",
+      "section": "Antecedentes Familiares",
+      "kind": "category",
+      "options": {
+        "Si": "HTA"
+      }
+    },
+    "ant_padre_dm": {
+      "label": "HTA",
+      "section": "Antecedentes Familiares",
+      "kind": "category",
+      "options": {
+        "Si": "Diabetes"
+      }
+    },
+    "ant_padre_dislip": {
+      "label": "HTA",
+      "section": "Antecedentes Familiares",
+      "kind": "category",
+      "options": {
+        "Si": "Dislipemia:"
+      }
+    },
+    "ant_madre_hta": {
+      "label": "HTA",
+      "section": "Antecedentes Familiares",
+      "kind": "category",
+      "options": {
+        "Si": "HTA"
+      }
+    },
+    "ant_madre_dm": {
+      "label": "HTA",
+      "section": "Antecedentes Familiares",
+      "kind": "category",
+      "options": {
+        "Si": "Diabetes"
+      }
+    },
+    "ant_madre_dislip": {
+      "label": "HTA",
+      "section": "Antecedentes Familiares",
+      "kind": "category",
+      "options": {
+        "Si": "Dislipemia"
+      }
+    },
+    "ant_otras_tog": {
+      "label": "Otras enfermedades",
+      "section": "Antecedentes Familiares",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Si"
+      }
+    },
+    "ant_familiares_cuales": {
+      "label": "Otras enfermedades",
+      "section": "Antecedentes Familiares",
+      "kind": "text",
+      "options": {}
+    },
+    "hc_prob": {
+      "label": "Historia de cualquier problema del corazón",
+      "section": "Historia Clínica Actual Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "prob_corazon_detalle": {
+      "label": "Cuáles",
+      "section": "Historia Clínica Actual Cardiovascular",
+      "kind": "text",
+      "options": {}
+    },
+    "hc_isquemica": {
+      "label": "Cardiopatía isquémica",
+      "section": "Historia Clínica Actual Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "hc_isquemica_angina": {
+      "label": "Angina",
+      "section": "Historia Clínica Actual Cardiovascular",
+      "kind": "category",
+      "options": {
+        "1": "Angina"
+      }
+    },
+    "hc_isquemica_infarto": {
+      "label": "Angina",
+      "section": "Historia Clínica Actual Cardiovascular",
+      "kind": "category",
+      "options": {
+        "1": "Infarto de miocardio"
+      }
+    },
+    "hc_revasc": {
+      "label": "Revascularización coronaria",
+      "section": "Historia Clínica Actual Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "hc_revasc_tipo": {
+      "label": "Con angioplastia",
+      "section": "Historia Clínica Actual Cardiovascular",
+      "kind": "category",
+      "options": {
+        "angioplastia": "Con angioplastia",
+        "bypass": "Con Bypass",
+        "ambas": "Con ambas"
+      }
+    },
+    "hc_insuf_cardiaca": {
+      "label": "Historia de Insuficiencia cardiaca",
+      "section": "Historia Clínica Actual Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "hc_valvulopatia": {
+      "label": "Historia de valvulopatía",
+      "section": "Historia Clínica Actual Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "hc_valvulopatia_cuales": {
+      "label": "¿Cuáles?",
+      "section": "Historia Clínica Actual Cardiovascular",
+      "kind": "text",
+      "options": {}
+    },
+    "hc_valvulopatia_operado": {
+      "label": "¿Cuáles?",
+      "section": "Historia Clínica Actual Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "hc_ingresado": {
+      "label": "Ha estado ingresado en el hospital por algún problema cardiaco",
+      "section": "Historia Clínica Actual Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "hc_ingresado_cual": {
+      "label": "¿Cuál?",
+      "section": "Historia Clínica Actual Cardiovascular",
+      "kind": "text",
+      "options": {}
+    },
+    "nc_reuma": {
+      "label": "Enfermedad reumatológica/inmunológica",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "reuma_detalle": {
+      "label": "Cuáles",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "text",
+      "options": {}
+    },
+    "nc_cancer": {
+      "label": "Historia de cáncer",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "cancer_pulmon": {
+      "label": "Tipo de cáncer",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "1": "Pulmón"
+      }
+    },
+    "cancer_prostata": {
+      "label": "Tipo de cáncer",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "1": "Próstata"
+      }
+    },
+    "cancer_colon": {
+      "label": "Tipo de cáncer",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "1": "Colon"
+      }
+    },
+    "cancer_mama": {
+      "label": "Tipo de cáncer",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "1": "Mama"
+      }
+    },
+    "cancer_vejiga": {
+      "label": "Tipo de cáncer",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "1": "Vejiga"
+      }
+    },
+    "cancer_utero": {
+      "label": "Tipo de cáncer",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "1": "Útero"
+      }
+    },
+    "cancer_ovario": {
+      "label": "Tipo de cáncer",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "1": "Ovario"
+      }
+    },
+    "cancer_otro": {
+      "label": "Tipo de cáncer",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "1": "Otro:"
+      }
+    },
+    "cancer_otro_detalle": {
+      "label": "Tipo de cáncer",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "text",
+      "options": {}
+    },
+    "cancer_qt": {
+      "label": "¿Recibió Qt (Quimioterapia)?",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "cancer_rt": {
+      "label": "¿Recibió RT (Radioterapia)?",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "nc_epoc": {
+      "label": "EPOC",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "nc_asma": {
+      "label": "Asma",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "nc_depresion": {
+      "label": "Depresión",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "nc_ansiedad": {
+      "label": "Ansiedad",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "nc_alergia": {
+      "label": "Alergia a medicamentos",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "alergia_medicamento": {
+      "label": "¿Cuál?",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "text",
+      "options": {}
+    },
+    "nc_otras": {
+      "label": "Otras",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "otras_enf_detalle": {
+      "label": "Cuáles",
+      "section": "Historia Clínica No Cardiovascular",
+      "kind": "text",
+      "options": {}
+    },
+    "covid_paso": {
+      "label": "Ha pasado el COVID-19",
+      "section": "COVID-19",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "covid_ingreso": {
+      "label": "¿Estuvo ingresado en el hospital?",
+      "section": "COVID-19",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "covid_cv": {
+      "label": "Le detectaron alguna afectación cardiovascular debida al COVID-19",
+      "section": "COVID-19",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "covid_cv_detalle": {
+      "label": "¿Cuál?",
+      "section": "COVID-19",
+      "kind": "text",
+      "options": {}
+    },
+    "covid_pulm": {
+      "label": "Le detectaron alguna afectación pulmonar debida al COVID-19",
+      "section": "COVID-19",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "covid_pulm_detalle": {
+      "label": "¿Cuál?",
+      "section": "COVID-19",
+      "kind": "text",
+      "options": {}
+    },
+    "covid_otras": {
+      "label": "Otras",
+      "section": "COVID-19",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "covid_otras_detalle": {
+      "label": "Cuáles",
+      "section": "COVID-19",
+      "kind": "text",
+      "options": {}
+    },
+    "longcovid": {
+      "label": "Ha presentado después del COVID, algún síntoma que antes no tenía",
+      "section": "Long-COVID",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "longcovid_sintomas": {
+      "label": "Cuál/es",
+      "section": "Long-COVID",
+      "kind": "text",
+      "options": {}
+    },
+    "rose_1": {
+      "label": "¿A veces tiene algún dolor o molestia en el pecho?",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "rose_zona_1": {
+      "label": "Zona 1",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "on": "Zona 1"
+      }
+    },
+    "rose_zona_2": {
+      "label": "Zona 1",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "on": "Zona 2"
+      }
+    },
+    "rose_zona_3": {
+      "label": "Zona 1",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "on": "Zona 3"
+      }
+    },
+    "rose_zona_4": {
+      "label": "Zona 1",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "on": "Zona 4"
+      }
+    },
+    "rose_zona_5": {
+      "label": "Zona 1",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "on": "Zona 5"
+      }
+    },
+    "rose_zona_6": {
+      "label": "Zona 1",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "on": "Zona 6"
+      }
+    },
+    "rose_zona_7": {
+      "label": "Zona 1",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "on": "Zona 7"
+      }
+    },
+    "rose_zona_8": {
+      "label": "Zona 1",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "on": "Zona 8"
+      }
+    },
+    "rose_zona_9": {
+      "label": "Zona 1",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "on": "Zona 9"
+      }
+    },
+    "rose_3": {
+      "label": "¿Cuándo camina a paso habitual, esto le produce la molestia?",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "rose_4": {
+      "label": "¿Cuándo camina cuesta arriba o apurado, esto le produce la molestia?",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "rose_5": {
+      "label": "¿Cuándo tiene dolor caminando, qué hace?",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "se_para": "Se para",
+        "disminuye": "Disminuye la marcha",
+        "continua": "Continúa al mismo paso"
+      }
+    },
+    "rose_7": {
+      "label": "¿En cuánto tiempo desaparece?",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "10_o_menos": "10 minutos o menos",
+        "mas_10": "Más de 10 minutos"
+      }
+    },
+    "rose_6": {
+      "label": "¿Desaparece el dolor o molestia en el pecho si se queda quieto?",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "rose_8": {
+      "label": "Cuestionario de dolor de pecho de G. Rose",
+      "section": "Cuestionario de Dolor de Pecho de G. Rose",
+      "kind": "category",
+      "options": {
+        "Negativo": "Negativo",
+        "Positivo": "Positivo"
+      }
+    },
+    "nyha_clase": {
+      "label": "Clasificación Funcional NYHA",
+      "section": "Clasificación Funcional NYHA",
+      "kind": "category",
+      "options": {
+        "I": "Clase I",
+        "II": "Clase II",
+        "III": "Clase III",
+        "IV": "Clase IV"
+      }
+    },
+    "ecg_ritmo": {
+      "label": "ECG Ritmo",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "RS": "RS (ritmo sinusal)",
+        "RL": "RL",
+        "SIUNSAL": "SINUSAL",
+        "ACXFA": "ACXFA (Fibrilación auricular)",
+        "OTRO": "Otro ritmo"
+      }
+    },
+    "ecg_fc": {
+      "label": "Frecuencia cardíaca (lpm)",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "number",
+      "options": {}
+    },
+    "ecg_eje": {
+      "label": "Eje eléctrico A QRS (°)",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "text",
+      "options": {}
+    },
+    "ecg_rr": {
+      "label": "Intervalo RR (seg)",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "number",
+      "options": {}
+    },
+    "ecg_p_mm": {
+      "label": "Onda P (mm)",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "number",
+      "options": {}
+    },
+    "ecg_pr": {
+      "label": "Intervalo PR (seg / ms)",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "text",
+      "options": {}
+    },
+    "ecg_qrs": {
+      "label": "Complejo QRS (seg / ms)",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "text",
+      "options": {}
+    },
+    "ecg_qt": {
+      "label": "Intervalo QT (seg / ms)",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "text",
+      "options": {}
+    },
+    "ecg_qtc": {
+      "label": "Intervalo corregido Bazett (mseg)",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "number",
+      "options": {}
+    },
+    "ecg_p_mitral": {
+      "label": "Onda P mitral",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_bloqueo_av": {
+      "label": "Bloqueo A-V",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_bloqueo_av_grado": {
+      "label": "Grado",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "text",
+      "options": {}
+    },
+    "ecg_bloqueo_sa": {
+      "label": "Bloqueo sinoauricular",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_bloqueo_ia": {
+      "label": "Bloqueo interauricular",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_hemibloqueo": {
+      "label": "Hemibloqueos",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_hemibloqueo_cual": {
+      "label": "¿Cuál?",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "text",
+      "options": {}
+    },
+    "ecg_bloqueo_rama_sn": {
+      "label": "Bloqueo de Rama",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_bloqueo_rama": {
+      "label": "¿Cuál?",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "text",
+      "options": {}
+    },
+    "ecg_brugada": {
+      "label": "Patrón Brugada",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_repolarizacion_precoz": {
+      "label": "Repolarización precoz",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_hvi": {
+      "label": "Criterios HVI",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_sobrecarga_sistolica": {
+      "label": "Sobrecarga Sistólica",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_sobrecarga_complejos": {
+      "label": "Complejos",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "text",
+      "options": {}
+    },
+    "ecg_deflexion_intrinsicoide": {
+      "label": "Deflexión intrinsicoide V5-V6 (seg)",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "number",
+      "options": {}
+    },
+    "ecg_hvd": {
+      "label": "Criterio de HVD",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_onda_delta": {
+      "label": "Onda Delta",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_cubeta_digitalica": {
+      "label": "Cubeta digitálica",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_onda_q": {
+      "label": "Onda Q patológica",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_onda_q_amplitud": {
+      "label": "Amplitud",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "text",
+      "options": {}
+    },
+    "ecg_onda_q_voltaje": {
+      "label": "Amplitud",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "number",
+      "options": {}
+    },
+    "ecg_onda_q_complejos": {
+      "label": "Amplitud",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "text",
+      "options": {}
+    },
+    "ecg_t_negativa": {
+      "label": "T negativa",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_t_negativa_complejos": {
+      "label": "Complejos",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "text",
+      "options": {}
+    },
+    "ecg_t_simetrica": {
+      "label": "Complejos",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "Si": "Sí",
+        "No": "No"
+      }
+    },
+    "ecg_t_asimetrica": {
+      "label": "Complejos",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "Si": "Sí",
+        "No": "No"
+      }
+    },
+    "ecg_st_ascenso": {
+      "label": "Ascenso del ST patológico",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_st_ascenso_mm": {
+      "label": "Elevación (mm)",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "number",
+      "options": {}
+    },
+    "ecg_st_ascenso_complejos": {
+      "label": "Elevación (mm)",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "text",
+      "options": {}
+    },
+    "ecg_st_descenso": {
+      "label": "Descenso ST",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_st_descenso_mm": {
+      "label": "Depresión (mm)",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "number",
+      "options": {}
+    },
+    "ecg_st_descenso_complejos": {
+      "label": "Depresión (mm)",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "text",
+      "options": {}
+    },
+    "ecg_normal": {
+      "label": "ECG Normal",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ecg_comentario": {
+      "label": "Comentario del ECG",
+      "section": "Resultados del Electrocardiograma",
+      "kind": "text",
+      "options": {}
+    },
+    "ac_prueba": {
+      "label": "Análisis clínicos: resultado de la prueba",
+      "section": "Análisis Clínicos",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ac_resultado": {
+      "label": "Resultado de los análisis clínicos",
+      "section": "Análisis Clínicos",
+      "kind": "category",
+      "options": {
+        "Normal": "Normal",
+        "Alterada": "Alterada"
+      }
+    },
+    "hemo_hematies": {
+      "label": "Hematíes",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hemo_hemoglobina": {
+      "label": "Hemoglobina",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hemo_hematocrito": {
+      "label": "Hematocrito",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hemo_vcm": {
+      "label": "VCM",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hemo_hcm": {
+      "label": "HCM",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hemo_chcm": {
+      "label": "CHCM",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hemo_leucocitos": {
+      "label": "Leucocitos",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hemo_neutrofilos": {
+      "label": "Neutrófilos",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hemo_eosinofilos": {
+      "label": "Eosinófilos",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hemo_basofilos": {
+      "label": "Basófilos",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hemo_linfocitos": {
+      "label": "Linfocitos",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hemo_monocitos": {
+      "label": "Monocitos",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hemo_plaquetas": {
+      "label": "Plaquetas",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hemo_inr": {
+      "label": "INR",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hemo_tpt": {
+      "label": "Tiempo parcial de tromboplastina",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hemo_fibrinogeno": {
+      "label": "Fibrinógeno",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "tiroidea_tsh": {
+      "label": "TSH",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "tiroidea_t4": {
+      "label": "Hormonas tiroideas T4",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "tiroidea_t3": {
+      "label": "Hormonas tiroideas T3",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "renal_urea": {
+      "label": "Urea",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "renal_creatinina": {
+      "label": "Creatinina",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "renal_filtrado": {
+      "label": "Filtrado glomerular",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "orina_microalbuminuria": {
+      "label": "Microalbuminuria",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "ion_potasio": {
+      "label": "Potasio",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "ion_calcio": {
+      "label": "Calcio",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "ion_magnesio": {
+      "label": "Magnesio",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "ion_sodio": {
+      "label": "Sodio",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "diab_glucosa": {
+      "label": "Glucosa en sangre",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "diab_hba1c": {
+      "label": "Hemoglobina glicosilada",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "diab_homair": {
+      "label": "HOMA IR",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "diab_insulina": {
+      "label": "Insulina en Ayunas",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "riesgo_colesterol": {
+      "label": "Colesterol Total",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "riesgo_hdl": {
+      "label": "HDL",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "riesgo_ldl": {
+      "label": "LDL",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "riesgo_vldl": {
+      "label": "VLDL",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "riesgo_trigliceridos": {
+      "label": "Triglicéridos",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "riesgo_lipoproteina_a": {
+      "label": "Lipoproteína a",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "riesgo_apo_b": {
+      "label": "Apolipoproteína B",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "emerg_homocisteina": {
+      "label": "Homocisteína",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "emerg_pcr": {
+      "label": "PCR ultrasensible",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "emerg_acido_urico": {
+      "label": "Ácido Úrico",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hepatica_ggt": {
+      "label": "GGT",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hepatica_gpt": {
+      "label": "GPT (ALT)",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hepatica_got": {
+      "label": "GOT (AST)",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hepatica_fosfatasa": {
+      "label": "Fosfatasa alcalina",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "hepatica_bilirrubina": {
+      "label": "Bilirrubina",
+      "section": "Análisis Clínicos",
+      "kind": "number",
+      "options": {}
+    },
+    "comentario_analisis": {
+      "label": "Comentario de los Análisis Clínicos",
+      "section": "Análisis Clínicos",
+      "kind": "text",
+      "options": {}
+    },
+    "ip_medida_chorro": {
+      "label": "Medida del chorro regurgitante (%)",
+      "section": "Insuficiencia Pulmonar",
+      "kind": "number",
+      "options": {}
+    },
+    "ip_grado": {
+      "label": "Insuficiencia pulmonar",
+      "section": "Insuficiencia Pulmonar",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Leve": "Leve",
+        "Moderada": "Moderada",
+        "Severa": "Severa"
+      }
+    },
+    "peri_derrame": {
+      "label": "Derrame pericárdico",
+      "section": "Pericardio",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "ip_ancho_chorro": {
+      "label": "Grosor derrame pericárdico (<1cm leve, >1cm moderado, >2cm severo)",
+      "section": "Pericardio",
+      "kind": "number",
+      "options": {}
+    },
+    "res_vi_dilatado": {
+      "label": "Ventrículo Izquierdo Dilatado",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "res_vi_hipertrofico": {
+      "label": "Ventrículo Izquierdo Hipertrófico",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "res_vi_hipertrofico_tipo": {
+      "label": "Tipo de hipertrofia ventricular izquierda",
+      "section": "Resultados",
+      "kind": "text",
+      "options": {}
+    },
+    "ip_tipo_especificar": {
+      "label": "Tipo de insuficiencia pulmonar",
+      "section": "Resultados",
+      "kind": "text",
+      "options": {}
+    },
+    "res_fsvi": {
+      "label": "Función Sistólica del Ventrículo Izquierdo",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "Normal": "Normal",
+        "Alterada": "Alterada"
+      }
+    },
+    "res_fdvi": {
+      "label": "Función Diastólica del Ventrículo Izquierdo",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "Normal": "Normal",
+        "Alterada": "Alterada"
+      }
+    },
+    "res_presiones_vi": {
+      "label": "Presiones de llenado del Ventrículo Izquierdo",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "Normales": "Normales",
+        "Alteradas": "Alteradas"
+      }
+    },
+    "res_contractilidad": {
+      "label": "Alteraciones de la Contractilidad",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "res_vd_dilatado": {
+      "label": "Ventrículo Derecho Dilatado",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "res_vd_hipertrofico": {
+      "label": "Ventrículo Derecho Hipertrófico",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "res_fsvd": {
+      "label": "Función Sistólica del Ventrículo Derecho",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "Normal": "Normal",
+        "Alterada": "Alterada"
+      }
+    },
+    "res_fdvd": {
+      "label": "Función Diastólica del Ventrículo Derecho",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "Normal": "Normal",
+        "Alterada": "Alterada"
+      }
+    },
+    "res_raiz_aortica": {
+      "label": "Raíz Aortica Dilatada",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "res_ai_dilatada": {
+      "label": "AI Dilatada",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "res_ad_dilatada": {
+      "label": "AD Dilatada",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "res_valvulopatia": {
+      "label": "Valvulopatía",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "valvulopatia_tipo_detalle": {
+      "label": "Tipo de valvulopatía",
+      "section": "Resultados",
+      "kind": "text",
+      "options": {}
+    },
+    "res_derrame": {
+      "label": "Derrame pericárdico",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "derrame_grosor_cm": {
+      "label": "Cuántos cms",
+      "section": "Resultados",
+      "kind": "number",
+      "options": {}
+    },
+    "res_eco_normal": {
+      "label": "Ecocardiografía Normal",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "res_eco_comentario": {
+      "label": "Comentario",
+      "section": "Resultados",
+      "kind": "text",
+      "options": {}
+    },
+    "res_eco_vascular": {
+      "label": "Ecografía Vascular Normal",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "res_eco_vascular_comentario": {
+      "label": "Comentario",
+      "section": "Resultados",
+      "kind": "text",
+      "options": {}
+    },
+    "res_higado_graso": {
+      "label": "Ecografía Digestiva. Hígado Graso",
+      "section": "Resultados",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "res_higado_comentario": {
+      "label": "Comentario",
+      "section": "Resultados",
+      "kind": "text",
+      "options": {}
+    },
+    "pred_q1": {
+      "label": "¿Usa el aceite de oliva principalmente para cocinar?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q2": {
+      "label": "¿Consume dos o más cucharadas de aceite de oliva al día?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q3": {
+      "label": "¿Consume dos o más raciones de verduras u hortalizas al día?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q4": {
+      "label": "¿Consume tres o más piezas de fruta al día?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q5": {
+      "label": "¿Consume menos de una ración de carnes rojas/embutidos al día?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q6": {
+      "label": "¿Consume menos de una ración de mantequilla/margarina/nata al día?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q7": {
+      "label": "¿Consume menos de una bebida carbonatada/azucarada al día?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q9": {
+      "label": "¿Consume tres o más raciones de legumbres a la semana?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q8_bebe": {
+      "label": "¿Bebe vino tinto?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q8": {
+      "label": "Consume tres o más vasos por semana",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q10": {
+      "label": "¿Consume tres o más raciones de pescado/mariscos a la semana?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q11": {
+      "label": "¿Consume dos o más raciones de pescado azul a la semana?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q12": {
+      "label": "¿Consume menos de tres veces por semana repostería comercial?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q13_consume": {
+      "label": "¿Consume leche de vaca?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_leche_vasos_dia": {
+      "label": "Vasos al día",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "number",
+      "options": {}
+    },
+    "pred_leche_vasos_sem": {
+      "label": "Vasos al día",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "number",
+      "options": {}
+    },
+    "pred_leche_tipo": {
+      "label": "Vasos al día",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "text",
+      "options": {}
+    },
+    "pred_q14_consume": {
+      "label": "¿Consume queso?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_queso_veces_sem": {
+      "label": "Veces a la semana",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "number",
+      "options": {}
+    },
+    "pred_queso_gramos": {
+      "label": "Veces a la semana",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "number",
+      "options": {}
+    },
+    "pred_q15_consume": {
+      "label": "¿Consume yogurt?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_yogurt_cant_sem": {
+      "label": "Cuántos a la semana",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "number",
+      "options": {}
+    },
+    "pred_yogurt_tipo": {
+      "label": "Cuántos a la semana",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "text",
+      "options": {}
+    },
+    "pred_q16": {
+      "label": "¿Consume dos o más raciones de frutos secos a la semana?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q17": {
+      "label": "¿Consume cereales integrales 3-4 veces por semana?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q18": {
+      "label": "¿Consume preferentemente carne de pollo/pavo/conejo en vez de ternera/cerdo?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_q19": {
+      "label": "¿Consume sofrito dos o más veces por semana?",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "pred_puntuacion_total": {
+      "label": "Puntuación",
+      "section": "Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea",
+      "kind": "text",
+      "options": {}
+    },
+    "af_actividad": {
+      "label": "¿Qué actividad física ha hecho durante su tiempo libre el último mes?",
+      "section": "Cuestionario de Actividad Física",
+      "kind": "category",
+      "options": {
+        "No realiza ninguna actividad": "No realiza ninguna actividad",
+        "Sí realiza actividad física": "Sí realiza actividad física"
+      }
+    },
+    "af_aerobicos": {
+      "label": "Realiza ejercicios aeróbicos (caminar, correr, bicicleta, piscina, baile-terapia, etc.)",
+      "section": "Cuestionario de Actividad Física",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "af_aero_cual": {
+      "label": "Cuál",
+      "section": "Cuestionario de Actividad Física",
+      "kind": "text",
+      "options": {}
+    },
+    "af_aero_veces_sem": {
+      "label": "Cuál",
+      "section": "Cuestionario de Actividad Física",
+      "kind": "number",
+      "options": {}
+    },
+    "af_aero_minutos_dia": {
+      "label": "Cuál",
+      "section": "Cuestionario de Actividad Física",
+      "kind": "number",
+      "options": {}
+    },
+    "af_anaerobicos": {
+      "label": "Realiza ejercicios físicos anaeróbicos de fuerza (pesas, abdominales, etc.)",
+      "section": "Cuestionario de Actividad Física",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "af_anaero_cual": {
+      "label": "Cuál",
+      "section": "Cuestionario de Actividad Física",
+      "kind": "text",
+      "options": {}
+    },
+    "af_anaero_veces_sem": {
+      "label": "Cuál",
+      "section": "Cuestionario de Actividad Física",
+      "kind": "number",
+      "options": {}
+    },
+    "af_anaero_minutos_dia": {
+      "label": "Cuál",
+      "section": "Cuestionario de Actividad Física",
+      "kind": "number",
+      "options": {}
+    },
+    "af_deporte": {
+      "label": "¿Hace deporte?",
+      "section": "Cuestionario de Actividad Física",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "af_dep_tipo": {
+      "label": "Qué tipo",
+      "section": "Cuestionario de Actividad Física",
+      "kind": "text",
+      "options": {}
+    },
+    "af_dep_veces_sem": {
+      "label": "Qué tipo",
+      "section": "Cuestionario de Actividad Física",
+      "kind": "number",
+      "options": {}
+    },
+    "af_dep_minutos_dia": {
+      "label": "Qué tipo",
+      "section": "Cuestionario de Actividad Física",
+      "kind": "number",
+      "options": {}
+    },
+    "est_analisis_clinicos": {
+      "label": "Estudios de Análisis clínicos",
+      "section": "Estudios Prescritos",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "est_ergometria_spect": {
+      "label": "Estudios de ergometría con Spectk",
+      "section": "Estudios Prescritos",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "est_tac_cardiaco": {
+      "label": "Estudios de TAC cardíaco",
+      "section": "Estudios Prescritos",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "est_rnm_cardiaco": {
+      "label": "Estudios de RNM cardíaco",
+      "section": "Estudios Prescritos",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "est_electrofisiologia": {
+      "label": "Estudios de Electrofisiología",
+      "section": "Estudios Prescritos",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "est_ecocardiograma": {
+      "label": "Estudios de Ecocardiografía",
+      "section": "Estudios Prescritos",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "est_holter": {
+      "label": "Estudios de Holter ECG",
+      "section": "Estudios Prescritos",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "est_mapa": {
+      "label": "Estudios de MAPA",
+      "section": "Estudios Prescritos",
+      "kind": "category",
+      "options": {
+        "No": "No",
+        "Si": "Sí"
+      }
+    },
+    "est_otros_detalle": {
+      "label": "Otros estudios indicados / observaciones",
+      "section": "Estudios Prescritos",
+      "kind": "text",
+      "options": {}
+    }
+  },
+  "bindings": {
+    "patient.first_names": "f_nombre",
+    "patient.last_name1": "f_apellido1",
+    "patient.last_name2": "f_apellido2",
+    "patient.id_card": "f_cedula",
+    "patient.birth_date": "f_fecha_nac",
+    "patient.sex": "f_sexo",
+    "patient.ethnicity": "f_raza",
+    "patient.phone": "f_telefono",
+    "patient.email": "f_correo",
+    "visit.study_code": "f_codigo",
+    "visit.visit_date": "f_fecha_visita",
+    "patient.institution": "f_universidad",
+    "visit.faculty": "f_facultad",
+    "visit.visit_number": "f_visita",
+    "visit.staff_category": "f_estamento",
+    "visit.num_children": "f_hijos",
+    "visit.num_cohabitants": "f_convivientes",
+    "visit.residence_canton": "f_ciudad",
+    "patient.birth_canton": "f_municipio",
+    "anthropometry.weight_kg": "f_peso",
+    "anthropometry.height_cm": "f_talla",
+    "anthropometry.waist_circumference_cm": "f_perimetro",
+    "anthropometry.bmi": "f_imc",
+    "anthropometry.body_surface_area": "f_asc",
+    "vital_signs.systolic_bp": "f_tas",
+    "vital_signs.diastolic_bp": "f_tsi",
+    "vital_signs.oxygen_saturation": "f_sat_o2",
+    "vital_signs.systolic_murmur": "soplos",
+    "vital_signs.diastolic_murmur": "soplos",
+    "vital_signs.murmur_grade": "soplo_grado",
+    "vital_signs.pedal_pulses_symmetric": "pulsos_palp",
+    "vital_signs.pulmonary_auscultation_normal": "resp_norm",
+    "vital_signs.abdominal_auscultation_normal": "abdom_norm",
+    "electrocardiogram.is_normal": "ecg_normal",
+    "electrocardiogram.heart_rate": "ecg_fc",
+    "electrocardiogram.qrs_axis_degrees": "ecg_eje",
+    "electrocardiogram.rr_interval_sec": "ecg_rr",
+    "electrocardiogram.p_wave_mm": "ecg_p_mm",
+    "electrocardiogram.pr_interval_ms": "ecg_pr",
+    "electrocardiogram.qrs_duration_ms": "ecg_qrs",
+    "electrocardiogram.qt_interval_ms": "ecg_qt",
+    "electrocardiogram.qtc_bazett_ms": "ecg_qtc",
+    "electrocardiogram.p_mitrale": "ecg_p_mitral",
+    "electrocardiogram.av_block": "ecg_bloqueo_av",
+    "electrocardiogram.av_block_grade": "ecg_bloqueo_av_grado",
+    "electrocardiogram.sa_block": "ecg_bloqueo_sa",
+    "electrocardiogram.interatrial_block": "ecg_bloqueo_ia",
+    "electrocardiogram.hemiblock": "ecg_hemibloqueo",
+    "electrocardiogram.hemiblock_detail": "ecg_hemibloqueo_cual",
+    "electrocardiogram.has_bundle_branch_block": "ecg_bloqueo_rama_sn",
+    "electrocardiogram.bundle_branch_block": "ecg_bloqueo_rama",
+    "electrocardiogram.brugada_pattern": "ecg_brugada",
+    "electrocardiogram.early_repolarization": "ecg_repolarizacion_precoz",
+    "electrocardiogram.left_ventricular_hypertrophy": "ecg_hvi",
+    "electrocardiogram.systolic_overload": "ecg_sobrecarga_sistolica",
+    "electrocardiogram.systolic_overload_complexes": "ecg_sobrecarga_complejos",
+    "electrocardiogram.intrinsicoid_deflection_sec": "ecg_deflexion_intrinsicoide",
+    "electrocardiogram.right_ventricular_hypertrophy": "ecg_hvd",
+    "electrocardiogram.delta_wave": "ecg_onda_delta",
+    "electrocardiogram.digitalis_effect": "ecg_cubeta_digitalica",
+    "electrocardiogram.pathological_q_wave": "ecg_onda_q",
+    "electrocardiogram.q_wave_amplitude": "ecg_onda_q_amplitud",
+    "electrocardiogram.q_wave_voltage_mv": "ecg_onda_q_voltaje",
+    "electrocardiogram.q_wave_complexes": "ecg_onda_q_complejos",
+    "electrocardiogram.negative_t_wave": "ecg_t_negativa",
+    "electrocardiogram.negative_t_complexes": "ecg_t_negativa_complejos",
+    "electrocardiogram.negative_t_symmetric": "ecg_t_simetrica",
+    "electrocardiogram.negative_t_asymmetric": "ecg_t_asimetrica",
+    "electrocardiogram.st_elevation_pathological": "ecg_st_ascenso",
+    "electrocardiogram.st_elevation_mm": "ecg_st_ascenso_mm",
+    "electrocardiogram.st_elevation_complexes": "ecg_st_ascenso_complejos",
+    "electrocardiogram.st_depression": "ecg_st_descenso",
+    "electrocardiogram.st_depression_mm": "ecg_st_descenso_mm",
+    "electrocardiogram.st_depression_complexes": "ecg_st_descenso_complejos",
+    "electrocardiogram.ecg_comments": "ecg_comentario",
+    "echocardiogram.ventricular_hypertrophy": "res_vi_hipertrofico",
+    "echocardiogram.diastolic_dysfunction": "eco_disfuncion_diastolica",
+    "echocardiogram.aortic_valve_calcification": "eco_calcificacion_aortica",
+    "echocardiogram.valvular_regurgitation_detail": "valvulopatia_tipo_detalle",
+    "laboratory.rbc_millions": "hemo_hematies",
+    "laboratory.hemoglobin_g_dl": "hemo_hemoglobina",
+    "laboratory.hematocrit_percentage": "hemo_hematocrito",
+    "laboratory.mcv_fl": "hemo_vcm",
+    "laboratory.wbc_thousands": "hemo_leucocitos",
+    "laboratory.platelets_thousands": "hemo_plaquetas",
+    "laboratory.prothrombin_time_sec": "hemo_inr",
+    "laboratory.glucose_mg_dl": "diab_glucosa",
+    "laboratory.urea_mg_dl": "renal_urea",
+    "laboratory.creatinine_mg_dl": "renal_creatinina",
+    "laboratory.total_cholesterol_mg_dl": "riesgo_colesterol",
+    "laboratory.hdl_mg_dl": "riesgo_hdl",
+    "laboratory.ldl_mg_dl": "riesgo_ldl",
+    "laboratory.triglycerides_mg_dl": "riesgo_trigliceridos",
+    "laboratory.ast_got_u_l": "hepatica_got",
+    "laboratory.alt_gpt_u_l": "hepatica_gpt",
+    "laboratory.ggt_u_l": "hepatica_ggt",
+    "laboratory.tsh_u_iu_ml": "tiroidea_tsh",
+    "electrocardiogram.rhythm": "ecg_ritmo",
+    "visit.professional_category": "f_profesion",
+    "visit.education_level": "f_estudios",
+    "visit.income_range": "f_ingresos",
+    "visit.marital_status": "f_estado_civil",
+    "visit.living_situation": "f_convive_con",
+    "visit.housing_type": "f_vivienda",
+    "visit.work_schedule": "f_horario",
+    "vital_signs.heart_rate": "f_fc",
+    "echocardiogram.lv_dimension_mm": "eco_ddvi",
+    "echocardiogram.lvef_percentage": "eco_fey",
+    "ordered_studies.clinical_analysis": "est_analisis_clinicos",
+    "ordered_studies.ergometry_spect": "est_ergometria_spect",
+    "ordered_studies.cardiac_ct": "est_tac_cardiaco",
+    "ordered_studies.cardiac_mri": "est_rnm_cardiaco",
+    "ordered_studies.electrophysiology": "est_electrofisiologia",
+    "ordered_studies.echocardiogram_ordered": "est_ecocardiograma",
+    "ordered_studies.holter_ordered": "est_holter",
+    "ordered_studies.mapa_ordered": "est_mapa",
+    "ordered_studies.other_studies": "est_otros_detalle"
+  }
+}

@@ -1,0 +1,549 @@
+                                                                        
+ESTUDIO CARDIOVASCULAR EN PROFESORADO UNEMI
+PDI |__| AD |__| Servicio |__| Estudiante |__|
+Código |__|__|__|__| /2025     
+Fecha visita (Día/mes/año) |__|__|   |__|__|   |_2_|_0_|_2_|_6_|
+Facultad (si procede) ________________________ __________
+Datos del Individuo
+1.- Nombre y Apellidos del paciente………………………………………………………………………………………….
+2.- Ciudad de residencia---------------------------------Provincia……………………..
+3.- Teléfono (con prefijo) |__|__|__|__|__|__|__|__|__|__|__|__|__| 
+4.- Correo electrónico: ______________________________
+5.-Nº de cedula |__|__|__|__|__|__|__|__|__|__|__|__|__| 
+Cuestionario Sociodemográfico
+1.- Fecha de nacimiento:(Día/mes/año) |__|__| |__|__||__|__|__|__| 
+2.-Edad |__|__|
+3.- Sexo: ☐H☐ M
+4.- Estado Civil en el momento actual:
+☐1Soltero/a.
+☐ 2 Casado/a.
+☐3Divorciado/a separado/a.
+        ☐4 Viudo/a
+5.- ¿Cuántos hijos tiene? ☐0 ☐1 ☐2 ☐3 ☐4 ☐5 ☐ más………
+6.-¿Con quién vive usted ahora
+   ☐1Sólo/a☐5Con su pareja, hijos y otros familiares
+☐2 Con su pareja☐6Con sus padres y hermanos/as.
+☐3Con su pareja e hijos                             ☐7Con otros no familiares
+  ☐4 Con sus hijos
+7.- ¿Cuántas personas conviven con usted en el hogar? ____
+8.- ¿Cuál es el mayor nivel de estudios que ha obtenido?  
+☐1No sabe leer o escribir.
+☐2 Preescolar
+☐3 Estudios Primarios
+☐4 Estudios secundarios
+☐5 Ciclo postbachillerato
+☐6 Estudios superiores
+☐7 Postgrado
+9.-En su trabajo ¿Qué horario realiza?
+☐1 Jornada partida (Mañana/tarde)
+☐2 Jornada continua en mañanas y tarde
+10.-Cuál es su categoría profesión
+      ☐1Profesor permanente
+☐ 2 Profesor no permanente
+☐3Personal de administración.            
+☐4Personal de servicios
+☐5 Otra categoría. Cual_______________________
+11.-Su vivienda es:
+☐1Propia
+☐2Alquilada
+☐3 Vivienda familiar
+☐4 Otro
+12.- Señale el número que más se acerca a los INGRESOS TOTALES MENSUALES DE TODA SU FAMILIA, SIN DESCUENTOS:
+☐ 1.-Menos de 500 dólares/mes                             
+☐ 2.- Entre 500-1.000 dólares/mes                              
+☐ 3.-1001-1500 dólares /mes             
+☐ 4.-1501 -2000 dólares/mes
+     ☐ 5.-2001-2500 dólares/mes   
+     ☐ 6.  2501-3000 dólares/mes   
+☐.7.-3001-3500…………dólares/mes
+☐.8.-Otras………………….
+Exploración Física
+1.- Peso |__|__|__| kg      
+2.Talla|__|__|__| cm  
+3. IMC: ________________kg/m2   
+4.-ASC_______________m2
+5.- Perímetro Abdominal |__|__|__| cm
+6.- Saturación O2: _________%
+7.- TAS |__|__|__| TS|__|__|__|mm Hg
+8.- Soplos cardiacos: ☐No ☐Sí
+9.  Grado______ Tipo: ___________    
+10. Extra- tonos ☐No ☐Sí. Cual____________
+11.-Pulsos pedios palpables ☐No ☐Sí   simétricos ☐No ☐Sí 
+12.-Exploración respiratoria normal: ☐No ☐Sí  Estertores ☐No ☐Sí,  sibilancias: ☐No ☐Sí 
+13. Exploración abdominal normal ☐No ☐Sí    Tiene hepatomegalia ☐ Tiene organomegalia ☐.
+☐ Otras   Cuales_________________
+FACTORES DE RIESGO MODIFICABLES
+1.-Hipertesión: ☐No ☐SI
+☐ No tratada
+☐ Si tratada ☐    Cuales medicamentos_________________
+2, Se le ha puesto Mapa ☐No ☐ SI   Normal ☐   Alterado   ☐
+3.- Diabetes mellitus: ☐No ☐Si 
+1. Tipo de Diabetes________
+2.☐ No tratada
+3.☐ Si Tratada
+4.☐ Con Insulina
+5. ☐ Con Insulina y antidiabéticos orales ☐ Cuales____________________________
+6.☐ Con antidiabéticos orales
+Cuales______________________________________ 
+4.- Dislipemia: ☐No ☐Sí 
+1.Tipo------------------------ 
+2.☐ No tratada con fármacos
+3.☐Sí tratada con fármacos. ☐ Cuáles ____________________    
+5.- Tabaquismo: ☐No ☐Sí; Cigarrillos día |__|__|   A la semana|__|__| ocasional |__|__|☐Exfumador > 10 años ☐ nunca fumó 
+      6.- Alcohol: ☐No ☐Si     ☐ Diariamente ☐ Semanal ☐ Mensual ☐ocasional    Unidades………☐ Ex tomador > 1 año
+7.- Drogas: ☐No ☐Sí   Cuales ____________________Dosis diaria_________ 
+☐ Dosis semanal___________☐ Dosis ocasional_________      ☐ Ex tomador > 1 año
+8- Obesidad: ☐No ☐Si   grado………….
+9.-Sobrepeso: ☐No☐Si
+10.- Arritmias: ☐No☐Si Tipo………………………………………………………
+11.- Sincopes.: ☐No☐Si Tipo………………………………………………….
+12.- Prueba de Holter: ☐No ☐Si   Normal ☐ Alterada ☐
+A todos los pacientes que presenten arritmias o sincopes se le realizara prueba de Holter
+13- Vasculopatía periférica: ☐No ☐Sí  
+14. Vasculopatía carotidea: ☐No ☐Sí  
+15.- Insuficiencia renal crónica: ☐No ☐Sí    ☐Diálisis ☐Trasplante renal
+16- Antecedentes ictus/AIT: ☐ No☐ Sí   
+17.- Disfunción eréctil: ☐ No☐ Sí   
+18.   Hígado graso: ☐ No☐ Sí 
+19.  Apnea del sueño: ☐ No☐ Sí  
+20. Otros: ☐ No ☐ Sí   Cuales_________________________________
+FACTORES EMERGENTES
+1.-Cantidad de sueño   ☐ Buena   ☐ Mala
+2.-Calidad del sueño ☐ Buena ☐ Mala
+3.-Trabaja con tóxicos: ☐ No ☐ Si. Cuales______________________________________
+4. –Niveles bajos de estrógenos en la mujer: ☐ No ☐ Si    ☐ menopausia 
+☐ Otras causas
+5.- Usa anticonceptivo >35 años, ☐ No ☐ Si
+6.—Tiene estrés en el trabajo☐ No ☐ Si
+7.—Tiene estrés en la vida familiar, ☐ No ☐ Si
+8.- Mal ambiente laboral: ☐ No ☐ Si
+9.- Personalidad tipo A: ☐ No ☐ Si (☐ exigentes con uno mismo y con los demás 
+☐ perfeccionista ☐ hiperactivos en la consecución de logros ☐ ambicioso 
+☐ hostilidad (que demuestra oposición violenta respecto a otra persona una idea o una causa y suelen ser peleonas, testarudas, enfadadas, impacientes, impulsivas) ☐ aislamiento social 
+OTROS FACTORES DE RIESGO NO MODIFICABLES
+1. Antecedentes familiares de cardiopatía Isquémica (Angina de pecho, infarto de miocardio, muerte súbita) ☐No☐si 
+2.- Algún familiar directo ha fallecido cardiopatía Isquémica (infarto de miocardio, muerte súbita etc.) antes de los 55 años en los varones y 65 años en las mujeres: ☐No ☐Sí
+Antecedentes Familiares
+1.- Padre con ☐ HTA ☐Diabetes ☐ Dislipemia: 
+2.- Madre con ☐ HTA ☐Diabetes ☐ Dislipemia 
+3.- Otras enfermedades ☐        Cuales……………………………………………
+Historia Clínica  Actual  Cardiovascular
+1.- Historia de cualquier problema del corazón: ☐No ☐Sí   Cuales……………………….
+2.- Cardiopatía isquémica: ☐No ☐Sí ☐ angina ☐infarto de miocardio
+3.- Revascularización coronaria: ☐No ☐Sí, con angioplastia☐ con Bypass ☐con ambas ☐
+4.- Historia de Insuficiencia cardiaca: ☐No ☐Sí   
+5.- Historia de valvulopatía: ☐No ☐Sí, ¿Cuáles? _________________________________
+1. Operado por este motivo ☐No ☐Sí
+6.- Ha estado ingresado en el hospital por algún problema cardiaco ☐No ☐Si
+¿Cuál? __________________
+Historia Clínica No Cardiovascular
+1.- Enfermedad reumatológica/inmunológica: ☐No ☐Sí.    Cuales…………………………………
+2.- Historia de cáncer: ☐No ☐Sí
+☐pulmón☐ próstata ☐colon ☐mama ☐ vejiga ☐útero ☐ovario ☐otro ________________ 
+¿recibió Qt? ☐ No ☐Sí, ¿recibió RT? ☐No ☐Sí
+3.- EPOC: ☐ No☐ Sí   
+4.- Asma: ☐ No☐ Sí  
+5.-Depresión☐No ☐Sí   
+6.-Ansiedad. -☐No ☐Sí   
+7.- Alergia a medicamentos-☐No ☐Sí ______________
+8.- Otras: ☐ No☐ Sí    Cuales___________________________
+COVID-19
+1.- Ha pasado el COVID-19: ☐ No☐ Sí
+2.- Estuvo ingresado en el hospital? ☐ No☐ Sí
+3.- Le detectaron alguna afectación cardiovascular debida al COVID-19? ☐ No☐ Sí
+¿Cuál?: _________________________
+4.- Le detectaron alguna afectación pulmonar debida al COVID-19? ☐ No☐ Sí
+Cual _________________________
+5.-Otras ☐ No☐ Sí. Cual________________________________________
+LONG-COVID
+1-. Ha presentado después del COVID, algún síntoma que antes no tenía ☐ No ☐si Cual/es______________________________________________________________
+Cuestionario de Dolor de Pecho de G. Rose 
+1.- ¿A veces tiene algún dolor o molestia en el pecho? ☐ Si ☐ No
+2.- ¿En qué lugar localiza este dolor o molestia?   (marque con una “x” el o los cuadrantes)
+☐ 1  
+☐ 2
+☐ 3  
+☐ 4  
+☐ 5  
+☐ 6  
+☐ 7  
+☐ 8  
+☐ 9  
+3.- ¿Cuándo camina a paso habitual, esto le produce la molestia? ☐ Sí   ☐ No
+4.- ¿Cuándo camina cuesta arriba o apurado, esto le produce la molestia? ☐ Sí   ☐ No 
+5.- ¿Cuándo tiene algún dolor o molestia en su pecho caminando, ¿qué hace?
+☐se para ☐Disminuye la marcha☐ Continúa al mismo paso
+6.- ¿Desaparece el dolor o molestia en el pecho si se queda quieto? ☐ Sí   ☐ No7.- ¿En cuánto tiempo desaparece? ☐10 minutos o menos ☐ Más de 10 minuto
+7.- Cuestionario de dolor de Pecho de G. Rose: ☐ Positivo ☐ Negativo
+Clasificación Funcional NYHA
+Clase I
+No limitación de la actividad física. La actividad ordinaria no ocasiona
+excesiva fatiga, palpitaciones, disnea o dolor anginoso.
+☐
+Clase II
+Ligera limitación de la actividad física. Confortables en reposo. La actividad
+ordinaria ocasiona fatiga, palpitaciones, disnea o dolor anginoso.
+☐
+Clase III
+Marcada limitación de la actividad física. Confortables en reposo. Actividad física menor que la ordinaria ocasiona fatiga, palpitaciones, disnea o dolor anginoso.
+☐
+Clase IV
+Incapacidad para llevar a cabo cualquier actividad física sin disconfort. Los síntomas de insuficiencia cardíaca o de síndrome anginoso pueden estar presentes incluso en reposo. Si se realiza cualquier actividad física, el disconfort aumenta.
+☐
+Resultados del Electrocardiograma
+1. ECG Ritmo: ___________
+2.Frecuencia cardiaca |__|__|__| lpm
+3.Eje eléctrico A QRS ________________
+4. Intervalo RR  seg_____________
+5. Onda P mm: ________________
+6.Intervalo PR seg: __________________
+7.Complejo  QRS seg: __________________   
+8.Intervalo QT seg: ___________________________
+9.Intervalo   corregido (Bazet) mseg: _______________________
+10.Onda P mitral:  ☐No ☐Si   
+11.Bloqueo A-V:☐No ☐Si    Grado __________________
+12.Bloqueo sinoauricular: ☐No☐Sí    
+13.Bloqueo Interauricular: ☐No ☐Sí  
+14.Hemibloqueos: ☐ No ☐ Sí ¿Cuál? _______________________
+15.-Bloqueo de Rama: ☐ No ☐Sí ¿Cuál? _______________________ 
+16.-Patrón Brugada: ☐ No☐ Sí   
+17.-Repolarización precoz: ☐ No ☐ Sí   
+18.Criterios de Hipertrofia Ventricular izquierda: ☐ No ☐Sí 
+19.Sobrecarga sistólica ☐No ☐Si complejos_____________
+20.Deflexión intrinsicoide V5-V6 seg ______________________
+21. Criterio de hipertrofia ventricular derecha ☐No ☐Sí 
+22.Onda Delta: ☐ No ☐ Sí     
+23. Cubeta digitálica: ☐ No ☐ Sí     
+24.-Onda Q patológica ☐ No ☐ Sí   Amplitud_____       Voltaje _____mV   derivaciones___________
+25.-T negativa: ☐ No ☐ Sí derivaciones_______________simétrica ☐No ☐ Sí   asimétrica
+☐ No ☐ Sí
+26.- Ascenso del ST patológico: ☐ No ☐ Sí   _______mm derivaciones______________   
+27.-Descenso: ST: ☐ No ☐ Sí  ______mm   derivaciones__________________
+ECG Normal: ☐ No   ☐ Sí
+Comentario del ECG. ____________________________________________________________
+Analisis Clínicos
+Prueba realizada ☐ No ☐ Sí   Alterada ☐ Normal ☐
+Hemograma
+1.-Hematíes: _________
+2.-Hemoglobina: _________
+3.-Hematocrito: ____________
+4.-Volumen Corpuscular Medio (VCM): ______________
+5.-Hemoglobina Corpuscular Media (HCM): _____________
+6.-Concentración de Hemoglobina Corpuscular Media (CHCM): ______________
+9.-Leucocitos: _______________
+10.-Neutrófilos: ______________
+11.-Eosinófilos: ________________
+12.-Basófilos: _________________
+13.-Linfocitos: _______________
+14.-Monocitos: _______________
+15.-Plaquetas---------------------------
+16. Tiempo parcial de tromboplastina__________
+17- Fibrinógeno: ______________
+Bioquímica General
+Función Tiroidea
+1.-TSH__________________
+2.-Hormonas tiroideas: T4__________________-T3_____________________
+Función Renal
+1.-Urea__________          
+2.-Creatinina: _________ 
+4-Filtrado glomerular_________.
+Orina
+Microalbuminuría__________________
+Iones
+1 -Potasio: _________             2.-Calcio: ____________ 
+3.-Magnesio__________________4.-Sodio________________
+Parámetros Diabéticos
+1.-Glucosa en sangre:_________                  
+2.-Hemoglobina glicosilada: _________ 
+3.-HOMA IR:_________________4 Insulina en Ayunas_______________
+Parámetros de Riesgo Cardiovascular
+1.-Colesterol Total: ____________      2.-HDL: ______________________ 3.- .-LDL: _______________     4.VDL___________________5.-Triglicéridos: _____________6-   Lipoproteina  a: ______________
+7-Apolipoproteina B_______________
+Factores analiticos emergentes
+1. Homocisteína__________    2.-PCR ultrasensible___________________3.-Acido urico___________
+Función hepatica
+GGT______________ 2.-GPT(ALT)_______________3.-GOT (AST)…………
+Comentario de los Análisis Clínicos _______________________________________________________________________
+Resultados del Ecocardiograma 2D 
+Eje paraesternal largo
+ 1.-DDVI: _____  2D) Hombres rango (42-58.4 mm) Mujeres rango (37.8-52.2 mm))
+Indexado hombre cm/m2 (22-30 cm/m2) mujeres (23-31 cm/m2)
+Modo M  Hombres (42-58 mm) Mujeres (38-52 mm)
+2.-DSVI: ______________2D Hombres (25-39.8 mm) Mujeres (21.6-34.8 mm) 
+Indexado cm/m2  (13-21 cm/m2) mujeres (13.21 cm/m2)                      
+ Modo M Hombres (25- 40 mm) Mujeres (22-35mm) 
+3.-Grosor septo interventricular SIV:__________2D Hombres(6-10 mm)  Mujeres ( 6-9 mm) telediastole .  Modo M igual  que en 2D
+4.-Grosor pared posterior GP_____________ 2D Hombre (6-10 mm) M  (6-9mm) en Modo M igual en D
+5.Indice de Masa: _________ modo M Hombres (88-224 gr) Mujeres (67-162 gr))  
+Indexada hombres (49-115 g/m2) Mujeres (43 -95 g/m2)
+Masa 2D H (66-150 gr) M Indexada (50-102 gr/m2) M  (44-88 gr/m2)
+6.. GRP:___________cm     Modo M( 0,24-0,42 cm) 
+7.- Fracción de Acortamiento FA %_________Modo M (25-45%)
+8. Fracción de Eyección (Teicholz) modo M______ (50-75 % )
+9.- Diámetro TSVD.  En diástole, en eje largo paraesternal < 33 mm (20-30 mm)
+     Eje corto basa TSVD proximal (21-35 mm) TSVD distal (17-27 mm)
+10.- Diam TSVI: __________ cm (20-30 mm) eje paraesternal largo.
+11-Auricula Izda. en 2D, diámetro anteroposterior (30-40 mm)
+Si la masa de VI esta aumentada y GRP<0,42 hipertrofia excentrica > 0,42concentrica
+Si la masa ventricular está dentro de limites normales, tendremos una configuración normal
+del VI cuando el GRP este por debajo de 0,42, pero si es mayor o igual a este valor de 0,42
+hablaremos de remodelación concéntrica, es previo a la hipertrofia
+12. Diâmetro anilloAo:_______H (2.6+ -0.3 cm) M (2.3+ -0.2 cm)
+13. Senos de valsalva________ H(3.4+-0.3 cm) M (3.0+-0.3 cm )
+14. Unión sino tubular________H (2.9+-0.3 cm) M (2.6+0.3 cm)
+15. Diám Aorta ascendente tubular _________H (3.0+ – 0.4 cm) M (2.7+-0.4 cm)
+Eje Corto Paraesternal
+A nível grandes vasos, morfologia válvula aórtica ☐ aorta trivalva ☐ vivalva
+Tracto de salida del ventrículo derecho proximal________ en diástole (2.1-3.3 cm )
+Tracto de salida del VD distal a nivel valvula pulmonar en diastole_________ (1.7-2.7 cm)
+Tronco arteria pulmonar_________ (9-29 mm)
+Arteria pulmonar derecha_________ (7-17 mm)
+Arteria pulmonar izda_________ (6-14 mm)
+A nivel de valvula mitral estudio de las valvas calcificación de velos ☐No   ☐Sí  
+ Planimetria para medir area de valvula mitral_________________hombres y mujeres iguales >2.5 cm2  
+A nivel de musculos papilares valoración de la contractilidad segmentaria: ☐normal ☐ alterada ☐ aquinesia ☐ hipo quinesia ☐disquinesia☐ hiperquinesia
+Plano Apical
+Ventriculo Izdo
+Función sistólica del VI
+1.-Volumnen diastólico final (VFD) ml  (2 cámaras):__________media (106 +-22 ml)  rango (62-150ml) Hombres.  Mujeres, media (76 +- 15) rango (46-106 ml) 
+indexado Hombres (34-74ml/m2) Mujeres (29-61ml/m2
+ 2-Volumen final sistólico (VFS) ml (2C Cámara):___________Hombres media (41+-10 ml ) rango (21-61 ml) Mujeres media(28 +-7 ml) rango (14-42 ml)
+indexado Hombres (11-31 ml/m2) Mujeres (8-24m/ml /m2)
+3. FE% Metodo Simpson biplano_____________Hombres (52-72%) disfunción leve de (41-51) moderada( 30-40 )severa < 30%   
+Mujer (54-74%) leve( 41-53 %) moderada (30-40) severa <30%
+4.-Mapse Modo M proyección apical 4 cámaras cursor  a nivel anillo lateral de la mitral Hombres >12 mm Mujeres > 9mm
+5-Vmax onda S anillo mitral Doppler tisular m/seg H >8cm/seg M >8 cm/s  < 7 cm/seg sugieren alteración
+7.- Comentario motilidad regional global del VI según FE. Valoración sistólica y diastólica. 
+ 
+______________________________________________________  
+Función diastólica VI en válvula mitral: la velocidad del flujo trasmitral con Dopler pulsado. Patron de llenado diastólico
+1.-Velocidad onda E (mitral)
+                         0.6 - 1.3 m/s
+2.-Velocidad onda A (mitral)
+                         0.2 - 0.5 m/s
+3.-Relación E/A
+1.0 - 2.0
+4.-Tiempo de desaceleración de la onda E
+150 - 20 ms
+5.-Tiempo de relajación isovolumétrica (RIV)
+60 - 100 ms
+6.-Velocidad onda E’ (septal, lateral)
+Septal: ≥ 8 cm/s; Lateral: ≥ 10 cm/s
+7.-Relación E/E’
+< 8
+8.-Área (AI)
+≤ 20 cm²
+ 
+9.- Volumen AI indexado 16- 34 ml|m2   
+ 
+ disfunción leve 35-40 ml/m2 moderad 40-50 ml/m2 severa > 50 
+Función sistólica del Ventriculo derecho
+1.- Tapse___________> 17 mm   cursor a  nivel de anillo lateral  de tricuspide y ver en modo M velocidad de desplazamiento sistólico del anillo tricuspideo. Valores menores a 17 mm será indicativo de disfunción sistólica del VD 
+2..-Onda S´  velocidad a La que se mueve el tejido por dopler tisular _________< 9.5 cm/seg  disfunción sistólica del VD. Cursor a nível anillo lateral tricúspide. Refleja el acortamiento longitudinal de la pared libre del VD (destaca sus valor pronostico en la hipertensión pulmonar, la insuficiência cardíaca y las cardiopatias congênitas
+3. FAC ( fración de cambio de área) se mide calculando la diferencia entre el área del VD en diástole y en sístole, dividido por el área diastólica   y todo se multiplica por 10 (valor de referencia >= 35% se considera una fración sistólica del VD normal, valores menores disfunción sitolica
+Función diastólica en válvula tricúspide de velocidad del flujo trans tricuspideo  con doppler pulsado 
+ 1. Velocidad onda E (tricúspide) _________(0.3-0.7 m/s) Dopler pulsado
+2. Velocidad onda A  (tricúspide) ________(0,2-0,4 m/s ) dopler pulsado
+3. Relación E/A flujo tricuspideo dopler pulsado__________ (0.8-2.1) < 0.8  relajación alterada > 2.1 com un tiempo  de  deceleración menor 120 ms sugiere  llenado restrictivo y entre 0.8 a 2.1 com una relación E/e`  > a 6 llenado pseudonormalizado 
+4. Tiempo de desaceleracíon de la onda E _________120-200 ms 
+5.-Tiempo de relajación isovolumétrica (RIV) ________50-100 ms
+6. Velocidad de La onda e” anillo tricuspideo lateral________  (10-15 cm/seg) Septal________  (8-12 cm/seg 
+8. Area de AD___________<-18 cm2 
+9.-Volumen AD indexado ____________ <-27 ml/m2
+Plano subcostal
+1: VCI:________cm  (1.4-2.0 cm) en plano subcostal ) con colapso inspiratorio > 50%  presión estimada auricula derecha 10 mmHg 
+UN DIAMETRO DE VCI <= 2.1 cm  que colapsa en inspiración > 50% sugiere presión normal de la AD  de 3mm). Un diametro de VCI >2.1 cm que colapsa < 50% con la inspiración sugiere presion elevada de la AD de 15 mmHg (rango es de 10-20 mmHg )
+2. Grosor de la pared del VD_________ (debe medirse en plano subcostal  o en modo M en diastole ) valor normal  de  5 mm maximo
+3.-Presión Arterial pulmonar   valores normales es de 18-25 mmHg en reposo  leve (25-30 mmHg) moderada (30-50 mmHg) Severa > 50 severa
+Aurícula Izquierda 
+1.-Area __________<20 cm2 : hombres y mujeres iguales , leve 21-25 cm2 moderado 26-30 cm2 severo > 30 cm
+2.-Volumen hombres ___________(18-58 ml) dilatación ligera (59-68 ml) moderada (69-78ml) severa >78 
+    Mujeres (22-52mm) ligera  ( 53-62mm )  moderada ( 63-72mm) severa >-72  
+3.-Volumen indexado__________ el  limite superior de la normalidad es de 
+( 16-34ml/m2) leve (35-41 ml/m2 moderado 42-48 ml/m2 severo > 48 ml/m2
+4.-Diametro antero posterior AI___________(30-40mm) en eje largo paraesterna) 
+Aurícula derecha
+1-.Vol A.D  _________    4 C (normal < 27 ml/m2)
+  leve 28-32 ml/m2 moderado 33-38 mkl/m2severa > 38 ml/m2
+2.-Area  de La aurícula derecha________  (10-18 cm2)
+ leve (19-24 cm2)  moderado( 25-30cm2) severa >30 >cm2
+Ventrículo Derecho
+1.-Diâmetro basal en 2D (4 cámaras)______   normal(25-41 mm) (< 42 mm) leve 42-48mm moderado 49-55 mm severo >55 mm
+2.-Diametro médio________( 19-35 mm)   
+3.- Diâmetro longitudinal_____ (59-83mm)  
+4.-Area telediastólica__________ normal <24 cm2  
+5.-Grosor de la pared subcostal del VD debe medirse en plano subcostal  o en modo M en diastole com un valor normal  de  5 mm maximo.
+Plano supraesternal
+1.-Cayado aortico __________(normal 20-36mm)
+Estudio de las Valvulas
+Estenosis Mitral
+1.- Diámetro Anillo Mitral: _______cm (21-27 mm en plano de 4 camaras) puede originar dificultad de cierre. 
+2. Velos engrasados : ☐No   ☐Sí
+3- Calcificación Anillo Mitral: ☐No   ☐Sí 
+4.- Movilidad Mitral: ☐Normal ☐Alterada
+5.- Prolapso Velos:   ☐No ☐Sí moderada 
+6.  Velocidad maxima ( 0.6-1.3 m/seg) < 2.0 m/seg
+7. Planimetria de válvula mitral  ……………………………..cm2
+8.- Gradiente transmitral  medio con Doppler continuo _________leve_< 5 mmHg)) moderada (5-10 mmHg)  severa( > 10 mmHg)  TD >= 750   velocidad E >= 1.5 m/seg
+9.-THP________________normal (40-70 m) leve( 71-139 ms) Area 1.6—2 cm2 ,  moderada (140- 219  ms) area 1.1-1.5 cm2, severa  >- 200 ms  área <- 1 cm2 . Area normal 4-5 cm2
+10 .Presión Arterial pulmonar___________   (valores normales <-35 mmHg ) moderada (39-49 mmHg) severada (> 50mmHg) 
+11- Tamaño AI………………………mm (23-38 mm) en eje paraesternal largo en sistole. 
+Causa más común de Estenosis Mitral: Fiebre reumática. Calcificación del anillo mitral. La válvula mitral en paracaídas es la causa mas común de estenosis mitral congenita
+Complicaciones más frecuentes: hipertensión pulmonar, fibrilación auricular y tromboembolia
+Auscultación: 1R fuerte chasquido de apertura y soplo diastólico
+Recomendación práctica. Integrar tres parámetros. Área valvular por planimetría, THP, Gradiente medio transmitral
+12.-Estenosis Mitral   ☐No ☐Si ☐Leve   ☐Moderada     ☐Severa     
+INSUFICIENCIA MITRAL 
+1.-Diametro vena contracta: …………mm < 3 leve 3-6 moderado. >=7 severo 
+2. EROA (Orificio regurgitante efectivo )……………………cm2
+3. Volumen regurgitante……………ml
+4.- Velocidad maxima onda  (Doppler pulsado E> 1,5m /s y onda A pequeña 
+3.- Dilatación  Auricula izda ☐ No: ☐Si
+4.-Dilatación ventrículo izdo ☐ No:☐Si. 
+5.Medir PSAP………………….mmHg
+5.-Trazado con dopler continuo del jet .  es denso /triangular  depediendo la densidad y el tamaño sera mas leve o mas severa
+6.- Velocidad del chorro regurgitante (dopler continuo)__________m/s En personas normales oscila entre 1.5-2.5 m/seg
+Insuficiencia Mitral ☐No: ☐Si ☐Leve     ☐Moderada     ☐Severa     
+Estenosis tricúspide
+1.- Velocidad flujo de llenado diastólico__________ velocidad maxima (0.3 -0,7mseg)
+      velocidad de flujo de llenado diastolico >1 m/seg que en valvulas normales no supera 0.7 m/segm/seg en el punto E
+2. -Gradiente transvalvular medio _________________mmHg 
+Leve < 5  mmHg moderada de  5-10 mmHg severa > 10 mm Hg 
+THP ___________< 100  ms moderada entre 100-200 ms severa > 200  <= 1cm2
+3.- AD dilatada ☐ No: ☐Si  Area…………. cm2
+4. VD dilatado diámetro basal…………cm medio……………cm longitudinal……………..cm
+4.- Dilatación VCI……..cm
+Imagen en mosaico de colores o llamaradas en la camara de llenado del VD
+Estenosis Tricúspide ☐No ☐ Si   ☐Leve     ☐Moderada     ☐Severa     
+Insuficiencia Tricúspide
+1 -Anillo Tricúspide ……….mm (1.9-2.5 cm)en plano de 4 camaras) dilatación del anillo mayor de >-4 cm
+2  Vena contracta……………. mm < 3 leve moderada 3-6. severa >=6 
+2. EROA (Orificio regurgitante efectivo )……………………cm2
+3. Volumen regurgitante……………ml
+4. Pisa radio > 9 mm  ☐No  ☐ Si   
+5 Velocidad maxima onda  (Doppler pulsado E> 1,5m /s y onda A pequeña 
+6.- Dilatación Auricula derecha ☐ No: ☐Si Area …………………cm2
+7.-Dilatación Ventriculo derecho ☐ No: ☐Si. . diámetro basal…………cm medio……………cm longitudinal……………..cm
+3-Velocidad del chorro  regurgitante  (dopler continuo) m/s En personas normales oscila entre 1.5-2.5 m/seg
+4.-Anchura de la Vena Contracta:_____________mm > 6 severa. 
+5.-Diametro VCI……………cm  Dilatación de la VCI que no colapsa en inspiración y de las suprahepaticas
+6.-Presión sistólica arterial pulmonar (PSAP)______________cm valores normales es de 8-20 mmHg en reposo. Si es superior a a 25 mmHg en reposo o 30 durante una actividad es anormalmente alta y se le denomina hipertension arterial pulmonar
+7.-Insuficiencia Tricúspide ☐No☐Si ☐Leve  ☐Moderada     ☐Severa     
+Estenosis aortica
+1.Número de velos de la Aórta:_____________
+2. Calcificación anillo aórtico: ☐ No  ☐ Sí
+3. Movilidad válvula Aórtica: ☐Normal  ☐Alterada
+4. Velocidad maxima <2.0 m/s …………m/s Estenosis leve (2.0-2.9m/s)moderda  (3,0-4.0 m /s)) severa >-4 m/seg
+5.Gradiente transvalvular maximo de presión dopler continuo………………….. mmHg
+Ligera gradiente máximo =< 40 mmHg moderada gradiente maximo =40-80 mmHg  severa gradiente maximo => 80 mmHg velocidad maxima flujo aortico >=4.5 mseg 
+6.-Gradiente Medio <5 mmHg…………… planimetria de de la curva epectral de dopler continuo Estenosis leve (10-20 mmHg moderada (20-40) severa mayor de 40 mm Hg 
+7.-Area valvular aortica por ecuación de continuidad ___________(normal 3-4 cm2) estenosis leve (1.5-2.0 cm2) moderada (1-1,5cm2) severa < 1 cm2  
+Causas mas comunes : degenerativa, bicuspide y reumatica
+8.- Estenosis aortica : ☐No ☐Si ☐Leve     ☐Moderada     ☐Severa     
+Insuficiencia Aortica
+1.- Vena contracta …………….mm  leve < 0.3 cm, severa >= 0.6 cm
+2. EROA (Orificio regurgitante efectivo )…………………………….cm2  leve <0.10 cm2 moderado0.10-0.29 grave >0.30 cm2
+3. Volumen regurgitante……………m l  leve <30 ml  moderada 30-59 ml grave >- 60 ml
+4- THP __________ mseg leve > 500  ms  MODERADA 250-500 m/seg SEVERA < 200 m /seg
+5. Diametrios anillo aortico……………….cm,  senos de Valsalva…………..cm Aorta ascendente………..cm
+ 6. Ventriculo izdo  diâmetros diastólico y sistólico........................................cm  volumenes diastoico y sistólico...................cm
+7. FE.................................%  
+8. Morfologia de la válvula : (Bicúspide, degenerativa, endocarditis, dilatación raiz aórtica, u otras causas)..................................
+ Insuficiencia aortica: ☐No ☐Si. ☐Leve   ☐Moderada     ☐Severa 
+Estenosis Pulmonar
+1.- Velocidad máxima  ………….m/s velocidad maxima normal < 1 m/s con doppler continuo ligera (2,6-2,9) moderada (3-4) severa >-4 m/seg
+2.-Gradiente trans valvular máximo..............................leve < 36 mmHg ) moderada entre 36-64 mmHg ) severa > >64  
+3. valorar si la estenosis es valvular , subvalvular o supravalvular
+4.-Estenosis pulmonar ☐No ☐ Si ☐Leve     ☐Moderada     ☐Severa   
+Insuficiencia pulmonar
+1.- Medida del  chorro  regurgitante:______________%  normal leve anchura pequena,  moderada intermedia,severa amplia
+2. Tiempo de hemipresion ..............ms normal/ Leve >200 ms  moderada 100-200 ms severa < 100 ms 
+3. Reversion diastólica art pulmonar . ☐ ausente( normal/leve)  ☐ Variable (moderada)  ☐ holodiastolica( severa)
+4. Dilatacion del ventrículo izdo. ☐ ausente( normal/leve)  ☐ Variable (moderada ☐ frecuente (severa)
+5.Insuficiencia pulmonar ☐No ☐Si ☐Leve     ☐Moderada     ☐Severa   
+Valvulopatía
+P
+arámetro principal de gravedad
+Estenosis pulmonar
+Vmax > 4 m/s
+Estenosis pulmonar
+Gradiente máximo > 64 mmHg
+Insuficiencia pulmonar
+PHT < 100 ms
+Insuficiencia pulmonar
+Reversión holodiastólica del flujo pulmonar
+Insuficiencia pulmonar
+Dilatación del VD
+PERICARDIO
+1.- Derrame pericárdico: ☐No   ☐Sí
+2.- Grosor derrame pericárdico: ______________ <1cm leve  > 1 cm moderado > 2cm severo 
+ Resultados
+1.-Ventrículo Izquierdo Dilatado: ☐NO ☐SI
+2.-Ventrículo Izquierdo hipertrófico: ☐NO   ☐SI  TIPO…………………………………………………………
+3.-Función Sistólica del Ventrículo Izquierdo: ☐Normal ☐Alterada
+3.- Función Diastólica del Ventrículo Izquierdo: ☐Normal ☐Alterada
+4.- Presiones de llenado del Ventrículo Izquierdo: ☐Normales ☐Alteradas 
+5.- Alteraciones de la Contractilidad:   ☐ NO   ☐SI
+6.-Ventrículo Derecho Dilatado: ☐NO   ☐SI
+7.- Ventrículo Derecho Hipertrófico: ☐NO   ☐SI
+8.- Función Sistólica del Ventrículo Derecho: ☐Normal    ☐Alterada
+9.- Función Diastólica del Ventrículo Derecho: ☐Normal   ☐Alterada
+10.-Raiz Aortica Dilatada: ☐NO   ☐SI
+11. AI dilatada ☐NO   ☐SI
+12.AD dilatada ☐NO   ☐SI
+13. valvulopatía ☐NO   ☐Si Tipo…………………………………………….
+14. Derrame pericárdico. ☐NO   ☐Si.  Cuantos cms…………………
+15.-Ecocardiograma NORMAL:   ☐Sí   ☐No
+COMENTARIO……………………………………………………………………………………………….
+16. ECOGRAFIA VASCULAR CARPOTIDEA NORMAL ☐Sí ☐No
+COMENTARIO…………………………………………………………………………………………………….
+17. ECOGRAFIA DIGESTIVA.:  HIGADO GRASO ☐Sí ☐No
+COMENTARIO…………………………………………………………………………………………
+CUESTIONARIO PREDIMED: CUESTIONARIO DE ADHERENCIA A LA DIETA MEDITERRÁNEA
+Nos interesa conocer sus hábitos de alimentación, por ello necesitamos que responda a algunas cuestiones relacionadas con su dieta. Le informamos que este cuestionario es totalmente anónimo. Muchas gracias por su colaboración 
+1 ¿Usa usted el aceite de oliva principalmente para cocinar? ☐ No ☐ Sí   Si =1 punto 
+2 ¿Cuánto aceite de oliva consume en total al día (incluyendo el usado para freír, el de las comidas fuera de casa, las ensaladas, etc.)?  Dos o más cucharadas ☐ No ☐ Sí =1 punto
+ 3 ¿Cuántas raciones de verduras  u hortalizas consume al día (las guarniciones o acompañamientos contabilizan como ½ ración)? (al menos una de ellas en ensaladas o crudas)
+ Dos o más al día ☐ No ☐ Sí  = 1 punto 
+4 ¿Cuántas piezas de fruta (incluyendo zumo natural) consume al día? Tres o más al día 
+☐ No ☐ Sí   = 1 punto
+ 5 ¿Cuántas raciones de carnes rojas, hamburguesas, salchichas o embutidos consume al día (una ración equivale a 100-150 gr.) Menos de una al día ☐ No ☐ Sí   = 1 punto
+ 6 ¿Cuántas raciones de mantequilla, margarina o nata consume al día (una porción individual equivale a 12 gr)?  Menos de una al día ☐ No ☐ Sí = 1 punto 
+7 ¿Cuántas bebidas carbonatadas y/o azucaradas (refrescos, colas, tónicas, bitter) consume al día? Menos de una al día ☐ No ☐ Si = 1 punto 
+8 ¿Bebe vino tinto? ☐ No ☐ Sí Consume tres o más vasos por semana ☐ No ☐ Sí   = 1 punto 
+9 ¿Cuántas raciones de legumbres consume a la semana (una ración o plato equivale a 150 gr)? Tres o más por semana ☐ No ☐ Sí   = 1 punto 
+10  ¿Cuántas raciones de pescado o mariscos consume a la semana (un plato, pieza o ración equivale a 100-150 gr de pescado ó 4-5 piezas de marisco)? Tres o más por semana ☐ No☐ Sí = 1  punto
+11.- Cuantas raciones de pescado  azul , Salmón , trucha , caballa, atún, sardinas,pez espada etc dos o mas por semana  ☐ No☐ Sí = 1 punto
+12.- ¿Cuántas veces consume repostería comercial (no casera) como galletas, flanes, dulces o 
+ Pastéles a la semana?  Menos de tres por semana☐ No ☐ Sí   = 1 punto 
+13.- ¿Consume leche  Vaca ☐ No ☐ Sí   vasos al dia _______a la semana____  Tipo de leche_____________
+14.- Consume Queso ☐ No ☐ Sí  Cuantos veces a la semana_________Gramos_________
+15.-Consume yogurt ☐ No ☐ Sí. Cuantos a la semana_____________De que tipo______
+16.- ¿Cuántas veces consume frutos secos a la semana (una ración equivale a 30 gr)? dos o mas por semana ☐ No ☐ Sí   1 punto 
+17.- ¿Consume cereales integrales granos  avena, trigo, pan integral,: Tres, cuatro veces por semana ☐ No ☐ Sí.   = 1 punto 
+18.-  ¿Consume preferentemente carne de pollo, pavo o conejo en vez de ternera, cerdo, hamburguesas o salchichas (carne de pollo: una pieza o ración equivale a 100- 150 gr)? ☐ No ☐ Sí   = 1 punto 
+19.-¿Cuántas veces a la semana consume los vegetales cocinados, la pasta, el arroz u otros platos aderezados con una salsa de tomate, ajo, cebolla o puerro elaborada a fuego lento con aceite de oliva (sofrito)? Sí   Dos o más por semana ☐ No ☐ Sí   = 1 punto 
+Resultado final, puntuación total :
+PUNTUACIÓN TOTAL: < 9 baja adherencia >= 9 buena adherencia
+Cuestionario de Actividad Física      
+1.- ¿Qué actividad física ha hecho durante su tiempo libre el ÚLTIMO MES? 
+☐ No realiza ninguna actividad   ☐ Si realiza actividad física
+2. Realiza ejercicios aeróbicos: caminar, correr. Bicicleta, piscina , bailo terapia etc. ☐No ☐Sí
+1. Cual_____________________
+2. Cuantas veces a la semana___________________
+3 Cuantos Minutos /dia_________________________
+3. Realiza ejerccios fisicos anaeróbicos de fuerza (pesas, abdominales, etc) ☐No ☐Sí
+1.Cual____________
+2. cuantas veces a la semana_____________
+3.Cuantos minutos / dia ________________
+4. ¿Hace deporte? ☐No ☐Sí
+1.- ¿Qué tipo de deporte? ___________
+ 2. Cuantas veces a la semana______________
+3. Cuantos minutos/dia _____________. 
+            ESTUDIOS QUE SE LE HA MANDADO AL PACIENTE
+            1-Estudios de Análisis Clinicos ☐
+            2.- Estudios de Ergometria  con Speth ☐No ☐S
+            3.-Estudios de TAC cardiaco ☐No ☐Sí
+            4.-Estudios de RNM cardiaco ☐No   ☐Sí
+            5- Estudios de Electrofisiología Cardiaca  ☐No☐Sí 
+           
