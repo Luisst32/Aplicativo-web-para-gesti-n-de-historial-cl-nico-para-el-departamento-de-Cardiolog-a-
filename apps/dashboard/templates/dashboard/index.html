@@ -4,7 +4,7 @@
 {% block title %}CARDIOUNEMI | Dashboard Epidemiológico y Clínico{% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'dashboard/css/dashboard.css' %}?v=20261104_12">
+  <link rel="stylesheet" href="{% static 'dashboard/css/dashboard.css' %}?v=20261113_fichas05">
   <style>
     /* Estilos embebidos de alta prioridad para Botón y Modal de Exportación */
     .btn-export-dashboard {
@@ -179,12 +179,55 @@
     #export-progress-text { font-size: 0.8rem; font-weight: 600; color: #1E293B; display: block; margin-bottom: 4px; }
     .export-progress-bar-bg { width: 100%; height: 6px; background: #CBD5E1; border-radius: 3px; overflow: hidden; }
     .export-progress-bar-fill { height: 100%; background: #3AA0FF; transition: width 0.25s ease; }
-    .dropdown-ficha-item {
-      transition: background-color 0.15s ease, color 0.15s ease;
+    .slicers-container {
+      position: relative;
+      z-index: 1000;
+      overflow: visible !important;
     }
-    .dropdown-ficha-item:hover {
+    #slicer-codigo-wrapper {
+      position: relative;
+      z-index: 1001;
+    }
+    #dropdown-fichas-menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      min-width: 155px;
+      width: 100%;
+      max-height: 230px;
+      overflow-y: auto;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+      z-index: 99999;
+      padding: 4px 0;
+    }
+    .dropdown-ficha-item {
+      padding: 7px 12px;
+      cursor: pointer;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #334155;
+      transition: background-color 0.15s ease, color 0.15s ease;
+      user-select: none;
+    }
+    .dropdown-ficha-item:hover, .dropdown-ficha-item.active {
       background-color: #eff6ff !important;
       color: #1d4ed8 !important;
+    }
+    #dropdown-fichas-menu::-webkit-scrollbar {
+      width: 6px;
+    }
+    #dropdown-fichas-menu::-webkit-scrollbar-track {
+      background: #f8fafc;
+    }
+    #dropdown-fichas-menu::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    #dropdown-fichas-menu::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
     }
   </style>
 {% endblock %}
@@ -348,19 +391,19 @@
       </div>
 
       <!-- PANEL DE FILTROS SLICERS -->
-      <div class="slicers-container">
+      <div class="slicers-container" style="position: relative; z-index: 1000; overflow: visible !important;">
         <!-- Slicer Búsqueda por N.° Ficha Clínica -->
-        <div class="slicer-group" style="width: 140px; min-width: 120px; max-width: 150px; flex: 0 0 140px;">
+        <div class="slicer-group" style="width: 140px; min-width: 120px; max-width: 150px; flex: 0 0 140px; position: relative;">
           <label for="slicer-codigo" style="font-weight: 700; color: #1e293b; font-size: 0.82rem; white-space: nowrap;">• N.° Ficha Clínica</label>
-          <div style="position: relative;" id="slicer-codigo-wrapper">
-            <input type="text" id="slicer-codigo" class="form-input slicer-input" placeholder="N.° Ficha..." autocomplete="off" oninput="onSlicerCodigoInput()" onfocus="abrirDropdownFichas()" onclick="abrirDropdownFichas()" style="padding-left: 28px; padding-right: 22px; height: 38px; font-size: 0.85rem; border-radius: 6px; border: 1px solid #CBD5E1; width: 100%; font-family: monospace; font-weight: 700;">
+          <div style="position: relative; z-index: 1001;" id="slicer-codigo-wrapper">
+            <input type="text" id="slicer-codigo" class="form-input slicer-input" placeholder="N.° Ficha..." autocomplete="off" oninput="onSlicerCodigoInput()" onfocus="abrirDropdownFichas()" onclick="abrirDropdownFichas()" style="padding-left: 28px; padding-right: 24px; height: 38px; font-size: 0.85rem; border-radius: 6px; border: 1px solid #CBD5E1; width: 100%; font-family: monospace; font-weight: 700;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" style="position: absolute; left: 8px; top: 12px; pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <span onclick="toggleDropdownFichas(event)" style="position: absolute; right: 8px; top: 10px; cursor: pointer; color: #64748B; font-size: 11px; user-select: none;">&#9660;</span>
+            <div id="btn-toggle-fichas" onclick="toggleDropdownFichas(event)" title="Desplegar fichas" style="position: absolute; right: 0; top: 0; width: 26px; height: 100%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #64748B; font-size: 11px; user-select: none;">&#9660;</div>
             
-            <div id="dropdown-fichas-menu" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; min-width: 150px; width: 100%; max-height: 220px; overflow-y: auto; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.12); z-index: 1000; padding: 4px 0;">
-              <div class="dropdown-ficha-item" onclick="seleccionarFichaSlicer('')" style="padding: 6px 12px; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: #1e293b; border-bottom: 1px solid #f1f5f9;">Todas las Fichas</div>
+            <div id="dropdown-fichas-menu" style="display: none;">
+              <div class="dropdown-ficha-item" onclick="seleccionarFichaSlicer('')" style="border-bottom: 1px solid #f1f5f9; color: #1e293b;">Todas las Fichas</div>
               {% for f in available_fichas %}
-              <div class="dropdown-ficha-item" data-code="{{ f }}" onclick="seleccionarFichaSlicer('{{ f }}')" style="padding: 6px 12px; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: #334155; font-family: monospace;">Ficha #{{ f }}</div>
+              <div class="dropdown-ficha-item" data-code="{{ f }}" onclick="seleccionarFichaSlicer('{{ f }}')" style="font-family: monospace;">Ficha #{{ f }}</div>
               {% endfor %}
             </div>
           </div>
@@ -1021,5 +1064,113 @@
 
   <!-- Controlador e inicialización del Dashboard con los 8 bloques y motor de exportación -->
   {{ records|json_script:"dashboard-records-data" }}
-  <script src="{% static 'dashboard/js/dashboard.js' %}?v=20261110_01"></script>
+  
+  <script>
+    // =========================================================================
+    // CONTROLADOR INMEDIATO DEL DESPLEGABLE DE N.° FICHA CLÍNICA
+    // =========================================================================
+    window.abrirDropdownFichas = function() {
+      var menu = document.getElementById('dropdown-fichas-menu');
+      if (menu) {
+        menu.style.display = 'block';
+        if (typeof window.filtrarDropdownFichas === 'function') {
+          window.filtrarDropdownFichas();
+        }
+      }
+    };
+
+    window.cerrarDropdownFichas = function() {
+      var menu = document.getElementById('dropdown-fichas-menu');
+      if (menu) {
+        menu.style.display = 'none';
+      }
+    };
+
+    window.toggleDropdownFichas = function(e) {
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+      var menu = document.getElementById('dropdown-fichas-menu');
+      if (!menu) return;
+      if (menu.style.display === 'block') {
+        menu.style.display = 'none';
+      } else {
+        menu.style.display = 'block';
+        if (typeof window.filtrarDropdownFichas === 'function') {
+          window.filtrarDropdownFichas();
+        }
+      }
+    };
+
+    window.seleccionarFichaSlicer = function(code) {
+      var inp = document.getElementById('slicer-codigo');
+      if (inp) {
+        inp.value = code ? code : '';
+      }
+      window.cerrarDropdownFichas();
+      if (typeof window.onSlicerChange === 'function') {
+        window.onSlicerChange();
+      }
+    };
+
+    window.onSlicerCodigoInput = function() {
+      if (typeof window.filtrarDropdownFichas === 'function') {
+        window.filtrarDropdownFichas();
+      }
+      window.abrirDropdownFichas();
+      if (typeof window.onSlicerChange === 'function') {
+        window.onSlicerChange();
+      }
+    };
+
+    window.filtrarDropdownFichas = function() {
+      var inp = document.getElementById('slicer-codigo');
+      var raw = (inp && inp.value ? inp.value : '').trim().toLowerCase();
+      var val = raw.replace(/^#/, '').replace(/^ficha\s*#?/, '').trim();
+      var menu = document.getElementById('dropdown-fichas-menu');
+      if (!menu) return;
+
+      var items = menu.querySelectorAll('.dropdown-ficha-item');
+      items.forEach(function(it) {
+        var code = (it.getAttribute('data-code') || '').toLowerCase();
+        if (!it.hasAttribute('data-code')) {
+          it.style.display = (!val || val === 'todas') ? 'block' : 'none';
+          return;
+        }
+        if (!val || code === val || code.startsWith(val) || it.textContent.toLowerCase().indexOf(val) !== -1) {
+          it.style.display = 'block';
+        } else {
+          it.style.display = 'none';
+        }
+      });
+    };
+
+    document.addEventListener('click', function(e) {
+      var wrapper = document.getElementById('slicer-codigo-wrapper');
+      if (wrapper && !wrapper.contains(e.target)) {
+        window.cerrarDropdownFichas();
+      }
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        window.cerrarDropdownFichas();
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+      var menu = document.getElementById('dropdown-fichas-menu');
+      if (menu) {
+        menu.addEventListener('click', function(e) {
+          var item = e.target.closest('.dropdown-ficha-item');
+          if (!item) return;
+          var code = item.getAttribute('data-code') || '';
+          window.seleccionarFichaSlicer(code);
+        });
+      }
+    });
+  </script>
+
+  <script src="{% static 'dashboard/js/dashboard.js' %}?v=20261113_fichas05"></script>
 {% endblock %}

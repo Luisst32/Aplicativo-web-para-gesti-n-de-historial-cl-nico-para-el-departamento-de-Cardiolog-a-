@@ -431,6 +431,14 @@ function seleccionarFichaSlicer(code) {
   onSlicerChange();
 }
 
+window.abrirDropdownFichas = abrirDropdownFichas;
+window.cerrarDropdownFichas = cerrarDropdownFichas;
+window.toggleDropdownFichas = toggleDropdownFichas;
+window.seleccionarFichaSlicer = seleccionarFichaSlicer;
+window.onSlicerCodigoInput = onSlicerCodigoInput;
+window.filtrarDropdownFichas = filtrarDropdownFichas;
+window.onSlicerChange = onSlicerChange;
+
 function onSlicerCodigoInput() {
   filtrarDropdownFichas();
   abrirDropdownFichas();
