@@ -97,6 +97,20 @@ class DeploymentGateTests(unittest.TestCase):
                 check_health(URL)
         self.assertIsNone(NoRedirects().redirect_request(None, None, None, None, None, None))
 
+    def test_healthcheck_retries_transient_gateway_errors(self):
+        from urllib.error import HTTPError
+        with patch('scripts.deploy.build_opener') as opener, patch('scripts.deploy.time.sleep') as mock_sleep:
+            good_response = Mock()
+            good_response.status = 200
+            context_manager = Mock()
+            context_manager.__enter__ = Mock(return_value=good_response)
+            context_manager.__exit__ = Mock(return_value=None)
+            err = HTTPError(URL, 502, 'Bad Gateway', {}, None)
+            opener.return_value.open.side_effect = [err, context_manager]
+            check_health(URL, attempts=3, delay=0.01)
+            self.assertEqual(opener.return_value.open.call_count, 2)
+            mock_sleep.assert_called_once_with(0.01)
+
 
 class MigrationCredentialTests(unittest.TestCase):
     def test_refuses_non_migration_commands(self):

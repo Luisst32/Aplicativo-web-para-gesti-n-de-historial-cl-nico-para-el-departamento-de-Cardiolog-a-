@@ -6,6 +6,8 @@ import argparse
 from pathlib import Path
 import re
 import subprocess
+import time
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import build_opener, HTTPRedirectHandler, Request
 
@@ -15,11 +17,25 @@ class NoRedirects(HTTPRedirectHandler):
         return None
 
 
-def check_health(url):
+def check_health(url, *, attempts=10, delay=2):
     request = Request(url, headers={'User-Agent': 'CardioUNEMI-DeploymentHealthcheck/1.0', 'Cache-Control': 'no-cache'})
-    with build_opener(NoRedirects).open(request, timeout=15) as response:
-        if response.status != 200:
-            raise RuntimeError('Health check did not return HTTP 200.')
+    opener = build_opener(NoRedirects)
+    for attempt in range(attempts):
+        try:
+            with opener.open(request, timeout=15) as response:
+                if response.status != 200:
+                    raise RuntimeError('Health check did not return HTTP 200.')
+                return
+        except HTTPError as exc:
+            if exc.code in (502, 503, 504) and attempt < attempts - 1:
+                time.sleep(delay)
+                continue
+            raise RuntimeError('Health check did not return HTTP 200.') from exc
+        except URLError as exc:
+            if attempt < attempts - 1:
+                time.sleep(delay)
+                continue
+            raise RuntimeError('Health check did not return HTTP 200.') from exc
 
 
 def deploy(repository, commit, healthcheck_url, *, run=None, healthcheck=check_health):
