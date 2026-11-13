@@ -50,6 +50,7 @@ def deploy(repository, commit, healthcheck_url, *, run=None, healthcheck=check_h
     run([py, 'manage.py', 'check', '--deploy', '--fail-level', 'ERROR'])
     run([py, 'scripts/migration_manage.py', 'makemigrations', '--check', '--dry-run'])
     run([py, 'scripts/migration_manage.py', 'migrate', '--noinput'])
+    run(['sudo', '-n', '-u', 'cardio_app', py, 'manage.py', 'rotate_encrypted_settings'])
     run([py, 'manage.py', 'collectstatic', '--noinput'])
     run(['sudo', '-n', 'systemctl', 'restart', 'django_app'])
     run(['systemctl', 'is-active', '--quiet', 'django_app'])
