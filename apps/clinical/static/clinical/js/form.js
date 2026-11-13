@@ -525,6 +525,14 @@ function toggleProvinciaExtranjera() {
 }
 
 function actualizarNombreCompleto() {
+  if (typeof esModoPrivacidadActivo === 'function' && esModoPrivacidadActivo()) {
+    const codFicha = (historialActual && historialActual.codigoEstudio) 
+      ? historialActual.codigoEstudio 
+      : ((pacienteActual && (pacienteActual.codigo || pacienteActual.id)) || '');
+    const hero = document.getElementById('heroNombre');
+    if (hero) hero.textContent = `Paciente ${codFicha}`;
+    return;
+  }
   const partes = ['f_nombre', 'f_apellido1', 'f_apellido2']
     .map(id => (document.getElementById(id) || {}).value || '')
     .map(x => x.trim())
@@ -593,9 +601,9 @@ function aplicarProteccionPrivacidadFormulario(p, h) {
   const elCor = document.getElementById('f_correo');
 
   if (privacidad) {
-    if (elNombre) elNombre.value = 'Paciente';
-    if (elAp1) elAp1.value = String(codFicha);
-    if (elAp2) elAp2.value = '';
+    if (elNombre) elNombre.value = `Paciente ${codFicha}`;
+    if (elAp1) elAp1.value = '******';
+    if (elAp2) elAp2.value = '******';
     if (elCed) elCed.value = (typeof censurarCedula === 'function') ? censurarCedula(p.cedula) : '09******00';
     if (elTel) elTel.value = '09******XX';
     if (elCor) elCor.value = '***@***.***';
@@ -619,10 +627,24 @@ function aplicarProteccionPrivacidadFormulario(p, h) {
     if (heroAvatar) heroAvatar.textContent = `P${codFicha}`;
   } else {
     // Restaurar datos reales y permitir edición
-    const trozos = (p.nombre || '').trim().split(/\s+/);
-    if (elNombre) elNombre.value = trozos.slice(0, trozos.length > 2 ? 1 : 1).join(' ');
-    if (elAp1) elAp1.value = trozos[1] || '';
-    if (elAp2) elAp2.value = trozos.slice(2).join(' ');
+    let nomReal = '';
+    let ap1Real = '';
+    let ap2Real = '';
+
+    if (p.first_names || p.last_name1) {
+      nomReal = p.first_names || '';
+      ap1Real = p.last_name1 || '';
+      ap2Real = p.last_name2 || '';
+    } else if (p.nombre) {
+      const trozos = (p.nombre || '').trim().split(/\s+/);
+      nomReal = trozos[0] || '';
+      ap1Real = trozos[1] || '';
+      ap2Real = trozos.slice(2).join(' ') || '';
+    }
+
+    if (elNombre) elNombre.value = nomReal;
+    if (elAp1) elAp1.value = ap1Real;
+    if (elAp2) elAp2.value = ap2Real;
     if (elCed) elCed.value = p.cedula || '';
     if (elTel) elTel.value = p.telefono || '';
     if (elCor) elCor.value = p.correo || '';
