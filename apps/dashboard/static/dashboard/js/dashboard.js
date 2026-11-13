@@ -438,6 +438,49 @@ window.seleccionarFichaSlicer = seleccionarFichaSlicer;
 window.onSlicerCodigoInput = onSlicerCodigoInput;
 window.filtrarDropdownFichas = filtrarDropdownFichas;
 window.onSlicerChange = onSlicerChange;
+window.toggleSlicersPanel = toggleSlicersPanel;
+
+function toggleSlicersPanel() {
+  const wrapper = document.getElementById('slicers-collapse-wrapper');
+  const btn = document.getElementById('btn-toggle-slicers');
+  const label = document.getElementById('slicers-toggle-label');
+  if (!wrapper) return;
+
+  const isCurrentlyCollapsed = wrapper.classList.contains('is-collapsed');
+
+  if (isCurrentlyCollapsed) {
+    wrapper.classList.add('is-animating');
+    wrapper.classList.remove('is-collapsed');
+    if (btn) {
+      btn.classList.remove('is-collapsed');
+      btn.setAttribute('aria-expanded', 'true');
+      btn.title = 'Ocultar filtros';
+    }
+    if (label) label.textContent = 'Ocultar filtros';
+    try { localStorage.setItem('cardiounemi_slicers_collapsed', 'false'); } catch (e) {}
+
+    setTimeout(() => {
+      wrapper.classList.remove('is-animating');
+      window.dispatchEvent(new Event('resize'));
+    }, 360);
+  } else {
+    wrapper.classList.add('is-animating');
+    if (typeof cerrarDropdownFichas === 'function') cerrarDropdownFichas();
+    wrapper.classList.add('is-collapsed');
+    if (btn) {
+      btn.classList.add('is-collapsed');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.title = 'Mostrar filtros';
+    }
+    if (label) label.textContent = 'Mostrar filtros';
+    try { localStorage.setItem('cardiounemi_slicers_collapsed', 'true'); } catch (e) {}
+
+    setTimeout(() => {
+      wrapper.classList.remove('is-animating');
+      window.dispatchEvent(new Event('resize'));
+    }, 360);
+  }
+}
 
 function onSlicerCodigoInput() {
   filtrarDropdownFichas();
