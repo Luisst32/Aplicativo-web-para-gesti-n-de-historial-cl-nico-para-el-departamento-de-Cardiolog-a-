@@ -51,6 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (resData.datos) {
       restaurarFichaDesdeObjeto(resData.datos);
     }
+    aplicarProteccionPrivacidadFormulario(pacienteActual, historialActual);
   } catch (err) {
     console.error('Error al cargar la ficha del paciente:', err);
     alert('No se pudo cargar la información del paciente desde la base de datos.');
@@ -554,14 +555,109 @@ function onBirthDateChange(dateStr) {
 
 // Cálculo automático de IMC y ASC (provisto globalmente en static/js/global/utils.js)
 
+// =========================================================================
+// MODO DE PRIVACIDAD: CENSURA Y BLOQUEO DE EDICIÓN EN FORMULARIO CLÍNICO
+// =========================================================================
+function aplicarProteccionPrivacidadFormulario(p, h) {
+  if (!p) p = pacienteActual;
+  if (!h) h = historialActual;
+  if (!p) return;
+
+  const codFicha = (h && h.codigoEstudio) ? h.codigoEstudio : (p.codigo || p.id || '');
+  const privacidad = typeof esModoPrivacidadActivo === 'function' && esModoPrivacidadActivo();
+
+  // Siempre mostrar el N.° Ficha Clínica real en su campo
+  const elCodigo = document.getElementById('f_codigo');
+  if (elCodigo && codFicha) {
+    elCodigo.value = codFicha;
+  }
+  const heroCodigo = document.getElementById('heroCodigo');
+  if (heroCodigo && codFicha) {
+    heroCodigo.textContent = codFicha;
+  }
+
+  const camposSensibles = [
+    'f_nombre',
+    'f_apellido1',
+    'f_apellido2',
+    'f_cedula',
+    'f_telefono',
+    'f_correo'
+  ];
+
+  const elNombre = document.getElementById('f_nombre');
+  const elAp1 = document.getElementById('f_apellido1');
+  const elAp2 = document.getElementById('f_apellido2');
+  const elCed = document.getElementById('f_cedula');
+  const elTel = document.getElementById('f_telefono');
+  const elCor = document.getElementById('f_correo');
+
+  if (privacidad) {
+    if (elNombre) elNombre.value = 'Paciente';
+    if (elAp1) elAp1.value = String(codFicha);
+    if (elAp2) elAp2.value = '';
+    if (elCed) elCed.value = (typeof censurarCedula === 'function') ? censurarCedula(p.cedula) : '09******00';
+    if (elTel) elTel.value = '09******XX';
+    if (elCor) elCor.value = '***@***.***';
+
+    camposSensibles.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.readOnly = true;
+        el.setAttribute('tabindex', '-1');
+        el.style.backgroundColor = '#f1f5f9';
+        el.style.color = '#64748b';
+        el.style.cursor = 'not-allowed';
+        el.style.borderColor = '#cbd5e1';
+        el.setAttribute('title', 'Dato protegido por Modo de Privacidad (no editable)');
+      }
+    });
+
+    const heroNombre = document.getElementById('heroNombre');
+    if (heroNombre) heroNombre.textContent = `Paciente ${codFicha}`;
+    const heroAvatar = document.getElementById('heroAvatar');
+    if (heroAvatar) heroAvatar.textContent = `P${codFicha}`;
+  } else {
+    // Restaurar datos reales y permitir edición
+    const trozos = (p.nombre || '').trim().split(/\s+/);
+    if (elNombre) elNombre.value = trozos.slice(0, trozos.length > 2 ? 1 : 1).join(' ');
+    if (elAp1) elAp1.value = trozos[1] || '';
+    if (elAp2) elAp2.value = trozos.slice(2).join(' ');
+    if (elCed) elCed.value = p.cedula || '';
+    if (elTel) elTel.value = p.telefono || '';
+    if (elCor) elCor.value = p.correo || '';
+
+    camposSensibles.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.readOnly = false;
+        el.removeAttribute('tabindex');
+        el.style.backgroundColor = '';
+        el.style.color = '';
+        el.style.cursor = '';
+        el.style.borderColor = '';
+        el.removeAttribute('title');
+      }
+    });
+
+    const heroNombre = document.getElementById('heroNombre');
+    if (heroNombre) heroNombre.textContent = p.nombre || '--';
+    const heroAvatar = document.getElementById('heroAvatar');
+    if (heroAvatar) heroAvatar.textContent = (p.nombre || '').split(' ').map(n => n[0]).slice(0, 2).join('');
+  }
+}
+
+// Reactividad inmediata al cambiar el Modo de Privacidad en Ajustes
+window.addEventListener('cardio_privacy_mode_changed', () => {
+  aplicarProteccionPrivacidadFormulario(pacienteActual, historialActual);
+});
+
 // SELECCIÓN Y CARGA DE DATOS DEL PACIENTE E HISTORIAL
 function seleccionarPaciente(p, h) {
+  if (p) pacienteActual = p;
+  if (h) historialActual = h;
   const codFicha = (h && h.codigoEstudio) ? h.codigoEstudio : (p.codigo || p.id);
-  const privacidad = typeof esModoPrivacidadActivo === 'function' && esModoPrivacidadActivo();
-  const nombreMostrar = privacidad ? `Paciente ${codFicha}` : p.nombre;
-  const inits = privacidad ? `P${codFicha}` : (p.nombre || '').split(' ').map(n => n[0]).slice(0, 2).join('');
 
-  document.getElementById('heroNombre').textContent = nombreMostrar;
   const edadStr = calcAgeStr(p.fechaNac);
   document.getElementById('heroEdad').textContent = edadStr;
   document.getElementById('heroCodigo').textContent = codFicha;
@@ -569,27 +665,8 @@ function seleccionarPaciente(p, h) {
   document.getElementById('heroSexo').textContent = p.sexo === 'H' ? 'Hombre' : 'Mujer';
   document.getElementById('heroEstamento').textContent = p.estamento;
   document.getElementById('heroFacultad').textContent = p.facultad || 'UNEMI';
-  document.getElementById('heroAvatar').textContent = inits;
 
   document.getElementById('f_codigo').value = codFicha;
-  if (privacidad) {
-    document.getElementById('f_nombre').value = 'Paciente';
-    document.getElementById('f_apellido1').value = String(codFicha);
-    document.getElementById('f_apellido2').value = '';
-    if (document.getElementById('f_cedula')) document.getElementById('f_cedula').value = (typeof censurarCedula === 'function') ? censurarCedula(p.cedula) : '09******00';
-    if (document.getElementById('f_telefono')) document.getElementById('f_telefono').value = '09******XX';
-    if (document.getElementById('f_correo')) document.getElementById('f_correo').value = '***@***.***';
-    if (document.getElementById('f_direccion')) document.getElementById('f_direccion').value = '[Protegido por Privacidad]';
-  } else {
-    const trozos = (p.nombre || '').trim().split(/\s+/);
-    document.getElementById('f_nombre').value = trozos.slice(0, trozos.length > 2 ? 1 : 1).join(' ');
-    document.getElementById('f_apellido1').value = trozos[1] || '';
-    document.getElementById('f_apellido2').value = trozos.slice(2).join(' ');
-    if (document.getElementById('f_cedula')) document.getElementById('f_cedula').value = p.cedula || '';
-    if (document.getElementById('f_telefono')) document.getElementById('f_telefono').value = p.telefono || '';
-    if (document.getElementById('f_correo')) document.getElementById('f_correo').value = p.correo || '';
-    if (document.getElementById('f_direccion')) document.getElementById('f_direccion').value = p.direccion || '';
-  }
   document.getElementById('f_fecha_nac').value = p.fechaNac;
   document.getElementById('f_edad').value = edadStr;
 
@@ -619,8 +696,6 @@ function seleccionarPaciente(p, h) {
     document.getElementById('f_visita').value = (h && h.numeroVisita) ? h.numeroVisita : (p.numeroVisita || 1);
   }
 
-  document.getElementById('f_telefono').value = p.telefono || '';
-  document.getElementById('f_correo').value = p.correo || '';
   if (document.getElementById('f_raza')) document.getElementById('f_raza').value = (p.raza ? p.raza.toUpperCase() : '');
   if (document.getElementById('f_convivientes')) document.getElementById('f_convivientes').value = (p.convivientes !== undefined ? p.convivientes : '');
   if (document.getElementById('f_hijos')) document.getElementById('f_hijos').value = (p.hijos !== undefined ? p.hijos : '');
@@ -654,6 +729,9 @@ function seleccionarPaciente(p, h) {
   actualizarHeroPresion();
 
   calcIMC();
+
+  // Aplicar modo de privacidad y censura de datos sensibles si está activo
+  aplicarProteccionPrivacidadFormulario(p, h);
 
   // Ficha y módulos sincronizados directamente desde PostgreSQL
 }
@@ -840,7 +918,13 @@ function restaurarFichaDesdeObjeto(datos) {
     if (heroEdad) heroEdad.textContent = datos.f_edad + ' años';
   }
 
+  const camposSensibles = ['f_nombre', 'f_apellido1', 'f_apellido2', 'f_cedula', 'f_telefono', 'f_correo'];
+  const privacidad = typeof esModoPrivacidadActivo === 'function' && esModoPrivacidadActivo();
+
   Object.keys(datos).forEach(key => {
+    if (privacidad && camposSensibles.includes(key)) {
+      return;
+    }
     const val = datos[key];
     if (val === null || val === undefined || val === '') return;
 
@@ -926,6 +1010,7 @@ function restaurarFichaDesdeObjeto(datos) {
   calcIMC();
   calcPredimed();
   actualizarHeroPresion();
+  aplicarProteccionPrivacidadFormulario(pacienteActual, historialActual);
 }
 
 // NOTIFICACIÓN FLOTANTE VISUAL (TOAST)

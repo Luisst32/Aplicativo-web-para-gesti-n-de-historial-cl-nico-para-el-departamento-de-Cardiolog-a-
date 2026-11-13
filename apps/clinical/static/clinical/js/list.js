@@ -444,7 +444,7 @@ function crearFilaPaciente(p) {
   const nombreMostrar = privacidad ? `Paciente ${p.codigo || p.id}` : p.nombre;
   const inits = privacidad ? `P${p.codigo || ''}` : inicialesDe(p.nombre);
   const cedulaMostrar = privacidad ? (typeof censurarCedula === 'function' ? censurarCedula(p.cedula) : '09******00') : (p.cedula || '0900000000');
-  const contactoMostrar = privacidad ? '[Protegido por privacidad]' : (p.correo || (p.telefono ? 'Tel: ' + p.telefono : 'UNEMI'));
+  const contactoMostrar = privacidad ? '' : (p.correo || (p.telefono ? 'Tel: ' + p.telefono : 'UNEMI'));
 
   const historiales = obtenerHistorialesPaciente(p);
   const ultHistorial = historiales[0] || null;
@@ -461,8 +461,7 @@ function crearFilaPaciente(p) {
           <span class="nombre-paciente" title="Haga clic para ver el expediente y ficha médica de este paciente"><span style="display:inline-block; min-width:24px; padding:2px 8px; margin-right:8px; border-radius:6px; background:#eff6ff; color:#1d4ed8; font-size:0.82rem; font-weight:800; border:1px solid #bfdbfe;">#${escapeHtml(p.codigo)}</span>${escapeHtml(nombreMostrar)}</span>
           <div class="meta-secundaria">
             <span>C.I: ${escapeHtml(cedulaMostrar)}</span>
-            <span>·</span>
-            <span>${escapeHtml(contactoMostrar)}</span>
+            ${privacidad ? '' : `<span>·</span><span>${escapeHtml(contactoMostrar)}</span>`}
           </div>
         </div>
       </div>
