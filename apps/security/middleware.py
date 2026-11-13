@@ -15,13 +15,16 @@ class RequireLoginMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        if settings.MEDIA_URL and request.path.startswith(settings.MEDIA_URL):
+            from django.http import HttpResponseNotFound
+            return HttpResponseNotFound()
         if not request.user.is_authenticated:
             path = request.path
             login_url = reverse('security:login')
             logout_url = reverse('security:logout')
 
             exempt_prefixes = tuple(
-                prefix for prefix in (settings.STATIC_URL, settings.MEDIA_URL) if prefix
+                prefix for prefix in (settings.STATIC_URL,) if prefix
             )
 
             if (

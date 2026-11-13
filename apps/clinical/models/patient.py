@@ -83,6 +83,10 @@ class Patient(models.Model):
 
     class Meta:
         db_table = 'clinical"."patient'
+        permissions = [
+            ('export_clinical_data', 'Puede exportar datos clínicos de la cohorte'),
+            ('import_clinical_data', 'Puede importar datos clínicos de la cohorte'),
+        ]
         constraints = [
             models.UniqueConstraint(fields=['id_card'], name='uq_patient_id_card'),
             models.CheckConstraint(

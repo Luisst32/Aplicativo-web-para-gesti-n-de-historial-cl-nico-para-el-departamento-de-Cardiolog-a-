@@ -50,6 +50,7 @@
             { left: '\\(', right: '\\)', display: false },
             { left: '\\[', right: '\\]', display: true }
           ],
+          trust: false,
           throwOnError: false
         });
       } catch (err) {
@@ -222,7 +223,7 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
       if (cfg.title) {
         const titleEl = document.createElement('div');
         titleEl.style.cssText = 'font-weight: 700; font-size: 13.5px; color: #0F172A; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; line-height: 1.35;';
-        titleEl.innerHTML = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" style="flex-shrink:0;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg> <span>${cfg.title}</span>`;
+        titleEl.textContent = cfg.title;
         card.appendChild(titleEl);
       }
 
@@ -487,14 +488,19 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
       const div = document.createElement('div');
       div.className = 'mensaje mensaje-asistente';
 
-      let htmlContenido = '';
-      if (typeof marked !== 'undefined') {
-        htmlContenido = marked.parse(textoMarkdownLimpio);
+      if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+        div.innerHTML = DOMPurify.sanitize(marked.parse(textoMarkdownLimpio), {
+          ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'del', 's', 'ul', 'ol', 'li',
+            'blockquote', 'pre', 'code', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'a'],
+          ALLOWED_ATTR: ['href', 'title'],
+          ALLOW_DATA_ATTR: false,
+          ALLOW_ARIA_ATTR: false
+        });
       } else {
-        htmlContenido = `<p>${textoMarkdownLimpio.replace(/\n/g, '<br>')}</p>`;
+        // Missing parser/sanitizer: display literal text instead of unsafe HTML.
+        div.textContent = textoMarkdownLimpio;
       }
-
-      div.innerHTML = htmlContenido;
       renderLatex(div);
 
       // Renderizar gráfico interactivo Chart.js si se solicitó

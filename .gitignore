@@ -50,3 +50,5 @@ PROGRESS.md
 # Storage de Caché local Django
 .cache_storage/
 .cache/
+.private_imports/
+node_modules/

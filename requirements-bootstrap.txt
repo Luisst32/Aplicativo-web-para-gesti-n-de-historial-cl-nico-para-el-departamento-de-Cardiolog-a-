@@ -1,0 +1,2 @@
+# Installer tooling, separate from application runtime dependencies.
+pip==26.3

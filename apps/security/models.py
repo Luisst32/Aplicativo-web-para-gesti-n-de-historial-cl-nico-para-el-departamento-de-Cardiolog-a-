@@ -26,6 +26,14 @@ class Role(models.Model):
     role_id = models.AutoField(primary_key=True, db_column='role_id')
     name = models.CharField(max_length=50, unique=True, db_column='name')
     description = models.CharField(max_length=200, blank=True, null=True, db_column='description')
+    permissions = models.ManyToManyField(
+        'auth.Permission',
+        blank=True,
+        related_name='clinical_roles',
+        db_table='security"."role_permission',
+        limit_choices_to={'content_type__app_label': 'clinical'},
+        help_text='Permisos clínicos explícitos para todas las instituciones de la cohorte.',
+    )
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
@@ -640,3 +648,12 @@ class SystemSetting(models.Model):
 
         cfg.save()
         return cfg
+
+
+class RequestQuota(models.Model):
+    key = models.CharField(max_length=64, primary_key=True)
+    window = models.BigIntegerField()
+    count = models.PositiveIntegerField()
+
+    class Meta:
+        db_table = 'security"."request_quota'

@@ -18,6 +18,7 @@ import pandas as pd
 import pyreadstat
 from django.conf import settings
 
+from clinical.services.record_selection import selected_visits
 from clinical.models import Patient, Visit, VisitAnswer
 from clinical.services.sav_importer import normalize_var_name
 
@@ -135,49 +136,22 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
         'anthropometry', 'vital_signs', 'electrocardiogram', 'laboratory', 'echocardiogram'
     ).order_by('visit_id')
 
-    if patient_ids and len(patient_ids) > 0 and 'all' not in patient_ids and 'todos' not in patient_ids:
-        # Extraer IDs limpios
-        clean_ids = []
-        for pid in patient_ids:
-            s_pid = str(pid).strip()
-            if s_pid.startswith('p'):
-                s_pid = s_pid[1:]
-            if s_pid.isdigit():
-                clean_ids.append(int(s_pid))
-            else:
-                # Probar por código de estudio
-                clean_ids.append(s_pid)
-
-        # Filtrar por patient_id o por study_code
-        from django.db.models import Q
-        int_ids = [x for x in clean_ids if isinstance(x, int)]
-        str_ids = [str(x) for x in clean_ids]
-        visits_qs = visits_qs.filter(
-            Q(patient__patient_id__in=int_ids) |
-            Q(study_code__in=str_ids) |
-            Q(patient__id_card__in=str_ids)
-        )
-
+    if patient_ids is not None:
+        # Validate the complete selection before generating a file. No partial/all fallback.
+        visits = selected_visits(patient_ids, active_only=True)
+        visits_qs = visits_qs.filter(pk__in=[visit.pk for visit in visits])
     visits = list(visits_qs)
-    if not visits:
-        # Fallback a todas las visitas si el filtro devolvió vacío
-        visits = list(Visit.objects.all().select_related(
-            'patient', 'patient__institution', 'patient__birth_canton', 'patient__birth_canton__province',
-            'patient__sex', 'patient__ethnicity', 'residence_canton', 'residence_canton__province',
-            'staff_category', 'professional_category', 'marital_status', 'living_situation',
-            'education_level', 'work_schedule', 'housing_type', 'income_range',
-            'anthropometry', 'vital_signs', 'electrocardiogram', 'laboratory', 'echocardiogram'
-        ).order_by('visit_id'))
 
     # 2. Cargar todas las respuestas clínicas en bloque
     answers_by_visit = {}
-    va_qs = VisitAnswer.objects.filter(visit__in=visits).select_related('question')
+    va_qs = VisitAnswer.objects.filter(visit__in=visits).select_related('question', 'selected_option')
     for va in va_qs:
         v_id = va.visit_id
         if v_id not in answers_by_visit:
             answers_by_visit[v_id] = {}
         code = va.question.code
-        val = va.numeric_value if va.numeric_value is not None else va.text_value
+        val = (va.selected_option.label if va.selected_option else
+               va.numeric_value if va.numeric_value is not None else va.text_value)
         answers_by_visit[v_id][code] = val
 
     # 3. Construir las 342 columnas para cada visita
@@ -194,7 +168,7 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
             # Mapeo de respaldo desde modelos relacionales de la BD
             if val is None or str(val).strip() == '':
                 c_up = col.upper()
-                if 'CODIGO' in c_up or 'CDIGO' in col:
+                if clean.upper() == 'CODIGO':
                     val = v.study_code
                 elif col == 'UNIVERSIDAD':
                     val = 2.0 if (p and p.institution and 'ESPOL' in p.institution.acronym.upper()) else 1.0
@@ -203,10 +177,10 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
                 elif 'AO' in c_up or 'AO' in col:
                     val = float(v.visit_date.year) if v.visit_date else 2026.0
                 elif col == 'EDAD':
-                    if p and p.age:
-                        val = float(p.age)
-                    elif v.visit_date and p and p.birth_date:
-                        val = float(v.visit_date.year - p.birth_date.year)
+                    if v.visit_date and p and p.birth_date:
+                        val = float(v.visit_date.year - p.birth_date.year - (
+                            (v.visit_date.month, v.visit_date.day) < (p.birth_date.month, p.birth_date.day)
+                        ))
                     else:
                         val = np.nan
                 elif col == 'FECHA_DE_NACIMIENTO':
@@ -303,7 +277,8 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
                 elif hasattr(v, 'echocardiogram') and v.echocardiogram:
                     echo = v.echocardiogram
                     if 'FRACCION_EYECCION' in c_up and echo.lvef_percentage: val = float(echo.lvef_percentage)
-                    elif 'FRACCION_ACORTAMIENTO' in c_up and echo.fractional_shortening_percentage: val = float(echo.fractional_shortening_percentage)
+                    # Fractional shortening has no relational field. Its stored
+                    # VisitAnswer, if any, was read above; otherwise leave missing.
 
             # 4. Formatear y convertir al tipo de dato exacto de SPSS
             target_dtype = col_dtypes.get(col)

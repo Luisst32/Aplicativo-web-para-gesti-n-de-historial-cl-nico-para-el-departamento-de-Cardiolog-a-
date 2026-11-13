@@ -329,7 +329,7 @@
             <span class="status-dot"></span>
             <span id="active-sample-count">{{ summary_kpis.total|default:"0" }} de {{ summary_kpis.total|default:"0" }} evaluados (100%)</span>
           </div>
-          <button type="button" id="btn-export-dashboard-action" class="btn btn-export-dashboard" onclick="openExportModal()" title="Exportar Dashboard en PDF, PowerPoint o Imagen" style="display: inline-flex; align-items: center; gap: 8px; background: #FFFFFF !important; border: 1.5px solid #CBD5E1 !important; color: #1B2A41 !important; font-weight: 700; padding: 8px 16px; border-radius: 8px; font-size: 0.88rem; cursor: pointer; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); transition: all 0.2s ease;">
+          <button type="button" id="btn-export-dashboard-action" data-clinical-action="export" class="btn btn-export-dashboard" onclick="openExportModal()" title="Exportar Dashboard en PDF, PowerPoint o Imagen" style="display: inline-flex; align-items: center; gap: 8px; background: #FFFFFF !important; border: 1.5px solid #CBD5E1 !important; color: #1B2A41 !important; font-weight: 700; padding: 8px 16px; border-radius: 8px; font-size: 0.88rem; cursor: pointer; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); transition: all 0.2s ease;">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
@@ -1005,6 +1005,6 @@
   <script>if (typeof PptxGenJS === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"><\/script>');</script>
 
   <!-- Controlador e inicialización del Dashboard con los 8 bloques y motor de exportación -->
-  <script id="dashboard-records-data" type="application/json">{{ records_json|safe }}</script>
+  {{ records|json_script:"dashboard-records-data" }}
   <script src="{% static 'dashboard/js/dashboard.js' %}?v=20261110_01"></script>
 {% endblock %}

@@ -408,7 +408,7 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
             Paragraph(f"<b>6.- Alcohol:</b> {chk(not alc_si)} No &nbsp; {chk(alc_si)} Sí &nbsp;&nbsp; <b>Frecuencia/Unidades:</b> {field_txt(val('alcohol_unidades', val('alcohol_frecuencia')), 10)}", q_style)
         ],
         [
-            Paragraph(f"<b>7.- Consumo sustancias / drogas:</b> {chk(not drogas_si)} No &nbsp; {chk(drogas_si)} Sí &nbsp;&nbsp; <b>Cuáles:</b> {field_txt(val('drogas_cuales'), 14)}", q_style),
+            Paragraph(f"<b>7.- Consumo sustancias / drogas:</b> {chk(not drogas_si)} No &nbsp; {chk(drogas_si)} Sí &nbsp;&nbsp; <b>Cuáles/Dosis:</b> {field_txt((val('drogas_cuales') + (' (D: ' + val('drogas_dosis_diaria') + ')' if val('drogas_dosis_diaria') else (' (S: ' + val('drogas_dosis_semanal') + ')' if val('drogas_dosis_semanal') else (' (Oc: ' + val('drogas_dosis_ocasional') + ')' if val('drogas_dosis_ocasional') else '')))), 16)}", q_style),
             Paragraph(f"<b>8.- Obesidad:</b> {chk(not obes_si)} No &nbsp; {chk(obes_si)} Sí &nbsp;&nbsp; <b>9.- Sobrepeso:</b> {chk(not sp_si)} No &nbsp; {chk(sp_si)} Sí", q_style)
         ],
         [
@@ -472,6 +472,7 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
             Paragraph(
                 f"<b>9.- Personalidad tipo A:</b> {chk(not pers_a_si)} No &nbsp; {chk(pers_a_si)} Sí "
                 f"({chk(is_yes('em_exigente') or is_yes('exigente'))} Exigente &nbsp; {chk(is_yes('em_perfeccionista') or is_yes('perfeccionista'))} Perfeccionista &nbsp; "
+                f"{chk(is_yes('em_hiperactivo'))} Hiperactivo &nbsp; {chk(is_yes('em_ambicioso'))} Ambicioso &nbsp; "
                 f"{chk(is_yes('em_hostilidad'))} Hostilidad &nbsp; {chk(is_yes('em_aislamiento'))} Aislamiento)",
                 q_style
             ),
@@ -524,24 +525,31 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
     # 7. HISTORIA CLÍNICA ACTUAL CARDIOVASCULAR
     # =========================================================================
     hc_prob_si = is_yes('hc_prob') or (val('prob_corazon_detalle') != '')
-    cardio_isq_si = is_yes('hc_cardiopatia_isq') or is_yes('ant_iam') or is_yes('ant_angina')
-    revasc_si = is_yes('hc_revascularizacion')
-    ic_si = is_yes('hc_insuficiencia_card')
-    valv_si = is_yes('hc_valvulopatia')
-    ingr_card_si = is_yes('hc_ingreso_card')
+    cardio_isq_si = is_yes('hc_isquemica') or is_yes('hc_cardiopatia_isq') or is_yes('ant_iam') or is_yes('ant_angina') or is_yes('hc_isquemica_angina') or is_yes('hc_isquemica_infarto')
+    revasc_si = is_yes('hc_revasc') or is_yes('hc_revascularizacion') or (val('hc_revasc_tipo') != '')
+    ic_si = is_yes('hc_insuf_cardiaca') or is_yes('hc_insuficiencia_card')
+    valv_si = is_yes('hc_valvulopatia') or (val('hc_valvulopatia_cuales') != '')
+    ingr_card_si = is_yes('hc_ingresado') or is_yes('hc_ingreso_card') or (val('hc_ingresado_cual') != '')
+
+    revasc_det = val('hc_revasc_tipo')
+    is_angio = is_yes('revasc_angioplastia') or revasc_det in ['angioplastia', 'ambas']
+    is_bypass = is_yes('revasc_bypass') or revasc_det in ['bypass', 'ambas']
+
+    valv_det = val('hc_valvulopatia_cuales') or val('valvulopatia_detalle')
+    valv_op = is_yes('hc_valvulopatia_operado') or is_yes('valv_operado')
 
     mod7_rows = [
         [
             Paragraph(f"<b>1.- Problema previo del corazón:</b> {chk(not hc_prob_si)} No &nbsp; {chk(hc_prob_si)} Sí &nbsp;&nbsp; <b>Detalle:</b> {field_txt(val('prob_corazon_detalle'), 14)}", q_style),
-            Paragraph(f"<b>2.- Cardiopatía isquémica:</b> {chk(not cardio_isq_si)} No &nbsp; {chk(cardio_isq_si)} Sí &nbsp;&nbsp; {chk(is_yes('ant_angina'))} Angina &nbsp; {chk(is_yes('ant_iam'))} Infarto", q_style)
+            Paragraph(f"<b>2.- Cardiopatía isquémica:</b> {chk(not cardio_isq_si)} No &nbsp; {chk(cardio_isq_si)} Sí &nbsp;&nbsp; {chk(is_yes('hc_isquemica_angina') or is_yes('ant_angina'))} Angina &nbsp; {chk(is_yes('hc_isquemica_infarto') or is_yes('ant_iam'))} Infarto", q_style)
         ],
         [
-            Paragraph(f"<b>3.- Revascularización coronaria:</b> {chk(not revasc_si)} No &nbsp; {chk(revasc_si)} Sí &nbsp;&nbsp; {chk(is_yes('revasc_angioplastia'))} Angioplastia &nbsp; {chk(is_yes('revasc_bypass'))} Bypass", q_style),
+            Paragraph(f"<b>3.- Revascularización coronaria:</b> {chk(not revasc_si)} No &nbsp; {chk(revasc_si)} Sí &nbsp;&nbsp; {chk(is_angio)} Angioplastia &nbsp; {chk(is_bypass)} Bypass", q_style),
             Paragraph(f"<b>4.- Insuficiencia cardíaca diagnosticada:</b> {chk(not ic_si)} No &nbsp; {chk(ic_si)} Sí", q_style)
         ],
         [
-            Paragraph(f"<b>5.- Valvulopatía:</b> {chk(not valv_si)} No &nbsp; {chk(valv_si)} Sí &nbsp;&nbsp; <b>Operado por este motivo:</b> {chk(is_yes('valv_operado'))} Sí &nbsp; {chk(not is_yes('valv_operado'))} No", q_style),
-            Paragraph(f"<b>6.- Ingresado en hospital por problema cardíaco:</b> {chk(not ingr_card_si)} No &nbsp; {chk(ingr_card_si)} Sí", q_style)
+            Paragraph(f"<b>5.- Valvulopatía:</b> {chk(not valv_si)} No &nbsp; {chk(valv_si)} Sí {f'({field_txt(valv_det, 10)})' if valv_det else ''} &nbsp;&nbsp; <b>Operado:</b> {chk(valv_op)} Sí &nbsp; {chk(not valv_op)} No", q_style),
+            Paragraph(f"<b>6.- Ingresado en hospital por problema cardíaco:</b> {chk(not ingr_card_si)} No &nbsp; {chk(ingr_card_si)} Sí {('(' + field_txt(val('hc_ingresado_cual'), 10) + ')') if val('hc_ingresado_cual') else ''}", q_style)
         ]
     ]
     t_mod7 = Table(mod7_rows, colWidths=[315, 224])
@@ -555,18 +563,28 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
     # =========================================================================
     # 8. HISTORIA CLÍNICA NO CARDIOVASCULAR
     # =========================================================================
-    reuma_si = is_yes('ant_reuma') or (val('reuma_detalle') != '')
-    cancer_si = is_yes('hc_cancer') or (val('cancer_tipo') != '')
+    reuma_si = is_yes('ant_reuma') or is_yes('nc_reuma') or (val('reuma_detalle') != '')
+    cancer_si = (
+        is_yes('nc_cancer') or is_yes('hc_cancer') or (val('cancer_tipo') != '') or
+        any(is_yes(c) for c in ['cancer_pulmon', 'cancer_prostata', 'cancer_colon', 'cancer_mama', 'cancer_vejiga', 'cancer_utero', 'cancer_ovario', 'cancer_otro'])
+    )
+    cancer_tipos = []
+    for c_key, c_name in [('cancer_pulmon', 'Pulmón'), ('cancer_prostata', 'Próstata'), ('cancer_colon', 'Colon'), ('cancer_mama', 'Mama'), ('cancer_vejiga', 'Vejiga'), ('cancer_utero', 'Útero'), ('cancer_ovario', 'Ovario')]:
+        if is_yes(c_key): cancer_tipos.append(c_name)
+    if is_yes('cancer_otro') and val('cancer_otro_detalle'):
+        cancer_tipos.append(val('cancer_otro_detalle'))
+    cancer_desc = ", ".join(cancer_tipos) if cancer_tipos else val('cancer_tipo')
+
     epoc_si = is_yes('nc_epoc') or is_yes('ant_epoc')
     asma_si = is_yes('nc_asma') or is_yes('ant_asma')
     depr_si = is_yes('nc_depresion') or is_yes('ant_depresion')
     ans_si = is_yes('nc_ansiedad') or is_yes('ant_ansiedad')
-    alergia_si = is_yes('nc_alergia') or (val('alergia_medicamentos') != '' and not is_no('alergia_medicamentos'))
+    alergia_si = is_yes('nc_alergia') or (val('alergia_medicamento', val('alergia_medicamentos')) != '' and not is_no('alergia_medicamento'))
 
     mod8_rows = [
         [
             Paragraph(f"<b>1.- Enfermedad reumatológica / inmune:</b> {chk(not reuma_si)} No &nbsp; {chk(reuma_si)} Sí &nbsp;&nbsp; <b>Cuáles:</b> {field_txt(val('reuma_detalle'), 14)}", q_style),
-            Paragraph(f"<b>2.- Historia de cáncer:</b> {chk(not cancer_si)} No &nbsp; {chk(cancer_si)} Sí &nbsp;&nbsp; <b>Tipo:</b> {field_txt(val('cancer_tipo'), 10)}", q_style)
+            Paragraph(f"<b>2.- Historia de cáncer:</b> {chk(not cancer_si)} No &nbsp; {chk(cancer_si)} Sí &nbsp;&nbsp; <b>Tipo:</b> {field_txt(cancer_desc, 12)}", q_style)
         ],
         [
             Paragraph(f"<b>¿Recibió Quimioterapia (Qt)?:</b> {chk(is_yes('cancer_qt'))} Sí &nbsp; {chk(not is_yes('cancer_qt'))} No &nbsp;&nbsp;&nbsp;&nbsp; <b>¿Radioterapia (Rt)?:</b> {chk(is_yes('cancer_rt'))} Sí &nbsp; {chk(not is_yes('cancer_rt'))} No", q_style),
@@ -951,7 +969,7 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
         ('TOPPADDING', (0, 0), (-1, -1), 1.5),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 1.5),
     ]))
-    add_section("Estudios que se le ha mandado al Paciente", t_mod16)
+    add_section("Estudios Prescritos", t_mod16)
 
     # Bloque de firmas removido a petición del usuario
 

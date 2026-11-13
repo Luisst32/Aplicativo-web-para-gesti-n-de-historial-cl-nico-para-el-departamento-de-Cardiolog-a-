@@ -1,12 +1,13 @@
-import json
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 
 from . import services
+from security.access import clinical_access_required
 
 
 @login_required
+@clinical_access_required('read')
 def index_view(request):
     """
     Renders the clinical and epidemiological dashboard view.
@@ -21,12 +22,13 @@ def index_view(request):
         'available_years': data['years'],
         'available_categories': data['categories'],
         'available_institutions': data['institutions'],
-        'records_json': json.dumps(data['records']),
+        'records': data['records'],
     }
     return render(request, "dashboard/index.html", context)
 
 
 @login_required
+@clinical_access_required('read', api=True)
 def api_dashboard_data(request):
     """
     JSON API endpoint returning the dynamic cohort records and slicer metadata

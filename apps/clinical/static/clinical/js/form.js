@@ -659,7 +659,7 @@ function scrollToModule(modId) {
 
 // Actualizar sección activa en el sidebar y pills móviles según el scroll
 window.addEventListener('scroll', () => {
-  const sections = ['mod-sociodemo', 'mod-exploracion', 'mod-cardio', 'mod-nocardio', 'mod-laboratorio', 'mod-estilovida'];
+  const sections = ['mod-sociodemo', 'mod-exploracion', 'mod-cardio', 'mod-nocardio', 'mod-laboratorio', 'mod-estilovida', 'mod-estudios'];
   const header = document.querySelector('.top-header');
   const scrollPos = window.scrollY + (header ? header.offsetHeight : 66) + 50;
 

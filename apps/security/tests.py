@@ -6,6 +6,7 @@ from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.test import SimpleTestCase, TestCase, Client, override_settings
 from django.urls import reverse
+from django.contrib.auth.models import Permission
 from security.models import (
     User,
     Role,
@@ -166,7 +167,13 @@ class SecurityApiEndpointsTests(TestCase):
 
     def test_profile_api_requires_login(self):
         response = self.client.get('/security/api/profile/')
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response['Content-Type'], 'application/json')
+        data = response.json()
+        self.assertEqual(data['status'], 'unauthorized')
+        self.assertTrue(data['message'])
+        self.assertNotIn('user', data)
+        self.assertNotIn('Location', response)
 
     def test_profile_api_get(self):
         self.client.login(username='doctor_test', password='CurrentPassword123!')
@@ -410,6 +417,9 @@ class GlobalLoginRedirectTests(TestCase):
             last_name='López',
             password='Password123!'
         )
+        self.user.user_permissions.set(Permission.objects.filter(
+            content_type__app_label='clinical', codename__in=['view_patient', 'view_visit'],
+        ))
 
     def test_all_unauthenticated_urls_redirect_to_login_never_404(self):
         login_url = reverse('security:login')

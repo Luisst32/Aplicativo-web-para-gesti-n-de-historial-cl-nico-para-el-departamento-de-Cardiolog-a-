@@ -15,7 +15,6 @@ DIRECTIVAS CRÍTICAS:
    e invalidación diferida por transaction.on_commit.
 """
 
-import os
 import re
 import json
 import time
@@ -98,7 +97,7 @@ def invalidate_cohort_cache(*args, **kwargs):
         cache.delete("dashboard_evaluation_data")
         logger.debug("Caché compartido de cohorte invalidado exitosamente.")
     except Exception as e:
-        logger.warning(f"Error invalidando caché compartido: {e}")
+        logger.error("Chatbot operation failed; content omitted.")
 
 
 def _signal_invalidate_cohort(sender, **kwargs):
@@ -190,86 +189,27 @@ def is_modification_attempt(question: str) -> bool:
 
 
 def get_anonymized_cohort_context() -> str:
-    """
-    Construye un resumen estadístico compacto y 100% anonimizado de la cohorte real en PostgreSQL.
-    Utiliza caché compartido inter-proceso para garantizar coherencia en arquitecturas multi-worker (Gunicorn).
-    """
-    try:
-        from clinical.models import Visit
-        current_count = Visit.objects.count()
-    except Exception:
-        current_count = -1
-
-    cached_summary = cache.get(COHORT_SUMMARY_CACHE_KEY)
-    cached_count = cache.get(COHORT_COUNT_CACHE_KEY)
-
-    if cached_summary and cached_count == current_count:
-        return cached_summary
-
-    try:
-        data = get_dashboard_evaluation_data()
-        records = data.get('records', [])
-        total = len(records)
-
-        if total == 0:
-            context_md = "DATOS COHORTE CARDIOUNEMI (N = 0):\nActualmente no existen registros ni fichas clínicas en la base de datos."
-            cache.set(COHORT_SUMMARY_CACHE_KEY, context_md, timeout=COHORT_CACHE_TIMEOUT)
-            cache.set(COHORT_COUNT_CACHE_KEY, 0, timeout=COHORT_CACHE_TIMEOUT)
-            return context_md
-
-        summary = data.get('summary_kpis', {})
-        modules = data.get('module_kpis', {})
-
-        pct = lambda cnt: f"{round((cnt / total) * 100, 1)} %"
-
-        hombres = sum(1 for r in records if r.get('sexo') == 'Hombre')
-        mujeres = sum(1 for r in records if r.get('sexo') == 'Mujer')
-
-        hta_cnt = sum(1 for r in records if r.get('hipertension'))
-        dlp_cnt = sum(1 for r in records if r.get('dislipemia'))
-        dm_cnt = sum(1 for r in records if r.get('diabetes'))
-        fum_cnt = sum(1 for r in records if r.get('fumador_activo'))
-        sed_cnt = sum(1 for r in records if not r.get('actividad_fisica'))
-
-        sp_cnt = sum(1 for r in records if r.get('imc_cat') == 'Sobrepeso')
-        ob1_cnt = sum(1 for r in records if r.get('imc_cat') == 'Obesidad I')
-        ob2_cnt = sum(1 for r in records if r.get('imc_cat') == 'Obesidad II')
-        obm_cnt = sum(1 for r in records if r.get('imc_cat') == 'Obesidad Mórbida')
-        norm_cnt = sum(1 for r in records if r.get('imc_cat') == 'Normal')
-
-        r_bajo = sum(1 for r in records if 'Bajo' in r.get('riesgo_global', ''))
-        r_mod = sum(1 for r in records if 'Moderado' in r.get('riesgo_global', ''))
-        r_alto = sum(1 for r in records if 'Alto' in r.get('riesgo_global', '') and 'Muy' not in r.get('riesgo_global', ''))
-        r_muy_alto = sum(1 for r in records if 'Muy Alto' in r.get('riesgo_global', ''))
-
-        sinusal_cnt = sum(1 for r in records if r.get('ecg_es_sinusal'))
-        arritmia_cnt = sum(1 for r in records if r.get('ecg_arritmia'))
-        hvi_cnt = sum(1 for r in records if r.get('ecg_hvi'))
-        qtc_prol_cnt = sum(1 for r in records if 'Prolongado' in r.get('ecg_qtc_cat', ''))
-
-        dep_cnt = sum(1 for r in records if r.get('depresion'))
-        ans_cnt = sum(1 for r in records if r.get('ansiedad'))
-        ambas_cnt = sum(1 for r in records if r.get('depresion') and r.get('ansiedad'))
-        sin_trastorno = total - sum(1 for r in records if r.get('depresion') or r.get('ansiedad'))
-
-        pas_cnt = sum(1 for r in records if 'PAS' in r.get('categoria', '') or 'Admin' in r.get('categoria', ''))
-        pdi_cnt = sum(1 for r in records if 'PDI' in r.get('categoria', '') or 'Docente' in r.get('categoria', ''))
-        serv_cnt = sum(1 for r in records if 'Servicio' in r.get('categoria', ''))
-
-        context_md = f"""DATOS COHORTE CARDIOUNEMI (N = {total}):
-1. Sociodemografía: Hombres: {hombres} ({pct(hombres)}), Mujeres: {mujeres} ({pct(mujeres)}). Edad media: {modules.get('individuo', {}).get('edad_media', 'N/D')} años. PAS Administrativos: {pas_cnt} ({pct(pas_cnt)}), PDI Docentes: {pdi_cnt} ({pct(pdi_cnt)}), Servicios: {serv_cnt} ({pct(serv_cnt)}).
-2. Antropometría: Normal: {norm_cnt} ({pct(norm_cnt)}), Sobrepeso: {sp_cnt} ({pct(sp_cnt)}), Obesidad I: {ob1_cnt} ({pct(ob1_cnt)}), Obesidad II: {ob2_cnt} ({pct(ob2_cnt)}), Obesidad Mórbida: {obm_cnt} ({pct(obm_cnt)}). Exceso de peso (Sobrepeso+Obesidad): {sp_cnt + ob1_cnt + ob2_cnt + obm_cnt} ({pct(sp_cnt + ob1_cnt + ob2_cnt + obm_cnt)}).
-3. Factores Modificables: HTA: {hta_cnt} ({pct(hta_cnt)}). Dislipemia: {dlp_cnt} ({pct(dlp_cnt)}). Diabetes: {dm_cnt} ({pct(dm_cnt)}). Tabaquismo activo: {fum_cnt} ({pct(fum_cnt)}). Sedentarismo: {sed_cnt} ({pct(sed_cnt)}).
-4. Salud Mental y Factores Emergentes: Total con Depresión: {dep_cnt} ({pct(dep_cnt)}), Total con Ansiedad: {ans_cnt} ({pct(ans_cnt)}), Ambas patologías: {ambas_cnt} ({pct(ambas_cnt)}), Sin trastorno: {sin_trastorno} ({pct(sin_trastorno)}).
-5. ECG: Ritmo sinusal: {sinusal_cnt} ({pct(sinusal_cnt)}), Arritmias: {arritmia_cnt} ({pct(arritmia_cnt)}). HVI: {hvi_cnt} ({pct(hvi_cnt)}), QTc prolongado: {qtc_prol_cnt} ({pct(qtc_prol_cnt)}).
-6. Riesgo Cardiovascular Global: Bajo: {r_bajo} ({pct(r_bajo)}), Moderado: {r_mod} ({pct(r_mod)}), Alto: {r_alto} ({pct(r_alto)}), Muy Alto: {r_muy_alto} ({pct(r_muy_alto)}). Total Alto/Muy Alto: {r_alto + r_muy_alto} ({pct(r_alto + r_muy_alto)})."""
-
-        cache.set(COHORT_SUMMARY_CACHE_KEY, context_md.strip(), timeout=COHORT_CACHE_TIMEOUT)
-        cache.set(COHORT_COUNT_CACHE_KEY, total, timeout=COHORT_CACHE_TIMEOUT)
-        return context_md.strip()
-    except Exception as e:
-        logger.warning(f"Error generando contexto dinámico: {e}")
-        return "DATOS COHORTE CARDIOUNEMI: No fue posible calcular las métricas agregadas."
+    """Conservative whole-cohort statistics for external model context."""
+    data = get_dashboard_evaluation_data()
+    records = data.get('records', [])
+    total = len(records)
+    # No exact totals or percentages for a small cohort. Do not reuse legacy cache.
+    if total < 10:
+        return 'COHORTE: estadisticas no divulgables por tamano reducido.'
+    lines = [f'COHORTE N={total}']
+    for label, predicate in (
+        ('HTA', lambda r: bool(r.get('hipertension'))),
+        ('Diabetes', lambda r: bool(r.get('diabetes'))),
+        ('Dislipemia', lambda r: bool(r.get('dislipemia'))),
+        ('Tabaquismo', lambda r: bool(r.get('fumador_activo'))),
+    ):
+        count = sum(predicate(row) for row in records)
+        # Suppress both the cell and its complement; never expose its percentage.
+        if count < 5 or total - count < 5:
+            lines.append(label + ': no divulgado')
+        else:
+            lines.append(f'{label}: {count} de {total}')
+    return '\n'.join(lines)
 
 
 def build_chart_json_if_requested(question: str, raw_response: Optional[str] = None) -> Optional[str]:
@@ -294,7 +234,7 @@ def build_chart_json_if_requested(question: str, raw_response: Optional[str] = N
         records = data.get('records', [])
         total_pacientes = len(records)
     except Exception as e:
-        logger.warning(f"Error extrayendo datos para gráfico: {e}")
+        logger.error("Chatbot operation failed; content omitted.")
         return None
 
     if not records:
@@ -494,7 +434,7 @@ def generate_fallback_clinical_answer(question: str) -> str:
         records = data.get('records', [])
         total = len(records)
     except Exception as e:
-        logger.warning(f"Error obteniendo registros clínicos para respuesta determinista: {e}")
+        logger.error("Chatbot operation failed; content omitted.")
         records = []
         total = 0
 
@@ -698,7 +638,7 @@ def generate_fallback_clinical_answer(question: str) -> str:
         )
 
     if has_suppression:
-        base_answer += "\n\n> *\*Nota de confidencialidad médica (supresión de celdas pequeñas / control de divulgación estadística): Conteos menores a 5 se presentan como '< 5' sin porcentaje para salvaguardar la privacidad de datos clínicos en cohortes reducidas.*"
+        base_answer += "\n\n> **Nota de confidencialidad médica (supresión de celdas pequeñas / control de divulgación estadística): Conteos menores a 5 se presentan como '< 5' sin porcentaje para salvaguardar la privacidad de datos clínicos en cohortes reducidas.**"
 
     chart_block = build_chart_json_if_requested(question, raw_response=base_answer)
     if chart_block:
@@ -716,6 +656,8 @@ def query_gemini_assistant(
     """
     Procesa la consulta de forma directa, eficiente y económica.
     """
+    from security.access import require_clinical_access
+    require_clinical_access(user, 'read')
     start_time = time.time()
     clean_question = (question or '').strip()
 
@@ -741,7 +683,14 @@ def query_gemini_assistant(
                 "mode": "disabled"
             }
     except Exception as e:
-        logger.warning(f"No se pudo consultar estado del chatbot en SystemSetting: {e}")
+        logger.error("Chatbot operation failed; content omitted.")
+        return {
+            'status': 'disabled',
+            'response': 'No se pudo verificar la habilitación del asistente. Intente más tarde.',
+            'tokens_used': 0,
+            'execution_time_ms': int((time.time() - start_time) * 1000),
+            'mode': 'disabled',
+        }
 
     # 1. Filtro estricto de privacidad (Zero PII) - Bloquea nombres, cédulas y preguntas individuales
     if is_sensitive_or_pii_query(clean_question):
@@ -774,39 +723,46 @@ def query_gemini_assistant(
             "execution_time_ms": elapsed_ms
         }
 
-    # 3. Leer clave de API: primero desde BD encriptada (SystemSetting), luego variable de entorno (12-Factor App)
+    # 3. Runtime credentials come only from administrator-managed settings.
+    # No environment fallback may override role, provider or enabled switches.
     db_key = ""
     db_model = "gemini-3.5-flash-lite"
     has_admin_access = False
-    key_configured = False
     provider_enabled = False
+    active_provider = ''
+    config_available = False
     try:
         from security.models import SystemSetting
         cfg = SystemSetting.get_settings()
         if cfg:
+            config_available = True
+            active_provider = (cfg.active_llm_provider or '').strip().lower()
             db_model = cfg.gemini_model or 'gemini-3.5-flash-lite'
-            key_configured = bool(cfg.gemini_api_key_encrypted)
             provider_enabled = bool(cfg.gemini_enabled)
             has_admin_access = cfg.is_role_authorized(user)
-            if has_admin_access and provider_enabled:
+            if cfg.chatbot_enabled and active_provider == 'gemini' and has_admin_access and provider_enabled:
                 db_key = SystemSetting.get_gemini_api_key(user=user, check_enabled=True)
-    except Exception as e:
-        logger.warning(f"Error consultando SystemSetting: {e}")
+    except Exception:
+        # A failed policy/key lookup must never enable another credential source.
+        db_key = ''
+        config_available = False
+        logger.warning("No se pudo verificar la configuración de Gemini; usando modo local.")
 
-    env_key = os.getenv('GEMINI_API_KEY', '').strip()
-    api_key = db_key.strip() or env_key
+    api_key = db_key.strip()
     model_name = db_model.strip()
-
-    cohort_context = get_anonymized_cohort_context()
 
     if not api_key:
         fallback_answer = generate_fallback_clinical_answer(clean_question)
-        if key_configured and not provider_enabled:
+        if not config_available:
+            note = "\n\n> ⚠️ *(No se pudo verificar la configuración del proveedor. Mostrando análisis estadístico local)*"
+        elif active_provider != 'gemini':
+            note = "\n\n> ℹ️ *(El proveedor seleccionado no dispone de una integración ejecutable en este asistente. Mostrando análisis estadístico local)*"
+        elif not provider_enabled:
             note = "\n\n> ⚠️ *(La integración con Google Gemini se encuentra deshabilitada en los Ajustes del Sistema. Mostrando análisis estadístico determinista local)*"
-        elif key_configured and not has_admin_access:
+        elif not has_admin_access:
             note = "\n\n> 🔒 *(Modo estadístico local: el uso de credenciales de Gemini AI está restringido al rol Administrador)*"
         else:
-            note = "\n\n> ℹ️ *(No se detectó clave de Gemini configurada. Un Administrador puede configurarla en Ajustes del Sistema o en la variable de entorno GEMINI_API_KEY)*"
+            note = "\n\n> ℹ️ *(No se detectó una clave válida de Gemini. Un Administrador puede configurarla en Ajustes del Sistema)*"
         final_answer = fallback_answer + note
         elapsed_ms = int((time.time() - start_time) * 1000)
 
@@ -823,6 +779,7 @@ def query_gemini_assistant(
         from google import genai
         from google.genai import types
 
+        cohort_context = get_anonymized_cohort_context()
         client = genai.Client(api_key=api_key)
 
         prompt = f"{cohort_context}\n\nPREGUNTA:\n{clean_question}\n\nRESPONDE DIRECTO AL GRANO:"
@@ -882,7 +839,7 @@ def query_gemini_assistant(
 
     except Exception as e:
         err_msg = str(e)
-        logger.exception(f"Error Gemini API: {e}")
+        logger.error("Chatbot operation failed; content omitted.")
         fallback_answer = generate_fallback_clinical_answer(clean_question)
 
         # Notificación clara del estado de la API sin engañar al usuario
@@ -920,11 +877,11 @@ def _log_bot_query(user, question: str, response: str, tokens: Optional[int], ex
     try:
         BotQuery.objects.create(
             user=user,
-            user_question=question,
-            bot_response=response,
+            user_question="[contenido omitido por privacidad]",
+            bot_response="[contenido omitido por privacidad]",
             tokens_used=tokens,
             execution_time_ms=execution_ms,
             status=status
         )
     except Exception as err:
-        logger.warning(f"Error registrando en ai.bot_query: {err}")
+        logger.error("Chatbot operation failed; content omitted.")

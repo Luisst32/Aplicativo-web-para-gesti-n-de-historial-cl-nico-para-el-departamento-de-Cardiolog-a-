@@ -50,7 +50,11 @@ function solicitarEliminarFicha(target, pacienteNombre, codigo) {
       if (pFound) nombreMostrar = pFound.nombre;
     }
     if (msgP) {
-      msgP.innerHTML = `¿Está seguro de que desea eliminar la ficha clínica de <strong style="color: #0f172a;">${nombreMostrar || 'este paciente'}</strong>${codigo ? ` (Código: #${codigo})` : ''}?`;
+      msgP.replaceChildren(document.createTextNode('¿Está seguro de que desea eliminar la ficha clínica de '));
+      const name = document.createElement('strong');
+      name.style.color = '#0f172a';
+      name.textContent = nombreMostrar || 'este paciente';
+      msgP.append(name, document.createTextNode(codigo ? ` (Código: #${codigo})?` : '?'));
     }
     if (advSpan) {
       advSpan.textContent = 'Esta acción es definitiva. Se borrarán permanentemente los antecedentes, exámenes y respuestas de la ficha.';

@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.urls import reverse
 from django.test import TestCase, SimpleTestCase
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 
 from catalog.models import Country, Province, Canton, Institution, Sex, Ethnicity, StaffCategory
 from clinical.models import Patient, Visit, Anthropometry, VitalSigns, VisitAnswer
@@ -64,6 +65,7 @@ class ClinicalCRUDAndIntegrationTests(TestCase):
             first_name='María',
             last_name='Pérez'
         )
+        self.user.user_permissions.set(Permission.objects.filter(content_type__app_label='clinical'))
         self.country, _ = Country.objects.get_or_create(iso_alpha3='ECU', defaults={'name': 'Ecuador'})
         self.province, _ = Province.objects.get_or_create(country=self.country, iso_code='EC-G', defaults={'name': 'Guayas'})
         self.canton, _ = Canton.objects.get_or_create(province=self.province, dpa_code='0910', defaults={'name': 'Milagro'})
@@ -174,11 +176,16 @@ class ClinicalCRUDAndIntegrationTests(TestCase):
 
 class SavImporterTests(TestCase):
     def setUp(self):
+        import tempfile
+        from django.test import override_settings
+        private_dir = self.enterContext(tempfile.TemporaryDirectory(prefix='cardio-import-test-'))
+        self.enterContext(override_settings(IMPORT_TEMP_ROOT=private_dir))
         self.user = User.objects.create_user(
             username='evaluador_sav',
             password='Password123!',
             email='evaluador@unemi.edu.ec'
         )
+        self.user.user_permissions.set(Permission.objects.filter(content_type__app_label='clinical'))
         self.client.force_login(self.user)
 
     def test_analyze_without_file_fails(self):
@@ -232,10 +239,9 @@ class SavImporterTests(TestCase):
             residence_canton=cant
         )
 
-        temp_dir = Path(settings.MEDIA_ROOT) / 'temp_imports'
-        temp_dir.mkdir(parents=True, exist_ok=True)
-        dummy_file = temp_dir / 'test_token_dup.sav'
-        dummy_file.write_bytes(b'fake sav content')
+        from io import BytesIO
+        from clinical.services.import_tickets import store_upload
+        ticket, dummy_file = store_upload(BytesIO(b'fake sav content'), 'dataset.sav', self.user)
 
         mock_meta = MagicMock()
         mock_meta.number_rows = 1
@@ -244,7 +250,7 @@ class SavImporterTests(TestCase):
         mock_df = {'CODIGO': [1], 'UNIVERSIDAD': [1.0]}
 
         with patch('apps.clinical.services.sav_importer.pyreadstat.read_sav', return_value=(mock_df, mock_meta)):
-            res = execute_sav_import('test_token_dup', self.user, duplicate_action='update')
+            res = execute_sav_import(ticket, self.user, duplicate_action='update')
 
         self.assertTrue(res.get('success'))
         self.assertEqual(res.get('total_rows'), 1)
@@ -267,6 +273,7 @@ class FichaEliminarSecurityTests(TestCase):
             password=self.password,
             email="cardiologo@unemi.edu.ec"
         )
+        self.user.user_permissions.set(Permission.objects.filter(content_type__app_label='clinical'))
         self.client.force_login(self.user)
 
         self.country, _ = Country.objects.get_or_create(iso_alpha3='ECU', defaults={'name': 'Ecuador'})
@@ -418,6 +425,7 @@ class PatientCreateApiTests(TestCase):
             password='Password123!',
             email='evaluador@unemi.edu.ec'
         )
+        self.user.user_permissions.set(Permission.objects.filter(content_type__app_label='clinical'))
         self.client.force_login(self.user)
         self.country, _ = Country.objects.get_or_create(iso_alpha3='ECU', defaults={'name': 'Ecuador'})
         self.province, _ = Province.objects.get_or_create(country=self.country, iso_code='EC-G', defaults={'name': 'Guayas'})
@@ -539,6 +547,7 @@ class SecureShareTests(TestCase):
             email='cardio_share@unemi.edu.ec',
             password='password123'
         )
+        self.user.user_permissions.set(Permission.objects.filter(content_type__app_label='clinical'))
         self.country, _ = Country.objects.get_or_create(iso_alpha3='ECU', defaults={'name': 'Ecuador'})
         self.prov, _ = Province.objects.get_or_create(country=self.country, iso_code='EC-G', defaults={'name': 'Guayas'})
         self.canton, _ = Canton.objects.get_or_create(province=self.prov, dpa_code='0910', defaults={'name': 'Milagro'})

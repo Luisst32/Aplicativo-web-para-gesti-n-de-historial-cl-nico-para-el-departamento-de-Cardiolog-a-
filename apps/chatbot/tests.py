@@ -26,11 +26,10 @@ class ChatbotSecurityAndPrivacyTests(TestCase):
     control de divulgación estadística y modo solo consulta.
     """
     def setUp(self):
-        self.user = User.objects.create_user(
+        self.user = User.objects.create_superuser(
             username='medicounemi',
             email='medico@unemi.edu.ec',
-            password='testpassword123',
-            is_staff=True  # Autorizado
+            password='testpassword123'
         )
 
     def test_sensitive_query_detection_cedula(self):
@@ -85,7 +84,7 @@ class ChatbotSecurityAndPrivacyTests(TestCase):
         self.assertNotIn("cédula", context.lower())
         self.assertNotIn("primer_nombre", context.lower())
         self.assertNotIn("primer_apellido", context.lower())
-        self.assertIn("N =", context)
+        self.assertIn("no divulgables", context)
 
     def test_small_cell_suppression_has_no_percentage(self):
         """Con N=58 o 59, si cnt=3 (<5), debe salir '< 5 casos' SIN porcentaje (evitar inferencia inversa)."""
@@ -159,12 +158,11 @@ class ChatbotApiEndpointSecurityTests(TestCase):
     """
     def setUp(self):
         self.client = Client()
-        # Usuario autorizado (médico / staff)
-        self.auth_user = User.objects.create_user(
+        # Usuario autorizado (médico / superuser con permisos clínicos)
+        self.auth_user = User.objects.create_superuser(
             username='doctora_investigadora',
             email='doctora@unemi.edu.ec',
-            password='testpassword123',
-            is_staff=True
+            password='testpassword123'
         )
         # Usuario autenticado pero SIN permisos/rol clínico
         self.unauth_user = User.objects.create_user(
@@ -223,8 +221,9 @@ class ChatbotApiEndpointSecurityTests(TestCase):
     def test_rate_limiting_returns_429_json(self):
         """Al exceder 20 peticiones por minuto, el endpoint responde 429 Too Many Requests en JSON."""
         self.client.login(username='doctora_investigadora', password='testpassword123')
-        rate_key = f"ratelimit_bot_{self.auth_user.pk}_127.0.0.1"
-        cache.set(rate_key, 20, timeout=60)
+        from security.request_limits import consume
+        for _ in range(20):
+            self.assertTrue(consume(f'chatbot:{self.auth_user.pk}', 20))
 
         response = self.client.post(
             '/chatbot/query/',
@@ -235,4 +234,3 @@ class ChatbotApiEndpointSecurityTests(TestCase):
         data = response.json()
         self.assertEqual(data['status'], 'rate_limited')
         self.assertIn('límite de consultas', data['response'].lower())
-        cache.delete(rate_key)
