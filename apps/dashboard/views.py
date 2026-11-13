@@ -22,6 +22,7 @@ def index_view(request):
         'available_years': data['years'],
         'available_categories': data['categories'],
         'available_institutions': data['institutions'],
+        'available_fichas': data['fichas'],
         'records': data['records'],
     }
     return render(request, "dashboard/index.html", context)
@@ -43,5 +44,6 @@ def api_dashboard_data(request):
         'years': data['years'],
         'categories': data['categories'],
         'institutions': data['institutions'],
+        'fichas': data['fichas'],
         'records': data['records'],
     })

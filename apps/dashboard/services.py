@@ -900,6 +900,11 @@ def get_dashboard_evaluation_data():
         }
     }
 
+    unique_fichas = sorted(
+        list({str(r['study_code']) for r in records if r.get('study_code')}),
+        key=lambda x: int(x) if x.isdigit() else 999999
+    )
+
     return {
         'records': records,
         'total': n,
@@ -908,4 +913,5 @@ def get_dashboard_evaluation_data():
         'years': sorted_years,
         'categories': sorted_categories,
         'institutions': sorted_institutions,
+        'fichas': unique_fichas,
     }

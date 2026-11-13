@@ -318,6 +318,35 @@ if (document.readyState === 'loading') {
 function syncSlicerOptions() {
   if (!allRecords || allRecords.length === 0) return;
 
+  const codigoSelect = document.getElementById('slicer-codigo');
+  if (codigoSelect && codigoSelect.tagName === 'SELECT') {
+    const existing = Array.from(codigoSelect.options).map(o => o.value);
+    const uniqueMap = new Map();
+    allRecords.forEach(r => {
+      const c = r.study_code || r.patient_id || r.id;
+      if (c && !uniqueMap.has(String(c))) {
+        uniqueMap.set(String(c), {
+          code: String(c),
+          label: r.nombre ? `Ficha #${c} (${r.nombre})` : `Ficha #${c}`
+        });
+      }
+    });
+    const unique = Array.from(uniqueMap.values()).sort((a, b) => {
+      const numA = parseInt(a.code, 10);
+      const numB = parseInt(b.code, 10);
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+      return a.code.localeCompare(b.code);
+    });
+    unique.forEach(item => {
+      if (!existing.includes(item.code)) {
+        const opt = document.createElement('option');
+        opt.value = item.code;
+        opt.textContent = item.label;
+        codigoSelect.appendChild(opt);
+      }
+    });
+  }
+
   const instSelect = document.getElementById('slicer-inst');
   if (instSelect) {
     const existing = Array.from(instSelect.options).map(o => o.value);
@@ -360,11 +389,110 @@ function syncSlicerOptions() {
       }
     });
   }
+
+  poblarDropdownFichasDesdeRecords();
 }
+
+// =========================================================================
+// GESTIÓN DEL DROPDOWN Y FILTRO POR N.° FICHA CLÍNICA
+// =========================================================================
+function abrirDropdownFichas() {
+  const menu = document.getElementById('dropdown-fichas-menu');
+  if (menu) {
+    menu.style.display = 'block';
+    filtrarDropdownFichas();
+  }
+}
+
+function cerrarDropdownFichas() {
+  const menu = document.getElementById('dropdown-fichas-menu');
+  if (menu) menu.style.display = 'none';
+}
+
+function toggleDropdownFichas(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('dropdown-fichas-menu');
+  if (menu) {
+    if (menu.style.display === 'block') {
+      menu.style.display = 'none';
+    } else {
+      menu.style.display = 'block';
+      filtrarDropdownFichas();
+    }
+  }
+}
+
+function seleccionarFichaSlicer(code) {
+  const inp = document.getElementById('slicer-codigo');
+  if (inp) {
+    inp.value = code ? code : '';
+  }
+  cerrarDropdownFichas();
+  onSlicerChange();
+}
+
+function onSlicerCodigoInput() {
+  filtrarDropdownFichas();
+  abrirDropdownFichas();
+  onSlicerChange();
+}
+
+function filtrarDropdownFichas() {
+  const inp = document.getElementById('slicer-codigo');
+  const raw = (inp?.value || '').trim().toLowerCase();
+  const val = raw.replace(/^#/, '').replace(/^ficha\s*#?/, '').trim();
+  const menu = document.getElementById('dropdown-fichas-menu');
+  if (!menu) return;
+
+  const items = menu.querySelectorAll('.dropdown-ficha-item');
+  items.forEach(it => {
+    const code = (it.getAttribute('data-code') || '').toLowerCase();
+    if (!code || !val || code === val || code.startsWith(val) || it.textContent.toLowerCase().includes(val)) {
+      it.style.display = 'block';
+    } else {
+      it.style.display = 'none';
+    }
+  });
+}
+
+function poblarDropdownFichasDesdeRecords() {
+  const menu = document.getElementById('dropdown-fichas-menu');
+  if (!menu || !allRecords || allRecords.length === 0) return;
+
+  const existingCodes = Array.from(menu.querySelectorAll('[data-code]')).map(el => el.getAttribute('data-code'));
+  const uniqueCodes = [...new Set(allRecords.map(r => r.study_code ? String(r.study_code).trim() : null).filter(Boolean))].sort((a, b) => {
+    const na = parseInt(a, 10);
+    const nb = parseInt(b, 10);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+    return a.localeCompare(b);
+  });
+
+  if (existingCodes.length === 0) {
+    menu.innerHTML = '<div class="dropdown-ficha-item" onclick="seleccionarFichaSlicer(\'\')" style="padding: 6px 12px; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: #1e293b; border-bottom: 1px solid #f1f5f9;">Todas las Fichas</div>';
+    uniqueCodes.forEach(c => {
+      const item = document.createElement('div');
+      item.className = 'dropdown-ficha-item';
+      item.setAttribute('data-code', c);
+      item.style.cssText = 'padding: 6px 12px; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: #334155; font-family: monospace;';
+      item.textContent = `Ficha #${c}`;
+      item.onclick = () => seleccionarFichaSlicer(c);
+      menu.appendChild(item);
+    });
+  }
+}
+
+// Cerrar desplegable al hacer clic fuera del control
+document.addEventListener('click', (e) => {
+  const wrapper = document.getElementById('slicer-codigo-wrapper');
+  if (wrapper && !wrapper.contains(e.target)) {
+    cerrarDropdownFichas();
+  }
+});
 
 // Evento disparado al cambiar cualquier slicer
 function onSlicerChange() {
-  const codigo = (document.getElementById('slicer-codigo')?.value || '').trim().toLowerCase();
+  const rawInput = (document.getElementById('slicer-codigo')?.value || '').trim().toLowerCase();
+  const codigo = rawInput.replace(/^#/, '').replace(/^ficha\s*#?/, '').trim();
   const inst = document.getElementById('slicer-inst')?.value || 'all';
   const ano = document.getElementById('slicer-ano')?.value || 'all';
   const cat = document.getElementById('slicer-cat')?.value || 'all';
@@ -372,14 +500,23 @@ function onSlicerChange() {
   const edad = document.getElementById('slicer-edad')?.value || 'all';
   const riesgo = document.getElementById('slicer-riesgo')?.value || 'all';
 
+  const isCodigoAll = !codigo || codigo === 'all';
+
   filteredRecords = allRecords.filter(r => {
-    if (codigo) {
-      const sc = String(r.study_code || '').toLowerCase();
-      const pid = String(r.patient_id || r.id || '').toLowerCase();
-      const ced = String(r.id_card || '').toLowerCase();
-      const nom = String(r.nombre || '').toLowerCase();
-      if (!sc.includes(codigo) && !pid.includes(codigo) && !ced.includes(codigo) && !nom.includes(codigo)) {
-        return false;
+    if (codigo && codigo !== 'all' && codigo !== 'todas las fichas' && codigo !== 'todas') {
+      const sc = String(r.study_code || '').trim().toLowerCase();
+      // Si el código buscado son dígitos o número de ficha, aplicar coincidencia exacta de ficha
+      if (/^\d+$/.test(codigo)) {
+        if (sc !== codigo) {
+          return false;
+        }
+      } else {
+        const pid = String(r.patient_id || r.id || '').toLowerCase();
+        const ced = String(r.id_card || '').toLowerCase();
+        const nom = String(r.nombre || '').toLowerCase();
+        if (sc !== codigo && !pid.includes(codigo) && !ced.includes(codigo) && !nom.includes(codigo)) {
+          return false;
+        }
       }
     }
     if (inst !== 'all' && r.institucion !== inst) return false;
