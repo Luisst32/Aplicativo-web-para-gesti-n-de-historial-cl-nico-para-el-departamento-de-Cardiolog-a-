@@ -1,0 +1,157 @@
+        <!-- ================= MÓDULO 2: EXPLORACIÓN FÍSICA ================= -->
+        <div class="module-section" id="mod-exploracion">
+          <div class="module-group-divider">
+            <div class="module-group-tag">
+              <span class="module-group-num">MÓDULO 2</span>
+              <span class="module-group-title">Exploración y Signos</span>
+            </div>
+            <div class="module-group-line"></div>
+          </div>
+
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text"><span class="card-apartado-badge">2.1</span> Exploración Física <span class="card-toggle-icon"></span></span>
+            </div>
+            <div class="card-body">
+
+            <div class="sub-section-header">Medidas Corporales y Constantes Vitales (Ítems 1 al 7)</div>
+            <div class="grid form-grid-3" style="margin-bottom: 14px;">
+              <div class="form-field">
+                <label class="field-label">1.- Peso (kg)</label>
+                <input type="number" class="form-input" id="f_peso" placeholder="kg" step="0.1" oninput="calcIMC()" name="f_peso">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Talla (cm)</label>
+                <input type="number" class="form-input" id="f_talla" placeholder="cm" step="0.1" oninput="calcIMC()" name="f_talla">
+              </div>
+              <div class="form-field">
+                <label class="field-label">5.- Perímetro Abdominal (cm)</label>
+                <input type="number" class="form-input" id="f_perimetro" placeholder="cm" step="0.1" name="f_perimetro">
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 14px;">
+              <div class="form-field">
+                <label class="field-label">3.- IMC (kg/m²) <small>(Calculado automáticamente)</small></label>
+                <input type="text" class="form-input calc" id="f_imc" readonly placeholder="--" name="f_imc">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- ASC (m²) <small>(Calculada automáticamente)</small></label>
+                <input type="text" class="form-input calc" id="f_asc" readonly placeholder="--" name="f_asc">
+              </div>
+            </div>
+
+            <!-- Ítems 6 y 7 del Protocolo Escaneado (img0001_p2) -->
+            <div class="grid form-grid-3" style="margin-bottom: 18px;">
+              <div class="form-field">
+                <label class="field-label">6.- Saturación O2 (%)</label>
+                <input type="number" class="form-input" id="f_sat_o2" name="f_sat_o2" min="50" max="100" placeholder="98" oninput="if(document.getElementById('heroSatO2')) document.getElementById('heroSatO2').textContent = this.value ? this.value + '%' : '--'">
+              </div>
+              <div class="form-field">
+                <label class="field-label">7.- TAS - Sistólica (mm Hg)</label>
+                <input type="number" class="form-input" id="f_tas" name="f_tas" min="50" max="260" placeholder="120" oninput="actualizarHeroPresion()">
+              </div>
+              <div class="form-field">
+                <label class="field-label">7.- TSI - Diastólica/Contralateral (mm Hg)</label>
+                <input type="number" class="form-input" id="f_tsi" name="f_tsi" min="30" max="160" placeholder="80" oninput="actualizarHeroPresion()">
+              </div>
+            </div>
+
+            <!-- Hallazgos Cardiovasculares y Respiratorios con Condicionales (Ítems 8 al 13) -->
+            <div class="sub-section-header">Hallazgos Físicos (Ítems 8 al 13 - Condicionales: Input sólo si Sí)</div>
+
+            <!-- 8. Soplos (Ítem 8 en PDF) -->
+            <div class="condition-row" id="row_soplos" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">8.- Soplos cardiacos:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="soplos" value="No" checked onchange="toggleCondition('row_soplos', false)"> No</label>
+                  <label class="yes"><input type="radio" name="soplos" value="Si" onchange="toggleCondition('row_soplos', true)"> Si</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">9. Grado:</span>
+                <input type="text" class="form-input" id="soplo_grado" name="soplo_grado" style="width: 100px;" placeholder="Grado">
+                <span class="field-label" style="margin-left: 10px;">Tipo:</span>
+                <input type="text" class="form-input" id="soplo_tipo" name="soplo_tipo" style="flex: 1;" placeholder="Tipo de soplo">
+              </div>
+            </div>
+
+            <!-- 10. Extra-tonos (Ítem 10 en PDF) -->
+            <div class="condition-row" id="row_extratonos" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">10.- Extra-tonos:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="extratonos" value="No" checked onchange="toggleCondition('row_extratonos', false)"> No</label>
+                  <label class="yes"><input type="radio" name="extratonos" value="Si" onchange="toggleCondition('row_extratonos', true)"> Si</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cual:</span>
+                <input type="text" class="form-input" id="extratonos_detalle" name="extratonos_detalle" style="flex: 1;" placeholder="Especificar extra-tonos">
+              </div>
+            </div>
+
+            <!-- 11. Pulsos pedios (Ítem 11 en PDF) -->
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">11.- Pulsos pedios palpables:</span>
+                <div style="display:flex; gap:16px; align-items:center;">
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pulsos_palp" value="No"> No</label>
+                    <label class="yes"><input type="radio" name="pulsos_palp" value="Si" checked> Sí</label>
+                  </div>
+                  <span style="font-size:0.8rem; font-weight:600; color:#486581;">simétricos:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pulsos_sim" value="No"> No</label>
+                    <label class="yes"><input type="radio" name="pulsos_sim" value="Si" checked> Si</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 12. Exploración respiratoria (Ítem 12 en PDF) -->
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">12.- Exploración respiratoria normal:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="resp_norm" value="No"> No</label>
+                  <label class="yes"><input type="radio" name="resp_norm" value="Si" checked> Si</label>
+                </div>
+              </div>
+              <div style="display:flex; gap:16px; align-items:center; margin-top:6px; flex-wrap:wrap;">
+                <span class="field-label">Existe Estertores:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="estert" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="estert" value="Si"> Si</label>
+                </div>
+                <span class="field-label" style="margin-left: 10px;">sibilancias:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="sibil" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="sibil" value="Si"> Si</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 13. Exploración abdominal (Ítem 13 en PDF - Condicional si alterada) -->
+            <div class="condition-row" id="row_abdomen" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">13.- Exploración abdominal normal:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="abdom_norm" value="No" onchange="toggleCondition('row_abdomen', true)"> No</label>
+                  <label class="yes"><input type="radio" name="abdom_norm" value="Si" checked onchange="toggleCondition('row_abdomen', false)"> Sí</label>
+                </div>
+              </div>
+              <!-- Si NO es normal, aparecen los hallazgos patológicos -->
+              <div class="condition-details">
+                <label class="field-label"><input type="checkbox" name="hepatomegalia" id="abdom_hepato"> Tiene hepatomegalia</label>
+                <label class="field-label"><input type="checkbox" name="organomegalia" id="abdom_organo"> Tiene organomegalia.</label>
+                <span class="field-label" style="margin-left: 8px;">Otras Cuales:</span>
+                <input type="text" class="form-input" id="abd_alteracion_detalle" name="abd_alteracion_detalle" style="flex: 1; min-width: 160px;" placeholder="Detalles de alteración abdominal...">
+              </div>
+            </div>
+
+            </div>
+          </div>
+        </div>
+

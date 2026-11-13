@@ -1,0 +1,880 @@
+        <!-- ================= MÓDULO 5: LABORATORIO Y ECOCARDIOGRAMA ================= -->
+        <!-- Fuente: escaneo/img0004.pdf (págs. 7-8 de 19), continuación de img0003.
+             No se incluyen los ítems 22-27 de "Resultados del Electrocardiograma"
+             (siguen tachados con una raya/X en el escaneo, misma sección que ya se
+             excluyó de img0003) ni "Resultados del Ecocardiograma 2D / Eje
+             paraesternal largo" (tachada por completo con una X). Sí se incluyen
+             "ECG Normal"/"Comentario del ECG" (rodeados, no tachados) y todo lo
+             demás de la página (Análisis Clínicos, Hemograma, Función Tiroidea/
+             Renal, Orina, Iones, Parámetros Diabéticos y de Riesgo Cardiovascular,
+             Factores analíticos emergentes, Función Hepática), que no tiene
+             ninguna marca de exclusión. -->
+        <div class="module-section" id="mod-laboratorio">
+          <div class="module-group-divider">
+            <div class="module-group-tag">
+              <span class="module-group-num">MÓDULO 5</span>
+              <span class="module-group-title">Laboratorio y ECG</span>
+            </div>
+            <div class="module-group-line"></div>
+          </div>
+
+          <!-- SUB-BLOQUE A: RESULTADOS DEL ELECTROCARDIOGRAMA (27 ÍTEMS DEFINITIVOS) -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text"><span class="card-apartado-badge">5.1</span> Resultados del Electrocardiograma <span class="card-toggle-icon"></span></span>
+            </div>
+            <div class="card-body">
+
+            <!-- Fila 1: Ritmo, Frecuencia cardíaca, Eje eléctrico -->
+            <div class="grid form-grid-3" style="margin-bottom: 12px;">
+              <div class="form-field">
+                <label class="field-label">1.- ECG Ritmo</label>
+                <select class="form-select" id="ecg_ritmo" name="ecg_ritmo">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="RS">RS (ritmo sinusal)</option>
+                  <option value="RL">RL</option>
+                  <option value="SIUNSAL">SINUSAL</option>
+                  <option value="ACXFA">ACXFA (Fibrilación auricular)</option>
+                  <option value="OTRO">Otro ritmo</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Frecuencia cardíaca (lpm)</label>
+                <input type="number" class="form-input" id="ecg_fc" name="ecg_fc" placeholder="lpm" min="30" max="250" step="1">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- Eje eléctrico A QRS (&deg;)</label>
+                <input type="text" class="form-input" id="ecg_eje" name="ecg_eje" placeholder="ej. 60°">
+              </div>
+            </div>
+
+            <!-- Fila 2: Intervalo RR, Onda P, Intervalo PR -->
+            <div class="grid form-grid-3" style="margin-bottom: 12px;">
+              <div class="form-field">
+                <label class="field-label">4.- Intervalo RR (seg)</label>
+                <input type="number" step="0.01" class="form-input" id="ecg_rr" name="ecg_rr" placeholder="segundos">
+              </div>
+              <div class="form-field">
+                <label class="field-label">5.- Onda P (mm)</label>
+                <input type="number" step="0.1" class="form-input" id="ecg_p_mm" name="ecg_p_mm" placeholder="mm">
+              </div>
+              <div class="form-field">
+                <label class="field-label">6.- Intervalo PR (seg / ms)</label>
+                <input type="text" class="form-input" id="ecg_pr" name="ecg_pr" placeholder="seg o ms">
+              </div>
+            </div>
+
+            <!-- Fila 3: Complejo QRS, Intervalo QT, Bazett corregido -->
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">7.- Complejo QRS (seg / ms)</label>
+                <input type="text" class="form-input" id="ecg_qrs" name="ecg_qrs" placeholder="seg o ms">
+              </div>
+              <div class="form-field">
+                <label class="field-label">8.- Intervalo QT (seg / ms)</label>
+                <input type="text" class="form-input" id="ecg_qt" name="ecg_qt" placeholder="seg o ms">
+              </div>
+              <div class="form-field">
+                <label class="field-label">9.- Intervalo corregido Bazett (mseg)</label>
+                <input type="number" class="form-input" id="ecg_qtc" name="ecg_qtc" placeholder="mseg">
+              </div>
+            </div>
+
+            <!-- 10. Onda P mitral -->
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">10.- Onda P mitral:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="ecg_p_mitral" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="ecg_p_mitral" value="Si"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 11. Bloqueo A-V -->
+            <div class="condition-row" id="row_ecg_bloqueo_av" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">11.- Bloqueo A-V:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="ecg_bloqueo_av" value="No" checked onchange="toggleCondition('row_ecg_bloqueo_av', false)"> No</label>
+                  <label class="yes"><input type="radio" name="ecg_bloqueo_av" value="Si" onchange="toggleCondition('row_ecg_bloqueo_av', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Grado:</span>
+                <input type="text" class="form-input" id="ecg_bloqueo_av_grado" name="ecg_bloqueo_av_grado" style="width: 200px;" placeholder="Grado I, II (Mobitz I/II), III...">
+              </div>
+            </div>
+
+            <!-- 12 y 13: Bloqueo sinoauricular y Bloqueo interauricular -->
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">12.- Bloqueo sinoauricular:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="ecg_bloqueo_sa" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="ecg_bloqueo_sa" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">13.- Bloqueo interauricular:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="ecg_bloqueo_ia" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="ecg_bloqueo_ia" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 14. Hemibloqueos -->
+            <div class="condition-row" id="row_ecg_hemibloqueo" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">14.- Hemibloqueos:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="ecg_hemibloqueo" value="No" checked onchange="toggleCondition('row_ecg_hemibloqueo', false)"> No</label>
+                  <label class="yes"><input type="radio" name="ecg_hemibloqueo" value="Si" onchange="toggleCondition('row_ecg_hemibloqueo', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">¿Cuál?:</span>
+                <input type="text" class="form-input" id="ecg_hemibloqueo_cual" name="ecg_hemibloqueo_cual" style="flex: 1; min-width: 180px;" placeholder="Anterior / Posterior...">
+              </div>
+            </div>
+
+            <!-- 15. Bloqueo de Rama -->
+            <div class="condition-row" id="row_ecg_bloqueo_rama" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">15.- Bloqueo de Rama:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="ecg_bloqueo_rama_sn" value="No" checked onchange="toggleCondition('row_ecg_bloqueo_rama', false)"> No</label>
+                  <label class="yes"><input type="radio" name="ecg_bloqueo_rama_sn" value="Si" onchange="toggleCondition('row_ecg_bloqueo_rama', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">¿Cuál?:</span>
+                <input type="text" class="form-input" id="ecg_bloqueo_rama" name="ecg_bloqueo_rama" style="flex: 1; min-width: 180px;" placeholder="BRDHH, BRIHH, incompleto...">
+              </div>
+            </div>
+
+            <!-- 16, 17 y 18: Brugada, Repolarización precoz, Criterios HVI -->
+            <div class="grid form-grid-3" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">16.- Patrón Brugada:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="ecg_brugada" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="ecg_brugada" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">17.- Repolarización precoz:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="ecg_repolarizacion_precoz" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="ecg_repolarizacion_precoz" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">18.- Criterios HVI:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="ecg_hvi" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="ecg_hvi" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 19. Sobrecarga Sistólica -->
+            <div class="condition-row" id="row_ecg_sobrecarga" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">19.- Sobrecarga Sistólica:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="ecg_sobrecarga_sistolica" value="No" checked onchange="toggleCondition('row_ecg_sobrecarga', false)"> No</label>
+                  <label class="yes"><input type="radio" name="ecg_sobrecarga_sistolica" value="Si" onchange="toggleCondition('row_ecg_sobrecarga', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Complejos:</span>
+                <input type="text" class="form-input" id="ecg_sobrecarga_complejos" name="ecg_sobrecarga_complejos" style="flex: 1;" placeholder="Complejos afectados...">
+              </div>
+            </div>
+
+            <!-- 20 y 21: Deflexión intrinsicoide y HVD -->
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="form-field">
+                <label class="field-label">20.- Deflexión intrinsicoide V5-V6 (seg)</label>
+                <input type="number" step="0.001" class="form-input" id="ecg_deflexion_intrinsicoide" name="ecg_deflexion_intrinsicoide" placeholder="ej. 0.045 seg">
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">21.- Criterio de HVD:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="ecg_hvd" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="ecg_hvd" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 22 y 23: Onda Delta y Cubeta digitálica -->
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">22.- Onda Delta:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="ecg_onda_delta" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="ecg_onda_delta" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">23.- Cubeta digitálica:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="ecg_cubeta_digitalica" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="ecg_cubeta_digitalica" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 24. Onda Q patológica -->
+            <div class="condition-row" id="row_ecg_onda_q" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">24.- Onda Q patológica:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="ecg_onda_q" value="No" checked onchange="toggleCondition('row_ecg_onda_q', false)"> No</label>
+                  <label class="yes"><input type="radio" name="ecg_onda_q" value="Si" onchange="toggleCondition('row_ecg_onda_q', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Amplitud:</span>
+                <input type="text" class="form-input" id="ecg_onda_q_amplitud" name="ecg_onda_q_amplitud" style="width: 100px;" placeholder="Amplitud">
+                <span class="field-label" style="margin-left: 8px;">Voltaje (mV):</span>
+                <input type="number" step="0.01" class="form-input" id="ecg_onda_q_voltaje" name="ecg_onda_q_voltaje" style="width: 100px;" placeholder="mV">
+                <span class="field-label" style="margin-left: 8px;">Complejos:</span>
+                <input type="text" class="form-input" id="ecg_onda_q_complejos" name="ecg_onda_q_complejos" style="flex: 1; min-width: 140px;" placeholder="Complejos...">
+              </div>
+            </div>
+
+            <!-- 25. T negativa -->
+            <div class="condition-row" id="row_ecg_t_neg" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">25.- T negativa:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="ecg_t_negativa" value="No" checked onchange="toggleCondition('row_ecg_t_neg', false)"> No</label>
+                  <label class="yes"><input type="radio" name="ecg_t_negativa" value="Si" onchange="toggleCondition('row_ecg_t_neg', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Complejos:</span>
+                <input type="text" class="form-input" id="ecg_t_negativa_complejos" name="ecg_t_negativa_complejos" style="width: 160px;" placeholder="Complejos...">
+                <span class="field-label" style="margin-left: 8px;">Simétrica:</span>
+                <label class="field-label"><input type="radio" name="ecg_t_simetrica" value="Si"> Sí</label>
+                <label class="field-label"><input type="radio" name="ecg_t_simetrica" value="No" checked> No</label>
+                <span class="field-label" style="margin-left: 8px;">Asimétrica:</span>
+                <label class="field-label"><input type="radio" name="ecg_t_asimetrica" value="Si"> Sí</label>
+                <label class="field-label"><input type="radio" name="ecg_t_asimetrica" value="No" checked> No</label>
+              </div>
+            </div>
+
+            <!-- 26. Ascenso del ST patológico -->
+            <div class="condition-row" id="row_ecg_st_asc" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">26.- Ascenso del ST patológico:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="ecg_st_ascenso" value="No" checked onchange="toggleCondition('row_ecg_st_asc', false)"> No</label>
+                  <label class="yes"><input type="radio" name="ecg_st_ascenso" value="Si" onchange="toggleCondition('row_ecg_st_asc', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Elevación (mm):</span>
+                <input type="number" step="0.1" class="form-input" id="ecg_st_ascenso_mm" name="ecg_st_ascenso_mm" style="width: 100px;" placeholder="mm">
+                <span class="field-label" style="margin-left: 8px;">Complejos:</span>
+                <input type="text" class="form-input" id="ecg_st_ascenso_complejos" name="ecg_st_ascenso_complejos" style="flex: 1; min-width: 160px;" placeholder="Derivaciones / complejos...">
+              </div>
+            </div>
+
+            <!-- 27. Descenso ST -->
+            <div class="condition-row" id="row_ecg_st_desc" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">27.- Descenso ST:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="ecg_st_descenso" value="No" checked onchange="toggleCondition('row_ecg_st_desc', false)"> No</label>
+                  <label class="yes"><input type="radio" name="ecg_st_descenso" value="Si" onchange="toggleCondition('row_ecg_st_desc', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Depresión (mm):</span>
+                <input type="number" step="0.1" class="form-input" id="ecg_st_descenso_mm" name="ecg_st_descenso_mm" style="width: 100px;" placeholder="mm">
+                <span class="field-label" style="margin-left: 8px;">Complejos:</span>
+                <input type="text" class="form-input" id="ecg_st_descenso_complejos" name="ecg_st_descenso_complejos" style="flex: 1; min-width: 160px;" placeholder="Derivaciones / complejos...">
+              </div>
+            </div>
+
+            <!-- ECG Normal -->
+            <div class="condition-row" style="margin-bottom: 12px; background: #F8FAFC;">
+              <div class="condition-header">
+                <span class="condition-title" style="font-weight: 700;">ECG Normal:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="ecg_normal" value="No"> No</label>
+                  <label class="yes"><input type="radio" name="ecg_normal" value="Si" checked> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Comentario del ECG -->
+            <div class="form-field" style="margin-top: 8px;">
+              <label class="field-label">Comentario del ECG</label>
+              <textarea class="form-input" id="ecg_comentario" name="ecg_comentario" rows="2" placeholder="Observaciones y comentarios del electrocardiograma..."></textarea>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE B: ANÁLISIS CLÍNICOS (una sola tarjeta: en el escaneo,
+               Hemograma / Bioquímica General / Iones / Parámetros Diabéticos /
+               Parámetros de Riesgo Cardiovascular / Factores Analíticos
+               Emergentes / Función Hepática son subtítulos DENTRO de
+               "Analisis Clinicos", no secciones aparte) -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text"><span class="card-apartado-badge">5.2</span> Análisis Clínicos <span class="card-toggle-icon"></span></span>
+            </div>
+            <div class="card-body">
+
+            <div class="condition-row" style="margin-bottom: 16px;">
+              <div class="condition-header">
+                <span class="condition-title">Prueba realizada:</span>
+                <div style="display:flex; gap:16px; align-items:center;">
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="ac_prueba" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="ac_prueba" value="Si"> Sí</label>
+                  </div>
+                  <span class="field-label">Resultado:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="ac_resultado" value="Normal" checked> Normal</label>
+                    <label><input type="radio" name="ac_resultado" value="Alterada"> Alterada</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="sub-section-header">Hemograma</div>
+            <div class="grid form-grid-4" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- Hematíes</label>
+                <input type="number" class="form-input" id="hemo_hematies" name="hemo_hematies" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Hemoglobina</label>
+                <input type="number" class="form-input" id="hemo_hemoglobina" name="hemo_hemoglobina" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- Hematocrito</label>
+                <input type="number" class="form-input" id="hemo_hematocrito" name="hemo_hematocrito" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- VCM</label>
+                <input type="number" class="form-input" id="hemo_vcm" name="hemo_vcm" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">5.- HCM</label>
+                <input type="number" class="form-input" id="hemo_hcm" name="hemo_hcm" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">6.- CHCM</label>
+                <input type="number" class="form-input" id="hemo_chcm" name="hemo_chcm" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">9.- Leucocitos</label>
+                <input type="number" class="form-input" id="hemo_leucocitos" name="hemo_leucocitos" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">10.- Neutrófilos</label>
+                <input type="number" class="form-input" id="hemo_neutrofilos" name="hemo_neutrofilos" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">11.- Eosinófilos</label>
+                <input type="number" class="form-input" id="hemo_eosinofilos" name="hemo_eosinofilos" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">12.- Basófilos</label>
+                <input type="number" class="form-input" id="hemo_basofilos" name="hemo_basofilos" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">13.- Linfocitos</label>
+                <input type="number" class="form-input" id="hemo_linfocitos" name="hemo_linfocitos" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">14.- Monocitos</label>
+                <input type="number" class="form-input" id="hemo_monocitos" name="hemo_monocitos" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">15.- Plaquetas</label>
+                <input type="number" class="form-input" id="hemo_plaquetas" name="hemo_plaquetas" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">16.- INR</label>
+                <input type="number" class="form-input" id="hemo_inr" name="hemo_inr" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">17.- Tiempo parcial de tromboplastina</label>
+                <input type="number" class="form-input" id="hemo_tpt" name="hemo_tpt" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">18.- Fibrinógeno</label>
+                <input type="number" class="form-input" id="hemo_fibrinogeno" name="hemo_fibrinogeno" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Bioquímica General</div>
+            <div class="sub-section-header">Función Tiroidea</div>
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- TSH</label>
+                <input type="number" class="form-input" id="tiroidea_tsh" name="tiroidea_tsh" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Hormonas tiroideas T4</label>
+                <input type="number" class="form-input" id="tiroidea_t4" name="tiroidea_t4" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Hormonas tiroideas T3</label>
+                <input type="number" class="form-input" id="tiroidea_t3" name="tiroidea_t3" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Función Renal</div>
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- Urea</label>
+                <input type="number" class="form-input" id="renal_urea" name="renal_urea" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Creatinina</label>
+                <input type="number" class="form-input" id="renal_creatinina" name="renal_creatinina" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- Filtrado glomerular</label>
+                <input type="number" class="form-input" id="renal_filtrado" name="renal_filtrado" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Orina</div>
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">Microalbuminuria</label>
+                <input type="number" class="form-input" id="orina_microalbuminuria" name="orina_microalbuminuria" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Iones</div>
+            <div class="grid form-grid-4" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- Potasio</label>
+                <input type="number" class="form-input" id="ion_potasio" name="ion_potasio" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Calcio</label>
+                <input type="number" class="form-input" id="ion_calcio" name="ion_calcio" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- Magnesio</label>
+                <input type="number" class="form-input" id="ion_magnesio" name="ion_magnesio" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- Sodio</label>
+                <input type="number" class="form-input" id="ion_sodio" name="ion_sodio" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Parámetros Diabéticos</div>
+            <div class="grid form-grid-4" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- Glucosa en sangre</label>
+                <input type="number" class="form-input" id="diab_glucosa" name="diab_glucosa" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Hemoglobina glicosilada</label>
+                <input type="number" class="form-input" id="diab_hba1c" name="diab_hba1c" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- HOMA IR</label>
+                <input type="number" class="form-input" id="diab_homair" name="diab_homair" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- Insulina en Ayunas</label>
+                <input type="number" class="form-input" id="diab_insulina" name="diab_insulina" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Parámetros de Riesgo Cardiovascular</div>
+            <div class="grid form-grid-4" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- Colesterol Total</label>
+                <input type="number" class="form-input" id="riesgo_colesterol" name="riesgo_colesterol" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- HDL</label>
+                <input type="number" class="form-input" id="riesgo_hdl" name="riesgo_hdl" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- LDL</label>
+                <input type="number" class="form-input" id="riesgo_ldl" name="riesgo_ldl" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- VLDL</label>
+                <input type="number" class="form-input" id="riesgo_vldl" name="riesgo_vldl" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">5.- Triglicéridos</label>
+                <input type="number" class="form-input" id="riesgo_trigliceridos" name="riesgo_trigliceridos" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">6.- Lipoproteína a</label>
+                <input type="number" class="form-input" id="riesgo_lipoproteina_a" name="riesgo_lipoproteina_a" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Apolipoproteína B</label>
+                <input type="number" class="form-input" id="riesgo_apo_b" name="riesgo_apo_b" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Factores Analíticos Emergentes</div>
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- Homocisteína</label>
+                <input type="number" class="form-input" id="emerg_homocisteina" name="emerg_homocisteina" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- PCR ultrasensible</label>
+                <input type="number" class="form-input" id="emerg_pcr" name="emerg_pcr" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- Ácido Úrico</label>
+                <input type="number" class="form-input" id="emerg_acido_urico" name="emerg_acido_urico" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="sub-section-header">Función Hepática</div>
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- GGT</label>
+                <input type="number" class="form-input" id="hepatica_ggt" name="hepatica_ggt" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- GPT (ALT)</label>
+                <input type="number" class="form-input" id="hepatica_gpt" name="hepatica_gpt" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- GOT (AST)</label>
+                <input type="number" class="form-input" id="hepatica_got" name="hepatica_got" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- Fosfatasa alcalina</label>
+                <input type="number" class="form-input" id="hepatica_fosfatasa" name="hepatica_fosfatasa" step="0.01" min="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">5.- Bilirrubina</label>
+                <input type="number" class="form-input" id="hepatica_bilirrubina" name="hepatica_bilirrubina" step="0.01" min="0">
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label class="field-label">Comentario de los Análisis Clínicos</label>
+              <input type="text" class="form-input" id="comentario_analisis" placeholder="Observaciones generales de los análisis clínicos..." name="comentario_analisis">
+            </div>
+
+            </div>
+          </div>
+
+
+
+          <!-- SUB-BLOQUE G: INSUFICIENCIA PULMONAR
+               Fuente: escaneo/img0006.pdf (pág 15). Los ítems 5 al 8 y las
+               secciones "Insuficiencia Aortica"/"Estenosis Pulmonar" que
+               preceden a esta en la misma página están tachados con una X
+               grande y no se incluyen; se empieza justo donde termina esa X. -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text"><span class="card-apartado-badge">5.3</span> Insuficiencia Pulmonar <span class="card-toggle-icon"></span></span>
+            </div>
+            <div class="card-body">
+
+            <div class="grid form-grid-2">
+              <div class="form-field">
+                <label class="field-label">1.- Medida del chorro regurgitante <small>(%)</small></label>
+                <input type="number" class="form-input" id="ip_medida_chorro" step="0.1" min="0" max="100" placeholder="0 - 100" name="ip_medida_chorro">
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Insuficiencia pulmonar</label>
+                <select class="form-select" id="ip_grado" name="ip_grado">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="No">No</option>
+                  <option value="Leve">Leve</option>
+                  <option value="Moderada">Moderada</option>
+                  <option value="Severa">Severa</option>
+                </select>
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE H: PERICARDIO -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text"><span class="card-apartado-badge">5.4</span> Pericardio <span class="card-toggle-icon"></span></span>
+            </div>
+            <div class="card-body">
+
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">1.- Derrame pericárdico:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="peri_derrame" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="peri_derrame" value="Si"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label class="field-label">2.- Grosor derrame pericárdico <small>(&lt;1cm leve, &gt;1cm moderado, &gt;2cm severo)</small></label>
+              <input type="number" class="form-input" id="ip_ancho_chorro" name="ip_ancho_chorro" style="max-width: 160px;" step="0.1" min="0" placeholder="cm">
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE I: RESULTADOS (Ecocardiograma) -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text"><span class="card-apartado-badge">5.5</span> Resultados <span class="card-toggle-icon"></span></span>
+            </div>
+            <div class="card-body">
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">1.- Ventrículo Izquierdo Dilatado:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_vi_dilatado" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="res_vi_dilatado" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row" id="row_res_vi_hipertrofico">
+                <div class="condition-header">
+                  <span class="condition-title">2.- Ventrículo Izquierdo Hipertrófico:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_vi_hipertrofico" value="No" checked onchange="toggleCondition('row_res_vi_hipertrofico', false)"> No</label>
+                    <label class="yes"><input type="radio" name="res_vi_hipertrofico" value="Si" onchange="toggleCondition('row_res_vi_hipertrofico', true)"> Sí</label>
+                  </div>
+                </div>
+                <div class="condition-details">
+                  <span class="field-label">Tipo:</span>
+                  <input type="text" class="form-input" id="res_vi_hipertrofico_tipo" name="res_vi_hipertrofico_tipo" style="flex: 1;" placeholder="Tipo de hipertrofia...">
+                </div>
+                <div class="condition-details">
+                  <span class="field-label">Tipo:</span>
+                  <input type="text" class="form-input" id="ip_tipo_especificar" name="ip_tipo_especificar" style="flex: 1;" placeholder="Especificar tipo...">
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">3.- Función Sistólica del Ventrículo Izquierdo:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_fsvi" value="Normal" checked> Normal</label>
+                    <label class="yes"><input type="radio" name="res_fsvi" value="Alterada"> Alterada</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">3.- Función Diastólica del Ventrículo Izquierdo:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_fdvi" value="Normal" checked> Normal</label>
+                    <label class="yes"><input type="radio" name="res_fdvi" value="Alterada"> Alterada</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">4.- Presiones de llenado del Ventrículo Izquierdo:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_presiones_vi" value="Normales" checked> Normales</label>
+                    <label class="yes"><input type="radio" name="res_presiones_vi" value="Alteradas"> Alteradas</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">5.- Alteraciones de la Contractilidad:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_contractilidad" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="res_contractilidad" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">6.- Ventrículo Derecho Dilatado:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_vd_dilatado" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="res_vd_dilatado" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">7.- Ventrículo Derecho Hipertrófico:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_vd_hipertrofico" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="res_vd_hipertrofico" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">8.- Función Sistólica del Ventrículo Derecho:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_fsvd" value="Normal" checked> Normal</label>
+                    <label class="yes"><input type="radio" name="res_fsvd" value="Alterada"> Alterada</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">9.- Función Diastólica del Ventrículo Derecho:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_fdvd" value="Normal" checked> Normal</label>
+                    <label class="yes"><input type="radio" name="res_fdvd" value="Alterada"> Alterada</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-3" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">10.- Raíz Aortica Dilatada:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_raiz_aortica" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="res_raiz_aortica" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">11.- AI Dilatada:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_ai_dilatada" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="res_ai_dilatada" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">12.- AD Dilatada:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="res_ad_dilatada" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="res_ad_dilatada" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="condition-row" id="row_res_valvulopatia" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">13.- Valvulopatía:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="res_valvulopatia" value="No" checked onchange="toggleCondition('row_res_valvulopatia', false)"> No</label>
+                  <label class="yes"><input type="radio" name="res_valvulopatia" value="Si" onchange="toggleCondition('row_res_valvulopatia', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Tipo:</span>
+                <input type="text" class="form-input" id="valvulopatia_tipo_detalle" name="valvulopatia_tipo_detalle" style="flex: 1;" placeholder="Especificar tipo de valvulopatía...">
+              </div>
+            </div>
+
+            <div class="condition-row" id="row_res_derrame" style="margin-bottom: 16px;">
+              <div class="condition-header">
+                <span class="condition-title">14.- Derrame pericárdico:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="res_derrame" value="No" checked onchange="toggleCondition('row_res_derrame', false)"> No</label>
+                  <label class="yes"><input type="radio" name="res_derrame" value="Si" onchange="toggleCondition('row_res_derrame', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuántos cms:</span>
+                <input type="number" class="form-input" id="derrame_grosor_cm" name="derrame_grosor_cm" style="width: 100px;" step="0.1" min="0" placeholder="cm">
+              </div>
+            </div>
+
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">15.- Ecocardiografía Normal:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="res_eco_normal" value="No"> No</label>
+                  <label class="yes"><input type="radio" name="res_eco_normal" value="Si" checked> Sí</label>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:5px;">
+                <span class="field-label">Comentario:</span>
+                <input type="text" class="form-input" id="res_eco_comentario" name="res_eco_comentario">
+              </div>
+            </div>
+
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">16.- Ecografía Vascular Normal:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="res_eco_vascular" value="No"> No</label>
+                  <label class="yes"><input type="radio" name="res_eco_vascular" value="Si" checked> Sí</label>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:5px;">
+                <span class="field-label">Comentario:</span>
+                <input type="text" class="form-input" id="res_eco_vascular_comentario" name="res_eco_vascular_comentario">
+              </div>
+            </div>
+
+            <div class="condition-row">
+              <div class="condition-header">
+                <span class="condition-title">17.- Ecografía Digestiva. Hígado Graso:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="res_higado_graso" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="res_higado_graso" value="Si"> Sí</label>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:5px;">
+                <span class="field-label">Comentario:</span>
+                <input type="text" class="form-input" id="res_higado_comentario" name="res_higado_comentario">
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+        </div>
+

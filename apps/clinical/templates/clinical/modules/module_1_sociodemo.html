@@ -1,0 +1,331 @@
+        <!-- ================= MÓDULO 1: FICHA Y SOCIODEMOGRÁFICO ================= -->
+        <div class="module-section" id="mod-sociodemo">
+          <div class="module-group-divider">
+            <div class="module-group-tag">
+              <span class="module-group-num">MÓDULO 1</span>
+              <span class="module-group-title">Ficha y Sociodemográfico</span>
+            </div>
+            <div class="module-group-line"></div>
+          </div>
+
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text"><span class="card-apartado-badge">1.1</span> Datos del Individuo <span class="card-toggle-icon"></span></span>
+            </div>
+            <div class="card-body">
+
+            <!-- Encabezado UNEMI -->
+            <div class="sub-section-header">Identificación Institucional</div>
+            <div class="grid form-grid-3" style="margin-bottom: 12px;">
+              <div class="form-field">
+                <label class="field-label">Universidad</label>
+                <select class="form-select" id="f_universidad" name="f_universidad" onchange="onUniversidadChange(this.value)">
+                  <option value="UNEMI" selected>UNEMI</option>
+                  <option value="ESPOL">ESPOL</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">Facultad de la Universidad</label>
+                <select class="form-select" id="f_facultad" name="f_facultad" onchange="document.getElementById('heroFacultad').textContent = this.value;">
+                  <option value="">-- Seleccione facultad --</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">Estamento UNEMI</label>
+                <select class="form-select" id="f_estamento" onchange="document.getElementById('heroEstamento').textContent = this.value;" name="f_estamento">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="PDI">PDI</option>
+                  <option value="AD">AD</option>
+                  <option value="PAS">PAS (Personal de Administración y Servicios)</option>
+                  <option value="SERVICIO">SERVICIO</option>
+                  <option value="ESTUDIANTES">ESTUDIANTES</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">&bull; N.&deg; Ficha Cl&iacute;nica</label>
+                <input type="text" class="form-input" id="f_codigo" name="f_codigo" placeholder="1" style="font-weight: 700; border-color: #cbd5e1;" title="Número de ficha clínica del paciente en el estudio.">
+              </div>
+              <div class="form-field">
+                <label class="field-label">N.&deg; de visita</label>
+                <input type="number" class="form-input" id="f_visita" name="f_visita" min="1" max="99" step="1" value="1" placeholder="1">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Fecha visita <small>(Calendario editable)</small></label>
+                <input type="date" class="form-input" id="f_fecha_visita" name="f_fecha_visita">
+              </div>
+            </div>
+
+            <!-- Nombres y apellidos -->
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">1.- Nombres del paciente</label>
+                <input type="text" class="form-input" id="f_nombre" placeholder="Nombres" oninput="actualizarNombreCompleto();" name="f_nombre">
+              </div>
+              <div class="form-field">
+                <label class="field-label">- Primer apellido</label>
+                <input type="text" class="form-input" id="f_apellido1" placeholder="Primer apellido" oninput="actualizarNombreCompleto();" name="f_apellido1">
+              </div>
+              <div class="form-field">
+                <label class="field-label">- Segundo apellido</label>
+                <input type="text" class="form-input" id="f_apellido2" placeholder="Segundo apellido" oninput="actualizarNombreCompleto();" name="f_apellido2">
+              </div>
+            </div>
+
+            <!-- Residencia: Provincia y Cantón lado a lado (form-grid-2) -->
+            <div class="grid form-grid-2" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">- Provincia de residencia</label>
+                <select class="form-select" id="f_provincia" name="f_provincia" onchange="onProvinciaResidenciaChange(this.value)">
+                  <option value="">-- Seleccionar Provincia --</option>
+                  <option value="AZUAY">Azuay</option>
+                  <option value="BOLIVAR">Bolívar</option>
+                  <option value="CANAR">Cañar</option>
+                  <option value="CARCHI">Carchi</option>
+                  <option value="CHIMBORAZO">Chimborazo</option>
+                  <option value="COTOPAXI">Cotopaxi</option>
+                  <option value="EL ORO">El Oro</option>
+                  <option value="ESMERALDAS">Esmeraldas</option>
+                  <option value="GALAPAGOS">Galápagos</option>
+                  <option value="GUAYAS">Guayas</option>
+                  <option value="IMBABURA">Imbabura</option>
+                  <option value="LOJA">Loja</option>
+                  <option value="LOS RIOS">Los Ríos</option>
+                  <option value="MANABI">Manabí</option>
+                  <option value="MORONA SANTIAGO">Morona Santiago</option>
+                  <option value="NAPO">Napo</option>
+                  <option value="ORELLANA">Orellana</option>
+                  <option value="PASTAZA">Pastaza</option>
+                  <option value="PICHINCHA">Pichincha</option>
+                  <option value="SANTA ELENA">Santa Elena</option>
+                  <option value="SANTO DOMINGO DE LOS TSACHILAS">Santo Domingo de los Tsáchilas</option>
+                  <option value="SUCUMBIOS">Sucumbíos</option>
+                  <option value="TUNGURAHUA">Tungurahua</option>
+                  <option value="ZAMORA CHINCHIPE">Zamora Chinchipe</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">2.- Ciudad de residencia / Cantón</label>
+                <select class="form-select" id="f_ciudad" name="f_ciudad">
+                  <option value="">-- Seleccione provincia primero --</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Identificación y contacto del paciente -->
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">- C.I. / Cédula</label>
+                <input type="text" class="form-input" id="f_cedula" placeholder="0912345678" name="f_cedula" inputmode="numeric" pattern="[0-9]*" maxlength="10">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- Teléfono (con prefijo)</label>
+                <input type="text" class="form-input" id="f_telefono" placeholder="0987654321" name="f_telefono" inputmode="numeric" pattern="[0-9]*" maxlength="13">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- Correo electrónico</label>
+                <input type="email" class="form-input" id="f_correo" placeholder="correo@unemi.edu.ec" name="f_correo">
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text"><span class="card-apartado-badge">1.2</span> Cuestionario Sociodemográfico <span class="card-toggle-icon"></span></span>
+            </div>
+            <div class="card-body">
+
+            <!-- 1. Lugar de nacimiento: Provincia y Cantón lado a lado (form-grid-2) -->
+            <div class="grid form-grid-2" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">Provincia de nacimiento</label>
+                <select class="form-select" id="f_provincia_nac" name="f_provincia_nac" onchange="onProvinciaNacChange(this.value); toggleProvinciaExtranjera();">
+                  <option value="">-- Seleccionar Provincia --</option>
+                  <option value="AZUAY">Azuay</option>
+                  <option value="BOLIVAR">Bolívar</option>
+                  <option value="CANAR">Cañar</option>
+                  <option value="CARCHI">Carchi</option>
+                  <option value="CHIMBORAZO">Chimborazo</option>
+                  <option value="COTOPAXI">Cotopaxi</option>
+                  <option value="EL ORO">El Oro</option>
+                  <option value="ESMERALDAS">Esmeraldas</option>
+                  <option value="GALAPAGOS">Galápagos</option>
+                  <option value="GUAYAS">Guayas</option>
+                  <option value="IMBABURA">Imbabura</option>
+                  <option value="LOJA">Loja</option>
+                  <option value="LOS RIOS">Los Ríos</option>
+                  <option value="MANABI">Manabí</option>
+                  <option value="MORONA SANTIAGO">Morona Santiago</option>
+                  <option value="NAPO">Napo</option>
+                  <option value="ORELLANA">Orellana</option>
+                  <option value="PASTAZA">Pastaza</option>
+                  <option value="PICHINCHA">Pichincha</option>
+                  <option value="SANTA ELENA">Santa Elena</option>
+                  <option value="SANTO DOMINGO DE LOS TSACHILAS">Santo Domingo de los Tsáchilas</option>
+                  <option value="SUCUMBIOS">Sucumbíos</option>
+                  <option value="TUNGURAHUA">Tungurahua</option>
+                  <option value="ZAMORA CHINCHIPE">Zamora Chinchipe</option>
+                  <option value="EXTRANJERO">Otro país (especificar)</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">1.- Lugar nac. Municipio / Cantón</label>
+                <select class="form-select" id="f_municipio" name="f_municipio">
+                  <option value="">-- Seleccione provincia primero --</option>
+                </select>
+              </div>
+              <div class="form-field" id="campo_pais_nac" style="display: none; grid-column: 1 / -1;">
+                <label class="field-label">- País de nacimiento</label>
+                <input type="text" class="form-input" id="f_pais_nac" name="f_pais_nac" placeholder="Ej: CUBA, VENEZUELA">
+              </div>
+            </div>
+
+            <!-- 2 a 5: Datos Personales (form-grid-4) -->
+            <div class="grid form-grid-4" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">2.- Fecha de nacimiento <small>(Calendario)</small></label>
+                <input type="date" class="form-input" id="f_fecha_nac" oninput="onBirthDateChange(this.value)" name="f_fecha_nac">
+              </div>
+              <div class="form-field">
+                <label class="field-label">3.- Edad <small>(Calculada automáticamente)</small></label>
+                <input type="text" class="form-input calc" id="f_edad" readonly placeholder="--" name="f_edad">
+              </div>
+              <div class="form-field">
+                <label class="field-label">4.- Sexo</label>
+                <select class="form-select" id="f_sexo" onchange="document.getElementById('heroSexo').textContent = this.value === 'H' ? 'Hombre' : 'Mujer';" name="f_sexo">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="H">H (Hombre)</option>
+                  <option value="M">M (Mujer)</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">5.- Raza</label>
+                <select class="form-select" id="f_raza" name="f_raza">
+                  <option value="">-- Seleccionar raza/etnia --</option>
+                  <option value="MESTIZO">Mestizo/a</option>
+                  <option value="AFRICANA">Afroecuatoriano/a / Africana</option>
+                  <option value="BLANCA">Blanco/a</option>
+                  <option value="INDÍGENA">Indígena</option>
+                  <option value="MONTUBIA">Montubio/a</option>
+                  <option value="OTRA">Otra</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 6 a 9: Estado Civil y Familia (form-grid-4) -->
+            <div class="grid form-grid-4" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">6.- Estado Civil</label>
+                <select class="form-select" id="f_estado_civil" name="f_estado_civil">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="1_soltero">1 Soltero/a.</option>
+                  <option value="2_casado">2 Casado/a.</option>
+                  <option value="3_divorciado">3 Divorciado/a a separado/a.</option>
+                  <option value="4_viudo">4 Viudo/a</option>
+                  <option value="5_union_libre">5 Unión Libre / Conviviente</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label class="field-label">7.- ¿Cuántos hijos tiene?</label>
+                <input type="number" class="form-input" id="f_hijos" name="f_hijos" min="0" max="30" step="1" placeholder="0">
+              </div>
+
+              <div class="form-field">
+                <label class="field-label">8.- ¿Con quién vive usted ahora?</label>
+                <select class="form-select" id="f_convive_con" name="f_convive_con">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="1">1 Sólo/a</option>
+                  <option value="2">2 Con su pareja</option>
+                  <option value="3">3 Con su pareja e hijos</option>
+                  <option value="4">4 Con sus hijos</option>
+                  <option value="5">5 Con su pareja, hijos y otros familiares</option>
+                  <option value="6">6 Con sus padres y hermanos/as.</option>
+                  <option value="7">7 Con otros no familiares</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label class="field-label">9.- Personas convivientes</label>
+                <input type="number" class="form-input" id="f_convivientes" min="0" max="30" step="1" placeholder="0" name="f_convivientes">
+              </div>
+            </div>
+
+            <!-- 10 a 12: Educación y Trabajo (form-grid-3) -->
+            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+              <div class="form-field">
+                <label class="field-label">10.- Mayor nivel de estudios</label>
+                <select class="form-select" id="f_estudios" name="f_estudios">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="1">1 No sabe leer o escribir.</option>
+                  <option value="2">2 Preescolar</option>
+                  <option value="3">3 Estudios Primarios</option>
+                  <option value="4">4 Estudios secundarios</option>
+                  <option value="5">5 Ciclo post-bachillerato</option>
+                  <option value="6">6 Estudios superiores</option>
+                  <option value="7">7 Postgrado</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label class="field-label">11.- Horario laboral</label>
+                <select class="form-select" id="f_horario" name="f_horario">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="1">1 Jornada partida (Mañana/tarde)</option>
+                  <option value="2">2 Jornada continua en mañanas y tarde</option>
+                  <option value="3">3 Jornada continua en tardes</option>
+                  <option value="4">4 Turnos rotativos</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label class="field-label">12.- Categoría profesión</label>
+                <select class="form-select" id="f_profesion" name="f_profesion">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="1">1 Profesor permanente</option>
+                  <option value="2">2 Profesor no permanente</option>
+                  <option value="3">3 Personal de administración.</option>
+                  <option value="4">4 Personal de servicios</option>
+                  <option value="5">5 Otra categoría.</option>
+                  <option value="6">6 Estudiante</option>
+                  <option value="7">7 Jubilado</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 13 y 14: Vivienda e Ingresos (form-grid-2) -->
+            <div class="grid form-grid-2">
+              <div class="form-field">
+                <label class="field-label">13.- Su vivienda es:</label>
+                <select class="form-select" id="f_vivienda" name="f_vivienda">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="1">1 Propia</option>
+                  <option value="2">2 Alquilada</option>
+                  <option value="3">3 Vivienda familiar</option>
+                  <option value="4">4 Otro</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label class="field-label">14.- Ingresos totales familia</label>
+                <select class="form-select" id="f_ingresos" name="f_ingresos">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="1">1.- Menos de 500 dólares/mes</option>
+                  <option value="2">2.- Entre 500-1.000 dólares/mes</option>
+                  <option value="3">3.- 1001-1500 dólares /mes</option>
+                  <option value="4">4.- 1501 -2000 dólares/mes</option>
+                  <option value="5">5.- 2001-2500 dólares/mes</option>
+                  <option value="6">6. 2501-3000 dólares/mes</option>
+                  <option value="7">7.- 3001-3500 ............dólares/mes</option>
+                  <option value="8">8.- Otras.....................</option>
+                </select>
+              </div>
+            </div>
+
+            </div>
+          </div>
+        </div>
+

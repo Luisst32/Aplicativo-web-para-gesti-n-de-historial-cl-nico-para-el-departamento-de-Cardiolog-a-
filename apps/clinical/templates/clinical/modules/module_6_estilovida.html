@@ -1,0 +1,338 @@
+        <!-- ================= MÓDULO 6: CUESTIONARIOS DE ESTILO DE VIDA ================= -->
+        <div class="module-section" id="mod-estilovida">
+          <div class="module-group-divider">
+            <div class="module-group-tag">
+              <span class="module-group-num">MÓDULO 6</span>
+              <span class="module-group-title">Estilo de Vida</span>
+            </div>
+            <div class="module-group-line"></div>
+          </div>
+
+          <!-- SUB-BLOQUE A: CUESTIONARIO PREDIMED -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text"><span class="card-apartado-badge">6.1</span> Cuestionario PREDIMED: Cuestionario de Adherencia a la Dieta Mediterránea <span class="card-toggle-icon"></span></span>
+            </div>
+            <div class="card-body">
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">1.- ¿Usa el aceite de oliva principalmente para cocinar?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q1" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q1" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">2.- ¿Consume dos o más cucharadas de aceite de oliva al día?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q2" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q2" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">3.- ¿Consume dos o más raciones de verduras u hortalizas al día?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q3" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q3" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">4.- ¿Consume tres o más piezas de fruta al día?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q4" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q4" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">5.- ¿Consume menos de una ración de carnes rojas/embutidos al día?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q5" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q5" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">6.- ¿Consume menos de una ración de mantequilla/margarina/nata al día?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q6" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q6" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">7.- ¿Consume menos de una bebida carbonatada/azucarada al día?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q7" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q7" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">9.- ¿Consume tres o más raciones de legumbres a la semana?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q9" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q9" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 8. Vino tinto (compuesta: "bebe" es informativo, el punto lo da el umbral semanal) -->
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">8.- ¿Bebe vino tinto?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="pred_q8_bebe" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="pred_q8_bebe" value="Si"> Sí</label>
+                </div>
+              </div>
+              <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
+                <span class="field-label">Consume tres o más vasos por semana:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="pred_q8" value="No" checked onchange="calcPredimed()"> No</label>
+                  <label class="yes"><input type="radio" name="pred_q8" value="Si" onchange="calcPredimed()"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">10.- ¿Consume tres o más raciones de pescado/mariscos a la semana?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q10" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q10" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">11.- ¿Consume dos o más raciones de pescado azul a la semana?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q11" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q11" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="condition-row" style="margin-bottom: 16px;">
+              <div class="condition-header">
+                <span class="condition-title">12.- ¿Consume menos de tres veces por semana repostería comercial?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="pred_q12" value="No" checked onchange="calcPredimed()"> No</label>
+                  <label class="yes"><input type="radio" name="pred_q12" value="Si" onchange="calcPredimed()"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 13-15: solo recolección de datos, no suman puntos (el escaneo no
+                 les asigna "= 1 punto" como al resto) -->
+            <div class="sub-section-header">Lácteos <small>(no puntúan, solo se registran)</small></div>
+            <div class="condition-row" id="row_pred_leche" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">13.- ¿Consume leche de vaca?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="pred_q13_consume" value="No" checked onchange="toggleCondition('row_pred_leche', false)"> No</label>
+                  <label class="yes"><input type="radio" name="pred_q13_consume" value="Si" onchange="toggleCondition('row_pred_leche', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Vasos al día:</span>
+                <input type="number" class="form-input" id="pred_leche_vasos_dia" name="pred_leche_vasos_dia" style="width: 70px;" step="1" min="0">
+                <span class="field-label">a la semana:</span>
+                <input type="number" class="form-input" id="pred_leche_vasos_sem" name="pred_leche_vasos_sem" style="width: 70px;" step="1" min="0">
+                <span class="field-label">Tipo de leche:</span>
+                <input type="text" class="form-input" id="pred_leche_tipo" name="pred_leche_tipo" style="flex: 1;">
+              </div>
+            </div>
+
+            <div class="condition-row" id="row_pred_queso" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">14.- ¿Consume queso?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="pred_q14_consume" value="No" checked onchange="toggleCondition('row_pred_queso', false)"> No</label>
+                  <label class="yes"><input type="radio" name="pred_q14_consume" value="Si" onchange="toggleCondition('row_pred_queso', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Veces a la semana:</span>
+                <input type="number" class="form-input" id="pred_queso_veces_sem" name="pred_queso_veces_sem" style="width: 70px;" step="1" min="0">
+                <span class="field-label">Gramos:</span>
+                <input type="number" class="form-input" id="pred_queso_gramos" name="pred_queso_gramos" style="width: 90px;" step="0.1" min="0">
+              </div>
+            </div>
+
+            <div class="condition-row" id="row_pred_yogurt" style="margin-bottom: 16px;">
+              <div class="condition-header">
+                <span class="condition-title">15.- ¿Consume yogurt?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="pred_q15_consume" value="No" checked onchange="toggleCondition('row_pred_yogurt', false)"> No</label>
+                  <label class="yes"><input type="radio" name="pred_q15_consume" value="Si" onchange="toggleCondition('row_pred_yogurt', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuántos a la semana:</span>
+                <input type="number" class="form-input" id="pred_yogurt_cant_sem" name="pred_yogurt_cant_sem" style="width: 70px;" step="1" min="0">
+                <span class="field-label">De qué tipo:</span>
+                <input type="text" class="form-input" id="pred_yogurt_tipo" name="pred_yogurt_tipo" style="flex: 1;">
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">16.- ¿Consume dos o más raciones de frutos secos a la semana?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q16" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q16" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">17.- ¿Consume cereales integrales 3-4 veces por semana?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q17" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q17" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 16px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">18.- ¿Consume preferentemente carne de pollo/pavo/conejo en vez de ternera/cerdo?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q18" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q18" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">19.- ¿Consume sofrito dos o más veces por semana?</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="pred_q19" value="No" checked onchange="calcPredimed()"> No</label>
+                    <label class="yes"><input type="radio" name="pred_q19" value="Si" onchange="calcPredimed()"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Resultado final: calculado automáticamente por calcPredimed() -->
+            <div class="condition-row" style="background:var(--color-ice-blue); border-color:var(--color-primary-blue);">
+              <div class="condition-header">
+                <span class="condition-title" style="color:var(--color-link-hover); font-weight:700;">Resultado final, puntuación total</span>
+                <div style="display:flex; align-items:center; gap:14px;">
+                  <span class="field-label">Puntuación:</span>
+                  <input type="text" class="form-input calc" id="pred_puntuacion_total" readonly style="width: 70px; text-align:center;" value="0 / 16" name="pred_puntuacion_total">
+                  <span class="field-label" id="pred_adherencia" style="font-weight:800;">Baja adherencia</span>
+                </div>
+              </div>
+              <div class="condition-details" style="display:flex;">
+                <span class="field-label"><small>Puntuación total: &lt; 9 baja adherencia, &gt;= 9 buena adherencia</small></span>
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE B: CUESTIONARIO DE ACTIVIDAD FÍSICA -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text"><span class="card-apartado-badge">6.2</span> Cuestionario de Actividad Física <span class="card-toggle-icon"></span></span>
+            </div>
+            <div class="card-body">
+
+            <div class="form-field" style="max-width: 360px; margin-bottom: 16px;">
+              <label class="field-label">1.- ¿Qué actividad física ha hecho durante su tiempo libre el último mes?</label>
+              <select class="form-select" id="af_actividad" name="af_actividad">
+                  <option value="">-- Seleccionar --</option>
+                <option value="No realiza ninguna actividad">No realiza ninguna actividad</option>
+                <option value="Sí realiza actividad física">Sí realiza actividad física</option>
+              </select>
+            </div>
+
+            <div class="condition-row" id="row_af_aerobicos" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">2.- Realiza ejercicios aeróbicos <small>(caminar, correr, bicicleta, piscina, baile-terapia, etc.)</small>:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="af_aerobicos" value="No" checked onchange="toggleCondition('row_af_aerobicos', false)"> No</label>
+                  <label class="yes"><input type="radio" name="af_aerobicos" value="Si" onchange="toggleCondition('row_af_aerobicos', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuál:</span>
+                <input type="text" class="form-input" id="af_aero_cual" name="af_aero_cual" style="width: 140px;">
+                <span class="field-label">Veces/semana:</span>
+                <input type="number" class="form-input" id="af_aero_veces_sem" name="af_aero_veces_sem" style="width: 70px;" step="1" min="0">
+                <span class="field-label">Minutos/día:</span>
+                <input type="number" class="form-input" id="af_aero_minutos_dia" name="af_aero_minutos_dia" style="width: 70px;" step="1" min="0">
+              </div>
+            </div>
+
+            <div class="condition-row" id="row_af_anaerobicos" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">3.- Realiza ejercicios físicos anaeróbicos de fuerza <small>(pesas, abdominales, etc.)</small>:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="af_anaerobicos" value="No" checked onchange="toggleCondition('row_af_anaerobicos', false)"> No</label>
+                  <label class="yes"><input type="radio" name="af_anaerobicos" value="Si" onchange="toggleCondition('row_af_anaerobicos', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuál:</span>
+                <input type="text" class="form-input" id="af_anaero_cual" name="af_anaero_cual" style="width: 140px;">
+                <span class="field-label">Veces/semana:</span>
+                <input type="number" class="form-input" id="af_anaero_veces_sem" name="af_anaero_veces_sem" style="width: 70px;" step="1" min="0">
+                <span class="field-label">Minutos/día:</span>
+                <input type="number" class="form-input" id="af_anaero_minutos_dia" name="af_anaero_minutos_dia" style="width: 70px;" step="1" min="0">
+              </div>
+            </div>
+
+            <div class="condition-row" id="row_af_deporte">
+              <div class="condition-header">
+                <span class="condition-title">4.- ¿Hace deporte?</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="af_deporte" value="No" checked onchange="toggleCondition('row_af_deporte', false)"> No</label>
+                  <label class="yes"><input type="radio" name="af_deporte" value="Si" onchange="toggleCondition('row_af_deporte', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Qué tipo:</span>
+                <input type="text" class="form-input" id="af_dep_tipo" name="af_dep_tipo" style="width: 140px;">
+                <span class="field-label">Veces/semana:</span>
+                <input type="number" class="form-input" id="af_dep_veces_sem" name="af_dep_veces_sem" style="width: 70px;" step="1" min="0">
+                <span class="field-label">Minutos/día:</span>
+                <input type="number" class="form-input" id="af_dep_minutos_dia" name="af_dep_minutos_dia" style="width: 70px;" step="1" min="0">
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+        </div>
+

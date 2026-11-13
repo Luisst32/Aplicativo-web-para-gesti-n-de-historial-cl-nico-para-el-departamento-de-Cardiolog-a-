@@ -1,0 +1,700 @@
+        <!-- ================= MÓDULO 3: RIESGO E HISTORIA CARDIOVASCULAR (UNIFICADO) ================= -->
+        <div class="module-section" id="mod-cardio">
+          <div class="module-group-divider">
+            <div class="module-group-tag">
+              <span class="module-group-num">MÓDULO 3</span>
+              <span class="module-group-title">Riesgo e Historia Cardio</span>
+            </div>
+            <div class="module-group-line"></div>
+          </div>
+
+          <!-- SUB-BLOQUE 1: FACTORES DE RIESGO MODIFICABLES (1 AL 18) -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text"><span class="card-apartado-badge">3.1</span> Factores de Riesgo Modificables <span class="card-toggle-icon"></span></span>
+            </div>
+            <div class="card-body">
+
+            <!-- 1. Hipertensión -->
+            <div class="condition-row" id="row_hta" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">&bull; 1.- Hipertensión:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_hta" value="No" checked onchange="toggleCondition('row_hta', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_hta" value="Si" onchange="toggleCondition('row_hta', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <label class="field-label"><input type="radio" name="r_hta_trat" value="No" checked> No tratada</label>
+                <label class="field-label"><input type="radio" name="r_hta_trat" value="Si"> Sí tratada</label>
+                <span class="field-label" style="margin-left: 8px;">Cuáles medicamentos:</span>
+                <input type="text" class="form-input" id="hta_medicamentos" name="hta_medicamentos" style="flex: 1; min-width: 160px;" placeholder="Medicamentos antihipertensivos...">
+              </div>
+            </div>
+
+            <!-- 2. Prueba de MAPA -->
+            <div class="condition-row" id="row_mapa" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">2.- Prueba de MAPA:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_mapa" id="mapa_toggle_no" value="No" checked onchange="toggleCondition('row_mapa', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_mapa" id="mapa_toggle_si" value="Si" onchange="toggleCondition('row_mapa', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details" id="details_mapa">
+                <span class="field-label">Resultado:</span>
+                <label class="field-label"><input type="radio" name="mapa_resultado" value="Normal" checked> Normal</label>
+                <label class="field-label" style="margin-left: 10px;"><input type="radio" name="mapa_resultado" value="Alterada"> Alterada</label>
+              </div>
+            </div>
+
+            <!-- 3. Diabetes mellitus -->
+            <div class="condition-row" id="row_dm" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">3.- Diabetes mellitus:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_dm" id="dm_toggle_no" value="No" checked onchange="toggleCondition('row_dm', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_dm" id="dm_toggle_si" value="Si" onchange="toggleCondition('row_dm', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Clasificación:</span>
+                <select class="form-select" id="dm_clasificacion" style="width: 320px;" name="dm_clasificacion">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="Diabetes tipo 2, tratada solo con antidiabéticos orales.">Diabetes tipo 2, tratada solo con antidiabéticos orales</option>
+                  <option value="Diabetes tipo 2, tratada con insulina y antidiabéticos orales">Diabetes tipo 2, tratada con insulina y antidiabéticos orales</option>
+                  <option value="Diabetes tipo 2, no tratada.">Diabetes tipo 2, no tratada</option>
+                  <option value="Diabetes tipo 1, tratada con insulina">Diabetes tipo 1, tratada con insulina</option>
+                  <option value="Diabetes tipo 1, no tratada.">Diabetes tipo 1, no tratada</option>
+                  <option value="Tiene diabetes pero no especifica tipo">Tiene diabetes pero no especifica tipo</option>
+                </select>
+                <span class="field-label" style="margin-left: 6px;">Fármacos:</span>
+                <input type="text" class="form-input" id="dm_farmacos" name="dm_farmacos" style="width: 140px;" placeholder="Cuáles fármacos...">
+              </div>
+            </div>
+
+            <!-- 4. Dislipemia -->
+            <div class="condition-row" id="row_dislip" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">4.- Dislipemia:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_dislip" value="No" checked onchange="toggleCondition('row_dislip', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_dislip" value="Si" onchange="toggleCondition('row_dislip', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <label class="field-label"><input type="radio" name="r_dislip_trat" value="No" checked> No tratada con fármacos</label>
+                <label class="field-label"><input type="radio" name="r_dislip_trat" value="Si"> Sí tratada con fármacos</label>
+                <span class="field-label" style="margin-left: 8px;">Tipo:</span>
+                <input type="text" class="form-input" id="dislip_tipo" name="dislip_tipo" style="width: 130px;" placeholder="Tipo de dislipemia...">
+                <span class="field-label" style="margin-left: 8px;">Cuáles:</span>
+                <input type="text" class="form-input" id="dislip_farmacos" name="dislip_farmacos" style="width: 140px;" placeholder="Fármacos utilizados...">
+              </div>
+            </div>
+
+            <!-- 5. Tabaquismo -->
+            <div class="condition-row" id="row_tabaco" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">5.- Tabaquismo:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_tabaco" id="tabaco_toggle_no" value="No" checked onchange="setEstadoTabaquismo('toggle_no')"> No</label>
+                  <label class="yes"><input type="radio" name="r_tabaco" id="tabaco_toggle_si" value="Si" onchange="setEstadoTabaquismo('toggle_si')"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details" id="details_tabaco">
+                <span class="field-label">Frecuencia:</span>
+                <select class="form-select" id="tabaco_frecuencia" style="width: 190px;" onchange="onTabacoFrecuenciaChange()" name="tabaco_frecuencia">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="Sí, menos de 5 al día">Menos de 5 al día</option>
+                  <option value="Sí, entre 5 y 10 al día">Entre 5 y 10 al día</option>
+                  <option value="Sí, entre 10 y 20 al día">Entre 10 y 20 al día</option>
+                  <option value="Sí, más de 20 al día">Más de 20 al día</option>
+                </select>
+                <span class="field-label" id="lbl_tabaco_cantidad" style="margin-left: 8px;">Cantidad:</span>
+                <input type="number" class="form-input" id="tabaco_cantidad" style="width: 65px;" value="" min="0" oninput="onTabacoCantidadInput()" name="tabaco_cantidad">
+                <label class="field-label" style="margin-left: 12px; cursor: pointer;">
+                  <input type="checkbox" id="chk_exfumador" onchange="setEstadoTabaquismo('chk_exfumador')" name="chk_exfumador">
+                  Exfumador &gt; 10 años
+                </label>
+                <label class="field-label" style="cursor: pointer;">
+                  <input type="checkbox" id="chk_nunca_fumo" checked onchange="setEstadoTabaquismo('chk_nunca')" name="chk_nunca_fumo">
+                  nunca fumó
+                </label>
+              </div>
+            </div>
+
+            <!-- 6. Alcohol -->
+            <div class="condition-row" id="row_alcohol" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">6.- Alcohol:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_alcohol" id="alcohol_toggle_no" value="No" checked onchange="setEstadoAlcohol('toggle_no')"> No</label>
+                  <label class="yes"><input type="radio" name="r_alcohol" id="alcohol_toggle_si" value="Si" onchange="setEstadoAlcohol('toggle_si')"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Frecuencia:</span>
+                <select class="form-select" id="alcohol_frecuencia" style="width: 210px;" name="alcohol_frecuencia">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="Consume alcohol de manera ocasional">De manera ocasional</option>
+                  <option value="Consume alcohol mensualmente">Mensualmente</option>
+                  <option value="Consume alcohol semanalmente">Semanalmente</option>
+                  <option value="Consume alcohol diariamente">Diariamente</option>
+                </select>
+                <label class="field-label" style="margin-left: 12px;"><input type="checkbox" id="chk_ex_alcohol" onchange="setEstadoAlcohol('chk_ex')" name="chk_ex_alcohol"> Ex tomador &gt; 1 año</label>
+                <span class="field-label" style="margin-left: 8px;">Unidades:</span>
+                <input type="text" class="form-input" id="alcohol_unidades" style="width: 60px;" value="" name="alcohol_unidades">
+              </div>
+            </div>
+
+            <!-- 7. Drogas (Actualizado Cuestionario UNEMI 2026) -->
+            <div class="condition-row" id="row_drogas" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">7.- Drogas:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_drogas" id="drogas_toggle_no" value="No" checked onchange="setEstadoDrogas('toggle_no')"> No</label>
+                  <label class="yes"><input type="radio" name="r_drogas" id="drogas_toggle_si" value="Si" onchange="setEstadoDrogas('toggle_si')"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details" style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                  <span class="field-label">Cuáles:</span>
+                  <input type="text" class="form-input" id="drogas_cuales" style="width: 160px;" placeholder="Sustancia..." name="drogas_cuales">
+                  <span class="field-label">Frecuencia:</span>
+                  <select class="form-select" id="drogas_frecuencia" style="width: 160px;" name="drogas_frecuencia">
+                    <option value="">-- Seleccionar --</option>
+                    <option value="Consume drogas ocasionalmente">Ocasionalmente</option>
+                    <option value="Consume drogas semanalmente">Semanalmente</option>
+                    <option value="Consume drogas diariamente">Diariamente</option>
+                  </select>
+                  <label class="field-label" style="margin-left: 6px;"><input type="checkbox" id="chk_ex_drogas" onchange="setEstadoDrogas('chk_ex')" name="chk_ex_drogas"> Ex consumidor &gt; 1 año</label>
+                </div>
+                <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+                  <span class="field-label">Dosis diaria:</span>
+                  <input type="text" class="form-input" id="drogas_dosis_diaria" name="drogas_dosis_diaria" style="width: 120px;" placeholder="Ej: 1 dosis">
+                  <span class="field-label">Dosis semanal:</span>
+                  <input type="text" class="form-input" id="drogas_dosis_semanal" name="drogas_dosis_semanal" style="width: 120px;" placeholder="Ej: 2 dosis">
+                  <span class="field-label">Dosis ocasional:</span>
+                  <input type="text" class="form-input" id="drogas_dosis_ocasional" name="drogas_dosis_ocasional" style="width: 120px;" placeholder="Ej: Esporádica">
+                </div>
+              </div>
+            </div>
+
+            <!-- 8. Obesidad -->
+            <div class="condition-row" id="row_obesidad" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">8.- Obesidad:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_obesidad" value="No" checked onchange="toggleCondition('row_obesidad', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_obesidad" value="Si" onchange="toggleCondition('row_obesidad', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Grado según base:</span>
+                <select class="form-select" id="obesidad_grado" style="width: 230px;" name="obesidad_grado">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="Obesidad grado 1 (leve)">Obesidad grado 1 (leve)</option>
+                  <option value="Obesidad grado 2 (moderada)">Obesidad grado 2 (moderada)</option>
+                  <option value="Obesidad grado 3 (mórbida)">Obesidad grado 3 (mórbida)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 9. Sobrepeso -->
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">9.- Sobrepeso:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_sobrepeso" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="r_sobrepeso" value="Si"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 10. Arritmias -->
+            <div class="condition-row" id="row_arritmias" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">10.- Arritmias:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_arritmias" value="No" checked onchange="toggleCondition('row_arritmias', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_arritmias" value="Si" onchange="toggleCondition('row_arritmias', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Tipo de arritmia:</span>
+                <select class="form-select" id="arritmias_tipo" style="width: 240px;" name="arritmias_tipo">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="Sí, arritmia tipo taquicardia">Taquicardia</option>
+                  <option value="Sí, arritmia tipo bradicardia">Bradicardia</option>
+                  <option value="Sí, arritmia tipo extrasístoles">Extrasístoles</option>
+                  <option value="Sí, arritmia tipo palpitaciones">Palpitaciones</option>
+                  <option value="Sí, arritmia tipo BCRDHH">BCRDHH</option>
+                  <option value="Sí, arritmia tipo extensible aislada">Extensible aislada</option>
+                  <option value="Sí, no especifica">No especifica</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 11. Síncopes -->
+            <div class="condition-row" id="row_sincopes" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">11.- Síncopes:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_sincopes" value="No" checked onchange="toggleCondition('row_sincopes', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_sincopes" value="Si" onchange="toggleCondition('row_sincopes', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Tipo de síncope:</span>
+                <select class="form-select" id="sincopes_tipo" style="width: 230px;" name="sincopes_tipo">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="Sí, síncope vasovagal">Síncope vasovagal</option>
+                  <option value="Sí, síncope ortostático">Síncope ortostático</option>
+                  <option value="Sí, síncope cardíaco">Síncope cardíaco</option>
+                  <option value="Sí, síncope neurológico">Síncope neurológico</option>
+                  <option value="Sí, no especifica tipo">No especifica tipo</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 12. Prueba de Holter -->
+            <div class="condition-row" id="row_holter" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">12.- Prueba de Holter <small style="color: #64748B; font-weight: normal;">(A arritmias y/o síncope se indicará Holter 24h)</small>:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_holter" id="holter_toggle_no" value="No" checked onchange="toggleCondition('row_holter', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_holter" id="holter_toggle_si" value="Si" onchange="toggleCondition('row_holter', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details" id="details_holter">
+                <span class="field-label">Resultado:</span>
+                <label class="field-label"><input type="radio" name="holter_resultado" value="Normal" checked> Normal</label>
+                <label class="field-label" style="margin-left: 10px;"><input type="radio" name="holter_resultado" value="Alterada"> Alterada</label>
+              </div>
+            </div>
+
+            <!-- 13, 14 y 15. Vasculopatías: periférica, carotídea y femoral -->
+            <div class="grid form-grid-3" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">13.- Vasculopatía periférica:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="r_vasc_perif" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="r_vasc_perif" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">14.- Vasculopatía carotídea:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="r_vasc_carot" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="r_vasc_carot" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">15.- Vasculopatía femoral:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="r_vasc_fem" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="r_vasc_fem" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 16. Insuficiencia renal crónica -->
+            <div class="condition-row" id="row_irc" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">16.- Insuficiencia renal crónica:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_irc" value="No" checked onchange="toggleCondition('row_irc', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_irc" value="Si" onchange="toggleCondition('row_irc', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <label class="field-label"><input type="radio" name="r_irc_tipo" value="dialisis"> Diálisis</label>
+                <label class="field-label" style="margin-left: 12px;"><input type="radio" name="r_irc_tipo" value="trasplante"> Trasplante renal</label>
+              </div>
+            </div>
+
+            <!-- 17 a 20. Antecedentes vasculares, disfunción, hígado graso y apnea -->
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">17.- Antecedentes ictus/AIT:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="r_ictus" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="r_ictus" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">18.- Disfunción eréctil:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="r_disfunc" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="r_disfunc" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">19.- Hígado graso:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="r_higado" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="r_higado" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">20.- Apnea del sueño:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="r_apnea" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="r_apnea" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 21. Otros -->
+            <div class="condition-row" id="row_otros">
+              <div class="condition-header">
+                <span class="condition-title">21.- Otros:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="r_otros" value="No" checked onchange="toggleCondition('row_otros', false)"> No</label>
+                  <label class="yes"><input type="radio" name="r_otros" value="Si" onchange="toggleCondition('row_otros', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuáles:</span>
+                <input type="text" class="form-input" id="otros_factores_detalle" name="otros_factores_detalle" style="flex: 1;" placeholder="Especificar otros factores de riesgo...">
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE 2: FACTORES EMERGENTES (1 AL 9) -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text"><span class="card-apartado-badge">3.2</span> Factores Emergentes <span class="card-toggle-icon"></span></span>
+            </div>
+            <div class="card-body">
+
+            <div class="grid form-grid-3" style="margin-bottom: 12px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">1.- Cantidad de sueño:</span>
+                  <select class="form-select" id="sueno_cantidad" name="sueno_cantidad" style="width: 110px;">
+                  <option value="">-- Seleccionar --</option>
+                    <option value="Buena">Buena</option>
+                    <option value="Regular">Regular</option>
+                    <option value="Mala">Mala</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">2.- Calidad del sueño:</span>
+                  <select class="form-select" id="sueno_calidad" name="sueno_calidad" style="width: 110px;">
+                  <option value="">-- Seleccionar --</option>
+                    <option value="Buena">Buena</option>
+                    <option value="Regular">Regular</option>
+                    <option value="Mala">Mala</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 3. Toxicos condicional -->
+              <div class="condition-row" id="row_toxicos">
+                <div class="condition-header">
+                  <span class="condition-title">3.- Trabaja con tóxicos:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="em_toxicos" value="No" checked onchange="toggleCondition('row_toxicos', false)"> No</label>
+                    <label class="yes"><input type="radio" name="em_toxicos" value="Si" onchange="toggleCondition('row_toxicos', true)"> Sí</label>
+                  </div>
+                </div>
+                <div class="condition-details">
+                  <span class="field-label">Cuales:</span>
+                  <input type="text" class="form-input" id="toxicos_cuales" name="toxicos_cuales" style="flex: 1;" placeholder="Tóxicos...">
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 12px;">
+              <div class="condition-row" id="row_estrogenos">
+                <div class="condition-header">
+                  <span class="condition-title">4. – Niveles bajos de estrógenos en la mujer:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="em_estrogenos" value="No" checked onchange="toggleCondition('row_estrogenos', false)"> No</label>
+                    <label class="yes"><input type="radio" name="em_estrogenos" value="Si" onchange="toggleCondition('row_estrogenos', true)"> Si</label>
+                  </div>
+                </div>
+                <div class="condition-details">
+                  <label class="field-label"><input type="checkbox" id="em_estrogenos_menopausia" name="em_estrogenos_menopausia" value="1"> menopausia.</label>
+                  <label class="field-label"><input type="checkbox" id="em_estrogenos_otras" name="em_estrogenos_otras" value="1"> Otras causas</label>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">5.- Usa anticonceptivo &gt;35 años</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="em_anticonceptivos" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="em_anticonceptivos" value="Si"> Si</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 12px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">6.— Tiene estrés en el trabajo</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="em_estres_trab" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="em_estres_trab" value="Si"> Si</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">7.— Tiene estrés en la vida familiar</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="em_estres_fam" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="em_estres_fam" value="Si"> Si</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">8.- Mal ambiente laboral</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="em_mal_amb" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="em_mal_amb" value="Si"> Si</label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 9. PERSONALIDAD TIPO A. Los seis rasgos estaban tapados con marcas
+                   rojas en el escaneo; se reponen porque la base guarda una columna por
+                   cada uno (EXIGENTE, PERFECCIONISTA, HIPERACTIVO, AMBICIOSO, HOSTILIDAD,
+                   AISLAMIENTO_SOCIAL). La redacción se tomó del vocabulario de
+                   PERSONALIDAD_TIPO_A en Base_CardioUNEMI_legible.csv. -->
+              <div class="condition-row" id="row_pers_a">
+                <div class="condition-header">
+                  <span class="condition-title">9.- Personalidad tipo A</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="em_pers_a" value="No" checked onchange="toggleCondition('row_pers_a', false)"> No</label>
+                    <label class="yes"><input type="radio" name="em_pers_a" value="Si" onchange="toggleCondition('row_pers_a', true)"> Si</label>
+                  </div>
+                </div>
+                <div class="condition-details" style="display: flex; flex-direction: column; gap: 8px;">
+                  <span class="field-label" style="font-weight: 600; font-size: 0.8rem;">Características conductuales (marque las que apliquen):</span>
+                  <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+                    <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="em_exigente" id="em_exigente" value="1"> Exigente con uno mismo y con los demás</label>
+                    <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="em_perfeccionista" id="em_perfeccionista" value="1"> Perfeccionista</label>
+                    <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="em_hiperactivo" id="em_hiperactivo" value="1"> Hiperactivo en la consecución de logros</label>
+                    <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="em_ambicioso" id="em_ambicioso" value="1"> Ambicioso</label>
+                    <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="em_hostilidad" id="em_hostilidad" value="1"> Hostilidad (impaciente, opositor, impulsivo)</label>
+                    <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="em_aislamiento" id="em_aislamiento" value="1"> Aislamiento social</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE 3: OTROS FACTORES DE RIESGO NO MODIFICABLES -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text"><span class="card-apartado-badge">3.3</span> Otros Factores de Riesgo No Modificables <span class="card-toggle-icon"></span></span>
+            </div>
+            <div class="card-body">
+
+            <div class="grid form-grid-2" style="margin-bottom: 16px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">1. Antecedentes familiares de cardiopatía Isquémica <small>(Angina, infarto, muerte súbita)</small></span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="nm_cardiopatia" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="nm_cardiopatia" value="Si"> S i</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">2.- Algún familiar directo ha fallecido cardiopatía Isquémica <small>(&lt;55v / &lt;65m)</small></span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="nm_fallecido" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="nm_fallecido" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE 3b: ANTECEDENTES FAMILIARES -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text"><span class="card-apartado-badge">3.4</span> Antecedentes Familiares <span class="card-toggle-icon"></span></span>
+            </div>
+            <div class="card-body">
+
+            <div class="grid form-grid-3">
+              <div class="condition-row">
+                <div class="condition-header"><span class="condition-title">1.- Padre con:</span></div>
+                <div style="display:flex; gap:12px; margin-top:4px;">
+                  <label class="field-label"><input type="checkbox" id="ant_padre_hta" name="ant_padre_hta" value="Si"> HTA</label>
+                  <label class="field-label"><input type="checkbox" id="ant_padre_dm" name="ant_padre_dm" value="Si"> Diabetes</label>
+                  <label class="field-label"><input type="checkbox" id="ant_padre_dislip" name="ant_padre_dislip" value="Si"> Dislipemia:</label>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header"><span class="condition-title">2.- Madre con:</span></div>
+                <div style="display:flex; gap:12px; margin-top:4px;">
+                  <label class="field-label"><input type="checkbox" id="ant_madre_hta" name="ant_madre_hta" value="Si"> HTA</label>
+                  <label class="field-label"><input type="checkbox" id="ant_madre_dm" name="ant_madre_dm" value="Si"> Diabetes</label>
+                  <label class="field-label"><input type="checkbox" id="ant_madre_dislip" name="ant_madre_dislip" value="Si"> Dislipemia</label>
+                </div>
+              </div>
+
+              <div class="condition-row" id="row_ant_otras">
+                <div class="condition-header">
+                  <span class="condition-title">3. Otras enfermedades:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="ant_otras_tog" value="No" checked onchange="toggleCondition('row_ant_otras', false)"> No</label>
+                    <label class="yes"><input type="radio" name="ant_otras_tog" value="Si" onchange="toggleCondition('row_ant_otras', true)"> Si</label>
+                  </div>
+                </div>
+                <div class="condition-details">
+                  <input type="text" class="form-input" id="ant_familiares_cuales" name="ant_familiares_cuales" style="flex:1;" placeholder="¿Cuáles enfermedades familiares?">
+                </div>
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-BLOQUE 4: HISTORIA CLÍNICA ACTUAL CARDIOVASCULAR (Ítems 1 al 6 - Cuestionario UNEMI 2026) -->
+          <div class="card card-visual">
+            <div class="unified-card-title" onclick="toggleCard(this)">
+              <span class="card-title-text"><span class="card-apartado-badge">3.5</span> Historia Clínica Actual Cardiovascular <span class="card-toggle-icon"></span></span>
+            </div>
+            <div class="card-body">
+
+            <!-- 1. Problema del corazon -->
+            <div class="condition-row" id="row_hc_prob" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">1.- Historia de cualquier problema del corazón:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="hc_prob" value="No" checked onchange="toggleCondition('row_hc_prob', false)"> No</label>
+                  <label class="yes"><input type="radio" name="hc_prob" value="Si" onchange="toggleCondition('row_hc_prob', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details">
+                <span class="field-label">Cuáles:</span>
+                <input type="text" class="form-input" id="prob_corazon_detalle" name="prob_corazon_detalle" style="flex: 1;" placeholder="Detalles de problemas del corazón...">
+              </div>
+            </div>
+
+            <!-- 2. Cardiopatía isquémica -->
+            <div class="condition-row" id="row_hc_isquemica" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">2.- Cardiopatía isquémica:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="hc_isquemica" value="No" checked onchange="toggleCondition('row_hc_isquemica', false)"> No</label>
+                  <label class="yes"><input type="radio" name="hc_isquemica" value="Si" onchange="toggleCondition('row_hc_isquemica', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details" style="display: flex; gap: 18px; align-items: center; flex-wrap: wrap;">
+                <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="hc_isquemica_angina" id="hc_isquemica_angina" value="1"> Angina</label>
+                <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="hc_isquemica_infarto" id="hc_isquemica_infarto" value="1"> Infarto de miocardio</label>
+              </div>
+            </div>
+
+            <!-- 3. Revascularización coronaria -->
+            <div class="condition-row" id="row_hc_revasc" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">3.- Revascularización coronaria:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="hc_revasc" value="No" checked onchange="toggleCondition('row_hc_revasc', false)"> No</label>
+                  <label class="yes"><input type="radio" name="hc_revasc" value="Si" onchange="toggleCondition('row_hc_revasc', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details" style="display: flex; gap: 18px; align-items: center; flex-wrap: wrap;">
+                <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="radio" name="hc_revasc_tipo" value="angioplastia"> Con angioplastia</label>
+                <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="radio" name="hc_revasc_tipo" value="bypass"> Con Bypass</label>
+                <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="radio" name="hc_revasc_tipo" value="ambas"> Con ambas</label>
+              </div>
+            </div>
+
+            <!-- 4. Historia de Insuficiencia cardiaca -->
+            <div class="condition-row" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">4.- Historia de Insuficiencia cardiaca:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="hc_insuf_cardiaca" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="hc_insuf_cardiaca" value="Si"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 5. Historia de valvulopatía -->
+            <div class="condition-row" id="row_hc_valvulopatia" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">5.- Historia de valvulopatía:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="hc_valvulopatia" value="No" checked onchange="toggleCondition('row_hc_valvulopatia', false)"> No</label>
+                  <label class="yes"><input type="radio" name="hc_valvulopatia" value="Si" onchange="toggleCondition('row_hc_valvulopatia', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details" style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+                <span class="field-label">¿Cuáles?</span>
+                <input type="text" class="form-input" id="hc_valvulopatia_cuales" name="hc_valvulopatia_cuales" style="flex: 1; min-width: 160px;" placeholder="Válvula o afección...">
+                <span class="field-label" style="margin-left: 10px;">Operado por este motivo:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="hc_valvulopatia_operado" value="No" checked> No</label>
+                  <label class="yes"><input type="radio" name="hc_valvulopatia_operado" value="Si"> Sí</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 6. Ingreso hospitalario por problema cardiaco -->
+            <div class="condition-row" id="row_hc_ingresado" style="margin-bottom: 10px;">
+              <div class="condition-header">
+                <span class="condition-title">6.- Ha estado ingresado en el hospital por algún problema cardiaco:</span>
+                <div class="toggle-pills">
+                  <label><input type="radio" name="hc_ingresado" value="No" checked onchange="toggleCondition('row_hc_ingresado', false)"> No</label>
+                  <label class="yes"><input type="radio" name="hc_ingresado" value="Si" onchange="toggleCondition('row_hc_ingresado', true)"> Sí</label>
+                </div>
+              </div>
+              <div class="condition-details" style="display: flex; gap: 14px; align-items: center;">
+                <span class="field-label">¿Cuál?</span>
+                <input type="text" class="form-input" id="hc_ingresado_cual" name="hc_ingresado_cual" style="flex: 1;" placeholder="Motivo o causa de ingreso...">
+              </div>
+            </div>
+
+            </div>
+          </div>
+
+        </div>
+
