@@ -88,7 +88,7 @@ body {
   margin-left: 260px;
   flex: 1;
   min-width: 0;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* TOP HEADER */
@@ -99,10 +99,11 @@ body {
   flex-direction: column;
   gap: 10px;
   padding: 10px 20px;
+  position: -webkit-sticky;
   position: sticky;
   top: 0;
   z-index: 90;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
 }
 
 .top-header-bar {
