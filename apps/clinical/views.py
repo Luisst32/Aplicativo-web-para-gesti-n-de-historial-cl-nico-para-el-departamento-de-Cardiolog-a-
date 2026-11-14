@@ -1827,6 +1827,12 @@ def export_dataset_api(request):
         if isinstance(patient_ids, str) and patient_ids.lstrip().startswith('['):
             patient_ids = json.loads(patient_ids)
 
+        raw_privacy = data.get('privacy_mode', False)
+        if isinstance(raw_privacy, str):
+            privacy_mode = raw_privacy.strip().lower() in ('true', '1', 'yes', 'si', 'on')
+        else:
+            privacy_mode = bool(raw_privacy)
+
         if data.get('scope') in ('all', 'todos'):
             if patient_ids not in ([], None, ''):
                 raise RecordSelectionError('No combine alcance completo con IDs de pacientes.')
@@ -1836,7 +1842,8 @@ def export_dataset_api(request):
 
         file_bytes, filename, content_type = generate_export_dataset(
             patient_ids=patient_ids,
-            format_type=format_type
+            format_type=format_type,
+            privacy_mode=privacy_mode
         )
 
         response = HttpResponse(file_bytes, content_type=content_type)

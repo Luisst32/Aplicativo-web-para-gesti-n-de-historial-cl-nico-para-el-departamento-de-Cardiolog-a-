@@ -89,6 +89,15 @@ NEW_2026_EXPORT_COLUMNS = [
     ('PRED_Q19', 'PREDIMED: 19. Consume sofrito casero >= 2 veces/sem (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
 ]
 
+# Catálogo de variables identificativas y sensibles del paciente (condicionadas a Modo Protección de Datos)
+SENSITIVE_EXPORT_COLUMNS = [
+    ('CEDULA', 'Identificación / Cédula del Paciente', 'object', {}),
+    ('NOMBRES', 'Nombres del Paciente', 'object', {}),
+    ('APELLIDOS', 'Apellidos del Paciente', 'object', {}),
+    ('TELEFONO', 'Teléfono de Contacto', 'object', {}),
+    ('EMAIL', 'Correo Electrónico', 'object', {}),
+]
+
 # Cache en memoria de la plantilla de columnas y metadatos
 _SAV_TEMPLATE_CACHE = None
 
@@ -201,7 +210,7 @@ def _to_float(val):
         return np.nan
 
 
-def generate_export_dataset(patient_ids=None, format_type='sav'):
+def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=False):
     """
     Genera el dataset de exportación con todas las columnas clínicas oficiales y los nuevos campos 2026.
     Soporta los mismos formatos de exportación que se admiten en importación:
@@ -210,14 +219,41 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
       - 'rds': RStudio Dataframe serializado (.rds)
       - 'rdata' / 'rda': RStudio Workspace (.RData)
       - 'csv': Archivo delimitado por comas (.csv UTF-8 BOM)
+
+    Control de Privacidad (Modo Protección de Datos):
+      - Si privacy_mode=False: exporta el 100% de los datos incluyendo todas las variables sensibles
+        (CEDULA, NOMBRES, APELLIDOS, TELEFONO, EMAIL).
+      - Si privacy_mode=True: omite/excluye estrictamente todas las columnas sensibles e identificativas.
     Retorna: (file_bytes, filename, content_type)
     """
     tpl = get_sav_template_metadata()
-    cols = tpl['columns']
-    col_dtypes = tpl['dtypes']
-    col_value_labels = tpl['value_labels']
-    col_names_to_labels = tpl['labels']
+    cols = list(tpl['columns'])
+    col_dtypes = dict(tpl['dtypes'])
+    col_value_labels = dict(tpl['value_labels'])
+    col_names_to_labels = dict(tpl['labels'])
     lbl_to_val_map = tpl['lbl_to_val_map']
+
+    if not privacy_mode:
+        # Se exportan todos los datos sensibles identificativos
+        # Ubicar la columna CÓDIGO para insertar los datos sensibles de forma contigua
+        codigo_idx = -1
+        for idx, c in enumerate(cols):
+            if normalize_var_name(c).upper() == 'CODIGO':
+                codigo_idx = idx
+                break
+        insert_pos = (codigo_idx + 1) if codigo_idx >= 0 else 0
+
+        for i, (scol, slbl, sdt, svals) in enumerate(SENSITIVE_EXPORT_COLUMNS):
+            if scol not in cols:
+                cols.insert(insert_pos + i, scol)
+            col_dtypes[scol] = sdt
+            col_names_to_labels[scol] = slbl
+            if svals:
+                col_value_labels[scol] = svals
+    else:
+        # Modo Protección de Datos ACTIVO: suprimir cualquier columna sensible
+        sensitive_col_names = {scol for scol, _, _, _ in SENSITIVE_EXPORT_COLUMNS}
+        cols = [c for c in cols if c not in sensitive_col_names]
 
     # 1. Obtener visitas filtradas
     visits_qs = Visit.objects.filter(patient__status=Patient.Status.ACTIVE).select_related(
@@ -262,8 +298,21 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
             clean = normalize_var_name(col)[:30]
             val = ans.get(col) or ans.get(col.lower()) or ans.get(clean) or ans.get(clean.lower())
 
+            # Asignación directa prioritaria para variables sensibles identificativas del paciente
+            if col == 'CEDULA':
+                val = (p.id_card if p and p.id_card else '') or val
+            elif col == 'NOMBRES':
+                val = (p.first_names if p and p.first_names else '') or val
+            elif col == 'APELLIDOS':
+                ap_val = f"{p.last_name1 or ''} {p.last_name2 or ''}".strip() if p else ''
+                val = ap_val or val
+            elif col == 'TELEFONO':
+                val = (p.phone if p and p.phone else '') or val
+            elif col == 'EMAIL':
+                val = (p.email if p and p.email else '') or val
+
             # Mapeo de respaldo desde modelos relacionales de la BD y nuevos campos 2026
-            if val is None or str(val).strip() == '':
+            elif val is None or str(val).strip() == '':
                 c_up = col.upper()
                 if clean.upper() == 'CODIGO':
                     val = v.study_code

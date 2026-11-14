@@ -475,6 +475,14 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                     patient.birth_canton = birth_canton
                     patient.birth_country = None
                     patient.foreign_birth_place = None
+                    if 'telefono' in field_to_col:
+                        v_tel = df_dict[field_to_col['telefono']][i]
+                        if v_tel and str(v_tel).strip() and str(v_tel).strip().lower() != 'nan':
+                            patient.phone = str(v_tel).strip()
+                    if 'email' in field_to_col:
+                        v_mail = df_dict[field_to_col['email']][i]
+                        if v_mail and str(v_mail).strip() and str(v_mail).strip().lower() != 'nan':
+                            patient.email = str(v_mail).strip()
                     patient.status = Patient.Status.ACTIVE
                     patient.save()
                     existing_patients[id_card] = patient

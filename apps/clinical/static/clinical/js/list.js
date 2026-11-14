@@ -712,7 +712,33 @@ function abrirModalExportar() {
   }
 
   actualizarResumenExportacion();
+  actualizarBadgeModalExportarPrivacidad();
   modal.classList.add('active');
+}
+
+function actualizarBadgeModalExportarPrivacidad() {
+  const badge = document.getElementById('badgeExportPrivacidad');
+  const dot = document.getElementById('dotExportPrivacidad');
+  const txt = document.getElementById('txtExportPrivacidad');
+  if (!badge) return;
+
+  const isPriv = (typeof esModoPrivacidadActivo === 'function')
+    ? esModoPrivacidadActivo()
+    : (localStorage.getItem('cardio_privacy_mode') === 'true');
+
+  if (isPriv) {
+    badge.style.background = '#dcfce7';
+    badge.style.color = '#15803d';
+    badge.style.borderColor = '#bbf7d0';
+    if (dot) dot.style.background = '#16a34a';
+    if (txt) txt.textContent = 'Protección de Datos: Activo (Datos sensibles omitidos)';
+  } else {
+    badge.style.background = '#eff6ff';
+    badge.style.color = '#1e40af';
+    badge.style.borderColor = '#bfdbfe';
+    if (dot) dot.style.background = '#2563eb';
+    if (txt) txt.textContent = 'Protección de Datos: Inactivo (Exportación completa con sensibles)';
+  }
 }
 
 function cerrarModalExportar() {
@@ -777,6 +803,10 @@ async function ejecutarExportacionInteligente() {
   if (btn) btn.disabled = true;
   if (btnTxt) btnTxt.textContent = 'Generando dataset oficial...';
 
+  const privacyActive = (typeof esModoPrivacidadActivo === 'function')
+    ? esModoPrivacidadActivo()
+    : (localStorage.getItem('cardio_privacy_mode') === 'true');
+
   try {
     const csrfToken = (typeof getCsrfToken === 'function') ? getCsrfToken() : (
       document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
@@ -792,7 +822,8 @@ async function ejecutarExportacionInteligente() {
       body: JSON.stringify({
         patient_ids: patientIds,
         format: formato,
-        scope: alcance
+        scope: alcance,
+        privacy_mode: privacyActive
       })
     });
 
@@ -1266,4 +1297,5 @@ function enviarOtraFichaDesdeModal() {
 // Reactividad inmediata al cambiar el Modo de Privacidad en Ajustes
 window.addEventListener('cardio_privacy_mode_changed', () => {
   renderPacientesTabla();
+  actualizarBadgeModalExportarPrivacidad();
 });

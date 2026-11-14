@@ -75,10 +75,10 @@ class ClinicalModelContractTests(TestCase):
         return VisitAnswer.objects.create(visit=self.visit, question=question,
                                           selected_option=option, numeric_value=number, text_value=text)
 
-    def export_frame(self, format_type='csv'):
-        data, _, _ = sav_exporter.generate_export_dataset([self.patient.pk], format_type=format_type)
+    def export_frame(self, format_type='csv', privacy_mode=False):
+        data, _, _ = sav_exporter.generate_export_dataset([self.patient.pk], format_type=format_type, privacy_mode=privacy_mode)
         if format_type == 'csv':
-            return pd.read_csv(BytesIO(data))
+            return pd.read_csv(BytesIO(data), dtype={'CEDULA': str, 'TELEFONO': str})
         path = Path(self.folder) / 'synthetic-export.sav'
         path.write_bytes(data)
         frame, _ = pyreadstat.read_sav(str(path))
@@ -109,8 +109,10 @@ class ClinicalModelContractTests(TestCase):
 
     def test_csv_export_age_uses_evaluation_date_before_birthday(self):
         frame = self.export_frame()
-        self.assertEqual(len(frame.columns), 391)
+        self.assertEqual(len(frame.columns), 396)
         self.assertIn('EST_ECOCARDIOGRAMA', frame.columns)
+        self.assertIn('CEDULA', frame.columns)
+        self.assertEqual(str(frame.iloc[0]['CEDULA']), str(self.patient.id_card))
         self.assertEqual(frame.iloc[0]['EDAD'], 25)
 
     def test_csv_export_age_changes_on_birthday(self):
@@ -120,10 +122,23 @@ class ClinicalModelContractTests(TestCase):
 
     def test_sav_export_uses_full_template_and_can_be_read_back(self):
         frame = self.export_frame('sav')
-        self.assertEqual(len(frame.columns), 391)
+        self.assertEqual(len(frame.columns), 396)
         self.assertIn('EST_ECOCARDIOGRAMA', frame.columns)
+        self.assertIn('CEDULA', frame.columns)
+        self.assertIn('NOMBRES', frame.columns)
+        self.assertEqual(str(frame.iloc[0]['CEDULA']), str(self.patient.id_card))
         self.assertEqual(frame.iloc[0]['EDAD'], 25)
         self.assertFalse(pd.isna(frame.iloc[0]['FECHA']))
+
+    def test_export_privacy_mode_excludes_sensitive_data(self):
+        frame_priv = self.export_frame('csv', privacy_mode=True)
+        self.assertEqual(len(frame_priv.columns), 391)
+        self.assertNotIn('CEDULA', frame_priv.columns)
+        self.assertNotIn('NOMBRES', frame_priv.columns)
+        self.assertNotIn('APELLIDOS', frame_priv.columns)
+        self.assertNotIn('TELEFONO', frame_priv.columns)
+        self.assertNotIn('EMAIL', frame_priv.columns)
+        self.assertIn('EST_ECOCARDIOGRAMA', frame_priv.columns)
 
     def test_multiformat_export_supports_zsav_rds_and_rdata(self):
         # Prueba exportación comprimida ZSAV
@@ -139,7 +154,8 @@ class ClinicalModelContractTests(TestCase):
         p_rds = Path(self.folder) / 'test.rds'
         p_rds.write_bytes(rds_data)
         rds_read = pyreadr.read_r(str(p_rds))[None]
-        self.assertEqual(len(rds_read.columns), 391)
+        self.assertEqual(len(rds_read.columns), 396)
+        self.assertIn('CEDULA', rds_read.columns)
         self.assertIn('EST_ECOCARDIOGRAMA', rds_read.columns)
 
         # Prueba exportación RStudio RData
@@ -148,7 +164,8 @@ class ClinicalModelContractTests(TestCase):
         p_rdata = Path(self.folder) / 'test.RData'
         p_rdata.write_bytes(rdata_data)
         rdata_read = pyreadr.read_r(str(p_rdata))['CardioUnemi']
-        self.assertEqual(len(rdata_read.columns), 391)
+        self.assertEqual(len(rdata_read.columns), 396)
+        self.assertIn('CEDULA', rdata_read.columns)
         self.assertIn('EST_ECOCARDIOGRAMA', rdata_read.columns)
 
     def test_echo_export_does_not_read_nonexistent_fractional_shortening(self):
@@ -180,3 +197,36 @@ class ClinicalModelContractTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['records'][0]['nivel_estudios'], 'Postgrado')
         self.assertEqual(self.client.get('/dashboard/').status_code, 200)
+
+    def test_api_export_dataset_includes_sensitive_by_default(self):
+        response = self.client.post('/clinical/api/export-dataset/', {
+            'format': 'csv',
+            'scope': 'all'
+        }, content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        frame = pd.read_csv(BytesIO(response.content), dtype={'CEDULA': str, 'TELEFONO': str})
+        self.assertEqual(len(frame.columns), 396)
+        self.assertIn('CEDULA', frame.columns)
+        self.assertIn('NOMBRES', frame.columns)
+        self.assertIn('APELLIDOS', frame.columns)
+        self.assertIn('TELEFONO', frame.columns)
+        self.assertIn('EMAIL', frame.columns)
+        self.assertEqual(str(frame.iloc[0]['CEDULA']), '0923485718')
+        self.assertEqual(str(frame.iloc[0]['NOMBRES']), 'Synthetic')
+        self.assertEqual(str(frame.iloc[0]['APELLIDOS']), 'Contract')
+
+    def test_api_export_dataset_excludes_sensitive_when_privacy_mode_is_true(self):
+        response = self.client.post('/clinical/api/export-dataset/', {
+            'format': 'csv',
+            'scope': 'all',
+            'privacy_mode': True
+        }, content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        frame = pd.read_csv(BytesIO(response.content))
+        self.assertEqual(len(frame.columns), 391)
+        self.assertNotIn('CEDULA', frame.columns)
+        self.assertNotIn('NOMBRES', frame.columns)
+        self.assertNotIn('APELLIDOS', frame.columns)
+        self.assertNotIn('TELEFONO', frame.columns)
+        self.assertNotIn('EMAIL', frame.columns)
+        self.assertIn('EST_ECOCARDIOGRAMA', frame.columns)

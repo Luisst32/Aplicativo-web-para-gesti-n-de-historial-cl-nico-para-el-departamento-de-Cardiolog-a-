@@ -316,6 +316,8 @@ STANDARD_FIELD_ALIASES = {
     'nombres': ['nombres', 'nombre', 'first_names', 'nombre_completo', 'paciente'],
     'apellido1': ['primer_apellido', 'apellido1', 'last_name1', 'apellidos'],
     'apellido2': ['segundo_apellido', 'apellido2', 'last_name2'],
+    'telefono': ['telefono', 'celular', 'phone', 'num_telefono', 'tlf', 'telefono_contacto'],
+    'email': ['email', 'correo', 'correo_electronico', 'mail'],
     'universidad': ['universidad', 'uni', 'institucion', 'institution'],
     'estamento': ['categoria_personal', 'estamento', 'estamento_unemi', 'tipo_personal'],
     'facultad': ['facultad', 'faculty'],
