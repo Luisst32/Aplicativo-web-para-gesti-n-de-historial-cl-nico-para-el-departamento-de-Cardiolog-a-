@@ -871,7 +871,7 @@ def _read_dataset_file(temp_path: Path, filename: str):
     o archivos CSV mediante pandas.
     """
     ext = Path(filename).suffix.lower()
-    if ext in ('.rds', '.rdata', '.rda'):
+    if ext in ('.rds', '.rdata', '.rda', '.r'):
         try:
             import pyreadr
             res = pyreadr.read_r(str(temp_path))
