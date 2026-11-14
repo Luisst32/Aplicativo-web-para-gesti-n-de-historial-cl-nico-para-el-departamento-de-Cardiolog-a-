@@ -742,6 +742,23 @@ def _build_form_datos(patient, visit):
         "est_tac_cardiaco": "No",
         "est_rnm_cardiaco": "No",
         "est_electrofisiologia": "No",
+        "est_ecocardiograma": "No",
+        "est_holter": "No",
+        "est_mapa": "No",
+        "est_otros_detalle": "",
+
+        # PREDIMED Lácteos y sofrito (Cuestionario UNEMI 2026)
+        "pred_q13_consume": "No",
+        "pred_leche_vasos_dia": "",
+        "pred_leche_vasos_sem": "",
+        "pred_leche_tipo": "",
+        "pred_q14_consume": "No",
+        "pred_queso_veces_sem": "",
+        "pred_queso_gramos": "",
+        "pred_q15_consume": "No",
+        "pred_yogurt_cant_sem": "",
+        "pred_yogurt_tipo": "",
+        "pred_q19": "No",
     }
 
     if visit:
@@ -761,7 +778,7 @@ def _build_form_datos(patient, visit):
             pc_val_map = {'Docente Titular': '1', 'Docente Ocasional': '2', 'Servidor Público': '3', 'Auxiliar de Servicios': '4', 'Estudiante': '6', 'Otro': '5'}
             datos['f_profesion'] = pc_val_map.get(visit.professional_category.name, '')
         if visit.housing_type:
-            ht_val_map = {'Propia': '1', 'Arrendada': '2', 'Familiar': '3', 'Prestada': '4'}
+            ht_val_map = {'Propia': '1', 'Arrendada': '2', 'Alquilada': '2', 'Familiar': '3', 'Vivienda familiar': '3', 'Prestada': '4', 'Otro': '4'}
             datos['f_vivienda'] = ht_val_map.get(visit.housing_type.name, '')
         if visit.income_range:
             ir_val_map = {'Menos de $500': '1', '$500 - $1000': '2', '$1001 - $2000': '3', 'Más de $2000': '5'}

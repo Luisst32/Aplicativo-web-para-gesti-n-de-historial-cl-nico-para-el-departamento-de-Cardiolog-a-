@@ -8,7 +8,7 @@
             <div class="module-group-line"></div>
           </div>
 
-          <!-- SUB-BLOQUE A: ESTUDIOS QUE SE LE HA MANDADO AL PACIENTE (5 ÍTEMS SEGÚN CUESTIONARIO OFICIAL WORD) -->
+          <!-- SUB-BLOQUE A: ESTUDIOS QUE SE LE HA MANDADO AL PACIENTE (CATÁLOGO OFICIAL 2026: 8 ÍTEMS + OBSERVACIONES) -->
           <div class="card card-visual">
             <div class="unified-card-title" onclick="toggleCard(this)">
               <span class="card-title-text"><span class="card-apartado-badge">7.1</span> Estudios que se le ha mandado al paciente <span class="card-toggle-icon"></span></span>
@@ -28,7 +28,7 @@
 
               <div class="condition-row">
                 <div class="condition-header">
-                  <span class="condition-title">2.- Estudios de Ergometría con Speth:</span>
+                  <span class="condition-title">2.- Ergometría con SPECT:</span>
                   <div class="toggle-pills">
                     <label><input type="radio" name="est_ergometria_spect" value="No" checked> No</label>
                     <label class="yes"><input type="radio" name="est_ergometria_spect" value="Si"> Sí</label>
@@ -69,6 +69,43 @@
                   </div>
                 </div>
               </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">6.- Ecocardiografía:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="est_ecocardiograma" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="est_ecocardiograma" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid form-grid-2" style="margin-bottom: 10px;">
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">7.- Holter ECG:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="est_holter" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="est_holter" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="condition-row">
+                <div class="condition-header">
+                  <span class="condition-title">8.- MAPA:</span>
+                  <div class="toggle-pills">
+                    <label><input type="radio" name="est_mapa" value="No" checked> No</label>
+                    <label class="yes"><input type="radio" name="est_mapa" value="Si"> Sí</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top: 10px;">
+              <label class="field-label" style="font-weight: 600; margin-bottom: 4px; display: block;">Observaciones / Otros estudios indicados:</label>
+              <textarea class="form-input" id="est_otros_detalle" name="est_otros_detalle" rows="2" style="width: 100%; resize: vertical;" placeholder="Observaciones clínicas o estudios complementarios solicitados..."></textarea>
             </div>
 
             </div>

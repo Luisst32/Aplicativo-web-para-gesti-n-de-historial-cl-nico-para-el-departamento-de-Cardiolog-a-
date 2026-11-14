@@ -297,9 +297,23 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
     chk_jorn_cont = chk('CONT' in horario_val or 'COMPLETA' in horario_val)
 
     viv_val = val('f_vivienda', '').upper()
-    chk_viv_prop = chk('PROP' in viv_val)
-    chk_viv_alq = chk('ALQ' in viv_val)
-    chk_viv_fam = chk('FAM' in viv_val)
+    chk_viv_prop = chk('PROP' in viv_val or viv_val == '1')
+    chk_viv_alq = chk('ALQ' in viv_val or viv_val == '2')
+    chk_viv_fam = chk('FAM' in viv_val or viv_val == '3')
+    chk_viv_otro = chk('OTR' in viv_val or viv_val == '4')
+
+    ing_map = {
+        '1': '1.- Menos de 500 $/mes',
+        '2': '2.- 500 - 1.000 $/mes',
+        '3': '3.- 1.001 - 1.500 $/mes',
+        '4': '4.- 1.501 - 2.000 $/mes',
+        '5': '5.- 2.001 - 2.500 $/mes',
+        '6': '6.- 2.501 - 3.000 $/mes',
+        '7': '7.- 3.001 - 3.500 $/mes',
+        '8': '8.- Otras'
+    }
+    raw_ing = str(val('f_ingresos', '')).strip()
+    ing_label = ing_map.get(raw_ing, raw_ing if raw_ing else '')
 
     mod2_rows = [
         [
@@ -320,10 +334,10 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
         ],
         [
             Paragraph(f"<b>12.- Categoría profesión:</b> {field_txt(val('f_profesion', val('f_estamento')), 26)}", q_style),
-            Paragraph(f"<b>13.- Vivienda:</b> {chk_viv_prop} Propia &nbsp; {chk_viv_alq} Alquilada &nbsp; {chk_viv_fam} Familiar", q_style)
+            Paragraph(f"<b>13.- Vivienda:</b> {chk_viv_prop} Propia &nbsp; {chk_viv_alq} Alquilada &nbsp; {chk_viv_fam} Familiar &nbsp; {chk_viv_otro} Otro", q_style)
         ],
         [
-            Paragraph(f"<b>14.- Ingresos mensuales familiares sin descuentos:</b> {field_txt(val('f_ingresos', '1001-1500 USD/mes'), 32)}", q_style),
+            Paragraph(f"<b>14.- Ingresos mensuales familiares sin descuentos (USD):</b> {field_txt(ing_label, 32)}", q_style),
             Paragraph("", q_style)
         ]
     ]
@@ -384,6 +398,12 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
     tab_si = is_yes('r_tabaco') or is_yes('tabaquismo')
     alc_si = is_yes('r_alcohol') or (val('alcohol') != '' and not is_no('alcohol'))
     drogas_si = is_yes('r_drogas') or is_yes('drogas')
+    drog_sust = val('drogas_cuales')
+    drog_frec = val('drogas_frecuencia').lower()
+    drog_diaria = is_yes('drogas_dosis_diaria') or 'diaria' in drog_frec or (val('drogas_dosis_diaria') != '' and not is_no('drogas_dosis_diaria'))
+    drog_semanal = is_yes('drogas_dosis_semanal') or 'semanal' in drog_frec or (val('drogas_dosis_semanal') != '' and not is_no('drogas_dosis_semanal'))
+    drog_ocasional = is_yes('drogas_dosis_ocasional') or 'ocasional' in drog_frec or (val('drogas_dosis_ocasional') != '' and not is_no('drogas_dosis_ocasional'))
+    drog_ex = is_yes('chk_ex_drogas')
     obes_si = is_yes('r_obesidad') or 'obesidad' in val('r_sobrepeso').lower()
     sp_si = is_yes('r_sobrepeso') or 'sobrepeso' in val('r_sobrepeso').lower()
     arrit_si = is_yes('r_arritmias') or (val('arritmias') != '' and not is_no('arritmias'))
@@ -408,7 +428,11 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
             Paragraph(f"<b>6.- Alcohol:</b> {chk(not alc_si)} No &nbsp; {chk(alc_si)} Sí &nbsp;&nbsp; <b>Frecuencia/Unidades:</b> {field_txt(val('alcohol_unidades', val('alcohol_frecuencia')), 10)}", q_style)
         ],
         [
-            Paragraph(f"<b>7.- Consumo sustancias / drogas:</b> {chk(not drogas_si)} No &nbsp; {chk(drogas_si)} Sí &nbsp;&nbsp; <b>Cuáles/Dosis:</b> {field_txt((val('drogas_cuales') + (' (D: ' + val('drogas_dosis_diaria') + ')' if val('drogas_dosis_diaria') else (' (S: ' + val('drogas_dosis_semanal') + ')' if val('drogas_dosis_semanal') else (' (Oc: ' + val('drogas_dosis_ocasional') + ')' if val('drogas_dosis_ocasional') else '')))), 16)}", q_style),
+            Paragraph(
+                f"<b>7.- Consumo sustancias / drogas:</b> {chk(not drogas_si)} No &nbsp; {chk(drogas_si)} Sí &nbsp;&nbsp; <b>Cuáles:</b> {field_txt(drog_sust, 10)}<br/>"
+                f"&nbsp;&nbsp;&nbsp;&nbsp;{chk(drog_diaria)} Diaria &nbsp; {chk(drog_semanal)} Semanal &nbsp; {chk(drog_ocasional)} Ocasional &nbsp; {chk(drog_ex)} Ex-consumidor &gt; 1 año",
+                q_style
+            ),
             Paragraph(f"<b>8.- Obesidad:</b> {chk(not obes_si)} No &nbsp; {chk(obes_si)} Sí &nbsp;&nbsp; <b>9.- Sobrepeso:</b> {chk(not sp_si)} No &nbsp; {chk(sp_si)} Sí", q_style)
         ],
         [
@@ -531,9 +555,10 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
     valv_si = is_yes('hc_valvulopatia') or (val('hc_valvulopatia_cuales') != '')
     ingr_card_si = is_yes('hc_ingresado') or is_yes('hc_ingreso_card') or (val('hc_ingresado_cual') != '')
 
-    revasc_det = val('hc_revasc_tipo')
-    is_angio = is_yes('revasc_angioplastia') or revasc_det in ['angioplastia', 'ambas']
-    is_bypass = is_yes('revasc_bypass') or revasc_det in ['bypass', 'ambas']
+    revasc_det = val('hc_revasc_tipo', '').lower()
+    is_angio = is_yes('revasc_angioplastia') or 'angioplastia' in revasc_det
+    is_bypass = is_yes('revasc_bypass') or 'bypass' in revasc_det
+    is_ambas = 'ambas' in revasc_det or (is_angio and is_bypass)
 
     valv_det = val('hc_valvulopatia_cuales') or val('valvulopatia_detalle')
     valv_op = is_yes('hc_valvulopatia_operado') or is_yes('valv_operado')
@@ -541,15 +566,15 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
     mod7_rows = [
         [
             Paragraph(f"<b>1.- Problema previo del corazón:</b> {chk(not hc_prob_si)} No &nbsp; {chk(hc_prob_si)} Sí &nbsp;&nbsp; <b>Detalle:</b> {field_txt(val('prob_corazon_detalle'), 14)}", q_style),
-            Paragraph(f"<b>2.- Cardiopatía isquémica:</b> {chk(not cardio_isq_si)} No &nbsp; {chk(cardio_isq_si)} Sí &nbsp;&nbsp; {chk(is_yes('hc_isquemica_angina') or is_yes('ant_angina'))} Angina &nbsp; {chk(is_yes('hc_isquemica_infarto') or is_yes('ant_iam'))} Infarto", q_style)
+            Paragraph(f"<b>2.- Cardiopatía isquémica:</b> {chk(not cardio_isq_si)} No &nbsp; {chk(cardio_isq_si)} Sí &nbsp;&nbsp; {chk(is_yes('hc_isquemica_angina') or is_yes('ant_angina'))} Angina &nbsp; {chk(is_yes('hc_isquemica_infarto') or is_yes('ant_iam'))} Infarto de miocardio", q_style)
         ],
         [
-            Paragraph(f"<b>3.- Revascularización coronaria:</b> {chk(not revasc_si)} No &nbsp; {chk(revasc_si)} Sí &nbsp;&nbsp; {chk(is_angio)} Angioplastia &nbsp; {chk(is_bypass)} Bypass", q_style),
+            Paragraph(f"<b>3.- Revascularización coronaria:</b> {chk(not revasc_si)} No &nbsp; {chk(revasc_si)} Sí &nbsp;&nbsp; {chk(is_angio)} Con Angioplastia &nbsp; {chk(is_bypass)} Con Bypass &nbsp; {chk(is_ambas)} Con ambas", q_style),
             Paragraph(f"<b>4.- Insuficiencia cardíaca diagnosticada:</b> {chk(not ic_si)} No &nbsp; {chk(ic_si)} Sí", q_style)
         ],
         [
-            Paragraph(f"<b>5.- Valvulopatía:</b> {chk(not valv_si)} No &nbsp; {chk(valv_si)} Sí {f'({field_txt(valv_det, 10)})' if valv_det else ''} &nbsp;&nbsp; <b>Operado:</b> {chk(valv_op)} Sí &nbsp; {chk(not valv_op)} No", q_style),
-            Paragraph(f"<b>6.- Ingresado en hospital por problema cardíaco:</b> {chk(not ingr_card_si)} No &nbsp; {chk(ingr_card_si)} Sí {('(' + field_txt(val('hc_ingresado_cual'), 10) + ')') if val('hc_ingresado_cual') else ''}", q_style)
+            Paragraph(f"<b>5.- Valvulopatía:</b> {chk(not valv_si)} No &nbsp; {chk(valv_si)} Sí {f'({field_txt(valv_det, 10)})' if valv_det else ''} &nbsp;&nbsp; <b>Operado por este motivo:</b> {chk(not valv_op)} No &nbsp; {chk(valv_op)} Sí", q_style),
+            Paragraph(f"<b>6.- Ingresado en hospital por problema cardíaco:</b> {chk(not ingr_card_si)} No &nbsp; {chk(ingr_card_si)} Sí {(' &nbsp;<b>Motivo:</b> ' + field_txt(val('hc_ingresado_cual'), 12)) if val('hc_ingresado_cual') else ''}", q_style)
         ]
     ]
     t_mod7 = Table(mod7_rows, colWidths=[315, 224])
@@ -852,6 +877,11 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
     pred_score = sum([p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14])
     adherencia_str = "Buena adherencia (>= 9 puntos)" if pred_score >= 9 else "Baja adherencia (< 9 puntos)"
 
+    leche_si = is_yes('pred_q13_consume') or val('pred_leche_tipo') != '' or val('pred_leche_vasos_dia') != ''
+    queso_si = is_yes('pred_q14_consume') or val('pred_queso_gramos') != '' or val('pred_queso_veces_sem') != ''
+    yogurt_si = is_yes('pred_q15_consume') or val('pred_yogurt_tipo') != '' or val('pred_yogurt_cant_sem') != ''
+    sofrito_si = is_yes('pred_q19') or p14
+
     pred_rows = [
         [
             Paragraph(f"<b>1. ¿Usa aceite de oliva principalmente para cocinar?:</b> {chk(not p1)} No &nbsp; {chk(p1)} Sí", q_style),
@@ -883,6 +913,18 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
         ],
         [
             Paragraph(f"<b>PUNTUACIÓN TOTAL PREDIMED:</b> <u><b>{pred_score} / 14 puntos</b></u> &nbsp;&nbsp;&nbsp;&nbsp; <b>Nivel de Adherencia:</b> <u><b>{adherencia_str}</b></u>", q_bold),
+            Paragraph(f"<b>19. ¿Consume sofrito casero &gt;= 2 veces/sem?:</b> {chk(not sofrito_si)} No &nbsp; {chk(sofrito_si)} Sí", q_style)
+        ],
+        [
+            Paragraph("<b>Registro Nutricional Complementario: Lácteos (Cuestionario UNEMI 2026):</b>", q_bold),
+            Paragraph("", q_style)
+        ],
+        [
+            Paragraph(f"<b>13. Leche de vaca:</b> {chk(not leche_si)} No &nbsp; {chk(leche_si)} Sí &nbsp;&nbsp; <b>Vasos/día:</b> {field_txt(val('pred_leche_vasos_dia'), 3)} &nbsp; <b>Vasos/sem:</b> {field_txt(val('pred_leche_vasos_sem'), 3)} &nbsp; <b>Tipo:</b> {field_txt(val('pred_leche_tipo'), 8)}", q_style),
+            Paragraph(f"<b>14. Queso:</b> {chk(not queso_si)} No &nbsp; {chk(queso_si)} Sí &nbsp;&nbsp; <b>Veces/sem:</b> {field_txt(val('pred_queso_veces_sem'), 3)} &nbsp; <b>Gramos:</b> {field_txt(val('pred_queso_gramos'), 4)}", q_style)
+        ],
+        [
+            Paragraph(f"<b>15. Yogurt:</b> {chk(not yogurt_si)} No &nbsp; {chk(yogurt_si)} Sí &nbsp;&nbsp; <b>Unidades/sem:</b> {field_txt(val('pred_yogurt_cant_sem'), 3)} &nbsp; <b>Tipo:</b> {field_txt(val('pred_yogurt_tipo'), 10)}", q_style),
             Paragraph("", q_style)
         ]
     ]
@@ -929,18 +971,22 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
     add_section("Cuestionario de Actividad Física", t_mod15)
 
     # =========================================================================
-    # 16. ESTUDIOS QUE SE LE HA MANDADO AL PACIENTE (5 ÍTEMS SEGÚN CUESTIONARIO OFICIAL WORD)
+    # 16. ESTUDIOS QUE SE LE HA MANDADO AL PACIENTE (CATÁLOGO OFICIAL 2026: 8 ÍTEMS + OBSERVACIONES)
     # =========================================================================
     est_analisis = is_yes('est_analisis_clinicos') or is_yes('sol_analisis') or not is_no('ac_prueba')
-    est_ergo = is_yes('est_ergometria_spect') or is_yes('sol_ergometria')
-    est_tac = is_yes('est_tac_cardiaco') or is_yes('sol_tac')
-    est_rnm = is_yes('est_rnm_cardiaco') or is_yes('sol_rnm')
-    est_ef = is_yes('est_electrofisiologia') or is_yes('sol_electrofisiologia')
+    est_ergo = is_yes('est_ergometria_spect') or is_yes('sol_ergometria') or is_yes('estudios_ergometria')
+    est_tac = is_yes('est_tac_cardiaco') or is_yes('sol_tac') or is_yes('estudios_tac')
+    est_rnm = is_yes('est_rnm_cardiaco') or is_yes('sol_rnm') or is_yes('estudios_rnm')
+    est_ef = is_yes('est_electrofisiologia') or is_yes('sol_electrofisiologia') or is_yes('estudios_electrofisiologia')
+    est_eco = is_yes('est_ecocardiograma') or is_yes('est_eco') or is_yes('sol_eco') or is_yes('estudios_ecocardiograma')
+    est_holter = is_yes('est_holter') or is_yes('sol_holter') or is_yes('estudios_holter') or is_yes('estudios_holter_ecg')
+    est_mapa = is_yes('est_mapa') or is_yes('sol_mapa') or is_yes('estudios_mapa') or is_yes('usted_se_ha_realizado_estudios_de_mapa')
+    est_obs = val('est_otros_detalle', val('estudios_observaciones', val('otros_estudios')))
 
     mod16_rows = [
         [
             Paragraph(f"<b>1.- Estudios de Análisis Clínicos:</b> {chk(not est_analisis)} No &nbsp; {chk(est_analisis)} Sí", q_style),
-            Paragraph(f"<b>2.- Estudios de Ergometría con Speth:</b> {chk(not est_ergo)} No &nbsp; {chk(est_ergo)} Sí", q_style)
+            Paragraph(f"<b>2.- Ergometría con SPECT:</b> {chk(not est_ergo)} No &nbsp; {chk(est_ergo)} Sí", q_style)
         ],
         [
             Paragraph(f"<b>3.- Estudios de TAC cardíaco:</b> {chk(not est_tac)} No &nbsp; {chk(est_tac)} Sí", q_style),
@@ -948,6 +994,14 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
         ],
         [
             Paragraph(f"<b>5.- Estudios de Electrofisiología Cardíaca:</b> {chk(not est_ef)} No &nbsp; {chk(est_ef)} Sí", q_style),
+            Paragraph(f"<b>6.- Ecocardiografía:</b> {chk(not est_eco)} No &nbsp; {chk(est_eco)} Sí", q_style)
+        ],
+        [
+            Paragraph(f"<b>7.- Holter ECG:</b> {chk(not est_holter)} No &nbsp; {chk(est_holter)} Sí", q_style),
+            Paragraph(f"<b>8.- MAPA:</b> {chk(not est_mapa)} No &nbsp; {chk(est_mapa)} Sí", q_style)
+        ],
+        [
+            Paragraph(f"<b>Observaciones / Otros estudios:</b> {field_txt(est_obs, 40)}", q_style),
             Paragraph("", q_style)
         ]
     ]
