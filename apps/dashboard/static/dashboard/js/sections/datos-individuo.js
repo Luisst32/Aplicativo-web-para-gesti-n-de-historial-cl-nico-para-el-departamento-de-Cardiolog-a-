@@ -96,22 +96,11 @@ function renderTabDatosIndividuo() {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          cutout: '52%',
+          cutout: '28%',
           layout: { padding: 12 },
           plugins: {
             legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 10, padding: 18, color: '#0f172a', font: { size: 12, weight: '600' } } },
-            datalabels: {
-              ...chartJsDonutDataLabels(),
-              color: '#ffffff',
-              anchor: 'center',
-              align: 'center',
-              textAlign: 'center',
-              font: { size: 12, weight: 'bold' },
-              formatter: (val, ctx) => {
-                const total = ctx.dataset.data.reduce((sum, value) => sum + value, 0);
-                return [String(val), `${formatPct(val, total)} %`];
-              }
-            }
+            datalabels: chartJsDonutDataLabels()
           }
         }
       });

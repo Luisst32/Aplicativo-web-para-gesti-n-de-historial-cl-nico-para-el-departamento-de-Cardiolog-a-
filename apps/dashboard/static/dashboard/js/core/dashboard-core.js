@@ -222,7 +222,7 @@ if (typeof Chart !== 'undefined') {
     hoverOffset: 6
   };
   Chart.overrides.doughnut = Chart.overrides.doughnut || {};
-  Chart.overrides.doughnut.cutout = '52%';
+  Chart.overrides.doughnut.cutout = '28%';
   Chart.defaults.datasets.bar = {
     ...(Chart.defaults.datasets.bar || {}),
     maxBarThickness: 76,
@@ -302,26 +302,43 @@ function chartJsBarDataLabels(showPct = true, customTotal = null) {
   };
 }
 
-// Helper para datalabels de Chart.js en donas/pies (sin fondo negro, texto negro)
-function chartJsDonutDataLabels(minPct = 0.08) {
+// Helper para datalabels de Chart.js en donas/pies (adaptativo, multilínea y con contorno antiamuflaje)
+function chartJsDonutDataLabels(minPct = 0.06) {
   return {
     display: (ctx) => {
-      const v = ctx.dataset.data[ctx.dataIndex];
-      const sum = ctx.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
+      const v = Number(ctx.dataset.data[ctx.dataIndex]) || 0;
+      const sum = ctx.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0) || 1;
       return typeof v === 'number' && v > 0 && (v / sum) >= minPct;
     },
     color: '#ffffff',
+    textStrokeColor: 'rgba(15, 23, 42, 0.50)',
+    textStrokeWidth: 2,
+    textShadowBlur: 3,
+    textShadowColor: 'rgba(0, 0, 0, 0.35)',
     anchor: 'center',
     align: 'center',
+    textAlign: 'center',
     backgroundColor: 'transparent',
     borderRadius: 0,
     padding: { top: 1, bottom: 1, left: 2, right: 2 },
     borderWidth: 0,
-    font: { weight: 'bold', size: 10 },
-    formatter: (val, ctx) => {
+    font: (ctx) => {
+      const v = Number(ctx.dataset.data[ctx.dataIndex]) || 0;
       const sum = ctx.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0) || 1;
-      const pct = ((val / sum) * 100).toFixed(1).replace('.', ',');
-      return `${val} (${pct}%)`;
+      const pct = v / sum;
+      if (pct >= 0.25) return { size: 12, weight: 'bold', family: 'inherit', lineHeight: 1.15 };
+      if (pct >= 0.12) return { size: 11, weight: 'bold', family: 'inherit', lineHeight: 1.15 };
+      return { size: 10, weight: 'bold', family: 'inherit', lineHeight: 1.1 };
+    },
+    formatter: (val, ctx) => {
+      const v = Number(val) || 0;
+      const sum = ctx.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0) || 1;
+      const pct = ((v / sum) * 100).toFixed(1).replace('.', ',');
+      // Adaptativo según el porcentaje del valor: dos líneas si hay espacio, o porcentaje compacto
+      if (v / sum >= 0.14) {
+        return [String(v), `(${pct}%)`];
+      }
+      return `(${pct}%)`;
     }
   };
 }

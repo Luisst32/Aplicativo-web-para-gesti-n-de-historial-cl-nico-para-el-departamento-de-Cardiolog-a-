@@ -163,6 +163,26 @@ function dashboardPlaceApexLabels(chart) {
 
 function dashboardApexBarStyle(options, id) {
   const originalFormatter = options.dataLabels?.formatter;
+  if (['pie', 'donut'].includes(options.chart?.type)) {
+    return {
+      ...options,
+      plotOptions: {
+        ...options.plotOptions,
+        pie: {
+          ...options.plotOptions?.pie,
+          donut: {
+            size: '28%',
+            labels: { show: false }
+          }
+        }
+      },
+      dataLabels: {
+        ...options.dataLabels,
+        style: { fontSize: '11px', fontWeight: 700, colors: ['#ffffff'] },
+        dropShadow: { enabled: true, top: 1, left: 1, blur: 2, color: '#0f172a', opacity: 0.6 }
+      }
+    };
+  }
   if (options.chart?.type !== 'bar') return {
     ...options,
     dataLabels: { ...options.dataLabels,
@@ -239,6 +259,72 @@ function dashboardChartJsStyle(config) {
   const options = config.options ||= {};
   options.plugins ||= {};
   const originalLabels = options.plugins.datalabels || {};
+  if (['doughnut', 'pie'].includes(config.type)) {
+    // Ensanchar grosor del pastel: orificio interior moderado (28%) para maximizar área de rebanada
+    options.cutout = '28%';
+    options.plugins.legend = dashboardMergeStyle(options.plugins.legend || {}, {
+      position: 'bottom',
+      labels: {
+        usePointStyle: true,
+        pointStyle: 'circle',
+        boxWidth: 10,
+        padding: 16,
+        color: '#0f172a',
+        font: { size: 12, weight: '600' }
+      }
+    });
+    options.plugins.datalabels = {
+      ...originalLabels,
+      display: (ctx) => {
+        if (typeof originalLabels.display === 'function') {
+          return originalLabels.display(ctx);
+        }
+        const v = Number(ctx.dataset.data[ctx.dataIndex]) || 0;
+        const sum = ctx.dataset.data.reduce((a, b) => a + (Number(b) || 0), 0) || 1;
+        return (v / sum) >= 0.06;
+      },
+      color: '#ffffff',
+      textStrokeColor: 'rgba(15, 23, 42, 0.50)',
+      textStrokeWidth: 2,
+      textShadowBlur: 3,
+      textShadowColor: 'rgba(0, 0, 0, 0.35)',
+      anchor: 'center',
+      align: 'center',
+      textAlign: 'center',
+      backgroundColor: 'transparent',
+      font: (ctx) => {
+        if (typeof originalLabels.font === 'function') {
+          return originalLabels.font(ctx);
+        }
+        const v = Number(ctx.dataset.data[ctx.dataIndex]) || 0;
+        const sum = ctx.dataset.data.reduce((a, b) => a + (Number(b) || 0), 0) || 1;
+        const pct = v / sum;
+        if (pct >= 0.25) return { size: 12, weight: 'bold', family: 'inherit', lineHeight: 1.15 };
+        if (pct >= 0.12) return { size: 11, weight: 'bold', family: 'inherit', lineHeight: 1.15 };
+        return { size: 10, weight: 'bold', family: 'inherit', lineHeight: 1.1 };
+      },
+      formatter: (value, ctx) => {
+        const val = Number(value) || 0;
+        const total = ctx.dataset.data.reduce((a, b) => a + (Number(b) || 0), 0) || 1;
+        const pct = ((val / total) * 100).toFixed(1).replace('.', ',');
+        if (typeof originalLabels.formatter === 'function') {
+          const res = originalLabels.formatter(value, ctx);
+          if (Array.isArray(res)) return res;
+          if (typeof res === 'string' && res.includes('\n')) return res.split('\n');
+          const match = String(res).match(/^(.*?)\s*\(?([\d.,]+\s*%)\)?$/);
+          if (match && (val / total) >= 0.14) {
+            return [match[1].trim(), `(${match[2]})`];
+          }
+          return res;
+        }
+        if (val / total >= 0.14) {
+          return [String(val), `(${pct}%)`];
+        }
+        return `(${pct}%)`;
+      }
+    };
+    return;
+  }
   if (config.type !== 'bar') {
     options.plugins.datalabels = { ...originalLabels, backgroundColor: 'transparent',
       formatter: (value, ctx) => dashboardLabelLines(originalLabels.formatter ? originalLabels.formatter(value, ctx) : value)

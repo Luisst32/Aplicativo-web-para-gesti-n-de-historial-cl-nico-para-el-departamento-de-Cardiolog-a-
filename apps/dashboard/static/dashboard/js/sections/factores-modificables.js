@@ -12,28 +12,37 @@ function renderTabFactoresModificables() {
   const elControl = document.getElementById('chart-mod-control-tto');
   if (elControl) {
     if (charts.modControl) {
-      charts.modControl.updateOptions({
-        series: [
-          { name: 'Bajo Tratamiento Farmacológico', data: [htaTto, dmTto, dlTto] },
-          { name: 'Sin Tratamiento / Sin Control', data: [htaNoTto, dmNoTto, dlNoTto] }
-        ]
-      });
+      charts.modControl.data.datasets[0].data = [htaTto, dmTto, dlTto];
+      charts.modControl.data.datasets[1].data = [htaNoTto, dmNoTto, dlNoTto];
+      charts.modControl.update();
     } else {
-      charts.modControl = createDashboardApexChart(elControl, {
-        chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
-        fill: { type: 'solid', opacity: 1 },
-        colors: [PALETTE.green, PALETTE.emergencyRed],
-        plotOptions: { bar: { horizontal: true, barHeight: '78%', borderRadius: 6, dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
-        series: [
-          { name: 'Bajo Tratamiento Farmacológico', data: [htaTto, dmTto, dlTto] },
-          { name: 'Sin Tratamiento / Sin Control', data: [htaNoTto, dmNoTto, dlNoTto] }
-        ],
-        xaxis: { categories: ['Hipertensión (HTA)', 'Diabetes Mellitus', 'Dislipemia'] },
-        legend: { position: 'top' },
-        dataLabels: apexCountAndPctDataLabel(),
-        tooltip: apexCountTooltip()
+      charts.modControl = createDashboardChart(elControl, {
+        type: 'bar',
+        data: {
+          labels: ['Hipertensión', 'Diabetes', 'Dislipemia'],
+          datasets: [
+            { label: 'Bajo Tratamiento Farmacológico', data: [htaTto, dmTto, dlTto], backgroundColor: PALETTE.green, maxBarThickness: 76, categoryPercentage: 0.8, barPercentage: 0.9, borderRadius: 4 },
+            { label: 'Sin Tratamiento / Sin Control', data: [htaNoTto, dmNoTto, dlNoTto], backgroundColor: PALETTE.emergencyRed, maxBarThickness: 76, categoryPercentage: 0.8, barPercentage: 0.9, borderRadius: 4 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { top: 16, right: 8, bottom: 4, left: 4 } },
+          scales: {
+            x: { stacked: true, grid: { display: false }, border: { display: false },
+              ticks: { maxRotation: 0, minRotation: 0, autoSkip: false, color: '#1e293b', font: { size: 12, weight: '600' } } },
+            y: { stacked: true, beginAtZero: true, grace: '20%',
+              grid: { color: '#edf2f7' }, border: { display: false },
+              ticks: { precision: 0, color: '#1e293b', font: { size: 12, weight: '600' } },
+              title: { display: true, text: 'Casos (n)' } }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 16, boxWidth: 10, color: '#0f172a', font: { size: 12, weight: '600' } } },
+            datalabels: chartJsBarDataLabels()
+          }
+        }
       });
-      charts.modControl.render();
     }
   }
 
