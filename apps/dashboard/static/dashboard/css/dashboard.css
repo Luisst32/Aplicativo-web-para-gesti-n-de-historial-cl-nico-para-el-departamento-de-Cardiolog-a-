@@ -811,6 +811,12 @@ body {
 }
 
 /* TABLAS ESTILO POWER BI */
+@media (min-width: 701px) {
+  #tab-resumen-general > .summary-trend-factors {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+}
+
 #tab-resumen-general .card-visual {
   background: #ffffff;
   border: 1px solid #e5ecf3;

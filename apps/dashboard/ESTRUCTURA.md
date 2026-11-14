@@ -71,6 +71,8 @@ comparten el mismo ámbito global y se cargan en el mismo orden lógico.
 
 ## CSS
 
+En Resumen General, la fila de tendencia y factores usa proporción 5/7: tendencia más estrecha y factores más anchos; en móvil se apilan.
+
 | Alcance visual | Tratamiento |
 | --- | --- |
 | Solo Resumen General | Dona y barras gruesas con valores blancos directos, sin fondo ni contorno; factores globales con eje 0–100 % y cero en texto oscuro al no existir barra. Configuración propia en `sections/resumen-general.js`. |
