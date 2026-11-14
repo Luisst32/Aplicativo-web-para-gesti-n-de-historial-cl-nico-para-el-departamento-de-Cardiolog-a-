@@ -364,7 +364,9 @@ function dashboardChartJsStyle(config) {
     textStrokeWidth: 2,
     textShadowBlur: 3,
     textShadowColor: 'rgba(0, 0, 0, 0.35)',
-    anchor: 'center', align: 'center', offset: 0,
+    anchor: isLpm ? 'end' : (oldLabels.anchor || 'center'),
+    align: isLpm ? 'bottom' : (oldLabels.align || 'center'),
+    offset: isLpm ? 16 : (oldLabels.offset !== undefined ? oldLabels.offset : 0),
     clip: false,
     font: (ctx) => {
       const customFont = typeof oldLabels.font === 'function' ? oldLabels.font(ctx) : oldLabels.font;

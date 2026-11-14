@@ -181,8 +181,9 @@ function renderTabElectrocardiograma() {
             legend: { display: false },
             datalabels: {
               display: true,
-              anchor: 'center',
-              align: 'center',
+              anchor: 'end',
+              align: 'bottom',
+              offset: 16,
               font: { weight: 'bold', size: 12, family: 'inherit' },
               color: '#ffffff',
               textStrokeColor: 'rgba(15, 23, 42, 0.50)',
