@@ -85,6 +85,31 @@ def _es_negativo(texto):
     return False
 
 
+def _answer(answers, *codes):
+    """Return the first recorded non-empty answer without inventing a fallback."""
+    for code in codes:
+        value = answers.get(code)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return None
+
+
+def _affirmative(value):
+    """Return True/False for a recorded yes/no answer, otherwise None."""
+    if value is None:
+        return None
+    return not _es_negativo(value) and ('si' in value.lower() or 'sí' in value.lower())
+
+
+def _any_known(*values):
+    """Three-valued OR: unknown remains unknown unless another source is positive."""
+    if any(value is True for value in values):
+        return True
+    if all(value is False for value in values):
+        return False
+    return None
+
+
 def get_dashboard_evaluation_data():
     """
     Extracts all clinical encounters and generates normalized, calculated
@@ -139,11 +164,12 @@ def get_dashboard_evaluation_data():
         # -------------------------------------------------------------
         # BLOQUE 1: DATOS DEL INDIVIDUO (SOCIODEMOGRAFÍA)
         # -------------------------------------------------------------
-        sex_raw = p.sex.name if (p and p.sex) else 'Hombre'
-        sexo = 'Mujer' if 'MUJER' in sex_raw.upper() or 'FEM' in sex_raw.upper() else 'Hombre'
+        sex_raw = p.sex.name if (p and p.sex) else None
+        sexo = ('Mujer' if 'MUJER' in sex_raw.upper() or 'FEM' in sex_raw.upper()
+                else 'Hombre') if sex_raw else None
 
         edad = get_age(p.birth_date, v_date)
-        grupo_edad = get_age_group(edad)
+        grupo_edad = get_age_group(edad) if edad else 'Sin dato'
 
         cat_raw = v.staff_category.name if v.staff_category else ''
         categoria = map_category_label(cat_raw)
@@ -172,8 +198,10 @@ def get_dashboard_evaluation_data():
             estado_civil = estado_civil_val or 'No especificado'
 
         # Nivel educativo
-        estudios_val = v.education_level.name if v.education_level else answers_dict.get('f_estudios', 'Superior')
-        if 'POST' in estudios_val.upper() or 'CUARTO' in estudios_val.upper() or 'MASTER' in estudios_val.upper() or 'DOCTOR' in estudios_val.upper():
+        estudios_val = v.education_level.name if v.education_level else _answer(answers_dict, 'f_estudios')
+        if not estudios_val:
+            nivel_estudios = 'Sin dato'
+        elif 'POST' in estudios_val.upper() or 'CUARTO' in estudios_val.upper() or 'MASTER' in estudios_val.upper() or 'DOCTOR' in estudios_val.upper():
             nivel_estudios = 'Postgrado'
         elif 'SUPERIOR' in estudios_val.upper() or 'TERCER' in estudios_val.upper() or 'UNIVERSIT' in estudios_val.upper():
             nivel_estudios = 'Superior'
@@ -183,8 +211,10 @@ def get_dashboard_evaluation_data():
             nivel_estudios = 'Primaria/Otros'
 
         # Tipo de vivienda
-        vivienda_val = v.housing_type.name if v.housing_type else answers_dict.get('f_vivienda', 'Propia')
-        if 'PROPIA' in vivienda_val.upper():
+        vivienda_val = v.housing_type.name if v.housing_type else _answer(answers_dict, 'f_vivienda')
+        if not vivienda_val:
+            tipo_vivienda = 'Sin dato'
+        elif 'PROPIA' in vivienda_val.upper():
             tipo_vivienda = 'Propia'
         elif 'FAMILIAR' in vivienda_val.upper():
             tipo_vivienda = 'Familiar'
@@ -200,16 +230,18 @@ def get_dashboard_evaluation_data():
         # BLOQUE 2: EXPLORACIÓN FÍSICA (ANTROPOMETRÍA Y SIGNOS VITALES)
         # -------------------------------------------------------------
         anth = getattr(v, 'anthropometry', None)
-        peso = float(anth.weight_kg) if anth and anth.weight_kg else 0.0
-        talla = float(anth.height_cm) if anth and anth.height_cm else 0.0
+        peso = float(anth.weight_kg) if anth and anth.weight_kg else None
+        talla = float(anth.height_cm) if anth and anth.height_cm else None
 
-        imc = float(anth.bmi) if anth and anth.bmi is not None else 0.0
-        if anth and peso > 0 and talla > 0 and imc == 0:
+        imc = float(anth.bmi) if anth and anth.bmi is not None else None
+        if anth and peso and talla and peso > 0 and talla > 0 and not imc:
             h_m = talla / 100.0
             if h_m > 0:
                 imc = round(peso / (h_m * h_m), 2)
 
-        if imc < 18.5:
+        if imc is None:
+            imc_cat = 'Sin dato'
+        elif imc < 18.5:
             imc_cat = 'Bajo peso'
         elif imc < 25.0:
             imc_cat = 'Normal'
@@ -222,11 +254,11 @@ def get_dashboard_evaluation_data():
         else:
             imc_cat = 'Obesidad Mórbida'
 
-        obesidad = imc >= 30.0
-        sobrepeso_u_obesidad = imc >= 25.0
+        obesidad = imc >= 30.0 if imc is not None else None
+        sobrepeso_u_obesidad = imc >= 25.0 if imc is not None else None
 
         perimetro_abdominal = float(anth.waist_circumference_cm) if anth and anth.waist_circumference_cm is not None else None
-        if perimetro_abdominal:
+        if perimetro_abdominal and sexo:
             if sexo == 'Mujer':
                 if perimetro_abdominal < 80.0:
                     abd_riesgo = 'Normal (<80)'
@@ -242,16 +274,18 @@ def get_dashboard_evaluation_data():
                 else:
                     abd_riesgo = 'Riesgo Elevado (>102)'
         else:
-            abd_riesgo = 'No registrado'
+            abd_riesgo = 'Sin dato'
 
         vs = getattr(v, 'vital_signs', None)
-        tas = float(vs.systolic_bp) if vs and vs.systolic_bp is not None else 0.0
-        tad = float(vs.diastolic_bp) if vs and vs.diastolic_bp is not None else 0.0
-        fc = int(vs.heart_rate) if vs and vs.heart_rate is not None else 72
-        sat_o2 = int(vs.oxygen_saturation) if vs and vs.oxygen_saturation is not None else 98
+        tas = float(vs.systolic_bp) if vs and vs.systolic_bp is not None else None
+        tad = float(vs.diastolic_bp) if vs and vs.diastolic_bp is not None else None
+        fc = int(vs.heart_rate) if vs and vs.heart_rate is not None else None
+        sat_o2 = int(vs.oxygen_saturation) if vs and vs.oxygen_saturation is not None else None
 
         # Clasificación de Presión Arterial
-        if tas >= 140.0 or tad >= 90.0:
+        if tas is None or tad is None:
+            pa_categoria = 'Sin dato'
+        elif tas >= 140.0 or tad >= 90.0:
             pa_categoria = 'HTA Grado 2 (≥140/90)' if (tas >= 160.0 or tad >= 100.0) else 'HTA Grado 1 (140-159/90-99)'
         elif tas >= 130.0 or tad >= 80.0:
             pa_categoria = 'PA Elevada (130-139/80-89)'
@@ -270,24 +304,21 @@ def get_dashboard_evaluation_data():
         # BLOQUE 3: FACTORES DE RIESGO MODIFICABLES
         # -------------------------------------------------------------
         # Hipertensión (HTA)
-        r_hta_val = (
-            answers_dict.get('r_hta', '') or
-            answers_dict.get('hta', '') or
-            answers_dict.get('hta_tto', '') or
-            ''
-        ).strip()
-        is_hta_ans = not _es_negativo(r_hta_val) and ('si' in r_hta_val.lower() or 'sí' in r_hta_val.lower())
-        is_hta_bp = tas >= 140.0 or tad >= 90.0
-        hipertension = is_hta_ans or is_hta_bp
+        r_hta_val = _answer(answers_dict, 'r_hta', 'hta', 'hta_tto')
+        is_hta_ans = _affirmative(r_hta_val)
+        is_hta_bp = (tas >= 140.0 or tad >= 90.0) if tas is not None and tad is not None else None
+        hipertension = _any_known(is_hta_ans, is_hta_bp)
 
-        if 'no tratada' in r_hta_val.lower():
+        if r_hta_val and 'no tratada' in r_hta_val.lower():
             hta_desc = 'No tratada'
-        elif 'tratada con farmacos' in r_hta_val.lower() or 'si tratada' in r_hta_val.lower() or 'y si tratada' in r_hta_val.lower():
+        elif r_hta_val and ('tratada con farmacos' in r_hta_val.lower() or 'si tratada' in r_hta_val.lower() or 'y si tratada' in r_hta_val.lower()):
             hta_desc = 'Tratada'
-        elif hipertension:
+        elif hipertension is True:
             hta_desc = 'No tratada'
-        else:
+        elif hipertension is False:
             hta_desc = 'Sin Hipertensión'
+        else:
+            hta_desc = 'Sin dato'
 
         # Diabetes Mellitus
         lab = getattr(v, 'laboratory', None)
@@ -329,8 +360,11 @@ def get_dashboard_evaluation_data():
             dl_desc = 'No'
 
         # Tabaquismo
-        r_tab_val = answers_dict.get('r_tabaco', '') or answers_dict.get('tabaquismo', '')
-        if 'no fuma' in r_tab_val.lower():
+        r_tab_val = _answer(answers_dict, 'r_tabaco', 'tabaquismo')
+        if r_tab_val is None:
+            tabaquismo = 'Sin dato'
+            fumador_activo = None
+        elif 'no fuma' in r_tab_val.lower():
             tabaquismo = 'No fuma'
             fumador_activo = False
         elif 'ex' in r_tab_val.lower():
@@ -344,8 +378,10 @@ def get_dashboard_evaluation_data():
             fumador_activo = False
 
         # Alcohol
-        r_alc_val = answers_dict.get('r_alcohol', '') or answers_dict.get('alcohol', '')
-        if 'diario' in r_alc_val.lower() or 'diariamente' in r_alc_val.lower():
+        r_alc_val = _answer(answers_dict, 'r_alcohol', 'alcohol')
+        if r_alc_val is None:
+            alcohol = 'Sin dato'
+        elif 'diario' in r_alc_val.lower() or 'diariamente' in r_alc_val.lower():
             alcohol = 'Diario'
         elif 'semanal' in r_alc_val.lower() or 'semanalmente' in r_alc_val.lower():
             alcohol = 'Semanal'
@@ -355,15 +391,10 @@ def get_dashboard_evaluation_data():
             alcohol = 'No consume'
 
         # Actividad Física y Deporte
-        r_act_val = (
-            answers_dict.get('usted_realiza_actividad_fisica', '') or
-            answers_dict.get('actividad_fisica', '') or
-            answers_dict.get('af_camina', '') or
-            answers_dict.get('af_aerobicos', '')
-        )
-        actividad_fisica = 'si' in r_act_val.lower() or 'sí' in r_act_val.lower()
-        r_dep_val = answers_dict.get('af_deporte', '')
-        deporte = 'si' in r_dep_val.lower() or 'sí' in r_dep_val.lower()
+        r_act_val = _answer(answers_dict, 'usted_realiza_actividad_fisica', 'actividad_fisica', 'af_camina', 'af_aerobicos')
+        actividad_fisica = _affirmative(r_act_val)
+        r_dep_val = _answer(answers_dict, 'af_deporte')
+        deporte = _affirmative(r_dep_val)
 
         # Hígado Graso
         r_hg_val = (
@@ -398,27 +429,35 @@ def get_dashboard_evaluation_data():
         # BLOQUE 4: FACTORES EMERGENTES
         # -------------------------------------------------------------
         # Sueño
-        r_sue_cal = answers_dict.get('calidad_sueno', '') or answers_dict.get('sueno_calidad', '')
-        if 'buena' in r_sue_cal.lower():
+        r_sue_cal = _answer(answers_dict, 'calidad_sueno', 'sueno_calidad')
+        if r_sue_cal is None:
+            calidad_sueno = 'Sin dato'
+        elif 'buena' in r_sue_cal.lower():
             calidad_sueno = 'Buena'
         elif 'mala' in r_sue_cal.lower():
             calidad_sueno = 'Mala'
         else:
             calidad_sueno = 'Normal'
 
-        r_sue_cant = answers_dict.get('cantidad_sueno', '') or answers_dict.get('sueno_cantidad', '')
-        if 'buena' in r_sue_cant.lower():
+        r_sue_cant = _answer(answers_dict, 'cantidad_sueno', 'sueno_cantidad')
+        if r_sue_cant is None:
+            cantidad_sueno = 'Sin dato'
+        elif 'buena' in r_sue_cant.lower():
             cantidad_sueno = 'Adecuada (7-8 h)'
         elif 'mala' in r_sue_cant.lower():
             cantidad_sueno = 'Insuficiente (<6 h)'
         else:
             cantidad_sueno = 'Normal'
 
-        apnea_sueno = 'si' in (answers_dict.get('apnea_sueno', '') or answers_dict.get('apnea', '')).lower()
+        apnea_sueno = _affirmative(_answer(answers_dict, 'r_apnea', 'apnea_sueno', 'apnea'))
 
         # Estrés
-        r_est_val = (answers_dict.get('estres', '') or answers_dict.get('em_estres_trab', '') or '').strip()
-        if not r_est_val or _es_negativo(r_est_val):
+        r_est_val = _answer(answers_dict, 'estres', 'em_estres_trab', 'em_estres_fam')
+        if r_est_val is None:
+            estres_desc = 'Sin dato'
+            estres_laboral = None
+            estres_familiar = None
+        elif _es_negativo(r_est_val):
             estres_desc = 'Sin estrés significativo'
             estres_laboral = False
             estres_familiar = False
@@ -485,20 +524,36 @@ def get_dashboard_evaluation_data():
         ant_fam_dlp = ant_padre_dlp or ant_madre_dlp
         ant_fam_cv_mayor = ant_padre_iam or ant_madre_iam or ant_padre_acv or ant_madre_acv or ant_cardiopatia_prematura or ant_muerte_subita
         ant_fam_cualquiera = ant_fam_hta or ant_fam_dm or ant_fam_dlp or ant_fam_cv_mayor
+        family_answered = _answer(
+            answers_dict, 'antecedentes_padres', 'antecedentes_madres',
+            'ant_padre_hta', 'ant_padre_dm', 'ant_padre_dislip', 'ant_padre_iam',
+            'ant_padre_ictus', 'ant_madre_hta', 'ant_madre_dm',
+            'ant_madre_dislip', 'ant_madre_iam', 'ant_madre_ictus',
+            'af_cardiopatia_prematura', 'af_muerte_subita',
+        )
+        if family_answered is None:
+            ant_padre_hta = ant_padre_dm = ant_padre_dlp = ant_padre_iam = ant_padre_acv = None
+            ant_madre_hta = ant_madre_dm = ant_madre_dlp = ant_madre_iam = ant_madre_acv = None
+            ant_cardiopatia_prematura = ant_muerte_subita = None
+            ant_fam_hta = ant_fam_dm = ant_fam_dlp = ant_fam_cv_mayor = ant_fam_cualquiera = None
 
         # -------------------------------------------------------------
         # BLOQUE 6: HISTORIA CLÍNICA NO CARDIOVASCULAR
         # -------------------------------------------------------------
         # Respiratorio (Asma / EPOC)
         resp_raw = (answers_dict.get('problemas_respiratorios', '') or answers_dict.get('nc_asma', '') or answers_dict.get('nc_epoc', '') or '').strip()
-        if _es_negativo(resp_raw):
+        if not resp_raw:
+            asma = epoc = None
+        elif _es_negativo(resp_raw):
             asma = False
             epoc = False
         else:
             asma = 'asma' in resp_raw.lower()
             epoc = 'epoc' in resp_raw.lower()
 
-        if asma and epoc:
+        if asma is None:
+            respiratorio_desc = 'Sin dato'
+        elif asma and epoc:
             respiratorio_desc = 'Asma y EPOC'
         elif asma:
             respiratorio_desc = 'Asma bronquial'
@@ -509,7 +564,10 @@ def get_dashboard_evaluation_data():
 
         # Salud Mental (Ansiedad / Depresión)
         mental_raw = (answers_dict.get('salud_mental', '') or answers_dict.get('nc_depresion', '') or answers_dict.get('nc_ansiedad', '') or '').strip()
-        if _es_negativo(mental_raw):
+        if not mental_raw:
+            salud_mental_desc = 'Sin dato'
+            ansiedad = depresion = None
+        elif _es_negativo(mental_raw):
             salud_mental_desc = 'Sin trastorno diagnosticado'
             ansiedad = False
             depresion = False
@@ -534,13 +592,13 @@ def get_dashboard_evaluation_data():
 
         # Reumatología / Cáncer / Alergias / Insuficiencia Renal
         reuma_raw = (answers_dict.get('enfermedad_reumatologicas', '') or answers_dict.get('nc_reuma', '') or '').strip()
-        enfermedad_reumatologica = not _es_negativo(reuma_raw) and ('tiene' in reuma_raw.lower() or 'si' in reuma_raw.lower() or 'sí' in reuma_raw.lower())
+        enfermedad_reumatologica = (not _es_negativo(reuma_raw) and ('tiene' in reuma_raw.lower() or 'si' in reuma_raw.lower() or 'sí' in reuma_raw.lower())) if reuma_raw else None
 
         cancer_raw = (answers_dict.get('historia_cancer', '') or answers_dict.get('nc_cancer', '') or '').strip()
-        cancer = not _es_negativo(cancer_raw) and ('tiene' in cancer_raw.lower() or 'si' in cancer_raw.lower() or 'sí' in cancer_raw.lower())
+        cancer = (not _es_negativo(cancer_raw) and ('tiene' in cancer_raw.lower() or 'si' in cancer_raw.lower() or 'sí' in cancer_raw.lower())) if cancer_raw else None
 
         alergia_raw = (answers_dict.get('alergias', '') or answers_dict.get('nc_alergia', '') or '').strip()
-        alergias_medicamentos = not _es_negativo(alergia_raw) and ('tiene' in alergia_raw.lower() or 'si' in alergia_raw.lower() or 'sí' in alergia_raw.lower())
+        alergias_medicamentos = (not _es_negativo(alergia_raw) and ('tiene' in alergia_raw.lower() or 'si' in alergia_raw.lower() or 'sí' in alergia_raw.lower())) if alergia_raw else None
 
         irc_raw = (answers_dict.get('r_irc', '') or answers_dict.get('irc', '') or '').strip()
         insuficiencia_renal = not _es_negativo(irc_raw) and ('tiene' in irc_raw.lower() or 'si' in irc_raw.lower() or 'sí' in irc_raw.lower())
@@ -591,12 +649,12 @@ def get_dashboard_evaluation_data():
         # BLOQUE 8: RESULTADOS DEL ELECTROCARDIOGRAMA (ECG)
         # -------------------------------------------------------------
         ecg = getattr(v, 'electrocardiogram', None)
-        ecg_ritmo = ecg.rhythm.name if (ecg and ecg.rhythm) else 'Ritmo Sinusal (RS)'
-        ecg_es_sinusal = bool('sinusal' in ecg_ritmo.lower())
-        ecg_arritmia = bool(ecg and not ecg_es_sinusal)
+        ecg_ritmo = ecg.rhythm.name if (ecg and ecg.rhythm) else 'Sin ECG'
+        ecg_es_sinusal = ('sinusal' in ecg_ritmo.lower()) if ecg else None
+        ecg_arritmia = (not ecg_es_sinusal) if ecg_es_sinusal is not None else None
         arritmias = ecg_arritmia
 
-        ecg_fc = int(ecg.heart_rate) if (ecg and ecg.heart_rate) else fc
+        ecg_fc = int(ecg.heart_rate) if (ecg and ecg.heart_rate) else None
         ecg_pr_ms = int(ecg.pr_interval_ms) if (ecg and ecg.pr_interval_ms) else None
         if ecg_pr_ms is not None:
             if ecg_pr_ms < 120:
@@ -628,13 +686,13 @@ def get_dashboard_evaluation_data():
             ecg_qtc_cat = 'No medido'
 
         ecg_eje_grados = int(ecg.qrs_axis_degrees) if (ecg and ecg.qrs_axis_degrees is not None) else None
-        ecg_hvi = bool(ecg and ecg.left_ventricular_hypertrophy)
+        ecg_hvi = bool(ecg.left_ventricular_hypertrophy) if ecg else None
         bbb_raw = str(ecg.bundle_branch_block).strip().upper() if (ecg and ecg.bundle_branch_block) else ''
         if not bbb_raw or bbb_raw in ('NINGUNA', 'NINGUNO', 'NO', 'SIN BLOQUEO', 'NORMAL'):
             ecg_bloqueo_rama = 'Sin bloqueo'
         else:
             ecg_bloqueo_rama = str(ecg.bundle_branch_block).strip()
-        ecg_repolarizacion = bool(ecg and ecg.repolarization_abnormalities)
+        ecg_repolarizacion = bool(ecg.repolarization_abnormalities) if ecg else None
 
         # -------------------------------------------------------------
         # COMPILACIÓN DEL REGISTRO EVALUADO
@@ -800,14 +858,14 @@ def get_dashboard_evaluation_data():
     postgrado_cnt = sum(1 for r in records if r['nivel_estudios'] == 'Postgrado')
     casados_cnt = sum(1 for r in records if r['estado_civil'] == 'Casado/a')
 
-    valid_imc = [r['imc'] for r in records if r['imc'] > 0]
+    valid_imc = [r['imc'] for r in records if r['imc'] is not None and r['imc'] > 0]
     imc_medio = f"{(sum(valid_imc) / len(valid_imc)):.1f}".replace('.', ',') if valid_imc else "0,0"
     cintura_riesgo_cnt = sum(1 for r in records if 'Riesgo' in r['abd_riesgo'])
-    valid_tas = [r['tas'] for r in records if r['tas'] > 0]
+    valid_tas = [r['tas'] for r in records if r['tas'] is not None and r['tas'] > 0]
     tas_media = f"{(sum(valid_tas) / len(valid_tas)):.0f}" if valid_tas else "0"
-    valid_tad = [r['tad'] for r in records if r['tad'] > 0]
+    valid_tad = [r['tad'] for r in records if r['tad'] is not None and r['tad'] > 0]
     tad_media = f"{(sum(valid_tad) / len(valid_tad)):.0f}" if valid_tad else "0"
-    valid_sato2 = [r['sat_o2'] for r in records if r['sat_o2'] > 0]
+    valid_sato2 = [r['sat_o2'] for r in records if r['sat_o2'] is not None and r['sat_o2'] > 0]
     sato2_media = f"{(sum(valid_sato2) / len(valid_sato2)):.0f}" if valid_sato2 else "0"
 
     dm_cnt = sum(1 for r in records if r['diabetes'])

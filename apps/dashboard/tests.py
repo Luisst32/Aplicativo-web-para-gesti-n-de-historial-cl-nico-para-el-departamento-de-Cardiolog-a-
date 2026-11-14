@@ -152,6 +152,29 @@ class DashboardServicesAndViewsTestCase(TestCase):
         self.assertEqual(rec2['abd_riesgo'], 'Normal (<80)')
         self.assertEqual(rec2['riesgo_global'], 'Bajo (0 factores)')
 
+    def test_missing_measurements_and_answers_are_not_clinical_defaults(self):
+        """Absent source values remain absent instead of becoming normal findings."""
+        self.visit2.anthropometry.delete()
+        self.visit2.vital_signs.delete()
+        self.visit2.education_level = None
+        self.visit2.housing_type = None
+        self.visit2.save(update_fields=['education_level', 'housing_type'])
+
+        record = next(
+            row for row in services.get_dashboard_evaluation_data()['records']
+            if row['study_code'] == 'CUN-2026-002'
+        )
+
+        self.assertEqual(record['nivel_estudios'], 'Sin dato')
+        self.assertEqual(record['tipo_vivienda'], 'Sin dato')
+        self.assertIsNone(record['fc'])
+        self.assertIsNone(record['sat_o2'])
+        self.assertEqual(record['ecg_ritmo'], 'Sin ECG')
+        self.assertIsNone(record['actividad_fisica'])
+        self.assertEqual(record['tabaquismo'], 'Sin dato')
+        self.assertIsNone(record['imc'])
+        self.assertEqual(record['imc_cat'], 'Sin dato')
+
     def test_dashboard_index_view(self):
         """Verifies index template renders with real data and WITHOUT formula buttons."""
         response = self.client.get(reverse("dashboard:index"))
