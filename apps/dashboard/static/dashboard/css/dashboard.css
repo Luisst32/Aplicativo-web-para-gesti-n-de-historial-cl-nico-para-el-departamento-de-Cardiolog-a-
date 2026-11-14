@@ -406,6 +406,31 @@ body {
   line-height: 1.15;
 }
 
+.card-kpi .kpi-value.kpi-prevalence {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+.kpi-prevalence .kpi-case-count {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.kpi-prevalence .kpi-rate {
+  padding: 0.16rem 0.42rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.1;
+  opacity: 0.9;
+}
+
 /* BOTONES DE FÓRMULA / DESPLEGABLE (componen con .btn de base.css) */
 .formula-btn-pill {
   display: inline-flex;
