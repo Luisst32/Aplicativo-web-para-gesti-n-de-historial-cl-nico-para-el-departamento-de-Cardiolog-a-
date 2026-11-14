@@ -734,6 +734,16 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.ecg-anomalies-row,
+.ecg-frequency-row {
+  grid-template-columns: 1fr;
+}
+
+.ecg-anomalies-row .card-visual,
+.ecg-frequency-row .card-visual {
+  grid-column: 1 / -1;
+}
+
 .grid-row > .card-visual:has(#chart-mod-actividad-cat) {
   grid-column: 1 / -1;
 }
