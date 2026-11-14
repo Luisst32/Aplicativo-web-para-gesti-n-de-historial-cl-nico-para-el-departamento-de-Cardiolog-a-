@@ -81,5 +81,5 @@ comparten el mismo ámbito global y se cargan en el mismo orden lógico.
 | Archivo | Responsabilidad |
 | --- | --- |
 | `views.py` | Entrega datos agregados a la plantilla y API. |
-| `services.py` | Consulta ORM, normalización y cálculos de los registros del dashboard. |
+| `services.py` | Consulta ORM, normalización y cálculos; porcentajes sobre registros con dato, coincidentes con los KPI filtrados en JS. |
 | `urls.py` | Rutas del dashboard y de su API. |

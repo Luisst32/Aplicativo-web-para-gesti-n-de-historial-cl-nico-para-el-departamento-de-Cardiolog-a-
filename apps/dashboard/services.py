@@ -849,7 +849,9 @@ def get_dashboard_evaluation_data():
     sorted_institutions = sorted(list(available_institutions))
 
     n = len(records)
-    fmt_pct = lambda cnt: f"{(cnt / n * 100):.1f}".replace('.', ',') if n > 0 else "0,0"
+    def fmt_pct(cnt, field):
+        valid = sum(r[field] is not None and r[field] != 'Sin dato' for r in records)
+        return f"{(cnt / valid * 100):.1f}".replace('.', ',') if valid else 'Sin dato'
 
     # Resumen General KPIs
     hta_cnt = sum(1 for r in records if r['hipertension'])
@@ -859,10 +861,10 @@ def get_dashboard_evaluation_data():
 
     summary_kpis = {
         'total': n,
-        'hta_pct': fmt_pct(hta_cnt),
-        'dl_pct': fmt_pct(dl_cnt),
-        'sp_ob_pct': fmt_pct(sp_ob_cnt),
-        'riesgo_alto_pct': fmt_pct(riesgo_alto_cnt),
+        'hta_pct': fmt_pct(hta_cnt, 'hipertension'),
+        'dl_pct': fmt_pct(dl_cnt, 'dislipemia'),
+        'sp_ob_pct': fmt_pct(sp_ob_cnt, 'sobrepeso_u_obesidad'),
+        'riesgo_alto_pct': fmt_pct(riesgo_alto_cnt, 'factores_riesgo_count'),
     }
 
     # KPIs específicos precalculados para cada bloque temático
@@ -887,7 +889,7 @@ def get_dashboard_evaluation_data():
     act_fis_cnt = sum(1 for r in records if r['actividad_fisica'])
 
     sueno_malo_cnt = sum(1 for r in records if r['calidad_sueno'] == 'Mala')
-    estres_cnt = sum(1 for r in records if r['estres'] != 'Sin estrés significativo')
+    estres_cnt = sum(1 for r in records if r['estres'] not in (None, 'Sin dato', 'Sin estrés significativo'))
     mal_amb_cnt = sum(1 for r in records if r['mal_ambiente_laboral'])
     pers_a_cnt = sum(1 for r in records if r['personalidad_tipo_a'])
     toxicos_cnt = sum(1 for r in records if r['toxicos_laboral'])
@@ -897,8 +899,8 @@ def get_dashboard_evaluation_data():
     fam_dlp_cnt = sum(1 for r in records if r['ant_fam_dlp'])
     fam_cv_mayor_cnt = sum(1 for r in records if r['ant_fam_cv_mayor'])
 
-    resp_cnt = sum(1 for r in records if r['respiratorio_desc'] != 'Sin patología respiratoria')
-    mental_cnt = sum(1 for r in records if r['salud_mental_desc'] != 'Sin trastorno diagnosticado')
+    resp_cnt = sum(1 for r in records if r['respiratorio_desc'] not in (None, 'Sin dato', 'Sin patología respiratoria'))
+    mental_cnt = sum(1 for r in records if r['salud_mental_desc'] not in (None, 'Sin dato', 'Sin trastorno diagnosticado'))
     reuma_cnt = sum(1 for r in records if r['enfermedad_reumatologica'])
     alergias_cnt = sum(1 for r in records if r['alergias_medicamentos'])
 
@@ -919,53 +921,53 @@ def get_dashboard_evaluation_data():
     module_kpis = {
         'individuo': {
             'edad_media': edad_media,
-            'hombres_pct': fmt_pct(hombres_cnt),
-            'mujeres_pct': fmt_pct(mujeres_cnt),
-            'postgrado_pct': fmt_pct(postgrado_cnt),
-            'casados_pct': fmt_pct(casados_cnt),
+            'hombres_pct': fmt_pct(hombres_cnt, 'sexo'),
+            'mujeres_pct': fmt_pct(mujeres_cnt, 'sexo'),
+            'postgrado_pct': fmt_pct(postgrado_cnt, 'nivel_estudios'),
+            'casados_pct': fmt_pct(casados_cnt, 'estado_civil'),
         },
         'exploracion': {
             'imc_medio': imc_medio,
-            'cintura_riesgo_pct': fmt_pct(cintura_riesgo_cnt),
+            'cintura_riesgo_pct': fmt_pct(cintura_riesgo_cnt, 'abd_riesgo'),
             'tas_media': tas_media,
             'tad_media': tad_media,
             'sat_o2_media': sato2_media,
         },
         'modificables': {
-            'hta_pct': fmt_pct(hta_cnt),
-            'dm_pct': fmt_pct(dm_cnt),
-            'dl_pct': fmt_pct(dl_cnt),
-            'tabaco_pct': fmt_pct(tabaco_cnt),
-            'act_fisica_pct': fmt_pct(act_fis_cnt),
+            'hta_pct': fmt_pct(hta_cnt, 'hipertension'),
+            'dm_pct': fmt_pct(dm_cnt, 'diabetes'),
+            'dl_pct': fmt_pct(dl_cnt, 'dislipemia'),
+            'tabaco_pct': fmt_pct(tabaco_cnt, 'fumador_activo'),
+            'act_fisica_pct': fmt_pct(act_fis_cnt, 'actividad_fisica'),
         },
         'emergentes': {
-            'sueno_malo_pct': fmt_pct(sueno_malo_cnt),
-            'estres_pct': fmt_pct(estres_cnt),
-            'mal_ambiente_pct': fmt_pct(mal_amb_cnt),
-            'personalidad_a_pct': fmt_pct(pers_a_cnt),
-            'toxicos_pct': fmt_pct(toxicos_cnt),
+            'sueno_malo_pct': fmt_pct(sueno_malo_cnt, 'calidad_sueno'),
+            'estres_pct': fmt_pct(estres_cnt, 'estres'),
+            'mal_ambiente_pct': fmt_pct(mal_amb_cnt, 'mal_ambiente_laboral'),
+            'personalidad_a_pct': fmt_pct(pers_a_cnt, 'personalidad_tipo_a'),
+            'toxicos_pct': fmt_pct(toxicos_cnt, 'toxicos_laboral'),
         },
         'familiares': {
-            'fam_hta_pct': fmt_pct(fam_hta_cnt),
-            'fam_dm_pct': fmt_pct(fam_dm_cnt),
-            'fam_dlp_pct': fmt_pct(fam_dlp_cnt),
-            'fam_cv_mayor_pct': fmt_pct(fam_cv_mayor_cnt),
+            'fam_hta_pct': fmt_pct(fam_hta_cnt, 'ant_fam_hta'),
+            'fam_dm_pct': fmt_pct(fam_dm_cnt, 'ant_fam_dm'),
+            'fam_dlp_pct': fmt_pct(fam_dlp_cnt, 'ant_fam_dlp'),
+            'fam_cv_mayor_pct': fmt_pct(fam_cv_mayor_cnt, 'ant_fam_cv_mayor'),
         },
         'no_cardio': {
-            'respiratorio_pct': fmt_pct(resp_cnt),
-            'salud_mental_pct': fmt_pct(mental_cnt),
-            'reuma_pct': fmt_pct(reuma_cnt),
-            'alergias_pct': fmt_pct(alergias_cnt),
+            'respiratorio_pct': fmt_pct(resp_cnt, 'respiratorio_desc'),
+            'salud_mental_pct': fmt_pct(mental_cnt, 'salud_mental_desc'),
+            'reuma_pct': fmt_pct(reuma_cnt, 'enfermedad_reumatologica'),
+            'alergias_pct': fmt_pct(alergias_cnt, 'alergias_medicamentos'),
         },
         'covid': {
-            'covid_inf_pct': fmt_pct(covid_inf_cnt),
-            'covid_hosp_pct': fmt_pct(covid_hosp_cnt),
-            'covid_sec_pct': fmt_pct(covid_sec_cnt),
-            'covid_fatiga_pct': fmt_pct(covid_fatiga_cnt),
+            'covid_inf_pct': fmt_pct(covid_inf_cnt, 'covid_infeccion'),
+            'covid_hosp_pct': fmt_pct(covid_hosp_cnt, 'covid_hospitalizacion'),
+            'covid_sec_pct': fmt_pct(covid_sec_cnt, 'covid_tiene_secuelas'),
+            'covid_fatiga_pct': fmt_pct(covid_fatiga_cnt, 'covid_fatiga_long'),
         },
         'ecg': {
-            'sinusal_pct': fmt_pct(ecg_sinusal_cnt),
-            'arritmia_pct': fmt_pct(ecg_arritmia_cnt),
+            'sinusal_pct': fmt_pct(ecg_sinusal_cnt, 'ecg_es_sinusal'),
+            'arritmia_pct': fmt_pct(ecg_arritmia_cnt, 'ecg_arritmia'),
             'pr_medio': pr_medio,
             'qrs_medio': qrs_medio,
             'qtc_medio': qtc_medio,

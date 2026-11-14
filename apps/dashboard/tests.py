@@ -175,6 +175,15 @@ class DashboardServicesAndViewsTestCase(TestCase):
         self.assertIsNone(record['imc'])
         self.assertEqual(record['imc_cat'], 'Sin dato')
 
+    def test_prevalence_denominators_exclude_missing_laboratory(self):
+        Laboratory.objects.filter(visit=self.visit2).delete()
+        data = services.get_dashboard_evaluation_data()
+        self.assertEqual(data['summary_kpis']['dl_pct'], '100,0')
+        self.assertEqual(data['module_kpis']['modificables']['dl_pct'], '100,0')
+        self.assertEqual(data['module_kpis']['individuo']['hombres_pct'], '50,0')
+        self.assertEqual(data['module_kpis']['individuo']['mujeres_pct'], '50,0')
+        self.assertEqual(data['module_kpis']['no_cardio']['respiratorio_pct'], 'Sin dato')
+
     def test_dashboard_index_view(self):
         """Verifies index template renders with real data and WITHOUT formula buttons."""
         response = self.client.get(reverse("dashboard:index"))
