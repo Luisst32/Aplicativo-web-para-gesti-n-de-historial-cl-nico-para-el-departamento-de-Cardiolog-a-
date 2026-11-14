@@ -20,7 +20,7 @@ function renderTabFactoresModificables() {
       });
     } else {
       charts.modControl = new ApexCharts(elControl, {
-        chart: { type: 'bar', height: 380, toolbar: { show: false }, animations: { enabled: false } },
+        chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.emergencyRed],
         plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 4 } },
@@ -102,7 +102,7 @@ function renderTabFactoresModificables() {
       });
     } else {
       charts.modActCat = new ApexCharts(elActCat, {
-        chart: { type: 'bar', height: 380, toolbar: { show: false }, stacked: true, animations: { enabled: false } },
+        chart: { type: 'bar', height: 320, toolbar: { show: false }, stacked: true, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.emergencyRed],
         plotOptions: { bar: { horizontal: false, borderRadius: 4 } },
@@ -164,7 +164,7 @@ function renderTabFactoresModificables() {
   });
   const elMandatory = document.getElementById('chart-mod-obligatorios');
   if (elMandatory) {
-    const options = { chart: { type: 'bar', height: 380, toolbar: { show: false } }, series: [{ name: 'Casos', data: mandatoryCounts }], xaxis: { categories: mandatoryLabels }, legend: { show: false }, dataLabels: apexCountAndPctDataLabel() };
+    const options = { chart: { type: 'bar', height: 320, toolbar: { show: false } }, series: [{ name: 'Casos', data: mandatoryCounts }], xaxis: { categories: mandatoryLabels }, legend: { show: false }, dataLabels: apexCountAndPctDataLabel() };
     if (charts.modMandatory) charts.modMandatory.updateOptions(options);
     else { charts.modMandatory = new ApexCharts(elMandatory, options); charts.modMandatory.render(); }
   }
@@ -177,7 +177,7 @@ function renderTabFactoresModificables() {
   });
   const elVascular = document.getElementById('chart-mod-vasculopatia');
   if (elVascular) {
-    const options = { chart: { type: 'bar', height: 380, toolbar: { show: false } }, series: [{ name: 'Casos', data: vascularCounts }], xaxis: { categories: vascularLabels }, legend: { show: false }, dataLabels: apexCountAndPctDataLabel() };
+    const options = { chart: { type: 'bar', height: 320, toolbar: { show: false } }, series: [{ name: 'Casos', data: vascularCounts }], xaxis: { categories: vascularLabels }, legend: { show: false }, dataLabels: apexCountAndPctDataLabel() };
     if (charts.modVascular) charts.modVascular.updateOptions(options);
     else { charts.modVascular = new ApexCharts(elVascular, options); charts.modVascular.render(); }
   }

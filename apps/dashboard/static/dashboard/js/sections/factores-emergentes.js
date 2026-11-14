@@ -13,7 +13,7 @@ function renderTabFactoresEmergentes() {
       });
     } else {
       charts.emSueno = new ApexCharts(elSueno, {
-        chart: { type: 'bar', height: 380, toolbar: { show: false }, animations: { enabled: false } },
+        chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.emergencyRed, PALETTE.primaryBlue, PALETTE.yellow],
         plotOptions: { bar: { distributed: true, borderRadius: 5 } },
@@ -112,7 +112,7 @@ function renderTabFactoresEmergentes() {
       });
     } else {
       charts.emHorm = new ApexCharts(elHorm, {
-        chart: { type: 'bar', height: 380, toolbar: { show: false }, animations: { enabled: false } },
+        chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.yellow, PALETTE.purple, PALETTE.emergencyRed, PALETTE.teal],
         plotOptions: { bar: { distributed: true, borderRadius: 5 } },

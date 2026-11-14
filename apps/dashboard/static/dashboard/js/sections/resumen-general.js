@@ -18,7 +18,7 @@ function renderTabResumenGeneral() {
       });
     } else {
       charts.tendencia = new ApexCharts(elTendencia, {
-        chart: { type: 'area', height: 380, toolbar: { show: false } },
+        chart: { type: 'area', height: 320, toolbar: { show: false } },
         colors: [PALETTE.primaryBlue],
         stroke: { curve: 'smooth', width: 3 },
         fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05 } },
@@ -55,7 +55,7 @@ function renderTabResumenGeneral() {
       });
     } else {
       charts.factores = new ApexCharts(elFactores, {
-        chart: { type: 'bar', height: 380, toolbar: { show: false }, animations: { enabled: false } },
+        chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         plotOptions: { bar: { horizontal: true, distributed: true, borderRadius: 4 } },
         colors: [PALETTE.emergencyRed, PALETTE.yellow, PALETTE.yellow, PALETTE.primaryBlue, PALETTE.green, PALETTE.purple],

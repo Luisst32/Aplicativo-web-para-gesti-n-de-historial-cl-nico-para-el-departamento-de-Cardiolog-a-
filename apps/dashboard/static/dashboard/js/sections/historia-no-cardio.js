@@ -18,7 +18,7 @@ function renderTabHistoriaNoCardio() {
       });
     } else {
       charts.ncComorb = new ApexCharts(elComorb, {
-        chart: { type: 'bar', height: 380, toolbar: { show: false }, animations: { enabled: false } },
+        chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         plotOptions: { bar: { horizontal: true, distributed: true, borderRadius: 4 } },
         colors: [PALETTE.yellow, PALETTE.purple, PALETTE.teal, PALETTE.primaryBlue, PALETTE.emergencyRed, PALETTE.navy],
@@ -116,7 +116,7 @@ function renderTabHistoriaNoCardio() {
       });
     } else {
       charts.ncReuma = new ApexCharts(elReuma, {
-        chart: { type: 'bar', height: 380, toolbar: { show: false }, animations: { enabled: false } },
+        chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.purple, PALETTE.teal],
         plotOptions: { bar: { distributed: true, borderRadius: 5 } },

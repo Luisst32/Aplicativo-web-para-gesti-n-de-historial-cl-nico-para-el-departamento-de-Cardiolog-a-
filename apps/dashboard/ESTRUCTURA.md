@@ -73,7 +73,7 @@ comparten el mismo ámbito global y se cargan en el mismo orden lógico.
 
 | Archivo | Responsabilidad |
 | --- | --- |
-| `static/dashboard/css/dashboard.css` | Tarjetas KPI compactas con subtítulo; rejillas de gráficas adaptables (una o dos columnas según ancho disponible), contenedores de 380 px y separación uniforme. |
+| `static/dashboard/css/dashboard.css` | Tarjetas KPI con subtítulo; mosaico de gráficas con proporciones alternadas 7/5 y 5/7, altura de 320 px, dos columnas en escritorio/tablet y una en móvil (≤700 px). |
 | `static/dashboard/css/questionnaire.css` | Estilos del dashboard del cuestionario; no modificado durante la separación. |
 
 ## Datos y servidor

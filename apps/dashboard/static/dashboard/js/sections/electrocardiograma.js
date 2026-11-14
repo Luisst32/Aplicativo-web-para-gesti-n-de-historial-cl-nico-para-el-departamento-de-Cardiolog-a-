@@ -11,7 +11,7 @@ function renderTabElectrocardiograma() {
       });
     } else {
       charts.ecgRitmo = new ApexCharts(elRitmo, {
-        chart: { type: 'donut', height: 380, animations: { enabled: false } },
+        chart: { type: 'donut', height: 320, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.emergencyRed],
         labels: ['Ritmo Sinusal (Normal)', 'Arritmias / Otros Ritmos'],
@@ -108,7 +108,7 @@ function renderTabElectrocardiograma() {
       });
     } else {
       charts.ecgAnom = new ApexCharts(elAnom, {
-        chart: { type: 'bar', height: 380, toolbar: { show: false }, animations: { enabled: false } },
+        chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.yellow, PALETTE.emergencyRed, PALETTE.purple],
         plotOptions: {
