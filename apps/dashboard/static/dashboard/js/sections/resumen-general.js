@@ -110,11 +110,20 @@ function renderTabResumenGeneral() {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          cutout: '72%',
+          cutout: '52%',
           layout: { padding: 12 },
           plugins: {
             legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 10, padding: 18, color: '#0f172a', font: { size: 12, weight: '600' } } },
-            datalabels: { ...chartJsDonutDataLabels(), color: '#0f172a', font: { size: 12, weight: 'bold' } }
+            datalabels: {
+              ...chartJsDonutDataLabels(),
+              color: '#ffffff',
+              anchor: 'center', align: 'center', textAlign: 'center',
+              font: { size: 12, weight: 'bold' },
+              formatter: (val, ctx) => {
+                const total = ctx.dataset.data.reduce((sum, value) => sum + value, 0);
+                return [String(val), `${formatPct(val, total)} %`];
+              }
+            }
           }
         }
       });
@@ -138,8 +147,8 @@ function renderTabResumenGeneral() {
         data: {
           labels: ['Bajo (0)', 'Moderado (1)', 'Alto (2-3)', 'Muy Alto (4+)'],
           datasets: [
-            { label: 'Hombres', data: hRiesgo, backgroundColor: PALETTE.primaryBlue, maxBarThickness: 48, borderRadius: 4 },
-            { label: 'Mujeres', data: mRiesgo, backgroundColor: PALETTE.purple, maxBarThickness: 48, borderRadius: 4 }
+            { label: 'Hombres', data: hRiesgo, backgroundColor: PALETTE.primaryBlue, maxBarThickness: 76, categoryPercentage: 0.8, barPercentage: 0.9, borderRadius: 4 },
+            { label: 'Mujeres', data: mRiesgo, backgroundColor: PALETTE.purple, maxBarThickness: 76, categoryPercentage: 0.8, barPercentage: 0.9, borderRadius: 4 }
           ]
         },
         options: {
@@ -162,7 +171,9 @@ function renderTabResumenGeneral() {
             legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, boxWidth: 10, color: '#0f172a', font: { size: 13, weight: '600' } } },
             datalabels: {
               display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
-              color: '#0f172a',
+              color: '#ffffff',
+              anchor: 'center',
+              align: 'center',
               backgroundColor: 'transparent',
               borderRadius: 0,
               padding: { top: 1, bottom: 1, left: 2, right: 2 },

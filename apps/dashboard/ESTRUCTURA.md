@@ -73,7 +73,7 @@ comparten el mismo ámbito global y se cargan en el mismo orden lógico.
 
 | Alcance visual | Tratamiento |
 | --- | --- |
-| Solo Resumen General | Tarjetas con sombra suave, área tenue, barras estrechas y leyendas oscuras seminegritas de 12–13 px; etiquetas oscuras sin contorno. Configuración propia en `sections/resumen-general.js`. |
+| Solo Resumen General | Tarjetas con sombra suave y leyendas oscuras seminegritas; dona de personal y barras de género más gruesas con valores blancos centrados, sin contorno. Configuración propia en `sections/resumen-general.js`. |
 
 | Archivo | Responsabilidad |
 | --- | --- |
