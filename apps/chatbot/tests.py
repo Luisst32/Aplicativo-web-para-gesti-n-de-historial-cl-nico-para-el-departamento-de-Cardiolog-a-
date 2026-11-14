@@ -158,7 +158,7 @@ class ChatbotSecurityAndPrivacyTests(TestCase):
         with patch('security.models.SystemSetting.is_chatbot_enabled', return_value=True):
             response = query_gemini_assistant('cuantos pacientes hay con depresion', user=self.user)
 
-        self.assertEqual(response['mode'], 'deterministic_cohort_metric')
+        self.assertEqual(response['mode'], 'deterministic_fallback')
         self.assertIn('6 casos', response['response'])
         self.assertNotIn('no divulgado', response['response'].lower())
 

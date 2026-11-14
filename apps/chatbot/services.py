@@ -865,35 +865,13 @@ def query_gemini_assistant(
             "execution_time_ms": elapsed_ms
         }
 
-    # Depression and anxiety already have exact, privacy-protected aggregate
-    # calculations.  Gemini previously received no such fields in its reduced
-    # context and could incorrectly call a recorded variable unavailable.
+    # Local aggregates are verified context for Gemini, not a replacement for
+    # the conversation.  The model never receives individual records.
+    verified_metric = None
     if is_direct_cohort_metric_question(clean_question):
-        direct_answer = generate_fallback_clinical_answer(clean_question)
-        elapsed_ms = int((time.time() - start_time) * 1000)
-        _log_bot_query(user, clean_question, direct_answer, tokens=0, execution_ms=elapsed_ms, status=BotQuery.Status.SUCCESS)
-        return {
-            "status": "success",
-            "response": direct_answer,
-            "tokens_used": 0,
-            "execution_time_ms": elapsed_ms,
-            "mode": "deterministic_cohort_metric",
-        }
-
-    # Resolve any catalogued, non-sensitive questionnaire variable from the
-    # database first.  This is deliberately local: the external provider never
-    # receives individual answers or a field that the catalog marks as free text.
-    live_metric = get_live_questionnaire_metric(clean_question)
-    if live_metric:
-        elapsed_ms = int((time.time() - start_time) * 1000)
-        _log_bot_query(user, clean_question, live_metric, tokens=0, execution_ms=elapsed_ms, status=BotQuery.Status.SUCCESS)
-        return {
-            "status": "success",
-            "response": live_metric,
-            "tokens_used": 0,
-            "execution_time_ms": elapsed_ms,
-            "mode": "live_questionnaire_metric",
-        }
+        verified_metric = generate_fallback_clinical_answer(clean_question)
+    else:
+        verified_metric = get_live_questionnaire_metric(clean_question)
 
     # 3. Runtime credentials come only from administrator-managed settings.
     # No environment fallback may override role, provider or enabled switches.
@@ -924,7 +902,7 @@ def query_gemini_assistant(
     model_name = db_model.strip()
 
     if not api_key:
-        fallback_answer = generate_fallback_clinical_answer(clean_question)
+        fallback_answer = verified_metric or generate_fallback_clinical_answer(clean_question)
         if not config_available:
             note = "\n\n> ⚠️ *(No se pudo verificar la configuración del proveedor. Mostrando análisis estadístico local)*"
         elif active_provider != 'gemini':
@@ -952,9 +930,16 @@ def query_gemini_assistant(
         from google.genai import types
 
         cohort_context = get_anonymized_cohort_context()
+        verified_context = re.sub(
+            r'```json_chart\s*\{.*?\}\s*```', '', verified_metric or '', flags=re.DOTALL
+        ).strip()
         client = genai.Client(api_key=api_key)
 
-        prompt = f"{cohort_context}\n\nPREGUNTA:\n{clean_question}\n\nRESPONDE DIRECTO AL GRANO:"
+        prompt = (
+            f"{cohort_context}\n\nDATOS VERIFICADOS EN TIEMPO REAL:\n"
+            f"{verified_context or 'No hay una métrica específica; responde solo con el contexto disponible.'}"
+            f"\n\nPREGUNTA:\n{clean_question}\n\nRESPONDE DIRECTO AL GRANO:"
+        )
 
         # Probar con el modelo configurado o fallback a modelos flash estándar de Google
         models_to_try = [model_name, 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest']
@@ -990,7 +975,8 @@ def query_gemini_assistant(
         else:
             response_text = response.text
 
-        chart_block = build_chart_json_if_requested(clean_question, raw_response=response_text)
+        local_chart_match = re.search(r'```json_chart\s*\{.*?\}\s*```', verified_metric or '', flags=re.DOTALL)
+        chart_block = local_chart_match.group(0) if local_chart_match else build_chart_json_if_requested(clean_question, raw_response=response_text)
         if chart_block:
             if '```json_chart' in response_text:
                 response_text = re.sub(r'```json_chart\s*\{.*?\}\s*```', '', response_text, flags=re.DOTALL).strip()
@@ -1012,7 +998,7 @@ def query_gemini_assistant(
     except Exception as e:
         err_msg = str(e)
         logger.error("Chatbot operation failed; content omitted.")
-        fallback_answer = generate_fallback_clinical_answer(clean_question)
+        fallback_answer = verified_metric or generate_fallback_clinical_answer(clean_question)
 
         # Notificación clara del estado de la API sin engañar al usuario
         if 'DEADLINE_EXCEEDED' in err_msg or 'deadline expired' in err_msg.lower() or 'timed out' in err_msg.lower():
