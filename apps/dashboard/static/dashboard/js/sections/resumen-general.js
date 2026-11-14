@@ -114,7 +114,7 @@ function renderTabResumenGeneral() {
           layout: { padding: 12 },
           plugins: {
             legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 10, padding: 18, color: '#0f172a', font: { size: 12, weight: '600' } } },
-            datalabels: { ...chartJsDonutDataLabels(), color: '#0f172a', font: { size: 12, weight: 'bold' }, textStrokeColor: '#ffffff', textStrokeWidth: 3 }
+            datalabels: { ...chartJsDonutDataLabels(), color: '#0f172a', font: { size: 12, weight: 'bold' } }
           }
         }
       });
@@ -163,8 +163,6 @@ function renderTabResumenGeneral() {
             datalabels: {
               display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
               color: '#0f172a',
-              textStrokeColor: '#ffffff',
-              textStrokeWidth: 3,
               backgroundColor: 'transparent',
               borderRadius: 0,
               padding: { top: 1, bottom: 1, left: 2, right: 2 },
