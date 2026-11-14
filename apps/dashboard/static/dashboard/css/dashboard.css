@@ -734,6 +734,10 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.grid-row > .card-visual:has(#chart-mod-actividad-cat) {
+  grid-column: 1 / -1;
+}
+
 .tab-view > .grid-2-cols:nth-child(odd) {
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
 }
