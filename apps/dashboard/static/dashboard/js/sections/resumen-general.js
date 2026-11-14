@@ -17,7 +17,7 @@ function renderTabResumenGeneral() {
         series: [{ name: 'Evaluados', data: yearData }]
       });
     } else {
-      charts.tendencia = new ApexCharts(elTendencia, {
+      charts.tendencia = createDashboardApexChart(elTendencia, {
         chart: { type: 'area', height: 320, toolbar: { show: false }, fontFamily: 'inherit', foreColor: '#1e293b', fontSize: '12px' },
         grid: { borderColor: '#e8eef5', strokeDashArray: 4 },
         markers: { size: 4, strokeWidth: 3, strokeColors: '#ffffff', hover: { size: 6 } },
@@ -58,7 +58,7 @@ function renderTabResumenGeneral() {
         series: [{ name: 'Prevalencia (%)', data: fData }]
       });
     } else {
-      charts.factores = new ApexCharts(elFactores, {
+      charts.factores = createDashboardApexChart(elFactores, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false }, fontFamily: 'inherit', foreColor: '#1e293b', fontSize: '12px' },
         grid: { borderColor: '#e8eef5', strokeDashArray: 4, padding: { right: 16 } },
         fill: { type: 'solid', opacity: 1 },
@@ -101,7 +101,7 @@ function renderTabResumenGeneral() {
       charts.categoria.data.datasets[0].data = catVals;
       charts.categoria.update();
     } else {
-      charts.categoria = new Chart(ctxCat, {
+      charts.categoria = createDashboardChart(ctxCat, {
         type: 'doughnut',
         data: {
           labels: catLegendLabels,
@@ -146,7 +146,7 @@ function renderTabResumenGeneral() {
       charts.genero.data.datasets[1].data = mRiesgo;
       charts.genero.update();
     } else {
-      charts.genero = new Chart(ctxGen, {
+      charts.genero = createDashboardChart(ctxGen, {
         type: 'bar',
         data: {
           labels: ['Bajo (0)', 'Moderado (1)', 'Alto (2-3)', 'Muy Alto (4+)'],

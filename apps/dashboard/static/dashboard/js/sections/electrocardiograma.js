@@ -10,7 +10,7 @@ function renderTabElectrocardiograma() {
         series: [sinusalCnt, arritmiaCnt]
       });
     } else {
-      charts.ecgRitmo = new ApexCharts(elRitmo, {
+      charts.ecgRitmo = createDashboardApexChart(elRitmo, {
         chart: { type: 'donut', height: 320, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.emergencyRed],
@@ -23,10 +23,11 @@ function renderTabElectrocardiograma() {
             const cnt = opt.seriesIndex === 0 ? sinusalCnt : arritmiaCnt;
             return `${cnt} (${val.toFixed(1)}%)`;
           },
-          style: { fontSize: '11px', fontWeight: 'bold', colors: ['#000000'] },
+          style: { fontSize: '11px', fontWeight: 'bold', colors: ['#ffffff'] },
           background: {
             enabled: false
-          }
+          },
+          dropShadow: { enabled: true, top: 1, left: 0, blur: 1, color: '#0f172a', opacity: 0.45 }
         },
         tooltip: apexCountTooltip()
       });
@@ -49,7 +50,7 @@ function renderTabElectrocardiograma() {
       charts.ecgInterv.data.datasets[1].data = [prBloq, qrsBloq, qtcProl];
       charts.ecgInterv.update();
     } else {
-      charts.ecgInterv = new Chart(ctxInterv, {
+      charts.ecgInterv = createDashboardChart(ctxInterv, {
         type: 'bar',
         data: {
           labels: ['Intervalo PR', 'Duración QRS', 'Intervalo QTc Bazett'],
@@ -75,7 +76,9 @@ function renderTabElectrocardiograma() {
             legend: { position: 'bottom' },
             datalabels: {
               display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
-              color: '#000000',
+              color: '#ffffff',
+              anchor: 'center',
+              align: 'center',
               backgroundColor: 'transparent',
               borderRadius: 0,
               padding: { top: 1, bottom: 1, left: 2, right: 2 },
@@ -107,24 +110,24 @@ function renderTabElectrocardiograma() {
         series: [{ name: 'Casos', data: [sinAnom, brCnt, hviCnt, repolCnt] }]
       });
     } else {
-      charts.ecgAnom = new ApexCharts(elAnom, {
+      charts.ecgAnom = createDashboardApexChart(elAnom, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.yellow, PALETTE.emergencyRed, PALETTE.purple],
         plotOptions: {
           bar: {
+            horizontal: true,
+            barHeight: '78%',
             distributed: true,
-            borderRadius: 5,
-            dataLabels: { position: 'top' }
+            borderRadius: 6,
+            dataLabels: { position: 'center' },
+            colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 }
           }
         },
         series: [{ name: 'Casos', data: [sinAnom, brCnt, hviCnt, repolCnt] }],
         xaxis: { categories: ['ECG Morfológicamente Normal', 'Bloqueo de Rama', 'Hipertrofia Ventricular (HVI)', 'Alteraciones Repolarización'] },
-        yaxis: {
-          max: (maxVal) => Math.ceil(maxVal * 1.25)
-        },
         legend: { show: false },
-        dataLabels: apexCountAndPctDataLabel(null, { offsetY: -20 }),
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.ecgAnom.render();
@@ -141,7 +144,7 @@ function renderTabElectrocardiograma() {
       charts.ecgFc.data.datasets[0].data = [fcEcgMedia, fcClinicaMedia];
       charts.ecgFc.update();
     } else {
-      charts.ecgFc = new Chart(ctxFc, {
+      charts.ecgFc = createDashboardChart(ctxFc, {
         type: 'bar',
         data: {
           labels: ['FC por Trazado ECG', 'FC por Auscultación / Pulso'],
@@ -155,10 +158,10 @@ function renderTabElectrocardiograma() {
             legend: { display: false },
             datalabels: {
               display: true,
-              anchor: 'end',
-              align: 'top',
+              anchor: 'center',
+              align: 'center',
               font: { weight: 'bold', size: 10.5 },
-              color: '#000000',
+              color: '#ffffff',
               backgroundColor: 'transparent',
               borderRadius: 0,
               padding: { top: 1, bottom: 1, left: 2, right: 2 },

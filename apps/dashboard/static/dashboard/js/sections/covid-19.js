@@ -11,24 +11,23 @@ function renderTabCovid19() {
         series: [{ name: 'Casos', data: [sinHosp, conHosp, noCovid] }]
       });
     } else {
-      charts.covHist = new ApexCharts(elHist, {
+      charts.covHist = createDashboardApexChart(elHist, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.yellow, PALETTE.emergencyRed, PALETTE.green],
         plotOptions: {
           bar: {
+            horizontal: true,
+            barHeight: '78%',
             distributed: true,
-            borderRadius: 5,
-            dataLabels: { position: 'top' }
+            borderRadius: 6,
+            dataLabels: { position: 'center' }
           }
         },
         series: [{ name: 'Casos', data: [sinHosp, conHosp, noCovid] }],
         xaxis: { categories: ['Infección Leve (Sin Hospitalización)', 'Requirió Hospitalización', 'No ha presentado COVID'] },
-        yaxis: {
-          max: (maxVal) => Math.ceil(maxVal * 1.25)
-        },
         legend: { show: false },
-        dataLabels: apexCountAndPctDataLabel(null, { offsetY: -20 }),
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.covHist.render();
@@ -48,7 +47,7 @@ function renderTabCovid19() {
       charts.covSec.data.datasets[0].data = [secCardio, secResp, secFatiga, secNiebla, sinSecuelas];
       charts.covSec.update();
     } else {
-      charts.covSec = new Chart(ctxSec, {
+      charts.covSec = createDashboardChart(ctxSec, {
         type: 'bar',
         data: {
           labels: ['Secuelas Cardiovasculares', 'Secuelas Respiratorias', 'Fatiga Crónica / Long-COVID', 'Niebla Mental', 'Recuperación Asintomática'],
@@ -90,11 +89,11 @@ function renderTabCovid19() {
         ]
       });
     } else {
-      charts.covCat = new ApexCharts(elPorCat, {
+      charts.covCat = createDashboardApexChart(elPorCat, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.primaryBlue, PALETTE.emergencyRed],
-        plotOptions: { bar: { horizontal: true, barHeight: '65%', borderRadius: 4 } },
+        plotOptions: { bar: { horizontal: true, barHeight: '78%', borderRadius: 6, dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
         series: [
           { name: 'Infectados COVID', data: covPorCat },
           { name: 'Hospitalizados', data: hospPorCat }
@@ -125,7 +124,7 @@ function renderTabCovid19() {
       charts.covGen.data.datasets[0].data = [covH, covM];
       charts.covGen.update();
     } else {
-      charts.covGen = new Chart(ctxGen, {
+      charts.covGen = createDashboardChart(ctxGen, {
         type: 'doughnut',
         data: {
           labels: covGenderLegend,

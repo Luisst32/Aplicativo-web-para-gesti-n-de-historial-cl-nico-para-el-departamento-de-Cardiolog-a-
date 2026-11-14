@@ -12,11 +12,11 @@ function renderTabFactoresEmergentes() {
         series: [{ name: 'Casos', data: [suenoBuena, suenoMala, suenoAdecuado, suenoInsuf] }]
       });
     } else {
-      charts.emSueno = new ApexCharts(elSueno, {
+      charts.emSueno = createDashboardApexChart(elSueno, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.emergencyRed, PALETTE.primaryBlue, PALETTE.yellow],
-        plotOptions: { bar: { distributed: true, borderRadius: 5 } },
+        plotOptions: { bar: { horizontal: true, barHeight: '78%', distributed: true, borderRadius: 6, dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
         series: [{ name: 'Casos', data: [suenoBuena, suenoMala, suenoAdecuado, suenoInsuf] }],
         xaxis: { categories: ['Buena Calidad', 'Mala Calidad', 'Sueño Adecuado (7-8h)', 'Sueño Corto (<6h)'] },
         legend: { show: false },
@@ -47,8 +47,8 @@ function renderTabFactoresEmergentes() {
       charts.emEstres.data.datasets[0].data = [estLab, estFam, estAmbos, estSin];
       charts.emEstres.update();
     } else {
-      charts.emEstres = new Chart(ctxEstres, {
-        type: 'pie',
+      charts.emEstres = createDashboardChart(ctxEstres, {
+        type: 'doughnut',
         data: {
           labels: estLabels,
           datasets: [{ data: [estLab, estFam, estAmbos, estSin], backgroundColor: [PALETTE.yellow, PALETTE.purple, PALETTE.emergencyRed, PALETTE.green] }]
@@ -80,7 +80,7 @@ function renderTabFactoresEmergentes() {
       charts.emPers.data.datasets[0].data = [persSi, persNo];
       charts.emPers.update();
     } else {
-      charts.emPers = new Chart(ctxPers, {
+      charts.emPers = createDashboardChart(ctxPers, {
         type: 'doughnut',
         data: {
           labels: persLabels,
@@ -111,11 +111,11 @@ function renderTabFactoresEmergentes() {
         series: [{ name: 'Casos', data: [malAmb, toxLab, estrogenos, anticoncep] }]
       });
     } else {
-      charts.emHorm = new ApexCharts(elHorm, {
+      charts.emHorm = createDashboardApexChart(elHorm, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.yellow, PALETTE.purple, PALETTE.emergencyRed, PALETTE.teal],
-        plotOptions: { bar: { distributed: true, borderRadius: 5 } },
+        plotOptions: { bar: { horizontal: true, barHeight: '78%', distributed: true, borderRadius: 6, dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
         series: [{ name: 'Casos', data: [malAmb, toxLab, estrogenos, anticoncep] }],
         xaxis: { categories: ['Mal Clima Laboral', 'Tóxicos Ocupacionales', 'Bajos Estrógenos / Menopausia', 'Anticonceptivos >35a'] },
         legend: { show: false },

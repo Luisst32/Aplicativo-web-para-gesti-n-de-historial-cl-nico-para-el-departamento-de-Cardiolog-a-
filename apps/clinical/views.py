@@ -13,6 +13,7 @@ from django.http import JsonResponse, HttpResponse, Http404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.db import models, transaction, connection
 from django.core.paginator import Paginator
 from django.core.validators import validate_email
@@ -1152,6 +1153,7 @@ def form_save_api(request):
 # =============================================================================
 
 @login_required
+@xframe_options_sameorigin
 @clinical_access_required('read')
 @selection_errors
 def export_pdf_view(request, visit_id=None):
@@ -1167,6 +1169,7 @@ def export_pdf_view(request, visit_id=None):
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         disposition = 'attachment' if request.GET.get('download') in ('1', 'true', 'True') else 'inline'
         response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
+        response['X-Frame-Options'] = 'SAMEORIGIN'
         return response
 
     require_clinical_access(request.user, 'export')
@@ -1176,7 +1179,7 @@ def export_pdf_view(request, visit_id=None):
     if target_visit_id is not None:
         visit = Visit.objects.filter(pk=record_id(target_visit_id, 'h')).first()
         if visit is None:
-            raise RecordSelectionError('Ficha cl?nica no encontrada.', 404)
+            raise RecordSelectionError('Ficha clínica no encontrada.', 404)
         if patient_id_param is not None and visit.patient_id != record_id(patient_id_param):
             raise RecordSelectionError('La ficha no pertenece al paciente seleccionado.', 404)
         if visit_id is not None and historial_param is not None and visit.pk != record_id(historial_param, 'h'):
@@ -1184,7 +1187,7 @@ def export_pdf_view(request, visit_id=None):
     elif patient_id_param is not None:
         visit = selected_visits([patient_id_param])[0]
     else:
-        raise RecordSelectionError('Seleccione un paciente o una ficha cl?nica.')
+        raise RecordSelectionError('Seleccione un paciente o una ficha clínica.')
 
     pdf_bytes = generate_clinical_sheet_pdf(visit, is_blank=False)
     study_code_clean = (visit.study_code or f"V{visit.visit_id}").replace('/', '-').replace(' ', '_')
@@ -1192,6 +1195,7 @@ def export_pdf_view(request, visit_id=None):
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     disposition = 'attachment' if request.GET.get('download') in ('1', 'true', 'True') else 'inline'
     response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
+    response['X-Frame-Options'] = 'SAMEORIGIN'
     return response
 
 

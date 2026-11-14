@@ -5,6 +5,7 @@ function renderTabDatosIndividuo() {
   const mEdad = grupos.map(g => filteredRecords.filter(r => r.sexo === 'Mujer' && r.grupo_edad === g).length);
   const hEdadPorcentajes = hEdad.map((conteo) => n > 0 ? Number(((conteo / n) * 100).toFixed(1)) : 0);
   const mEdadPorcentajes = mEdad.map((conteo) => n > 0 ? Number(((conteo / n) * 100).toFixed(1)) : 0);
+  const edadMaximo = Math.max(5, Math.ceil(Math.max(...hEdadPorcentajes, ...mEdadPorcentajes, 0) / 5) * 5);
 
   const elPiramide = document.getElementById('chart-ind-edad-sexo');
   if (elPiramide) {
@@ -26,8 +27,10 @@ function renderTabDatosIndividuo() {
       style: {
         fontSize: '11px',
         fontWeight: 'bold',
-        colors: [({ seriesIndex, dataPointIndex }) =>
-          (seriesIndex === 0 ? hEdad : mEdad)[dataPointIndex] === 0 ? '#0f172a' : '#ffffff']
+        colors: [({ seriesIndex, dataPointIndex }) => {
+          const porcentaje = (seriesIndex === 0 ? hEdadPorcentajes : mEdadPorcentajes)[dataPointIndex] || 0;
+          return porcentaje / edadMaximo < 0.15 ? '#0f172a' : '#ffffff';
+        }]
       },
       background: { enabled: false }
     };
@@ -35,19 +38,19 @@ function renderTabDatosIndividuo() {
       charts.indEdad.updateOptions({
         plotOptions: { bar: edadBarOptions.bar },
         colors: [PALETTE.primaryBlue, PALETTE.purple],
-        xaxis: { categories: grupos, min: 0, max: 100, tickAmount: 4, axisBorder: { show: false }, axisTicks: { show: false }, labels: { formatter: val => `${Math.round(val)} %` } },
+        xaxis: { categories: grupos, min: 0, max: edadMaximo, tickAmount: 4, axisBorder: { show: false }, axisTicks: { show: false }, labels: { formatter: val => `${Math.round(val)} %` } },
         series: [{ name: 'Hombres', data: hEdadPorcentajes }, { name: 'Mujeres', data: mEdadPorcentajes }],
         dataLabels: edadDataLabels
       });
     } else {
-      charts.indEdad = new ApexCharts(elPiramide, {
+      charts.indEdad = createDashboardApexChart(elPiramide, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false }, fontFamily: 'inherit', foreColor: '#1e293b', fontSize: '12px' },
         grid: { borderColor: '#e8eef5', strokeDashArray: 4, padding: { right: 16 } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.primaryBlue, PALETTE.purple],
         plotOptions: edadBarOptions,
         series: [{ name: 'Hombres', data: hEdadPorcentajes }, { name: 'Mujeres', data: mEdadPorcentajes }],
-        xaxis: { categories: grupos, min: 0, max: 100, tickAmount: 4, axisBorder: { show: false }, axisTicks: { show: false }, labels: { formatter: val => `${Math.round(val)} %` } },
+        xaxis: { categories: grupos, min: 0, max: edadMaximo, tickAmount: 4, axisBorder: { show: false }, axisTicks: { show: false }, labels: { formatter: val => `${Math.round(val)} %` } },
         legend: { position: 'top', horizontalAlign: 'center' },
         dataLabels: edadDataLabels,
         tooltip: {
@@ -77,18 +80,38 @@ function renderTabDatosIndividuo() {
       charts.indEdu.data.datasets[0].data = eduVals;
       charts.indEdu.update();
     } else {
-      charts.indEdu = new Chart(ctxEdu, {
+      charts.indEdu = createDashboardChart(ctxEdu, {
         type: 'doughnut',
         data: {
           labels: eduLegendLabels,
-          datasets: [{ data: eduVals, backgroundColor: [PALETTE.green, PALETTE.primaryBlue, PALETTE.yellow, PALETTE.navy] }]
+          datasets: [{
+            data: eduVals,
+            backgroundColor: [PALETTE.green, PALETTE.primaryBlue, PALETTE.yellow, PALETTE.navy],
+            borderColor: '#ffffff',
+            borderWidth: 4,
+            borderRadius: 5,
+            hoverOffset: 6
+          }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          cutout: '52%',
+          layout: { padding: 12 },
           plugins: {
-            legend: { position: 'bottom' },
-            datalabels: chartJsDonutDataLabels()
+            legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 10, padding: 18, color: '#0f172a', font: { size: 12, weight: '600' } } },
+            datalabels: {
+              ...chartJsDonutDataLabels(),
+              color: '#ffffff',
+              anchor: 'center',
+              align: 'center',
+              textAlign: 'center',
+              font: { size: 12, weight: 'bold' },
+              formatter: (val, ctx) => {
+                const total = ctx.dataset.data.reduce((sum, value) => sum + value, 0);
+                return [String(val), `${formatPct(val, total)} %`];
+              }
+            }
           }
         }
       });
@@ -100,6 +123,7 @@ function renderTabDatosIndividuo() {
   filteredRecords.forEach(r => { civCounts[r.estado_civil] = (civCounts[r.estado_civil] || 0) + 1; });
   const civLabels = Object.keys(civCounts);
   const civVals = civLabels.map(k => civCounts[k]);
+  const civMaximo = Math.max(2, Math.ceil(Math.max(...civVals, 1) * 1.15));
 
   const ctxCiv = document.getElementById('chart-ind-estado-civil');
   if (ctxCiv) {
@@ -108,7 +132,7 @@ function renderTabDatosIndividuo() {
       charts.indCiv.data.datasets[0].data = civVals;
       charts.indCiv.update();
     } else {
-      charts.indCiv = new Chart(ctxCiv, {
+      charts.indCiv = createDashboardChart(ctxCiv, {
         type: 'bar',
         data: {
           labels: civLabels,
@@ -130,7 +154,7 @@ function renderTabDatosIndividuo() {
             x: { grid: { display: false }, border: { display: false }, ticks: { color: '#1e293b', font: { size: 12, weight: '600' } } },
             y: {
               beginAtZero: true,
-              grace: '20%',
+              max: civMaximo,
               grid: { color: '#edf2f7' },
               border: { display: false },
               ticks: { precision: 0, color: '#1e293b', font: { size: 12, weight: '600' } },
@@ -141,11 +165,11 @@ function renderTabDatosIndividuo() {
             legend: { display: false },
             datalabels: {
               ...chartJsBarDataLabels(),
-              color: '#ffffff',
+              color: (ctx) => ctx.dataset.data[ctx.dataIndex] / civMaximo < 0.15 ? '#0f172a' : '#ffffff',
               anchor: 'center',
               align: 'center',
               offset: 0,
-              clip: true
+              clip: false
             }
           }
         }
@@ -158,6 +182,7 @@ function renderTabDatosIndividuo() {
   filteredRecords.forEach(r => { vivCounts[r.tipo_vivienda] = (vivCounts[r.tipo_vivienda] || 0) + 1; });
   const vivLabels = Object.keys(vivCounts);
   const vivVals = vivLabels.map(k => vivCounts[k]);
+  const viviendaMaximo = Math.max(2, Math.ceil(Math.max(...vivVals, 1) * 1.15));
 
   const elViv = document.getElementById('chart-ind-vivienda');
   if (elViv) {
@@ -170,25 +195,36 @@ function renderTabDatosIndividuo() {
         colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 }
       }
     };
-    const viviendaDataLabels = apexCountAndPctDataLabel(null, {
-      style: { fontSize: '11px', fontWeight: 'bold', colors: ['#ffffff'] }
-    });
+    const viviendaDataLabels = {
+      enabled: true,
+      formatter: (val) => {
+        const conteo = Number(val) || 0;
+        return conteo > 0 ? `${conteo} (${formatPct(conteo, n)}%)` : '';
+      },
+      style: {
+        fontSize: '11px',
+        fontWeight: 'bold',
+        colors: ['#ffffff']
+      },
+      background: { enabled: false },
+      dropShadow: { enabled: true, top: 1, left: 0, blur: 1, color: '#0f172a', opacity: 0.45 }
+    };
     if (charts.indViv) {
       charts.indViv.updateOptions({
         plotOptions: { bar: viviendaBarOptions.bar },
-        xaxis: { categories: vivLabels },
+        xaxis: { categories: vivLabels, min: 0, max: viviendaMaximo, tickAmount: 4, axisBorder: { show: false }, axisTicks: { show: false } },
         series: [{ name: 'Viviendas', data: vivVals }],
         dataLabels: viviendaDataLabels
       });
     } else {
-      charts.indViv = new ApexCharts(elViv, {
+      charts.indViv = createDashboardApexChart(elViv, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false }, fontFamily: 'inherit', foreColor: '#1e293b', fontSize: '12px' },
         grid: { borderColor: '#e8eef5', strokeDashArray: 4, padding: { right: 16 } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.primaryBlue],
         plotOptions: viviendaBarOptions,
         series: [{ name: 'Personas', data: vivVals }],
-        xaxis: { categories: vivLabels },
+        xaxis: { categories: vivLabels, min: 0, max: viviendaMaximo, tickAmount: 4, axisBorder: { show: false }, axisTicks: { show: false } },
         dataLabels: viviendaDataLabels,
         tooltip: apexCountTooltip()
       });

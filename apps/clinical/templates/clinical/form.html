@@ -121,13 +121,26 @@
             return url;
           }
 
+          function descargarPdfDirecto(url) {
+            var a = document.createElement('a');
+            a.href = url;
+            a.setAttribute('download', '');
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function() {
+              if (a.parentNode) {
+                a.parentNode.removeChild(a);
+              }
+            }, 300);
+          }
+
           function exportarFormularioPDF(isBlank) {
             var menu = document.getElementById('pdfDropdownMenu');
             if (menu) menu.style.display = 'none';
 
             var url = _construirUrlPdf(isBlank, true);
-            var w = window.open(url, '_blank');
-            if (!w) window.location.href = url;
+            descargarPdfDirecto(url);
           }
 
           function abrirModalVisualizadorPdf(isBlank) {
@@ -155,7 +168,11 @@
             }
 
             if (loading) loading.style.display = 'flex';
+            var spinnerTimeout = setTimeout(function() {
+              if (loading) loading.style.display = 'none';
+            }, 1800);
             iframe.onload = function() {
+              clearTimeout(spinnerTimeout);
               if (loading) loading.style.display = 'none';
             };
             iframe.src = viewUrl;
@@ -163,25 +180,13 @@
             var btnDescargar = document.getElementById('btnDescargarPdfModal');
             if (btnDescargar) {
               btnDescargar.onclick = function() {
-                var w = window.open(downloadUrl, '_blank');
-                if (!w) window.location.href = downloadUrl;
+                descargarPdfDirecto(downloadUrl);
               };
             }
             var btnNuevaPestana = document.getElementById('btnNuevaPestanaPdfModal');
             if (btnNuevaPestana) {
               btnNuevaPestana.onclick = function() {
                 window.open(viewUrl, '_blank');
-              };
-            }
-            var btnImprimir = document.getElementById('btnImprimirPdfModal');
-            if (btnImprimir) {
-              btnImprimir.onclick = function() {
-                try {
-                  iframe.contentWindow.focus();
-                  iframe.contentWindow.print();
-                } catch (e) {
-                  window.open(viewUrl, '_blank');
-                }
               };
             }
 
@@ -340,10 +345,6 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             <span>Descargar</span>
           </button>
-          <button type="button" class="btn btn-sm" id="btnImprimirPdfModal" style="background:#ffffff; border:1px solid #cbd5e1; color:#334155; font-size:12px; font-weight:600; padding:6px 12px; border-radius:6px; display:inline-flex; align-items:center; gap:6px; cursor:pointer;" title="Imprimir documento">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-            <span>Imprimir</span>
-          </button>
           <button type="button" class="btn btn-sm" id="btnNuevaPestanaPdfModal" style="background:#ffffff; border:1px solid #cbd5e1; color:#334155; font-size:12px; font-weight:600; padding:6px 12px; border-radius:6px; display:inline-flex; align-items:center; gap:6px; cursor:pointer;" title="Abrir en pestaña nueva">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
             <span>Nueva pestaña</span>
@@ -369,5 +370,5 @@
 
 {% block extra_js %}
   <script src="{% static 'clinical/js/pacientes.js' %}?v=20261113_priv01"></script>
-  <script src="{% static 'clinical/js/form.js' %}?v=20261113_scrollspy01"></script>
+  <script src="{% static 'clinical/js/form.js' %}?v=20261114_direct_pdf03"></script>
 {% endblock %}

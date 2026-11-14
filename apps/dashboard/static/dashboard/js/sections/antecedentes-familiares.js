@@ -20,11 +20,11 @@ function renderTabAntecedentesFamiliares() {
         dataLabels: apexCountAndPctDataLabel()
       });
     } else {
-      charts.famPadres = new ApexCharts(elPadres, {
+      charts.famPadres = createDashboardApexChart(elPadres, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.primaryBlue, PALETTE.purple],
-        plotOptions: { bar: { horizontal: true, barHeight: '65%', borderRadius: 4 } },
+        plotOptions: { bar: { horizontal: true, barHeight: '78%', borderRadius: 6, dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
         series: [
           { name: 'Rama Paterna', data: [padreHta, padreDm, padreDlp, padreIam] },
           { name: 'Rama Materna', data: [madreHta, madreDm, madreDlp, madreIam] }
@@ -62,7 +62,7 @@ function renderTabAntecedentesFamiliares() {
       charts.famCarga.data.datasets[0].data = [c0, c1, c2, c3];
       charts.famCarga.update();
     } else {
-      charts.famCarga = new Chart(ctxCarga, {
+      charts.famCarga = createDashboardChart(ctxCarga, {
         type: 'doughnut',
         data: {
           labels: cargaLabels,
@@ -95,11 +95,11 @@ function renderTabAntecedentesFamiliares() {
         ]
       });
     } else {
-      charts.famEdad = new ApexCharts(elEdad, {
+      charts.famEdad = createDashboardApexChart(elEdad, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.emergencyRed, PALETTE.yellow],
-        plotOptions: { bar: { horizontal: true, barHeight: '65%', borderRadius: 4 } },
+        plotOptions: { bar: { horizontal: true, barHeight: '78%', borderRadius: 6, dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
         series: [
           { name: 'HTA Familiar', data: htaPorEdad },
           { name: 'Diabetes Familiar', data: dmPorEdad }
@@ -126,7 +126,7 @@ function renderTabAntecedentesFamiliares() {
       charts.famCoex.data.datasets[0].data = [soloHta, soloDm, ambos, ninguno];
       charts.famCoex.update();
     } else {
-      charts.famCoex = new Chart(ctxCoex, {
+      charts.famCoex = createDashboardChart(ctxCoex, {
         type: 'bar',
         data: {
           labels: ['Solo HTA Familiar', 'Solo Diabetes Familiar', 'Ambas Coexistentes', 'Sin Estos Antecedentes'],

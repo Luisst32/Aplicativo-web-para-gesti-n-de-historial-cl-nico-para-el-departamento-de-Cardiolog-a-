@@ -10,24 +10,24 @@ function renderTabExploracionFisica() {
         series: [{ name: 'Casos', data: imcCounts }]
       });
     } else {
-      charts.expImc = new ApexCharts(elImc, {
+      charts.expImc = createDashboardApexChart(elImc, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.iceBlue, PALETTE.green, PALETTE.yellow, PALETTE.emergencyRed, '#DC2626', '#991B1B'],
         plotOptions: {
           bar: {
+            horizontal: true,
+            barHeight: '78%',
             distributed: true,
-            borderRadius: 5,
-            dataLabels: { position: 'top' }
+            borderRadius: 6,
+            dataLabels: { position: 'center' },
+            colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 }
           }
         },
         series: [{ name: 'Casos', data: imcCounts }],
-        xaxis: { categories: imcCats },
-        yaxis: {
-          max: (maxVal) => Math.ceil(maxVal * 1.25)
-        },
+        xaxis: { categories: imcCats, min: 0, max: Math.max(2, Math.ceil(Math.max(...imcCounts, 1) * 1.15)), tickAmount: 4 },
         legend: { show: false },
-        dataLabels: apexCountAndPctDataLabel(null, { offsetY: -20 }),
+        dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
       });
       charts.expImc.render();
@@ -47,7 +47,7 @@ function renderTabExploracionFisica() {
       charts.expScatter.data.datasets[1].data = scatterM;
       charts.expScatter.update();
     } else {
-      charts.expScatter = new Chart(ctxScatter, {
+      charts.expScatter = createDashboardChart(ctxScatter, {
         type: 'scatter',
         data: {
           datasets: [
@@ -80,8 +80,8 @@ function renderTabExploracionFisica() {
       charts.expPa.data.datasets[0].data = paVals;
       charts.expPa.update();
     } else {
-      charts.expPa = new Chart(ctxPa, {
-        type: 'pie',
+      charts.expPa = createDashboardChart(ctxPa, {
+        type: 'doughnut',
         data: {
           labels: paLegendLabels,
           datasets: [{ data: paVals, backgroundColor: [PALETTE.green, PALETTE.yellow, PALETTE.emergencyRed, '#991B1B'] }]
@@ -110,11 +110,11 @@ function renderTabExploracionFisica() {
         series: [{ name: 'Casos', data: [auscNorm, soplosPres, auscAlt] }]
       });
     } else {
-      charts.expAusc = new ApexCharts(elAusc, {
+      charts.expAusc = createDashboardApexChart(elAusc, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.yellow, PALETTE.emergencyRed],
-        plotOptions: { bar: { distributed: true, borderRadius: 5 } },
+        plotOptions: { bar: { horizontal: true, barHeight: '78%', distributed: true, borderRadius: 6, dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
         series: [{ name: 'Casos', data: [auscNorm, soplosPres, auscAlt] }],
         xaxis: { categories: ['Auscultación Normal', 'Soplos Cardíacos', 'Ruidos / Alteración'] },
         legend: { show: false },

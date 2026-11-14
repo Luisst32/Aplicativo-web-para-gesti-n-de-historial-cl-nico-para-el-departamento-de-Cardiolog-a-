@@ -103,6 +103,7 @@ function apexPctTooltip() {
 
 // Helper para DataLabels en ApexCharts: muestra cantidad y porcentaje en color negro nítido sin fondo negro
 function apexCountAndPctDataLabel(customTotal, extraOptions = {}) {
+  const extraStyle = extraOptions.style || {};
   return {
     enabled: true,
     formatter: function(val) {
@@ -117,12 +118,27 @@ function apexCountAndPctDataLabel(customTotal, extraOptions = {}) {
     style: {
       fontSize: '11px',
       fontWeight: 'bold',
-      colors: ['#000000']
+      colors: ['#ffffff'],
+      ...extraStyle
     },
     background: {
       enabled: false
     },
-    ...extraOptions
+    dropShadow: {
+      enabled: true,
+      top: 1,
+      left: 0,
+      blur: 1,
+      color: '#0f172a',
+      opacity: 0.45
+    },
+    ...extraOptions,
+    style: {
+      fontSize: '11px',
+      fontWeight: 'bold',
+      colors: ['#ffffff'],
+      ...extraStyle
+    }
   };
 }
 
@@ -141,6 +157,22 @@ if (typeof ApexCharts !== 'undefined' || typeof window.Apex !== 'undefined') {
     fill: {
       type: 'solid',
       opacity: 1
+    },
+    grid: {
+      borderColor: '#e8eef5',
+      strokeDashArray: 4
+    },
+    plotOptions: {
+      bar: {
+        horizontal: true,
+        barHeight: '78%',
+        borderRadius: 6,
+        dataLabels: { position: 'center' },
+        colors: {
+          backgroundBarColors: ['#f1f5f9'],
+          backgroundBarRadius: 6
+        }
+      }
     },
     xaxis: {
       labels: {
@@ -172,6 +204,32 @@ if (typeof ApexCharts !== 'undefined' || typeof window.Apex !== 'undefined') {
 if (typeof Chart !== 'undefined') {
   Chart.defaults.devicePixelRatio = Math.max(window.devicePixelRatio || 1, 2);
   Chart.defaults.color = '#000000';
+  Chart.defaults.plugins.legend = Chart.defaults.plugins.legend || {};
+  Chart.defaults.plugins.legend.labels = {
+    ...(Chart.defaults.plugins.legend.labels || {}),
+    usePointStyle: true,
+    pointStyle: 'circle',
+    boxWidth: 10,
+    padding: 18,
+    color: '#0f172a',
+    font: { size: 12, weight: '600' }
+  };
+  Chart.defaults.datasets.doughnut = {
+    ...(Chart.defaults.datasets.doughnut || {}),
+    borderColor: '#ffffff',
+    borderWidth: 4,
+    borderRadius: 5,
+    hoverOffset: 6
+  };
+  Chart.overrides.doughnut = Chart.overrides.doughnut || {};
+  Chart.overrides.doughnut.cutout = '52%';
+  Chart.defaults.datasets.bar = {
+    ...(Chart.defaults.datasets.bar || {}),
+    maxBarThickness: 76,
+    categoryPercentage: 0.8,
+    barPercentage: 0.9,
+    borderRadius: 4
+  };
   if (Chart.defaults.scale && Chart.defaults.scale.ticks) {
     Chart.defaults.scale.ticks.color = '#000000';
     Chart.defaults.scale.ticks.font = { weight: '600' };
@@ -225,16 +283,16 @@ function chartJsBarDataLabels(showPct = true, customTotal = null) {
       const v = ctx.dataset.data[ctx.dataIndex];
       return typeof v === 'number' && v > 0;
     },
-    anchor: 'end',
-    align: 'top',
-    offset: 5,
+    anchor: 'center',
+    align: 'center',
+    offset: 0,
     clip: false,
-    color: '#000000',
+    color: '#ffffff',
     backgroundColor: 'transparent',
     borderRadius: 0,
     padding: { top: 1, bottom: 1, left: 2, right: 2 },
     borderWidth: 0,
-    font: { weight: 'bold', size: 10.5 },
+    font: { weight: 'bold', size: 11 },
     formatter: (val) => {
       if (!val || val <= 0) return '';
       const total = customTotal || filteredRecords.length || 1;
@@ -252,7 +310,9 @@ function chartJsDonutDataLabels(minPct = 0.08) {
       const sum = ctx.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
       return typeof v === 'number' && v > 0 && (v / sum) >= minPct;
     },
-    color: '#000000',
+    color: '#ffffff',
+    anchor: 'center',
+    align: 'center',
     backgroundColor: 'transparent',
     borderRadius: 0,
     padding: { top: 1, bottom: 1, left: 2, right: 2 },

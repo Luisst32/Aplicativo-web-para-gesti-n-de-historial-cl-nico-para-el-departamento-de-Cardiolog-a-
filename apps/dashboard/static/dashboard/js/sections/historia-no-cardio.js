@@ -17,10 +17,10 @@ function renderTabHistoriaNoCardio() {
         series: [{ name: 'Prevalencia Casos', data: vals }]
       });
     } else {
-      charts.ncComorb = new ApexCharts(elComorb, {
+      charts.ncComorb = createDashboardApexChart(elComorb, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
-        plotOptions: { bar: { horizontal: true, distributed: true, borderRadius: 4 } },
+        plotOptions: { bar: { horizontal: true, distributed: true, barHeight: '78%', borderRadius: 6, dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
         colors: [PALETTE.yellow, PALETTE.purple, PALETTE.teal, PALETTE.primaryBlue, PALETTE.emergencyRed, PALETTE.navy],
         series: [{ name: 'Prevalencia Casos', data: vals }],
         xaxis: { categories: labels },
@@ -52,7 +52,7 @@ function renderTabHistoriaNoCardio() {
       charts.ncMental.data.datasets[0].data = [ansSolo, depSolo, ambMental, sinMental];
       charts.ncMental.update();
     } else {
-      charts.ncMental = new Chart(ctxMental, {
+      charts.ncMental = createDashboardChart(ctxMental, {
         type: 'doughnut',
         data: {
           labels: mentalLegend,
@@ -81,7 +81,7 @@ function renderTabHistoriaNoCardio() {
       charts.ncResp.data.datasets[0].data = [asmaCnt, epocCnt, sinResp];
       charts.ncResp.update();
     } else {
-      charts.ncResp = new Chart(ctxResp, {
+      charts.ncResp = createDashboardChart(ctxResp, {
         type: 'bar',
         data: {
           labels: ['Asma Bronquial', 'EPOC', 'Sin Patología Respiratoria'],
@@ -115,11 +115,11 @@ function renderTabHistoriaNoCardio() {
         series: [{ name: 'Casos', data: [reumaCnt, alergiasCnt] }]
       });
     } else {
-      charts.ncReuma = new ApexCharts(elReuma, {
+      charts.ncReuma = createDashboardApexChart(elReuma, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.purple, PALETTE.teal],
-        plotOptions: { bar: { distributed: true, borderRadius: 5 } },
+        plotOptions: { bar: { horizontal: true, barHeight: '78%', distributed: true, borderRadius: 6, dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
         series: [{ name: 'Casos', data: [reumaCnt, alergiasCnt] }],
         xaxis: { categories: ['Patología Reumatológica / Artritis', 'Alergias Medicamentosas'] },
         legend: { show: false },

@@ -2585,7 +2585,7 @@ function solicitarEliminarFichaActual() {
 
 
 // =============================================================================
-// EXPORTACIÓN OFICIAL DE CUESTIONARIO UNEMI EN FORMATO PDF (HU-17)
+// EXPORTACIÓN Y VISUALIZACIÓN OFICIAL DE CUESTIONARIO UNEMI EN FORMATO PDF (HU-17)
 // =============================================================================
 
 function togglePdfMenu(event) {
@@ -2609,55 +2609,109 @@ document.addEventListener('click', function(e) {
   }
 });
 
+function descargarPdfDirecto(url) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.setAttribute('download', '');
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    if (a.parentNode) a.parentNode.removeChild(a);
+  }, 300);
+}
+
+function _construirUrlPdf(isBlank = false, isDownload = false) {
+  let url = '/clinical/ficha/pdf/';
+  const params = [];
+  if (isBlank) {
+    params.push('blank=1');
+  } else {
+    const urlParams = new URLSearchParams(window.location.search);
+    const pId = urlParams.get('paciente') || (typeof pacienteActual !== 'undefined' && pacienteActual ? (pacienteActual.id || pacienteActual.codigo) : null);
+    const hId = urlParams.get('historial') || (typeof historialActual !== 'undefined' && historialActual ? historialActual.id : null);
+    if (pId) params.push(`paciente=${encodeURIComponent(pId)}`);
+    if (hId) params.push(`historial=${encodeURIComponent(hId)}`);
+  }
+  if (isDownload) {
+    params.push('download=1');
+  }
+  if (params.length > 0) {
+    url += '?' + params.join('&');
+  }
+  return url;
+}
+
 function exportarFormularioPDF(isBlank = false) {
   const menu = document.getElementById('pdfDropdownMenu');
   if (menu) menu.style.display = 'none';
 
+  const downloadUrl = _construirUrlPdf(isBlank, true);
+  descargarPdfDirecto(downloadUrl);
+}
+
+function abrirModalVisualizadorPdf(isBlank = false) {
+  const menu = document.getElementById('pdfDropdownMenu');
+  if (menu) menu.style.display = 'none';
+
+  const modal = document.getElementById('modalVisualizadorPdf');
+  const iframe = document.getElementById('pdfModalIframe');
+  const loading = document.getElementById('pdfModalLoading');
+  const titulo = document.getElementById('pdfModalTitulo');
+  const subtitulo = document.getElementById('pdfModalSubtitulo');
+  if (!modal || !iframe) return;
+
+  const viewUrl = _construirUrlPdf(isBlank, false);
+  const downloadUrl = _construirUrlPdf(isBlank, true);
+
   if (isBlank) {
-    window.open('/clinical/ficha/pdf/?blank=1', '_blank');
-    return;
-  }
-
-  const urlParams = new URLSearchParams(window.location.search);
-  const pId = urlParams.get('paciente') || (typeof pacienteActual !== 'undefined' && pacienteActual ? pacienteActual.id : null);
-  const hId = urlParams.get('historial');
-
-  let url = '/clinical/ficha/pdf/';
-  const params = [];
-  if (pId) params.push(`paciente=${encodeURIComponent(pId)}`);
-  if (hId) params.push(`historial=${encodeURIComponent(hId)}`);
-
-  if (params.length > 0) {
-    url += '?' + params.join('&');
-  }
-  window.open(url, '_blank');
-}
-
-function imprimirFormularioPDF() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const pId = urlParams.get('paciente') || (typeof pacienteActual !== 'undefined' && pacienteActual ? (pacienteActual.id || pacienteActual.codigo) : null);
-  const hId = urlParams.get('historial') || (typeof historialActual !== 'undefined' && historialActual ? historialActual.id : null);
-
-  let url = '/clinical/ficha/pdf/';
-  const params = [];
-  if (pId) params.push(`paciente=${encodeURIComponent(pId)}`);
-  if (hId) params.push(`historial=${encodeURIComponent(hId)}`);
-
-  if (params.length > 0) {
-    url += '?' + params.join('&');
-  }
-
-  // Abre el Cuestionario Oficial UNEMI en PDF en una nueva pestaña lista para imprimir
-  const win = window.open(url, '_blank');
-  if (!win) {
-    window.location.href = url;
+    if (titulo) titulo.textContent = 'Plantilla en Blanco - Cuestionario UNEMI 2026';
+    if (subtitulo) subtitulo.textContent = 'Formato oficial vacío para recolección en campo';
   } else {
-    win.focus();
+    const cod = (typeof pacienteActual !== 'undefined' && pacienteActual && pacienteActual.codigo) ? (` · Código #${pacienteActual.codigo}`) : '';
+    const nom = (typeof pacienteActual !== 'undefined' && pacienteActual && pacienteActual.nombre) ? (` - ${pacienteActual.nombre}`) : '';
+    if (titulo) titulo.textContent = 'Ficha Clínica Oficial UNEMI' + cod;
+    if (subtitulo) subtitulo.textContent = 'Evaluación cardiológica integral y cuestionarios' + nom;
   }
+
+  if (loading) loading.style.display = 'flex';
+  const spinnerTimeout = setTimeout(() => {
+    if (loading) loading.style.display = 'none';
+  }, 1800);
+  iframe.onload = () => {
+    clearTimeout(spinnerTimeout);
+    if (loading) loading.style.display = 'none';
+  };
+  iframe.src = viewUrl;
+
+  const btnDescargar = document.getElementById('btnDescargarPdfModal');
+  if (btnDescargar) {
+    btnDescargar.onclick = () => {
+      descargarPdfDirecto(downloadUrl);
+    };
+  }
+  const btnNuevaPestana = document.getElementById('btnNuevaPestanaPdfModal');
+  if (btnNuevaPestana) {
+    btnNuevaPestana.onclick = () => {
+      window.open(viewUrl, '_blank');
+    };
+  }
+
+  modal.style.display = 'flex';
 }
 
-window.imprimirFormularioPDF = imprimirFormularioPDF;
+function cerrarModalVisualizadorPdf() {
+  const modal = document.getElementById('modalVisualizadorPdf');
+  const iframe = document.getElementById('pdfModalIframe');
+  if (modal) modal.style.display = 'none';
+  if (iframe) iframe.src = 'about:blank';
+}
+
+window.descargarPdfDirecto = descargarPdfDirecto;
+window._construirUrlPdf = _construirUrlPdf;
 window.exportarFormularioPDF = exportarFormularioPDF;
+window.abrirModalVisualizadorPdf = abrirModalVisualizadorPdf;
+window.cerrarModalVisualizadorPdf = cerrarModalVisualizadorPdf;
 window.togglePdfMenu = togglePdfMenu;
 
 // Reactividad inmediata al cambiar el Modo de Privacidad en Ajustes

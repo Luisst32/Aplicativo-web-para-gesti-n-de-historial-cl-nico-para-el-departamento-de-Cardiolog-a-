@@ -19,11 +19,11 @@ function renderTabFactoresModificables() {
         ]
       });
     } else {
-      charts.modControl = new ApexCharts(elControl, {
+      charts.modControl = createDashboardApexChart(elControl, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.emergencyRed],
-        plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 4 } },
+        plotOptions: { bar: { horizontal: true, barHeight: '78%', borderRadius: 6, dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
         series: [
           { name: 'Bajo Tratamiento Farmacológico', data: [htaTto, dmTto, dlTto] },
           { name: 'Sin Tratamiento / Sin Control', data: [htaNoTto, dmNoTto, dlNoTto] }
@@ -56,7 +56,7 @@ function renderTabFactoresModificables() {
       charts.modTox.data.datasets[1].data = [alcNo, alcOcas, alcReg];
       charts.modTox.update();
     } else {
-      charts.modTox = new Chart(ctxTox, {
+      charts.modTox = createDashboardChart(ctxTox, {
         type: 'bar',
         data: {
           labels: toxCats,
@@ -101,17 +101,17 @@ function renderTabFactoresModificables() {
         ]
       });
     } else {
-      charts.modActCat = new ApexCharts(elActCat, {
+      charts.modActCat = createDashboardApexChart(elActCat, {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, stacked: true, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.emergencyRed],
-        plotOptions: { bar: { horizontal: false, borderRadius: 4 } },
+        plotOptions: { bar: { horizontal: true, barHeight: '78%', borderRadius: 6, dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
         series: [
           { name: 'Activos Físicamente', data: actSi },
           { name: 'Sedentarios', data: actNo }
         ],
         xaxis: { categories: catNames },
-        yaxis: { title: { text: 'Casos (n)' } },
+        yaxis: { labels: { style: { colors: '#1e293b', fontSize: '12px', fontWeight: 600 } } },
         legend: { position: 'top' },
         dataLabels: apexCountAndPctDataLabel(),
         tooltip: apexCountTooltip()
@@ -135,7 +135,7 @@ function renderTabFactoresModificables() {
       charts.modPred.data.datasets[0].data = [predimedAlta, predimedBaja];
       charts.modPred.update();
     } else {
-      charts.modPred = new Chart(ctxPred, {
+      charts.modPred = createDashboardChart(ctxPred, {
         type: 'doughnut',
         data: {
           labels: predLegend,
@@ -164,9 +164,9 @@ function renderTabFactoresModificables() {
   });
   const elMandatory = document.getElementById('chart-mod-obligatorios');
   if (elMandatory) {
-    const options = { chart: { type: 'bar', height: 320, toolbar: { show: false } }, series: [{ name: 'Casos', data: mandatoryCounts }], xaxis: { categories: mandatoryLabels }, legend: { show: false }, dataLabels: apexCountAndPctDataLabel() };
+    const options = { chart: { type: 'bar', height: 320, toolbar: { show: false } }, fill: { type: 'solid', opacity: 1 }, plotOptions: { bar: { horizontal: true, barHeight: '78%', borderRadius: 6, dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } }, series: [{ name: 'Casos', data: mandatoryCounts }], xaxis: { categories: mandatoryLabels }, legend: { show: false }, dataLabels: apexCountAndPctDataLabel() };
     if (charts.modMandatory) charts.modMandatory.updateOptions(options);
-    else { charts.modMandatory = new ApexCharts(elMandatory, options); charts.modMandatory.render(); }
+    else { charts.modMandatory = createDashboardApexChart(elMandatory, options); charts.modMandatory.render(); }
   }
 
   const vascular = [['Periférica', 'vasculopatia_periferica'], ['Carotídea', 'vasculopatia_carotidea'], ['Femoral', 'vasculopatia_femoral'], ['Cualquier vasculopatía', 'vasculopatia_cualquiera']];
@@ -177,9 +177,9 @@ function renderTabFactoresModificables() {
   });
   const elVascular = document.getElementById('chart-mod-vasculopatia');
   if (elVascular) {
-    const options = { chart: { type: 'bar', height: 320, toolbar: { show: false } }, series: [{ name: 'Casos', data: vascularCounts }], xaxis: { categories: vascularLabels }, legend: { show: false }, dataLabels: apexCountAndPctDataLabel() };
+    const options = { chart: { type: 'bar', height: 320, toolbar: { show: false } }, fill: { type: 'solid', opacity: 1 }, plotOptions: { bar: { horizontal: true, barHeight: '78%', borderRadius: 6, dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } }, series: [{ name: 'Casos', data: vascularCounts }], xaxis: { categories: vascularLabels }, legend: { show: false }, dataLabels: apexCountAndPctDataLabel() };
     if (charts.modVascular) charts.modVascular.updateOptions(options);
-    else { charts.modVascular = new ApexCharts(elVascular, options); charts.modVascular.render(); }
+    else { charts.modVascular = createDashboardApexChart(elVascular, options); charts.modVascular.render(); }
   }
 }
 
