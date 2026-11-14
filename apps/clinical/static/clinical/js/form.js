@@ -635,15 +635,28 @@ function toggleCondition(rowId, show) {
 function inicializarTodasLasCondiciones() {
   const rows = document.querySelectorAll('.condition-row');
   rows.forEach(row => {
+    // Si la fila no contiene detalles condicionales (.condition-details), nunca debe llevar active-yes
+    const details = row.querySelectorAll('.condition-details');
+    if (!details || details.length === 0) {
+      row.classList.remove('active-yes');
+      return;
+    }
+
     if (row.id === 'row_tabaco') return;
 
     // Buscar si tiene radio principal seleccionado
     const checkedRadio = row.querySelector('.condition-header input[type="radio"]:checked') ||
                          row.querySelector('.toggle-pills input[type="radio"]:checked');
     if (checkedRadio) {
-      const val = checkedRadio.value.toLowerCase().trim();
-      const isSi = (val === 'si' || val === 'sí' || val === 'alterada' || val === 'alteradas');
-      toggleCondition(row.id, isSi);
+      // Disparar onchange para respetar la lógica declarada en el HTML
+      // (ej: en abdom_norm, 'Si' oculta hepatomegalia con toggleCondition false)
+      if (typeof checkedRadio.onchange === 'function') {
+        checkedRadio.onchange();
+      } else {
+        const val = checkedRadio.value.toLowerCase().trim();
+        const isSi = (val === 'si' || val === 'sí' || val === 'alterada' || val === 'alteradas');
+        toggleCondition(row.id, isSi);
+      }
     } else {
       if (!row.classList.contains('active-yes')) {
         toggleCondition(row.id, false);
@@ -1128,13 +1141,20 @@ function restaurarFichaDesdeObjeto(datos) {
           if (elements[i].checked) {
             const row = elements[i].closest('.condition-row');
             if (row && row.id) {
-              const rVal = elements[i].value.toLowerCase().trim();
-              const isYes = (rVal === 'si' || rVal === 'sí' || rVal === 'alterada' || rVal === 'alteradas');
-              const isNot = (rVal === 'no' || rVal === 'normal' || rVal === 'normales');
-              if (isYes) {
-                toggleCondition(row.id, true);
-              } else if (isNot) {
-                toggleCondition(row.id, false);
+              const hasDetails = row.querySelector('.condition-details');
+              if (!hasDetails) {
+                row.classList.remove('active-yes');
+              } else if (typeof elements[i].onchange === 'function') {
+                elements[i].onchange();
+              } else {
+                const rVal = elements[i].value.toLowerCase().trim();
+                const isYes = (rVal === 'si' || rVal === 'sí' || rVal === 'alterada' || rVal === 'alteradas');
+                const isNot = (rVal === 'no' || rVal === 'normal' || rVal === 'normales');
+                if (isYes) {
+                  toggleCondition(row.id, true);
+                } else if (isNot) {
+                  toggleCondition(row.id, false);
+                }
               }
             }
           }
