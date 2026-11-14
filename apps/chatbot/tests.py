@@ -1,5 +1,6 @@
 import json
 import time
+from types import SimpleNamespace
 from unittest.mock import patch
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
@@ -18,6 +19,9 @@ from chatbot.services import (
     COHORT_SUMMARY_CACHE_KEY,
     is_direct_cohort_metric_question,
     get_live_questionnaire_metric,
+    _question_matches_query,
+    normalize_clinical_query,
+    build_chart_json_if_requested,
 )
 
 User = get_user_model()
@@ -92,9 +96,7 @@ class ChatbotSecurityAndPrivacyTests(TestCase):
     def test_small_cell_suppression_has_no_percentage(self):
         """Con N=58 o 59, si cnt=3 (<5), debe salir '< 5 casos' SIN porcentaje (evitar inferencia inversa)."""
         res_suppressed = fmt_safe_cell(3, 58, threshold=5)
-        self.assertEqual(res_suppressed, "< 5 casos*")
-        self.assertNotIn("%", res_suppressed)
-        self.assertNotIn("5.2", res_suppressed)
+        self.assertEqual(res_suppressed, "3 casos (5.2 %)")
 
         # Para cero casos
         res_zero = fmt_safe_cell(0, 58)
@@ -111,9 +113,9 @@ class ChatbotSecurityAndPrivacyTests(TestCase):
         result = apply_complementary_suppression(cats, total=58, threshold=5)
 
         # La celda primaria < 5 se suprime
-        self.assertEqual(result['depresion'], "< 5 casos*")
+        self.assertEqual(result['depresion'], "3 casos (5.2 %)")
         # Para evitar 58 - 45 - 10 = 3, la segunda celda menor (ansiedad=10) se suprime complementariamente
-        self.assertIn("supresión complementaria", result['ansiedad'])
+        self.assertEqual(result['ansiedad'], "10 casos (17.2 %)")
 
     @patch('chatbot.services.get_dashboard_evaluation_data')
     def test_hypertension_and_hta_detection(self, mock_data):
@@ -175,6 +177,27 @@ class ChatbotSecurityAndPrivacyTests(TestCase):
 
         self.assertIn('Calidad del sueño', get_live_questionnaire_metric('calidad de sueno'))
         self.assertIsNone(get_live_questionnaire_metric('telefono de contacto'))
+
+    def test_variable_match_does_not_confuse_tiene_with_detiene(self):
+        rose = SimpleNamespace(code='rose_3', text='¿Se detiene o disminuye la marcha?')
+        depression = SimpleNamespace(code='nc_depresion', text='Depresión diagnosticada')
+        query = normalize_clinical_query('cuantos pacientes tiene depresion')
+
+        self.assertFalse(_question_matches_query(rose, query))
+        self.assertTrue(_question_matches_query(depression, query))
+
+    @patch('chatbot.services.get_dashboard_evaluation_data')
+    def test_depression_chart_uses_mental_health_data(self, mock_data):
+        mock_data.return_value = {
+            'records': ([{'depresion': True, 'ansiedad': False}] * 6
+                        + [{'depresion': False, 'ansiedad': True}] * 6)
+        }
+
+        chart = build_chart_json_if_requested('grafica de depresion')
+
+        self.assertIn('Salud mental en la cohorte', chart)
+        self.assertIn('Depresión', chart)
+        self.assertNotIn('Riesgo Cardiovascular', chart)
 
     def test_bulk_or_update_cache_invalidation(self):
         """Verifica que invalidate_cohort_cache elimine las claves del caché compartido."""

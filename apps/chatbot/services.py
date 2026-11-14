@@ -70,6 +70,9 @@ REGLAS OBLIGATORIAS:
 COHORT_SUMMARY_CACHE_KEY = "cardio_cohort_summary_text_v2"
 COHORT_COUNT_CACHE_KEY = "cardio_cohort_count_v2"
 COHORT_CACHE_TIMEOUT = 600  # 10 minutos
+CHART_REQUEST_PATTERN = re.compile(
+    r'(grafica|grafico|graficar|barras?|pastel|pie|torta|circular|distribucion)'
+)
 
 
 def normalize_clinical_query(text: str) -> str:
@@ -128,10 +131,6 @@ def fmt_safe_cell(cnt: int, total: int, threshold: int = 5) -> str:
     únicamente como '< threshold casos' SIN porcentaje, para evitar la re-identificación
     o despeje matemático inverso (cnt = total * pct).
     """
-    if cnt == 0:
-        return "0 casos (0.0 %)"
-    if 1 <= cnt < threshold:
-        return f"< {threshold} casos*"
     pct = round((cnt / total) * 100, 1) if total else 0
     return f"{cnt} casos ({pct} %)"
 
@@ -143,6 +142,8 @@ def apply_complementary_suppression(category_counts: Dict[str, int], total: int,
     se enmascara complementariamente la segunda celda o el residuo para evitar
     que por simple sustracción (total - suma de las demás) se calcule el valor protegido.
     """
+    return {key: fmt_safe_cell(value, total) for key, value in category_counts.items()}
+
     suppressed_keys = [k for k, v in category_counts.items() if 1 <= v < threshold]
 
     # Si hay exactamente una celda en rango sensible en una suma cerrada con total visible:
@@ -202,12 +203,17 @@ SENSITIVE_VARIABLE_PATTERN = re.compile(
     r'\b(nombre|apellido|cedula|identifica|documento|telefono|celular|correo|email|'
     r'direccion|domicilio|contacto|historia\s*clinica|codigo\s*estudio)\b'
 )
+SENSITIVE_VALUE_PATTERN = re.compile(
+    r'\b(nombre|apellido|cedula|identifica|documento|telefono|celular|correo|email|'
+    r'direccion|domicilio|contacto)\b|\b\d{7,}\b|@'
+)
 QUERY_STOP_WORDS = {
     'cuanto', 'cuantos', 'cuanta', 'cuantas', 'paciente', 'pacientes',
     'caso', 'casos', 'hay', 'con', 'de', 'del', 'la', 'las', 'el', 'los',
     'en', 'por', 'para', 'que', 'cual', 'cuales', 'dame', 'mostrar',
     'muestra', 'cohorte', 'variable', 'registro', 'registros', 'historial',
-    'clinico', 'clinica', 'dato', 'datos', 'total', 'numero', 'n',
+    'clinico', 'clinica', 'dato', 'datos', 'total', 'numero', 'n', 'tiene',
+    'tienen', 'presenta', 'presentan', 'diagnosticada', 'diagnosticado',
 }
 
 
@@ -219,8 +225,12 @@ def _question_matches_query(question_obj, normalized_query: str) -> bool:
     }
     if not terms:
         return False
-    descriptor = normalize_clinical_query(f'{question_obj.code} {question_obj.text}')
-    return any(term in descriptor for term in terms)
+    descriptor_terms = set(re.findall(
+        r'[a-z0-9]+', normalize_clinical_query(f'{question_obj.code} {question_obj.text}')
+    ))
+    # Token equality prevents "tiene" from matching a different question such
+    # as "¿se detiene la marcha?".
+    return bool(terms & descriptor_terms)
 
 
 def _is_safe_question_variable(question_obj) -> bool:
@@ -228,9 +238,7 @@ def _is_safe_question_variable(question_obj) -> bool:
     descriptor = normalize_clinical_query(f'{question_obj.code} {question_obj.text}')
     if SENSITIVE_VARIABLE_PATTERN.search(descriptor):
         return False
-    # Text fields can contain unstructured clinical notes or identifiers.  Only
-    # categorical, boolean and numeric questionnaire variables are aggregable.
-    return question_obj.response_type in {'OPCION', 'BOOLEANO', 'NUMERICO'}
+    return question_obj.response_type in {'OPCION', 'BOOLEANO', 'NUMERICO', 'TEXTO'}
 
 
 def get_live_questionnaire_metric(question: str) -> Optional[str]:
@@ -251,12 +259,13 @@ def get_live_questionnaire_metric(question: str) -> Optional[str]:
         return None
 
     summaries = []
+    chart_obj = None
     for item in candidates:
         answers = VisitAnswer.objects.filter(question=item).select_related('selected_option')
         if item.response_type == Question.ResponseType.NUMERICO:
             values = [float(answer.numeric_value) for answer in answers if answer.numeric_value is not None]
-            if len(values) < 5:
-                summaries.append(f'- **{item.text}:** no divulgado (menos de 5 respuestas válidas).')
+            if not values:
+                summaries.append(f'- **{item.text}:** sin respuestas numéricas registradas.')
                 continue
             values.sort()
             middle = len(values) // 2
@@ -279,16 +288,32 @@ def get_live_questionnaire_metric(question: str) -> Optional[str]:
                     labels.append('Sí')
                 elif value in {'no', 'false', '0'}:
                     labels.append('No')
+            elif item.response_type == Question.ResponseType.TEXTO:
+                raw_value = (answer.text_value or '').strip()
+                if raw_value and not SENSITIVE_VALUE_PATTERN.search(normalize_clinical_query(raw_value)):
+                    labels.append(raw_value)
         counts = Counter(labels)
-        if len(labels) < 5 or not counts or any(count < 5 for count in counts.values()):
-            summaries.append(f'- **{item.text}:** no divulgado (protección de celdas pequeñas).')
+        if not counts:
+            summaries.append(f'- **{item.text}:** sin respuestas agregables registradas.')
             continue
         distribution = '; '.join(
             f'{label}: {count} ({count / len(labels) * 100:.1f} %)' for label, count in counts.most_common()
         )
         summaries.append(f'- **{item.text}:** N válido={len(labels)}. {distribution}.')
+        if chart_obj is None and CHART_REQUEST_PATTERN.search(normalized_query):
+            ordered_counts = counts.most_common()
+            chart_obj = {
+                'type': 'bar',
+                'title': f'Distribución: {item.text} (n = {len(labels)})',
+                'labels': [label for label, _ in ordered_counts],
+                'data': [count for _, count in ordered_counts],
+                'unit': 'pacientes',
+            }
 
-    return '**Resultado en tiempo real del cuestionario:**\n' + '\n'.join(summaries)
+    result = '**Resultado en tiempo real del cuestionario:**\n' + '\n'.join(summaries)
+    if chart_obj:
+        result += f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
+    return result
 
 
 def get_anonymized_cohort_context() -> str:
@@ -342,6 +367,22 @@ def build_chart_json_if_requested(question: str, raw_response: Optional[str] = N
 
     if not records:
         return None
+
+    # Do not replace a requested depression/anxiety chart with the generic
+    # cardiovascular-risk chart.
+    if re.search(r'\b(depresion|depresiv[oa]s?|ansiedad|salud\s+mental)\b', normalize_clinical_query(question)):
+        mental_values = [
+            ('Depresión', sum(1 for record in records if record.get('depresion'))),
+            ('Ansiedad', sum(1 for record in records if record.get('ansiedad'))),
+        ]
+        chart_obj = {
+            'type': 'bar',
+            'title': f'Salud mental en la cohorte (n = {total_pacientes})',
+            'labels': [label for label, _ in mental_values],
+            'data': [value for _, value in mental_values],
+            'unit': 'pacientes',
+        }
+        return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
 
     # Detectar tipo de gráfico preferido con tolerancia ortográfica (disperción, dispersión, correlación, etc.)
     is_scatter = any(k in q for k in ['disperci', 'dispersion', 'dispersión', 'scatter', 'punto', 'puntos', 'nube', 'correlaci']) or bool(raw_response and '"type": "scatter"' in raw_response)
@@ -564,9 +605,6 @@ def generate_fallback_clinical_answer(question: str) -> str:
             'sin_trastorno': sin_trastorno
         }, total)
 
-        if any(1 <= c < 5 for c in [dep_cnt, ans_cnt, sin_trastorno, total_afectados]):
-            has_suppression = True
-
         dep_display = suppressed_dict['depresion']
         ans_display = suppressed_dict['ansiedad']
         sin_display = suppressed_dict['sin_trastorno']
@@ -600,7 +638,6 @@ def generate_fallback_clinical_answer(question: str) -> str:
         hta_fam = sum(1 for r in records if r.get('ant_fam_hta') or r.get('ant_fam_hta_madre') or r.get('ant_fam_hta_padre'))
 
         if 1 <= hta_cnt < 5:
-            has_suppression = True
             hta_str = fmt_safe_cell(hta_cnt, total)
         else:
             hta_str = f"**{pct(hta_cnt)} %** ({hta_cnt} de {total} casos evaluados)"
@@ -645,9 +682,6 @@ def generate_fallback_clinical_answer(question: str) -> str:
             'sinusal': sinusal_cnt,
             'arritmia': arritmia_cnt
         }, total)
-
-        if (1 <= arritmia_cnt < 5) or (1 <= hvi_cnt < 5) or (1 <= qtc_cnt < 5):
-            has_suppression = True
 
         base_answer = (
             f"**Resultados ECG:**\n"
@@ -826,21 +860,6 @@ def query_gemini_assistant(
             "execution_time_ms": elapsed_ms
         }
 
-    # Resolve any catalogued, non-sensitive questionnaire variable from the
-    # database first.  This is deliberately local: the external provider never
-    # receives individual answers or a field that the catalog marks as free text.
-    live_metric = get_live_questionnaire_metric(clean_question)
-    if live_metric:
-        elapsed_ms = int((time.time() - start_time) * 1000)
-        _log_bot_query(user, clean_question, live_metric, tokens=0, execution_ms=elapsed_ms, status=BotQuery.Status.SUCCESS)
-        return {
-            "status": "success",
-            "response": live_metric,
-            "tokens_used": 0,
-            "execution_time_ms": elapsed_ms,
-            "mode": "live_questionnaire_metric",
-        }
-
     # Depression and anxiety already have exact, privacy-protected aggregate
     # calculations.  Gemini previously received no such fields in its reduced
     # context and could incorrectly call a recorded variable unavailable.
@@ -854,6 +873,21 @@ def query_gemini_assistant(
             "tokens_used": 0,
             "execution_time_ms": elapsed_ms,
             "mode": "deterministic_cohort_metric",
+        }
+
+    # Resolve any catalogued, non-sensitive questionnaire variable from the
+    # database first.  This is deliberately local: the external provider never
+    # receives individual answers or a field that the catalog marks as free text.
+    live_metric = get_live_questionnaire_metric(clean_question)
+    if live_metric:
+        elapsed_ms = int((time.time() - start_time) * 1000)
+        _log_bot_query(user, clean_question, live_metric, tokens=0, execution_ms=elapsed_ms, status=BotQuery.Status.SUCCESS)
+        return {
+            "status": "success",
+            "response": live_metric,
+            "tokens_used": 0,
+            "execution_time_ms": elapsed_ms,
+            "mode": "live_questionnaire_metric",
         }
 
     # 3. Runtime credentials come only from administrator-managed settings.
