@@ -354,11 +354,13 @@ body {
 /* .card-kpi compone con la clase genérica .card (position:relative) de
    base.css; aquí solo el aspecto propio de una tarjeta KPI. */
 .card-kpi {
-  background: var(--color-card-gray);
+  background: var(--color-white);
   border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-md);
-  padding: 1.15rem 1rem;
-  box-shadow: var(--shadow-card);
+  border-top: 3px solid var(--color-primary-blue);
+  border-radius: 6px;
+  padding: 0.9rem 1rem;
+  min-width: 0;
+  box-shadow: 0 2px 5px rgba(27, 42, 65, 0.08);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -367,9 +369,8 @@ body {
 }
 
 .card-kpi:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-card-hover);
-  border-color: var(--dashboard-card-kpi-border-hover);
 }
 
 .kpi-header-row {
@@ -382,53 +383,33 @@ body {
 }
 
 .card-kpi .kpi-title {
-  font-size: 0.82rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: var(--color-text-muted);
-  line-height: 1.25;
+  line-height: 1.4;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
   text-align: left;
 }
 
 .kpi-main-body {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+  align-items: flex-start;
+  justify-content: flex-end;
+  text-align: left;
   width: 100%;
+  flex: 1;
   padding: 0.2rem 0;
 }
 
 .card-kpi .kpi-value {
-  font-size: 2rem;
+  font-size: clamp(1.4rem, 1.8vw, 1.85rem);
   font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.15;
-}
-
-.card-kpi .kpi-value.kpi-prevalence {
-  display: inline-flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 0.45rem;
-  white-space: nowrap;
-}
-
-.kpi-prevalence .kpi-case-count {
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.kpi-prevalence .kpi-rate {
-  padding: 0.16rem 0.42rem;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.1;
-  opacity: 0.9;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 /* BOTONES DE FÓRMULA / DESPLEGABLE (componen con .btn de base.css) */
