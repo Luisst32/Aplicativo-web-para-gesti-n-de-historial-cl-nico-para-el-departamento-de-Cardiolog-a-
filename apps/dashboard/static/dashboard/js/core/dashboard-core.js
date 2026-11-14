@@ -51,6 +51,18 @@ function recordsWithValue(field) {
   return filteredRecords.filter(record => record[field] !== null && record[field] !== undefined);
 }
 
+function setKpiCaption(el, text) {
+  const body = el.closest('.kpi-main-body');
+  if (!body) return;
+  let caption = body.querySelector('.kpi-caption');
+  if (!caption) {
+    caption = document.createElement('div');
+    caption.className = 'kpi-caption';
+    body.appendChild(caption);
+  }
+  caption.textContent = text;
+}
+
 function setPrevalenceEl(id, cases, valid, note = '') {
   const el = document.getElementById(id);
   if (!el) return;
@@ -59,6 +71,7 @@ function setPrevalenceEl(id, cases, valid, note = '') {
   el.textContent = valid > 0 ? `${formatPct(cases, valid)} %` : 'Sin dato';
   el.title = `${cases} casos de ${valid} registros evaluables${note ? `; ${note}` : ''}`;
   el.setAttribute('aria-label', el.title);
+  setKpiCaption(el, `${cases} de ${valid} con dato${note ? ` · ${note}` : ''}`);
 }
 
 // Helpers para tooltips con porcentaje (ApexCharts y Chart.js)
@@ -615,7 +628,16 @@ function updateAllKPIs() {
   const spObCnt = filteredRecords.filter(r => r.sobrepeso_u_obesidad).length;
   const altoCnt = filteredRecords.filter(r => r.factores_riesgo_count >= 2).length;
 
-  const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const setEl = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = val;
+    if (id === 'kpi-total') {
+      setKpiCaption(el, `${formatPct(n, allRecords.length)} % de la muestra total`);
+    } else {
+      setKpiCaption(el, id === 'kpi-cov-recuperados' ? 'Entre quienes tuvieron COVID-19' : 'Promedio de valores registrados');
+    }
+  };
 
   setEl('kpi-total', n.toString());
   setPrevalenceEl('kpi-hta', htaCnt, recordsWithValue('hipertension').length);

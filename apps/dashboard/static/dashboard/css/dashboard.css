@@ -403,6 +403,15 @@ body {
   padding: 0.2rem 0;
 }
 
+.card-kpi .kpi-caption {
+  margin-top: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  letter-spacing: 0;
+}
+
 .card-kpi .kpi-value {
   font-size: clamp(1.4rem, 1.8vw, 1.85rem);
   font-weight: 700;
