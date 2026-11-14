@@ -797,10 +797,38 @@ def _get_cantons_cache():
     return _CANTONS_CACHE
 
 
+CIUDAD_CODE_MAP = {
+    1: 'BABAHOYO',
+    2: 'DAULE',
+    3: 'DURAN',
+    4: 'GUAYAQUIL',
+    5: 'MILAGRO',
+    6: 'YAGUACHI',
+    7: 'SANTA ELENA',
+    8: 'SALITRE',
+    9: 'SIMON BOLIVAR',
+    10: 'MARCELINO MARIDUEÑA',
+    11: 'QUITO',
+    12: 'VIRGEN DE FATIMA',
+    13: 'NARANJAL',
+    14: 'MANTA',
+    15: 'NARANJITO'
+}
+
+
 def _resolve_canton_safe(canton_name, province_name=None):
     """Resuelve un cantón de Ecuador ignorando tildes y mayúsculas de forma optimizada."""
     if not canton_name:
         return None
+
+    # Manejar códigos numéricos de CIUDAD (ej. 5.0, 5, '5.0', '5')
+    try:
+        c_num = int(float(canton_name))
+        if c_num in CIUDAD_CODE_MAP:
+            canton_name = CIUDAD_CODE_MAP[c_num]
+    except (ValueError, TypeError):
+        pass
+
     raw_canton = str(canton_name).strip()
     norm_c = unicodedata.normalize('NFKD', raw_canton).encode('ASCII', 'ignore').decode('utf-8').upper()
 
@@ -810,13 +838,14 @@ def _resolve_canton_safe(canton_name, province_name=None):
         if c_norm == norm_c:
             return c
 
-    # Búsqueda parcial
-    for c in cantons:
-        c_norm = unicodedata.normalize('NFKD', c.name).encode('ASCII', 'ignore').decode('utf-8').upper()
-        if c_norm in norm_c or norm_c in c_norm:
-            return c
+    # Búsqueda parcial (requiere al menos 4 caracteres para evitar falsos positivos con dígitos o siglas)
+    if len(norm_c) >= 4:
+        for c in cantons:
+            c_norm = unicodedata.normalize('NFKD', c.name).encode('ASCII', 'ignore').decode('utf-8').upper()
+            if c_norm in norm_c or norm_c in c_norm:
+                return c
 
-    return cantons[0] if cantons else None
+    return None
 
 
 def _is_empty_or_nan(val):
@@ -868,20 +897,38 @@ def _sanitize_dataset_dict(raw_dict):
 
 
 def _get_val_and_label(val, val_labels_dict):
-    """Extrae tanto el valor crudo como la etiqueta textual de SPSS si existe."""
+    """Extrae tanto el valor crudo como la etiqueta textual de SPSS/R si existe."""
     if val is None:
         return None, ""
     if isinstance(val, float):
         import math
         if math.isnan(val) or math.isinf(val):
             return None, ""
-    lbl = val_labels_dict.get(val) if val_labels_dict else None
-    if lbl is None and isinstance(val, (int, float)):
-        # Probar versión float/int
+    if not val_labels_dict:
+        return val, ""
+
+    lbl = None
+    candidates = [val]
+    if isinstance(val, (int, float)):
         try:
-            lbl = val_labels_dict.get(float(val)) if val_labels_dict else None
+            f = float(val)
+            candidates.extend([f, int(f), str(val), f"{f:.1f}", str(int(f))])
         except Exception:
             pass
+    elif isinstance(val, str):
+        s = val.strip()
+        candidates.append(s)
+        try:
+            f = float(s)
+            candidates.extend([f, int(f), f"{f:.1f}", str(int(f))])
+        except Exception:
+            pass
+
+    for c in candidates:
+        if c in val_labels_dict:
+            lbl = val_labels_dict[c]
+            break
+
     lbl_str = str(lbl).strip() if lbl is not None else ""
     return val, lbl_str
 
@@ -910,6 +957,26 @@ def _clean_decimal(val, max_digits=5, decimal_places=2):
 # 1. ANÁLISIS INTELIGENTE DEL ARCHIVO .SAV Y RSTUDIO (.RDS / .RDATA)
 # -----------------------------------------------------------------------------
 
+_SPEC_VALUE_LABELS = None
+
+def _get_spec_value_labels():
+    """Carga de forma perezosa y cacheada el diccionario maestro de value_labels oficial de UNEMI."""
+    global _SPEC_VALUE_LABELS
+    if _SPEC_VALUE_LABELS is None:
+        try:
+            import json
+            spec_path = Path(__file__).resolve().parent / 'sav_columns_spec.json'
+            if spec_path.exists():
+                with open(spec_path, 'r', encoding='utf-8') as f:
+                    raw_spec = json.load(f)
+                _SPEC_VALUE_LABELS = raw_spec.get('value_labels', {})
+            else:
+                _SPEC_VALUE_LABELS = {}
+        except Exception:
+            _SPEC_VALUE_LABELS = {}
+    return _SPEC_VALUE_LABELS
+
+
 class DatasetMetadata:
     """Metadatos estandarizados para archivos SPSS, RStudio y CSV."""
     def __init__(self, df, variable_value_labels=None, column_labels=None):
@@ -918,7 +985,29 @@ class DatasetMetadata:
         self.column_names = [str(c) for c in df.columns]
         self.column_labels = column_labels or [str(c) for c in df.columns]
         self.column_names_to_labels = dict(zip(self.column_names, self.column_labels))
-        self.variable_value_labels = variable_value_labels or {}
+
+        # Combinar value labels provistas con el catálogo oficial de UNEMI (sav_columns_spec.json)
+        # Esto permite que archivos exportados desde RStudio o CSV (que no portan etiquetas de SPSS)
+        # resuelvan automáticamente los códigos numéricos de estamentos, cantones, etc.
+        combined_vl = {}
+        spec_vl = _get_spec_value_labels()
+        for k, v in spec_vl.items():
+            combined_vl[k] = dict(v)
+            combined_vl[k.upper()] = dict(v)
+            combined_vl[k.lower()] = dict(v)
+            combined_vl[normalize_var_name(k)] = dict(v)
+
+        if variable_value_labels:
+            for k, v in variable_value_labels.items():
+                if k not in combined_vl:
+                    combined_vl[k] = {}
+                combined_vl[k].update(v)
+                norm_k = normalize_var_name(k)
+                if norm_k not in combined_vl:
+                    combined_vl[norm_k] = {}
+                combined_vl[norm_k].update(v)
+
+        self.variable_value_labels = combined_vl
 
 
 def _read_dataset_file(temp_path: Path, filename: str):
@@ -1262,6 +1351,12 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
         'SERVICIO': StaffCategory.objects.filter(name__icontains='SERVICIO').first(),
         'ESTUDIANTES': StaffCategory.objects.filter(name__icontains='ESTUDIANTE').first(),
     }
+    staff_num_map = {
+        1: staff_map['PDI'],
+        2: staff_map['PAS'],
+        4: staff_map['SERVICIO'],
+        5: staff_map['ESTUDIANTES'],
+    }
     marital_map = {
         'SOLTERO': MaritalStatus.objects.filter(name__icontains='Soltero').first(),
         'CASADO': MaritalStatus.objects.filter(name__icontains='Casado').first(),
@@ -1269,11 +1364,28 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
         'VIUDO': MaritalStatus.objects.filter(name__icontains='Viudo').first(),
         'UNION': MaritalStatus.objects.filter(name__icontains='Unión').first(),
     }
+    marital_num_map = {
+        1: marital_map['SOLTERO'],
+        2: marital_map['CASADO'],
+        3: marital_map['DIVORCIADO'],
+        4: marital_map['VIUDO'],
+        5: marital_map['UNION'],
+        6: marital_map['CASADO'],
+    }
     living_map = {
         'SOLO': LivingSituation.objects.filter(name__icontains='Solo').first(),
         'PAREJA': LivingSituation.objects.filter(name__icontains='pareja').first(),
         'FAMILIA': LivingSituation.objects.filter(name__icontains='familia').first(),
         'AMIGOS': LivingSituation.objects.filter(name__icontains='amigo').first(),
+    }
+    living_num_map = {
+        1: living_map['SOLO'],
+        2: living_map['PAREJA'],
+        3: living_map['PAREJA'],
+        4: living_map['FAMILIA'],
+        5: living_map['FAMILIA'],
+        6: living_map['FAMILIA'],
+        7: living_map['AMIGOS'],
     }
     education_map = {
         'PRIMARIA': EducationLevel.objects.filter(name__icontains='Primaria').first(),
@@ -1281,18 +1393,53 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
         'SUPERIOR': EducationLevel.objects.filter(name__icontains='Tercer').first(),
         'POSTGRADO': EducationLevel.objects.filter(name__icontains='Cuarto').first(),
     }
+    education_num_map = {
+        1: education_map['PRIMARIA'],
+        2: education_map['PRIMARIA'],
+        3: education_map['PRIMARIA'],
+        4: education_map['SECUNDARIA'],
+        5: education_map['SECUNDARIA'],
+        6: education_map['SUPERIOR'],
+        7: education_map['POSTGRADO'],
+    }
     work_map = {
         'PARTIDA': WorkSchedule.objects.filter(name__icontains='Completo').first(),
         'CONTINUA': WorkSchedule.objects.filter(name__icontains='Completo').first(),
         'TURNO': WorkSchedule.objects.filter(name__icontains='Turno').first(),
         'PARCIAL': WorkSchedule.objects.filter(name__icontains='Parcial').first(),
     }
+    work_num_map = {
+        1: work_map['PARTIDA'],
+        2: work_map['CONTINUA'],
+        3: work_map['PARCIAL'],
+        4: work_map['TURNO'],
+        5: work_map['TURNO'],
+    }
+    prof_titular = ProfessionalCategory.objects.filter(name__icontains='Titular').first()
+    prof_ocasional = ProfessionalCategory.objects.filter(name__icontains='Ocasional').first()
+    prof_publico = ProfessionalCategory.objects.filter(name__icontains='Público').first()
+    prof_servicios = ProfessionalCategory.objects.filter(name__icontains='Auxiliar').first()
+    prof_estudiante = ProfessionalCategory.objects.filter(name__icontains='Estudiante').first()
+    prof_otro = ProfessionalCategory.objects.filter(name__icontains='Otro').first()
     prof_map = {
-        'PERMANENTE': ProfessionalCategory.objects.filter(name__icontains='Titular').first(),
-        'NO PERMANENTE': ProfessionalCategory.objects.filter(name__icontains='Ocasional').first(),
-        'ADMINISTRACION': ProfessionalCategory.objects.filter(name__icontains='Servidor').first(),
-        'SERVICIO': ProfessionalCategory.objects.filter(name__icontains='Auxiliar').first(),
-        'ESTUDIANTE': ProfessionalCategory.objects.filter(name__icontains='Estudiante').first(),
+        'PERMANENTE': prof_titular,
+        'TITULAR': prof_titular,
+        'NO PERMANENTE': prof_ocasional,
+        'OCASIONAL': prof_ocasional,
+        'ADMINISTRACION': prof_publico,
+        'SERVIDOR': prof_publico,
+        'SERVICIO': prof_servicios,
+        'AUXILIAR': prof_servicios,
+        'ESTUDIANTE': prof_estudiante,
+        'OTRO': prof_otro,
+    }
+    prof_num_map = {
+        1: prof_titular,
+        2: prof_ocasional,
+        3: prof_publico,
+        4: prof_servicios,
+        5: prof_otro,
+        6: prof_estudiante,
     }
     housing_map = {
         'PROPIA': HousingType.objects.filter(name__icontains='Propia').first(),
@@ -1300,11 +1447,27 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
         'FAMILIAR': HousingType.objects.filter(name__icontains='Familiar').first(),
         'OTRO': HousingType.objects.filter(name__icontains='Prestada').first(),
     }
+    housing_num_map = {
+        1: housing_map['PROPIA'],
+        2: housing_map['ALQUILADA'],
+        3: housing_map['FAMILIAR'],
+        4: housing_map['OTRO'],
+    }
     income_map = {
         '500': IncomeRange.objects.filter(name__icontains='500').first(),
         '1000': IncomeRange.objects.filter(name__icontains='1000').first(),
         '1500': IncomeRange.objects.filter(name__icontains='1001').first(),
         '2000': IncomeRange.objects.filter(name__icontains='2000').first(),
+    }
+    income_num_map = {
+        1: income_map['500'],
+        2: income_map['1000'],
+        3: income_map['1500'],
+        4: income_map['1500'],
+        5: income_map['2000'],
+        6: income_map['2000'],
+        7: income_map['2000'],
+        8: income_map['2000'],
     }
     rhythm_default = EcgRhythm.objects.first()
     if not rhythm_default:
@@ -1465,9 +1628,14 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                     sex = sex_hombre
                     if 'sexo' in field_to_col:
                         s_val = df_dict[field_to_col['sexo']][i]
-                        _, s_lbl = _get_val_and_label(s_val, meta.variable_value_labels.get(field_to_col['sexo'], {}))
-                        if 'MUJER' in s_lbl.upper() or s_val == 2.0:
+                        vlabels_s = meta.variable_value_labels.get(field_to_col['sexo'], {})
+                        if not vlabels_s:
+                            vlabels_s = meta.variable_value_labels.get('SEXO', {})
+                        _, s_lbl = _get_val_and_label(s_val, vlabels_s)
+                        if 'MUJER' in s_lbl.upper() or s_val in [2.0, 2, '2', '2.0', 'F', 'Mujer', 'FEMENINO']:
                             sex = sex_mujer
+                        elif 'HOMBRE' in s_lbl.upper() or s_val in [1.0, 1, '1', '1.0', 'M', 'Hombre', 'MASCULINO']:
+                            sex = sex_hombre
 
                     edad_val = None
                     if 'edad' in field_to_col:
@@ -1492,14 +1660,20 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                     birth_canton = default_canton
                     if 'ciudad_nac' in field_to_col:
                         val_cn = df_dict[field_to_col['ciudad_nac']][i]
-                        _, lbl_cn = _get_val_and_label(val_cn, meta.variable_value_labels.get(field_to_col['ciudad_nac'], {}))
+                        vlabels_cn = meta.variable_value_labels.get(field_to_col['ciudad_nac'], {})
+                        if not vlabels_cn:
+                            vlabels_cn = meta.variable_value_labels.get('CIUDAD', {})
+                        _, lbl_cn = _get_val_and_label(val_cn, vlabels_cn)
                         rc = _resolve_canton_safe(lbl_cn or val_cn)
                         if rc: birth_canton = rc
 
                     residence_canton = default_canton
                     if 'ciudad_res' in field_to_col:
                         val_cr = df_dict[field_to_col['ciudad_res']][i]
-                        _, lbl_cr = _get_val_and_label(val_cr, meta.variable_value_labels.get(field_to_col['ciudad_res'], {}))
+                        vlabels_cr = meta.variable_value_labels.get(field_to_col['ciudad_res'], {})
+                        if not vlabels_cr:
+                            vlabels_cr = meta.variable_value_labels.get('CIUDAD', {})
+                        _, lbl_cr = _get_val_and_label(val_cr, vlabels_cr)
                         rc = _resolve_canton_safe(lbl_cr or val_cr)
                         if rc: residence_canton = rc
 
@@ -1572,11 +1746,23 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
 
                     if 'estamento' in field_to_col:
                         st_val = df_dict[field_to_col['estamento']][i]
-                        _, st_lbl = _get_val_and_label(st_val, meta.variable_value_labels.get(field_to_col['estamento'], {}))
-                        for k_st, sc_obj in staff_map.items():
-                            if k_st in st_lbl.upper():
-                                visit.staff_category = sc_obj
-                                break
+                        vlabels_st = meta.variable_value_labels.get(field_to_col['estamento'], {})
+                        if not vlabels_st:
+                            vlabels_st = meta.variable_value_labels.get('Categoria_Personal', {})
+                        _, st_lbl = _get_val_and_label(st_val, vlabels_st)
+                        st_found = False
+                        if st_lbl:
+                            for k_st, sc_obj in staff_map.items():
+                                if k_st in st_lbl.upper():
+                                    visit.staff_category = sc_obj
+                                    st_found = True
+                                    break
+                        if not st_found and st_val is not None:
+                            try:
+                                st_int = int(float(st_val))
+                                if st_int in staff_num_map:
+                                    visit.staff_category = staff_num_map[st_int]
+                            except Exception: pass
 
                     if 'hijos' in field_to_col:
                         raw_h = df_dict[field_to_col['hijos']][i]
@@ -1592,59 +1778,167 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
 
                     if 'estado_civil' in field_to_col:
                         ec_val = df_dict[field_to_col['estado_civil']][i]
-                        _, ec_lbl = _get_val_and_label(ec_val, meta.variable_value_labels.get(field_to_col['estado_civil'], {}))
-                        for k_ec, ms_obj in marital_map.items():
-                            if k_ec in ec_lbl.upper():
-                                visit.marital_status = ms_obj
-                                break
+                        vlabels_ec = meta.variable_value_labels.get(field_to_col['estado_civil'], {})
+                        if not vlabels_ec:
+                            vlabels_ec = meta.variable_value_labels.get('ESTADO_CIVIL', {})
+                        _, ec_lbl = _get_val_and_label(ec_val, vlabels_ec)
+                        ec_found = False
+                        if ec_lbl:
+                            for k_ec, ms_obj in marital_map.items():
+                                if k_ec in ec_lbl.upper():
+                                    visit.marital_status = ms_obj
+                                    ec_found = True
+                                    break
+                        if not ec_found and ec_val is not None:
+                            try:
+                                ec_int = int(float(ec_val))
+                                if ec_int in marital_num_map:
+                                    visit.marital_status = marital_num_map[ec_int]
+                            except Exception: pass
 
                     if 'convive_con' in field_to_col:
                         cc_val = df_dict[field_to_col['convive_con']][i]
-                        _, cc_lbl = _get_val_and_label(cc_val, meta.variable_value_labels.get(field_to_col['convive_con'], {}))
-                        for k_cc, ls_obj in living_map.items():
-                            if k_cc in cc_lbl.upper():
-                                visit.living_situation = ls_obj
-                                break
+                        vlabels_cc = meta.variable_value_labels.get(field_to_col['convive_con'], {})
+                        if not vlabels_cc:
+                            vlabels_cc = meta.variable_value_labels.get('CON_QUIEN_VIVE', {})
+                        _, cc_lbl = _get_val_and_label(cc_val, vlabels_cc)
+                        cc_found = False
+                        if cc_lbl:
+                            for k_cc, ls_obj in living_map.items():
+                                if k_cc in cc_lbl.upper():
+                                    visit.living_situation = ls_obj
+                                    cc_found = True
+                                    break
+                        if not cc_found and cc_val is not None:
+                            try:
+                                cc_int = int(float(cc_val))
+                                if cc_int in living_num_map:
+                                    visit.living_situation = living_num_map[cc_int]
+                            except Exception: pass
 
                     if 'estudios' in field_to_col:
                         ed_val = df_dict[field_to_col['estudios']][i]
-                        _, ed_lbl = _get_val_and_label(ed_val, meta.variable_value_labels.get(field_to_col['estudios'], {}))
-                        for k_ed, ed_obj in education_map.items():
-                            if k_ed in ed_lbl.upper():
-                                visit.education_level = ed_obj
-                                break
+                        vlabels_ed = meta.variable_value_labels.get(field_to_col['estudios'], {})
+                        if not vlabels_ed:
+                            vlabels_ed = meta.variable_value_labels.get('NIVEL_ESTUDIOS_OBTENIDO', {})
+                        _, ed_lbl = _get_val_and_label(ed_val, vlabels_ed)
+                        ed_found = False
+                        if ed_lbl:
+                            for k_ed, ed_obj in education_map.items():
+                                if k_ed in ed_lbl.upper():
+                                    visit.education_level = ed_obj
+                                    ed_found = True
+                                    break
+                        if not ed_found and ed_val is not None:
+                            try:
+                                ed_int = int(float(ed_val))
+                                if ed_int in education_num_map:
+                                    visit.education_level = education_num_map[ed_int]
+                            except Exception: pass
 
                     if 'horario' in field_to_col:
                         ho_val = df_dict[field_to_col['horario']][i]
-                        _, ho_lbl = _get_val_and_label(ho_val, meta.variable_value_labels.get(field_to_col['horario'], {}))
-                        for k_ho, ws_obj in work_map.items():
-                            if k_ho in ho_lbl.upper():
-                                visit.work_schedule = ws_obj
-                                break
+                        vlabels_ho = meta.variable_value_labels.get(field_to_col['horario'], {})
+                        if not vlabels_ho:
+                            vlabels_ho = meta.variable_value_labels.get('HORARIO_DE_TRABAJO', {})
+                        _, ho_lbl = _get_val_and_label(ho_val, vlabels_ho)
+                        ho_found = False
+                        if ho_lbl:
+                            for k_ho, ws_obj in work_map.items():
+                                if k_ho in ho_lbl.upper():
+                                    visit.work_schedule = ws_obj
+                                    ho_found = True
+                                    break
+                        if not ho_found and ho_val is not None:
+                            try:
+                                ho_int = int(float(ho_val))
+                                if ho_int in work_num_map:
+                                    visit.work_schedule = work_num_map[ho_int]
+                            except Exception: pass
 
                     if 'profesion' in field_to_col:
                         pr_val = df_dict[field_to_col['profesion']][i]
-                        _, pr_lbl = _get_val_and_label(pr_val, meta.variable_value_labels.get(field_to_col['profesion'], {}))
-                        for k_pr, pf_obj in prof_map.items():
-                            if k_pr in pr_lbl.upper():
-                                visit.professional_category = pf_obj
-                                break
+                        vlabels_pr = meta.variable_value_labels.get(field_to_col['profesion'], {})
+                        if not vlabels_pr:
+                            vlabels_pr = meta.variable_value_labels.get('CATEGORIA_PROFESIONAL', {})
+                        _, pr_lbl = _get_val_and_label(pr_val, vlabels_pr)
+                        pr_found = False
+                        if pr_lbl:
+                            pr_upper = pr_lbl.upper()
+                            for k_pr, pf_obj in prof_map.items():
+                                if k_pr in pr_upper:
+                                    visit.professional_category = pf_obj
+                                    pr_found = True
+                                    break
+                        if not pr_found and pr_val is not None:
+                            try:
+                                pr_int = int(float(pr_val))
+                                if pr_int in prof_num_map:
+                                    visit.professional_category = prof_num_map[pr_int]
+                            except Exception: pass
 
                     if 'vivienda' in field_to_col:
                         vi_val = df_dict[field_to_col['vivienda']][i]
-                        _, vi_lbl = _get_val_and_label(vi_val, meta.variable_value_labels.get(field_to_col['vivienda'], {}))
-                        for k_vi, vi_obj in housing_map.items():
-                            if k_vi in vi_lbl.upper():
-                                visit.housing_type = vi_obj
-                                break
+                        vlabels_vi = meta.variable_value_labels.get(field_to_col['vivienda'], {})
+                        if not vlabels_vi:
+                            vlabels_vi = meta.variable_value_labels.get('SU_VIVIENDA_ES', {})
+                        _, vi_lbl = _get_val_and_label(vi_val, vlabels_vi)
+                        vi_found = False
+                        if vi_lbl:
+                            for k_vi, vi_obj in housing_map.items():
+                                if k_vi in vi_lbl.upper():
+                                    visit.housing_type = vi_obj
+                                    vi_found = True
+                                    break
+                        if not vi_found and vi_val is not None:
+                            try:
+                                vi_int = int(float(vi_val))
+                                if vi_int in housing_num_map:
+                                    visit.housing_type = housing_num_map[vi_int]
+                            except Exception: pass
 
                     if 'ingresos' in field_to_col:
                         in_val = df_dict[field_to_col['ingresos']][i]
-                        _, in_lbl = _get_val_and_label(in_val, meta.variable_value_labels.get(field_to_col['ingresos'], {}))
-                        for k_in, in_obj in income_map.items():
-                            if k_in in in_lbl.upper():
-                                visit.income_range = in_obj
-                                break
+                        vlabels_in = meta.variable_value_labels.get(field_to_col['ingresos'], {})
+                        if not vlabels_in:
+                            vlabels_in = meta.variable_value_labels.get('INGRESOS_TOTALES_MENSUALES', {})
+                        _, in_lbl = _get_val_and_label(in_val, vlabels_in)
+                        in_found = False
+                        if in_lbl:
+                            for k_in, in_obj in income_map.items():
+                                if k_in in in_lbl.upper():
+                                    visit.income_range = in_obj
+                                    in_found = True
+                                    break
+                        if not in_found and in_val is not None:
+                            try:
+                                in_int = int(float(in_val))
+                                if in_int in income_num_map:
+                                    visit.income_range = income_num_map[in_int]
+                            except Exception: pass
+
+                    # Sincronización cruzada entre staff_category y professional_category
+                    if not visit.professional_category and visit.staff_category:
+                        sc_code = visit.staff_category.name.upper()
+                        if 'PDI' in sc_code:
+                            visit.professional_category = prof_map.get('PERMANENTE')
+                        elif 'PAS' in sc_code:
+                            visit.professional_category = prof_map.get('ADMINISTRACION')
+                        elif 'SERVICIO' in sc_code:
+                            visit.professional_category = prof_map.get('SERVICIO')
+                        elif 'ESTUDIANTE' in sc_code:
+                            visit.professional_category = prof_map.get('ESTUDIANTE')
+
+                    if not visit.staff_category and visit.professional_category:
+                        pc_name = visit.professional_category.name.upper()
+                        if 'DOCENTE' in pc_name or 'PROFESOR' in pc_name or 'TITULAR' in pc_name or 'OCASIONAL' in pc_name:
+                            visit.staff_category = staff_map.get('PDI')
+                        elif 'SERVIDOR' in pc_name or 'ADMINISTRACI' in pc_name:
+                            visit.staff_category = staff_map.get('PAS')
+                        elif 'AUXILIAR' in pc_name or 'SERVICIO' in pc_name:
+                            visit.staff_category = staff_map.get('SERVICIO')
+                        elif 'ESTUDIANTE' in pc_name:
+                            visit.staff_category = staff_map.get('ESTUDIANTES')
 
                     visit.status = Visit.Status.COMPLETED
                     visit.save()
