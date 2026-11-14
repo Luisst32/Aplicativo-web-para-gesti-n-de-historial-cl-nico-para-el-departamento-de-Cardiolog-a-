@@ -1645,9 +1645,9 @@ def sav_import_analyze_api(request):
 
     uploaded_file = request.FILES['file']
     filename = uploaded_file.name.lower()
-    valid_exts = ('.sav', '.zsav', '.rds', '.rdata', '.rda', '.csv')
+    valid_exts = ('.sav', '.zsav', '.rds', '.rdata', '.rda', '.r', '.csv')
     if not any(filename.endswith(ext) for ext in valid_exts):
-        return JsonResponse({"success": False, "error": "Formato de archivo inválido. Debe ser SPSS (.sav, .zsav) o RStudio (.rds, .RData, .rda, .csv)."}, status=400)
+        return JsonResponse({"success": False, "error": "Formato de archivo inválido. Debe ser SPSS (.sav, .zsav) o RStudio (.rds, .RData, .rda, .R, .csv)."}, status=400)
 
     analysis_result = analyze_sav_file(uploaded_file, uploaded_file.name, user=request.user)
     if not analysis_result.get('success'):

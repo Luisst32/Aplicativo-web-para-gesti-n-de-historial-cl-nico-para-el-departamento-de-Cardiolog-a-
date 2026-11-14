@@ -42,7 +42,7 @@ class ImportTicketTests(SimpleTestCase):
                 self.fail('Replayed ticket accepted')
 
     def test_all_supported_extensions_preserve_parser_selection(self):
-        for ext in ('.sav', '.zsav', '.csv', '.rds', '.rdata', '.rda'):
+        for ext in ('.sav', '.zsav', '.csv', '.rds', '.rdata', '.rda', '.r'):
             ticket, _ = self.upload(ext)
             with claim_upload(ticket, self.user) as claimed:
                 self.assertEqual(claimed.suffix, ext)

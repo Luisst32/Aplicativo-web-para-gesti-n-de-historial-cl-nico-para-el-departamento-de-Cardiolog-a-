@@ -11,7 +11,7 @@ from django.core.exceptions import ImproperlyConfigured
 
 SALT = 'clinical.dataset-import.v1'
 MAX_AGE = 3600
-EXTENSIONS = {'.sav', '.zsav', '.csv', '.rds', '.rdata', '.rda'}
+EXTENSIONS = {'.sav', '.zsav', '.csv', '.rds', '.rdata', '.rda', '.r'}
 ERROR_MESSAGE = 'Importación inválida, ajena, caducada o ya utilizada. Suba el archivo nuevamente.'
 
 
