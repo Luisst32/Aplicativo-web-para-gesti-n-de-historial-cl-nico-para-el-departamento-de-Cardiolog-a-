@@ -63,13 +63,13 @@ class QuestionnaireCoverageTests(TestCase):
         self.visit1.laboratory.glucose_mg_dl=0
         self.visit1.laboratory.save()
         Echocardiogram.objects.create(visit=self.visit1,lvef_percentage=60)
-        OrderedStudies.objects.create(visit=self.visit1,holter_ordered=True)
+        OrderedStudies.objects.create(visit=self.visit1,clinical_analysis=True)
         self.answer('r_apnea',label='No')
         rows={r['id']:r for r in get_questionnaire_dashboard()['records']}
         values=rows[self.visit1.pk]['values']
         self.assertEqual(values['db:laboratory.glucose_mg_dl'],0)
         self.assertEqual(values['db:echocardiogram.lvef_percentage'],60)
-        self.assertEqual(values['db:ordered_studies.holter_ordered'],'Sí')
+        self.assertEqual(values['db:ordered_studies.clinical_analysis'],'Sí')
         self.assertEqual(values['r_apnea'],'No')
         self.assertNotIn('db:echocardiogram.lvef_percentage',rows[self.visit2.pk]['values'])
 
@@ -93,13 +93,13 @@ class QuestionnaireCoverageTests(TestCase):
         self.assertNotEqual(rows[0]['id'],rows[1]['id'])
         self.assertEqual(rows[0]['code'],rows[1]['code'])
 
-    def test_view_uses_recorded_payload_and_escapes_catalog_labels(self):
+    def test_dashboard_view_uses_escaped_records_payload(self):
         response=self.client.get('/dashboard/')
         self.assertEqual(response.status_code,200)
-        self.assertIn('Cuestionario UNEMI 2026',response.content.decode())
-        self.assertIn('N.° Ficha Clínica',response.content.decode())
-        self.assertIn('questionnaire_dashboard',response.context)
-        self.assertNotIn('Prevalencia Hipertensión',response.content.decode())
+        content=response.content.decode()
+        self.assertIn('dashboard-records-data', content)
+        self.assertIn('records', response.context)
+        self.assertNotIn('questionnaire_dashboard', response.context)
 
     def test_covid_admission_is_not_inferred_from_infection_only(self):
         answer=self.answer('historia_covid','Si')
