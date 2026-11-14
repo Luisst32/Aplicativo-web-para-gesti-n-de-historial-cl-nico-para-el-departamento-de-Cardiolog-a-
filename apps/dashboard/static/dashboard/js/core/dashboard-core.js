@@ -52,8 +52,7 @@ function recordsWithValue(field) {
 }
 
 function prevalenceLabel(cases, valid) {
-  const total = filteredRecords.length;
-  return `${cases} (${formatPct(cases, valid)}%) · ${valid} válidos de ${total}; ${total - valid} sin dato`;
+  return `${cases} (${formatPct(cases, valid)}%)`;
 }
 
 // Helpers para tooltips con porcentaje (ApexCharts y Chart.js)
