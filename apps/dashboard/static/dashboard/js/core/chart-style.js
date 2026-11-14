@@ -26,7 +26,12 @@ function dashboardVerticalLabel(formatted) {
 
 function dashboardFitVerticalChartJsBars(chart, formatLabel) {
   if (chart.config.type !== 'bar' || chart.options.indexAxis === 'y') return;
-  if (chart.canvas?.id === 'chart-ecg-fc-comparativa' || chart.config.data.datasets[0]?.label === 'Latidos por Minuto (lpm)' || chart.options.scales?.y?.min !== undefined) return;
+  const canvasId = chart.canvas ? chart.canvas.id : (chart.ctx?.canvas?.id || '');
+  if (canvasId === 'chart-ecg-fc-comparativa') return;
+  const dsLabel = chart.data?.datasets?.[0]?.label || chart.config?.data?.datasets?.[0]?.label || '';
+  if (dsLabel === 'Latidos por Minuto (lpm)') return;
+  if (chart.options?.scales?.y?.min !== undefined && Number(chart.options.scales.y.min) > 0) return;
+  if (chart.scales?.y?.min !== undefined && Number(chart.scales.y.min) > 0) return;
   const stacked = chart.options.scales?.y?.stacked;
   const stackEdges = new Map();
   const canvas = chart.ctx;
@@ -395,7 +400,10 @@ function dashboardChartJsStyle(config) {
 
 function createDashboardChart(element, config) {
   dashboardChartJsStyle(config);
-  if (config.type === 'bar' && config.options.indexAxis !== 'y') {
+  const isSpecialBar = element?.id === 'chart-ecg-fc-comparativa'
+    || config.data?.datasets?.[0]?.label === 'Latidos por Minuto (lpm)'
+    || config.options?.scales?.y?.min !== undefined;
+  if (config.type === 'bar' && config.options.indexAxis !== 'y' && !isSpecialBar) {
     const formatLabel = config.options.plugins.datalabels.formatter;
     config.plugins = [...(config.plugins || []), {
       id: 'dashboard-fit-vertical-labels',
