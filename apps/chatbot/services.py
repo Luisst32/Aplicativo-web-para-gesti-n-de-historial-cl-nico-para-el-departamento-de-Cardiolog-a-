@@ -20,6 +20,7 @@ import json
 import time
 import logging
 import unicodedata
+from collections import Counter
 from typing import Dict, Any, Optional, List
 
 from django.core.cache import cache
@@ -186,6 +187,108 @@ def is_modification_attempt(question: str) -> bool:
         if re.search(pat, q_norm, re.IGNORECASE):
             return True
     return False
+
+
+def is_direct_cohort_metric_question(question: str) -> bool:
+    """Return whether a question must use its exact local cohort calculation."""
+    q = normalize_clinical_query(question)
+    return bool(re.search(
+        r'\b(depresion|depresiv[oa]s?|ansiedad|salud\s+mental|trastorno\s+mental)\b',
+        q,
+    ))
+
+
+SENSITIVE_VARIABLE_PATTERN = re.compile(
+    r'\b(nombre|apellido|cedula|identifica|documento|telefono|celular|correo|email|'
+    r'direccion|domicilio|contacto|historia\s*clinica|codigo\s*estudio)\b'
+)
+QUERY_STOP_WORDS = {
+    'cuanto', 'cuantos', 'cuanta', 'cuantas', 'paciente', 'pacientes',
+    'caso', 'casos', 'hay', 'con', 'de', 'del', 'la', 'las', 'el', 'los',
+    'en', 'por', 'para', 'que', 'cual', 'cuales', 'dame', 'mostrar',
+    'muestra', 'cohorte', 'variable', 'registro', 'registros', 'historial',
+    'clinico', 'clinica', 'dato', 'datos', 'total', 'numero', 'n',
+}
+
+
+def _question_matches_query(question_obj, normalized_query: str) -> bool:
+    """Match a query to a catalogued questionnaire variable, not a raw value."""
+    terms = {
+        term for term in re.findall(r'[a-z0-9]+', normalized_query)
+        if len(term) >= 3 and term not in QUERY_STOP_WORDS
+    }
+    if not terms:
+        return False
+    descriptor = normalize_clinical_query(f'{question_obj.code} {question_obj.text}')
+    return any(term in descriptor for term in terms)
+
+
+def _is_safe_question_variable(question_obj) -> bool:
+    """Free-text and identifier-like variables never leave the database layer."""
+    descriptor = normalize_clinical_query(f'{question_obj.code} {question_obj.text}')
+    if SENSITIVE_VARIABLE_PATTERN.search(descriptor):
+        return False
+    # Text fields can contain unstructured clinical notes or identifiers.  Only
+    # categorical, boolean and numeric questionnaire variables are aggregable.
+    return question_obj.response_type in {'OPCION', 'BOOLEANO', 'NUMERICO'}
+
+
+def get_live_questionnaire_metric(question: str) -> Optional[str]:
+    """Return a privacy-preserving live aggregate for matching questionnaire fields.
+
+    Catalog metadata is queried on every request; newly enabled non-sensitive
+    variables therefore become available without adding a chatbot rule.
+    """
+    from catalog.models import Question
+    from clinical.models import VisitAnswer
+
+    normalized_query = normalize_clinical_query(question)
+    candidates = [
+        item for item in Question.objects.filter(status=Question.Status.ACTIVE).order_by('display_order')
+        if _question_matches_query(item, normalized_query) and _is_safe_question_variable(item)
+    ][:3]
+    if not candidates:
+        return None
+
+    summaries = []
+    for item in candidates:
+        answers = VisitAnswer.objects.filter(question=item).select_related('selected_option')
+        if item.response_type == Question.ResponseType.NUMERICO:
+            values = [float(answer.numeric_value) for answer in answers if answer.numeric_value is not None]
+            if len(values) < 5:
+                summaries.append(f'- **{item.text}:** no divulgado (menos de 5 respuestas válidas).')
+                continue
+            values.sort()
+            middle = len(values) // 2
+            median = values[middle] if len(values) % 2 else (values[middle - 1] + values[middle]) / 2
+            summaries.append(
+                f'- **{item.text}:** N válido={len(values)}, promedio={sum(values) / len(values):.1f}, mediana={median:.1f}.'
+            )
+            continue
+
+        labels = []
+        for answer in answers:
+            if answer.selected_option:
+                labels.append(answer.selected_option.label)
+                continue
+            # Boolean values may be stored as text, but never treat arbitrary
+            # free text as a category that could be echoed back to a user.
+            value = normalize_clinical_query(answer.text_value or '')
+            if item.response_type == Question.ResponseType.BOOLEANO:
+                if value in {'si', 'true', '1'}:
+                    labels.append('Sí')
+                elif value in {'no', 'false', '0'}:
+                    labels.append('No')
+        counts = Counter(labels)
+        if len(labels) < 5 or not counts or any(count < 5 for count in counts.values()):
+            summaries.append(f'- **{item.text}:** no divulgado (protección de celdas pequeñas).')
+            continue
+        distribution = '; '.join(
+            f'{label}: {count} ({count / len(labels) * 100:.1f} %)' for label, count in counts.most_common()
+        )
+        summaries.append(f'- **{item.text}:** N válido={len(labels)}. {distribution}.')
+
+    return '**Resultado en tiempo real del cuestionario:**\n' + '\n'.join(summaries)
 
 
 def get_anonymized_cohort_context() -> str:
@@ -721,6 +824,36 @@ def query_gemini_assistant(
             "response": modification_refusal,
             "tokens_used": 0,
             "execution_time_ms": elapsed_ms
+        }
+
+    # Resolve any catalogued, non-sensitive questionnaire variable from the
+    # database first.  This is deliberately local: the external provider never
+    # receives individual answers or a field that the catalog marks as free text.
+    live_metric = get_live_questionnaire_metric(clean_question)
+    if live_metric:
+        elapsed_ms = int((time.time() - start_time) * 1000)
+        _log_bot_query(user, clean_question, live_metric, tokens=0, execution_ms=elapsed_ms, status=BotQuery.Status.SUCCESS)
+        return {
+            "status": "success",
+            "response": live_metric,
+            "tokens_used": 0,
+            "execution_time_ms": elapsed_ms,
+            "mode": "live_questionnaire_metric",
+        }
+
+    # Depression and anxiety already have exact, privacy-protected aggregate
+    # calculations.  Gemini previously received no such fields in its reduced
+    # context and could incorrectly call a recorded variable unavailable.
+    if is_direct_cohort_metric_question(clean_question):
+        direct_answer = generate_fallback_clinical_answer(clean_question)
+        elapsed_ms = int((time.time() - start_time) * 1000)
+        _log_bot_query(user, clean_question, direct_answer, tokens=0, execution_ms=elapsed_ms, status=BotQuery.Status.SUCCESS)
+        return {
+            "status": "success",
+            "response": direct_answer,
+            "tokens_used": 0,
+            "execution_time_ms": elapsed_ms,
+            "mode": "deterministic_cohort_metric",
         }
 
     # 3. Runtime credentials come only from administrator-managed settings.

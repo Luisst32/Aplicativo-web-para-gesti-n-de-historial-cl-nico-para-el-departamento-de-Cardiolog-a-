@@ -972,6 +972,9 @@ function restaurarFichaDesdeObjeto(datos) {
   if (datos.f_provincia_nac) {
     if (document.getElementById('f_provincia_nac')) document.getElementById('f_provincia_nac').value = datos.f_provincia_nac;
     onProvinciaNacChange(datos.f_provincia_nac, datos.f_municipio);
+    if (datos.f_provincia_nac === 'EXTRANJERO' && typeof toggleProvinciaExtranjera === 'function') {
+      toggleProvinciaExtranjera();
+    }
   }
   if (datos.f_provincia) {
     if (document.getElementById('f_provincia')) document.getElementById('f_provincia').value = datos.f_provincia;
@@ -1073,7 +1076,12 @@ function restaurarFichaDesdeObjeto(datos) {
       elements.checked = (val === '1' || val === 1 || val === true || vLower === 'si' || vLower === 'sí' || vLower === elements.value.toLowerCase());
       if (elements.onchange) elements.onchange();
     } else if ('value' in elements) {
-      elements.value = val;
+      if (elements.type === 'number' && typeof val === 'string' && isNaN(Number(val))) {
+        const m = val.match(/-?\d+(?:\.\d+)?/);
+        elements.value = m ? m[0] : '';
+      } else {
+        elements.value = val;
+      }
       if (elements.oninput) elements.oninput();
       if (elements.onchange) elements.onchange();
     }

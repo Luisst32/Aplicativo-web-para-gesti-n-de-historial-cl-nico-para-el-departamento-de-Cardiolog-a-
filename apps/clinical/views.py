@@ -1,5 +1,6 @@
 from clinical.services.clinical_form import update_clinical_record, _resolve_canton
 from .services.sav_importer import analyze_sav_file, execute_sav_import
+import re
 import json
 import datetime
 import secrets
@@ -126,6 +127,15 @@ def _patient_to_dict(patient, visit=None):
         ir_val_map = {'Menos de $500': '1', '$500 - $1000': '2', '$1001 - $2000': '3', 'Más de $2000': '5'}
         ir_val = ir_val_map.get(visit.income_range.name, "")
 
+    phone_val = patient.phone or ""
+    email_val = patient.email or ""
+    if visit and (not phone_val or not email_val):
+        for ans in visit.answers.filter(question__code__in=['telefono', 'f_telefono', 'correo', 'f_correo', 'email']):
+            if not phone_val and ans.question.code in ('telefono', 'f_telefono') and ans.text_value:
+                phone_val = ans.text_value.strip()
+            if not email_val and ans.question.code in ('correo', 'f_correo', 'email') and ans.text_value:
+                email_val = ans.text_value.strip()
+
     return {
         "id": str(patient.patient_id),
         "codigo": visit.study_code if (visit and visit.study_code) else str(patient.patient_id),
@@ -143,9 +153,9 @@ def _patient_to_dict(patient, visit=None):
         "facultad": visit.faculty if visit and visit.faculty else "FACI",
         "ciudad": visit.residence_canton.name if (visit and visit.residence_canton) else (patient.birth_canton.name if patient.birth_canton else "Milagro"),
         "provincia": visit.residence_canton.province.name.upper() if (visit and visit.residence_canton and visit.residence_canton.province) else "GUAYAS",
-        "telefono": patient.phone or "",
-        "correo": patient.email or "",
-        "email": patient.email or "",
+        "telefono": phone_val,
+        "correo": email_val,
+        "email": email_val,
         "municipio": patient.birth_canton.name if patient.birth_canton else "Milagro",
         "provincia_nac": patient.birth_canton.province.name.upper() if (patient.birth_canton and patient.birth_canton.province) else "GUAYAS",
         "numeroVisita": visit.visit_number if (visit and visit.visit_number) else 1,
@@ -494,6 +504,315 @@ def patient_create_api(request):
 # JSON APIS: FORM POPULATION AND COMPLETE SAVING (HU-11, HU-12, HU-13)
 # =============================================================================
 
+ECUADOR_PROVINCES = {
+    'AZUAY', 'BOLIVAR', 'CANAR', 'CARCHI', 'CHIMBORAZO', 'COTOPAXI', 'EL ORO',
+    'ESMERALDAS', 'GALAPAGOS', 'GUAYAS', 'IMBABURA', 'LOJA', 'LOS RIOS', 'MANABI',
+    'MORONA SANTIAGO', 'NAPO', 'ORELLANA', 'PASTAZA', 'PICHINCHA', 'SANTA ELENA',
+    'SANTO DOMINGO DE LOS TSACHILAS', 'SUCUMBIOS', 'TUNGURAHUA', 'ZAMORA CHINCHIPE'
+}
+
+
+def _normalize_clinical_form_data(datos, ans_dict, vs=None):
+    """
+    Normaliza exhaustivamente los valores del formulario procedentes de SPSS / VisitAnswer
+    para que encajen con precisión en las opciones de <select>, radios y campos numéricos HTML.
+    """
+    # 1. Sexo
+    sex_val = str(datos.get('f_sexo', '')).strip().lower()
+    if 'h' in sex_val or sex_val == '1':
+        datos['f_sexo'] = 'H'
+    elif 'm' in sex_val or sex_val == '2':
+        datos['f_sexo'] = 'M'
+
+    # 2. Estado civil
+    ec_val = str(datos.get('f_estado_civil', '')).strip().lower()
+    if 'solter' in ec_val or ec_val == '1':
+        datos['f_estado_civil'] = '1_soltero'
+    elif 'casad' in ec_val or ec_val == '2':
+        datos['f_estado_civil'] = '2_casado'
+    elif 'divorc' in ec_val or 'separad' in ec_val or ec_val == '3':
+        datos['f_estado_civil'] = '3_divorciado'
+    elif 'viud' in ec_val or ec_val == '4':
+        datos['f_estado_civil'] = '4_viudo'
+    elif 'uni' in ec_val or 'libre' in ec_val or 'conviv' in ec_val or ec_val == '5':
+        datos['f_estado_civil'] = '5_union_libre'
+
+    # 3. Convivencia (con quién vive)
+    cv_val = str(datos.get('f_convive_con', '')).strip().lower()
+    if 'sól' in cv_val or 'solo' in cv_val or 'sola' in cv_val or cv_val == '1':
+        datos['f_convive_con'] = '1'
+    elif 'pareja e hijo' in cv_val or cv_val == '3':
+        datos['f_convive_con'] = '3'
+    elif 'pareja, hijo' in cv_val or 'pareja y hijo' in cv_val or cv_val == '5':
+        datos['f_convive_con'] = '5'
+    elif 'pareja' in cv_val or cv_val == '2':
+        datos['f_convive_con'] = '2'
+    elif 'hijo' in cv_val or cv_val == '4':
+        datos['f_convive_con'] = '4'
+    elif 'padre' in cv_val or 'hermano' in cv_val or cv_val == '6':
+        datos['f_convive_con'] = '6'
+    elif 'otro' in cv_val or 'amigo' in cv_val or cv_val == '7':
+        datos['f_convive_con'] = '7'
+    else:
+        m_cv = re.search(r'\d+', cv_val)
+        if m_cv:
+            datos['f_convive_con'] = m_cv.group(0)
+
+    # 4. Mayor nivel de estudios
+    est_val = str(datos.get('f_estudios', '')).strip().lower()
+    if 'no sabe' in est_val or 'analfab' in est_val or est_val == '1':
+        datos['f_estudios'] = '1'
+    elif 'preescolar' in est_val or est_val == '2':
+        datos['f_estudios'] = '2'
+    elif 'primari' in est_val or est_val == '3':
+        datos['f_estudios'] = '3'
+    elif 'secundari' in est_val or est_val == '4':
+        datos['f_estudios'] = '4'
+    elif 'bachiller' in est_val or est_val == '5':
+        datos['f_estudios'] = '5'
+    elif any(k in est_val for k in ['postgrad', 'posgrad', 'cuarto', 'doctor', 'phd', 'master', 'maestr']) or est_val == '7':
+        datos['f_estudios'] = '7'
+    elif 'superior' in est_val or 'grado' in est_val or 'tercer' in est_val or est_val == '6':
+        datos['f_estudios'] = '6'
+    else:
+        m_est = re.search(r'\d+', est_val)
+        if m_est:
+            datos['f_estudios'] = m_est.group(0)
+
+    # 5. Horario de trabajo
+    hor_val = str(datos.get('f_horario', '')).strip().lower()
+    if 'partida' in hor_val or '40' in hor_val or 'completa' in hor_val or hor_val == '1':
+        datos['f_horario'] = '1'
+    elif 'continua' in hor_val or hor_val == '2':
+        datos['f_horario'] = '2'
+    elif 'tarde' in hor_val or 'parcial' in hor_val or hor_val == '3':
+        datos['f_horario'] = '3'
+    elif 'rotativ' in hor_val or 'turno' in hor_val or hor_val == '4':
+        datos['f_horario'] = '4'
+    else:
+        m_hor = re.search(r'\d+', hor_val)
+        if m_hor:
+            datos['f_horario'] = m_hor.group(0)
+
+    # 6. Categoría profesional
+    prof_val = str(datos.get('f_profesion', '')).strip().lower()
+    if 'profesor permanente' in prof_val or 'docente titular' in prof_val or prof_val == '1':
+        datos['f_profesion'] = '1'
+    elif 'profesor no permanente' in prof_val or 'docente ocasional' in prof_val or prof_val == '2':
+        datos['f_profesion'] = '2'
+    elif any(k in prof_val for k in ['administra', 'pas', 'servidor']) or prof_val == '3':
+        datos['f_profesion'] = '3'
+    elif 'servicio' in prof_val or 'auxiliar' in prof_val or prof_val == '4':
+        datos['f_profesion'] = '4'
+    elif 'estudiante' in prof_val or prof_val == '6':
+        datos['f_profesion'] = '6'
+    elif 'jubilad' in prof_val or prof_val == '7':
+        datos['f_profesion'] = '7'
+    elif 'otra' in prof_val or 'otro' in prof_val or prof_val == '5':
+        datos['f_profesion'] = '5'
+    else:
+        m_prof = re.search(r'\d+', prof_val)
+        if m_prof:
+            datos['f_profesion'] = m_prof.group(0)
+
+    # 7. Vivienda
+    viv_val = str(datos.get('f_vivienda', '')).strip().lower()
+    if 'propi' in viv_val or viv_val == '1':
+        datos['f_vivienda'] = '1'
+    elif 'alquil' in viv_val or 'arrend' in viv_val or viv_val == '2':
+        datos['f_vivienda'] = '2'
+    elif 'familiar' in viv_val or viv_val == '3':
+        datos['f_vivienda'] = '3'
+    elif 'presta' in viv_val or 'otro' in viv_val or viv_val == '4':
+        datos['f_vivienda'] = '4'
+    else:
+        m_viv = re.search(r'\d+', viv_val)
+        if m_viv:
+            datos['f_vivienda'] = m_viv.group(0)
+
+    # 8. Ingresos mensuales
+    ing_val = str(datos.get('f_ingresos', '')).strip().lower()
+    if 'menos de 500' in ing_val or '<500' in ing_val or ing_val == '1':
+        datos['f_ingresos'] = '1'
+    elif '500-1' in ing_val or '500 - 1' in ing_val or '500-1.000' in ing_val or ing_val == '2':
+        datos['f_ingresos'] = '2'
+    elif '1001-1500' in ing_val or '1001 - 1500' in ing_val or ing_val == '3':
+        datos['f_ingresos'] = '3'
+    elif '1501' in ing_val or ing_val == '4':
+        datos['f_ingresos'] = '4'
+    elif '2001' in ing_val or ing_val == '5':
+        datos['f_ingresos'] = '5'
+    elif '2501' in ing_val or ing_val == '6':
+        datos['f_ingresos'] = '6'
+    elif '3001' in ing_val or ing_val == '7':
+        datos['f_ingresos'] = '7'
+    elif 'otra' in ing_val or 'otro' in ing_val or ing_val == '8':
+        datos['f_ingresos'] = '8'
+    else:
+        m_ing = re.search(r'\d+', ing_val)
+        if m_ing:
+            datos['f_ingresos'] = m_ing.group(0)
+
+    # 9. Hijos y convivientes (números limpios)
+    h_str = str(datos.get('f_hijos', '')).strip()
+    m_h = re.search(r'\d+', h_str)
+    if m_h:
+        datos['f_hijos'] = m_h.group(0)
+
+    c_str = str(datos.get('f_convivientes', '') or ans_dict.get('cuantas_personas_convive_con_u', '')).strip()
+    m_c = re.search(r'\d+', c_str)
+    if m_c:
+        datos['f_convivientes'] = m_c.group(0)
+
+    # 10. Provincia y País de Nacimiento
+    prov_nac = str(datos.get('f_provincia_nac', '')).strip().upper()
+    if prov_nac and prov_nac not in ECUADOR_PROVINCES and prov_nac != 'EXTRANJERO':
+        datos['f_pais_nac'] = datos['f_provincia_nac']
+        datos['f_provincia_nac'] = 'EXTRANJERO'
+
+    # 11. Factores de riesgo cardiovascular
+    # Sobrepeso / Obesidad
+    sp_val = str(datos.get('r_sobrepeso', '') or ans_dict.get('peso_corporal', '')).strip().lower()
+    if 'no' in sp_val and 'sobrepeso' in sp_val:
+        datos['r_sobrepeso'] = 'No'
+    elif 'obesidad' in sp_val or 'sobrepeso' in sp_val or 'si' in sp_val or 'sí' in sp_val:
+        datos['r_sobrepeso'] = 'Si'
+
+    # Diabetes
+    dm_val = str(datos.get('r_dm', '') or ans_dict.get('diabetes_mellitus', '')).strip().lower()
+    if dm_val:
+        datos['r_dm'] = 'No' if 'no' in dm_val else 'Si'
+
+    # Dislipemia
+    dl_val = str(datos.get('r_dislip', '') or ans_dict.get('dislipemia', '')).strip().lower()
+    if dl_val:
+        if 'no tiene' in dl_val or dl_val == 'no':
+            datos['r_dislip'] = 'No'
+            datos['r_dislip_trat'] = 'No'
+        else:
+            datos['r_dislip'] = 'Si'
+            datos['r_dislip_trat'] = 'No' if 'no tratada' in dl_val else 'Si'
+
+    # Tabaco
+    tb_val = str(datos.get('r_tabaco', '') or ans_dict.get('tabaquismo', '')).strip().lower()
+    if tb_val:
+        datos['r_tabaco'] = 'No' if ('no fuma' in tb_val or tb_val == 'no') else 'Si'
+
+    # Arritmias
+    arr_val = str(datos.get('r_arritmias', '') or ans_dict.get('arritmias', '')).strip().lower()
+    if arr_val:
+        if 'no tiene' in arr_val or arr_val == 'no':
+            datos['r_arritmias'] = 'No'
+            datos['arritmias_tipo'] = ''
+        else:
+            datos['r_arritmias'] = 'Si'
+            if 'no conoce' in arr_val or 'no especifica' in arr_val:
+                datos['arritmias_tipo'] = 'Sí, no especifica'
+
+    # Síncopes
+    sinc_val = str(datos.get('r_sincopes', '') or ans_dict.get('sincopes', '')).strip().lower()
+    if sinc_val:
+        if 'no ha tenido' in sinc_val or sinc_val == 'no':
+            datos['r_sincopes'] = 'No'
+            datos['sincopes_tipo'] = ''
+        else:
+            datos['r_sincopes'] = 'Si'
+
+    # Insuficiencia renal crónica
+    irc_val = str(datos.get('r_irc', '') or ans_dict.get('f_renal_cronica', '')).strip().lower()
+    if irc_val:
+        datos['r_irc'] = 'No' if 'no' in irc_val else 'Si'
+
+    # Personalidad Tipo A
+    pa_val = str(datos.get('em_pers_a', '') or ans_dict.get('em_personalidad_a', '') or ans_dict.get('personalidad_tipo_a', '')).strip().lower()
+    if pa_val:
+        datos['em_pers_a'] = 'No' if 'no' in pa_val else 'Si'
+
+    # Alergias
+    alg_val = str(datos.get('nc_alergia', '') or ans_dict.get('alergias', '')).strip().lower()
+    if alg_val:
+        datos['nc_alergia'] = 'No' if 'no' in alg_val else 'Si'
+
+    # Problemas respiratorios (EPOC / Asma)
+    epoc_val = str(datos.get('nc_epoc', '') or ans_dict.get('problemas_respiratorios', '') or ans_dict.get('nc_asma', '')).strip().lower()
+    if epoc_val:
+        datos['nc_epoc'] = 'No' if ('no tiene' in epoc_val or epoc_val == 'no') else 'Si'
+
+    # Salud mental (Depresión / Ansiedad)
+    sm_val = str(ans_dict.get('salud_mental', '')).strip().lower()
+    if sm_val:
+        if 'no tiene' in sm_val or sm_val == 'no':
+            datos['nc_depresion'] = 'No'
+            datos['nc_ansiedad'] = 'No'
+        else:
+            if 'ansiedad' in sm_val: datos['nc_ansiedad'] = 'Si'
+            if 'depres' in sm_val: datos['nc_depresion'] = 'Si'
+
+    # Enfermedades reumatológicas
+    reu_val = str(datos.get('nc_reuma', '') or ans_dict.get('enfermedad_reumatologicas', '')).strip().lower()
+    if reu_val:
+        datos['nc_reuma'] = 'No' if ('no tiene' in reu_val or reu_val == 'no') else 'Si'
+
+    # ECG Normal
+    ecg_norm = str(datos.get('ecg_normal', '')).strip().upper()
+    if ecg_norm in ('NO', '0', 'FALSE'):
+        datos['ecg_normal'] = 'No'
+    elif ecg_norm in ('SI', 'SÍ', '1', 'TRUE'):
+        datos['ecg_normal'] = 'Si'
+
+    # Ecografía vascular
+    eco_vasc = str(datos.get('res_eco_vascular', '')).strip().upper()
+    if eco_vasc in ('NORMAL', 'SI', 'SÍ', '1', 'TRUE'):
+        datos['res_eco_vascular'] = 'Si'
+    elif eco_vasc in ('NO', 'ALTERADA', '0', 'FALSE'):
+        datos['res_eco_vascular'] = 'No'
+
+    # Lácteos detallados PREDIMED
+    leche_val = str(ans_dict.get('usted_consume_leche_de_vaca', '')).strip()
+    if leche_val:
+        l_low = leche_val.lower()
+        if 'no' in l_low:
+            datos['pred_q13_consume'] = 'No'
+        else:
+            datos['pred_q13_consume'] = 'Si'
+            if 'día' in l_low or 'dia' in l_low:
+                datos['pred_leche_vasos_dia'] = '1'
+            elif 'semana' in l_low:
+                datos['pred_leche_vasos_sem'] = '1'
+            if 'deslactosada' in l_low:
+                datos['pred_leche_tipo'] = 'Deslactosada'
+            elif 'entera' in l_low:
+                datos['pred_leche_tipo'] = 'Entera'
+
+    queso_val = str(ans_dict.get('usted_consume_queso', '')).strip()
+    if queso_val:
+        q_low = queso_val.lower()
+        if 'no' in q_low:
+            datos['pred_q14_consume'] = 'No'
+        else:
+            datos['pred_q14_consume'] = 'Si'
+            if '2 o más' in q_low or '2 o mas' in q_low:
+                datos['pred_queso_veces_sem'] = '2'
+            elif '1 vez' in q_low:
+                datos['pred_queso_veces_sem'] = '1'
+
+    yog_val = str(ans_dict.get('usted_consume_yogurt', '')).strip()
+    if yog_val:
+        y_low = yog_val.lower()
+        if 'no' in y_low:
+            datos['pred_q15_consume'] = 'No'
+        else:
+            datos['pred_q15_consume'] = 'Si'
+            if '2 o más' in y_low or '2 o mas' in y_low:
+                datos['pred_yogurt_cant_sem'] = '2'
+            elif '1 ves' in y_low or '1 vez' in y_low:
+                datos['pred_yogurt_cant_sem'] = '1'
+            if 'griego' in y_low:
+                datos['pred_yogurt_tipo'] = 'Griego'
+            elif 'entero' in y_low:
+                datos['pred_yogurt_tipo'] = 'Entero'
+
+
 def _build_form_datos(patient, visit):
     """
     Constructs a dictionary of all field values matching HTML input/select/radio/checkbox
@@ -524,6 +843,16 @@ def _build_form_datos(patient, visit):
         else:
             ecg_ritmo_val = ecg.rhythm.name
 
+    # Teléfono y correo del paciente con fallback a respuestas guardadas
+    phone_val = patient.phone or ""
+    email_val = patient.email or ""
+    if visit and (not phone_val or not email_val):
+        for ans in visit.answers.filter(question__code__in=['telefono', 'f_telefono', 'correo', 'f_correo', 'email']):
+            if not phone_val and ans.question.code in ('telefono', 'f_telefono') and ans.text_value:
+                phone_val = ans.text_value.strip()
+            if not email_val and ans.question.code in ('correo', 'f_correo', 'email') and ans.text_value:
+                email_val = ans.text_value.strip()
+
     datos = {
         # Modulo 1: Ficha
         "f_nombre": patient.first_names,
@@ -534,8 +863,8 @@ def _build_form_datos(patient, visit):
         "f_edad": edad_val,
         "f_sexo": "H" if (patient.sex and patient.sex.name.lower().startswith('h')) else "M",
         "f_raza": patient.ethnicity.name.upper() if patient.ethnicity else "MESTIZO",
-        "f_telefono": patient.phone or "",
-        "f_correo": patient.email or "",
+        "f_telefono": phone_val,
+        "f_correo": email_val,
         "f_codigo": visit.study_code if visit else "",
         "f_fecha_visita": visit.visit_date.isoformat() if (visit and visit.visit_date) else "",
         "f_universidad": patient.institution.acronym if (patient.institution and patient.institution.acronym) else "UNEMI",
@@ -1050,6 +1379,9 @@ def _build_form_datos(patient, visit):
     else:
         datos['ac_prueba'] = 'No'
         datos['ac_resultado'] = 'Normal'
+
+    if visit:
+        _normalize_clinical_form_data(datos, ans_dict, vs)
 
     return datos
 

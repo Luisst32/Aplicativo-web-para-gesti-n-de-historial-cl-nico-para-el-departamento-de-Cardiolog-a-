@@ -297,6 +297,9 @@ class DashboardServicesAndViewsTestCase(TestCase):
         self.assertFalse(rec['ansiedad'])
         self.assertFalse(rec['depresion'])
 
+        # An explicit field is more reliable than a legacy combined value.
+        self.assertTrue(services._mental_condition('Sí', 'Dato no disponible', 'depresi'))
+
         self.assertEqual(rec['dl_desc'], 'No tratada')
         self.assertTrue(rec['dislipemia'])
 

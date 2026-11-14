@@ -37,6 +37,8 @@ SPSS_QUESTION_ALIASES = {
     'f_apellido1': 'primer_apellido',
     'f_apellido2': 'segundo_apellido',
     'f_cedula': 'cedula',
+    'f_telefono': 'telefono',
+    'f_correo': 'correo',
     'f_ciudad': 'ciudad',
     'f_provincia': 'provincia',
     'f_municipio': 'lugar_de_nacimiento',

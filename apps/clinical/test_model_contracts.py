@@ -230,3 +230,42 @@ class ClinicalModelContractTests(TestCase):
         self.assertNotIn('TELEFONO', frame.columns)
         self.assertNotIn('EMAIL', frame.columns)
         self.assertIn('EST_ECOCARDIOGRAMA', frame.columns)
+
+    def test_form_get_api_populates_phone_email_and_normalized_controls(self):
+        self.patient.phone = '0997965072'
+        self.patient.email = 'test@example.com'
+        self.patient.save()
+        self.answer('f_estado_civil', label='CASADO/A')
+        self.answer('f_convive_con', label='Con sus hijos')
+        self.answer('f_estudios', label='Postgrado')
+        self.answer('f_hijos', label='2 Hijos')
+        self.answer('peso_corporal', label='Obesidad grado 1 (leve)')
+
+        response = self.client.get(f'/clinical/api/ficha/{self.patient.patient_id}/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['paciente']['telefono'], '0997965072')
+        self.assertEqual(payload['paciente']['correo'], 'test@example.com')
+        self.assertEqual(payload['datos']['f_telefono'], '0997965072')
+        self.assertEqual(payload['datos']['f_correo'], 'test@example.com')
+        self.assertEqual(payload['datos']['f_estado_civil'], '2_casado')
+        self.assertEqual(payload['datos']['f_convive_con'], '4')
+        self.assertEqual(payload['datos']['f_estudios'], '7')
+        self.assertEqual(payload['datos']['f_hijos'], '2')
+        self.assertEqual(payload['datos']['r_sobrepeso'], 'Si')
+
+    def test_form_get_api_resolves_phone_and_email_from_visit_answers_when_empty_on_patient(self):
+        self.patient.phone = None
+        self.patient.email = None
+        self.patient.save()
+        self.answer('telefono', text='0988776655')
+        self.answer('correo', text='fallback@test.org')
+
+        response = self.client.get(f'/clinical/api/ficha/{self.patient.patient_id}/')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['paciente']['telefono'], '0988776655')
+        self.assertEqual(payload['paciente']['correo'], 'fallback@test.org')
+        self.assertEqual(payload['datos']['f_telefono'], '0988776655')
+        self.assertEqual(payload['datos']['f_correo'], 'fallback@test.org')

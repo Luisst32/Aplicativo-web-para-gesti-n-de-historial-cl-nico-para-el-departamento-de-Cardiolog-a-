@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 
 from chatbot.models import BotQuery
+from catalog.models import QuestionnaireSection, Question
 from chatbot.services import (
     is_sensitive_or_pii_query,
     is_modification_attempt,
@@ -14,7 +15,9 @@ from chatbot.services import (
     fmt_safe_cell,
     apply_complementary_suppression,
     invalidate_cohort_cache,
-    COHORT_SUMMARY_CACHE_KEY
+    COHORT_SUMMARY_CACHE_KEY,
+    is_direct_cohort_metric_question,
+    get_live_questionnaire_metric,
 )
 
 User = get_user_model()
@@ -141,6 +144,37 @@ class ChatbotSecurityAndPrivacyTests(TestCase):
         }
         res = query_gemini_assistant("pacientes con tensión emocional y estrés", user=self.user)
         self.assertNotIn("Hipertensión Arterial (HTA)", res['response'])
+
+    @patch('chatbot.services.get_dashboard_evaluation_data')
+    def test_depression_question_uses_actual_cohort_records(self, mock_data):
+        """A recorded depression variable is not delegated to the LLM."""
+        records = [{'depresion': True, 'ansiedad': False}] * 6
+        records += [{'depresion': False, 'ansiedad': False}] * 52
+        mock_data.return_value = {'records': records}
+
+        with patch('security.models.SystemSetting.is_chatbot_enabled', return_value=True):
+            response = query_gemini_assistant('cuantos pacientes hay con depresion', user=self.user)
+
+        self.assertEqual(response['mode'], 'deterministic_cohort_metric')
+        self.assertIn('6 casos', response['response'])
+        self.assertNotIn('no divulgado', response['response'].lower())
+
+    def test_depression_is_a_direct_cohort_metric(self):
+        self.assertTrue(is_direct_cohort_metric_question('cuantos pacientes hay con depresion'))
+
+    def test_live_metric_discovers_catalogued_variable_but_excludes_identifiers(self):
+        section = QuestionnaireSection.objects.create(code='BOT_TEST', name='Chatbot', display_order=1)
+        Question.objects.create(
+            section=section, code='calidad_sueno', text='Calidad del sueño',
+            response_type=Question.ResponseType.OPCION, display_order=1,
+        )
+        Question.objects.create(
+            section=section, code='contacto_telefono', text='Teléfono de contacto',
+            response_type=Question.ResponseType.OPCION, display_order=2,
+        )
+
+        self.assertIn('Calidad del sueño', get_live_questionnaire_metric('calidad de sueno'))
+        self.assertIsNone(get_live_questionnaire_metric('telefono de contacto'))
 
     def test_bulk_or_update_cache_invalidation(self):
         """Verifica que invalidate_cohort_cache elimine las claves del caché compartido."""

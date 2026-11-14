@@ -110,6 +110,32 @@ def _any_known(*values):
     return None
 
 
+def _mental_condition(individual_value, summary_value, condition):
+    """Resolve one mental-health condition without masking its explicit answer.
+
+    Older records can contain both the combined ``salud_mental`` answer and
+    the individual ``nc_depresion`` / ``nc_ansiedad`` fields.  The individual
+    field is the more precise clinical datum, so it must take precedence.
+    """
+    individual = _affirmative(individual_value)
+    if individual is not None:
+        return individual
+    if individual_value is not None and condition in individual_value.lower():
+        return not _es_negativo(individual_value)
+
+    if summary_value is None:
+        return None
+    if _es_negativo(summary_value):
+        return False
+
+    summary = summary_value.lower()
+    if 'ambas' in summary or condition in summary:
+        return True
+    # A non-empty combined answer that does not name this condition is not
+    # evidence of absence (for example, an incomplete legacy value).
+    return None
+
+
 def get_dashboard_evaluation_data():
     """
     Extracts all clinical encounters and generates normalized, calculated
@@ -572,32 +598,21 @@ def get_dashboard_evaluation_data():
             respiratorio_desc = 'Sin patología respiratoria'
 
         # Salud Mental (Ansiedad / Depresión)
-        mental_raw = (answers_dict.get('salud_mental', '') or answers_dict.get('nc_depresion', '') or answers_dict.get('nc_ansiedad', '') or '').strip()
-        if not mental_raw:
+        mental_raw = _answer(answers_dict, 'salud_mental')
+        depresion = _mental_condition(_answer(answers_dict, 'nc_depresion'), mental_raw, 'depresi')
+        ansiedad = _mental_condition(_answer(answers_dict, 'nc_ansiedad'), mental_raw, 'ansied')
+        if depresion is None and ansiedad is None:
             salud_mental_desc = 'Sin dato'
-            ansiedad = depresion = None
-        elif _es_negativo(mental_raw):
+        elif depresion is False and ansiedad is False:
             salud_mental_desc = 'Sin trastorno diagnosticado'
-            ansiedad = False
-            depresion = False
+        elif depresion is True and ansiedad is True:
+            salud_mental_desc = 'Ansiedad y Depresión'
+        elif depresion is True:
+            salud_mental_desc = 'Depresión'
+        elif ansiedad is True:
+            salud_mental_desc = 'Ansiedad'
         else:
-            m_low = mental_raw.lower()
-            if 'ambas' in m_low or ('ansiedad' in m_low and 'depresi' in m_low):
-                salud_mental_desc = 'Ansiedad y Depresión'
-                ansiedad = True
-                depresion = True
-            elif 'ansiedad' in m_low:
-                salud_mental_desc = 'Ansiedad'
-                ansiedad = True
-                depresion = False
-            elif 'depresi' in m_low:
-                salud_mental_desc = 'Depresión'
-                ansiedad = False
-                depresion = True
-            else:
-                salud_mental_desc = 'Sin trastorno diagnosticado'
-                ansiedad = False
-                depresion = False
+            salud_mental_desc = 'Sin dato'
 
         # Reumatología / Cáncer / Alergias / Insuficiencia Renal
         reuma_raw = (answers_dict.get('enfermedad_reumatologicas', '') or answers_dict.get('nc_reuma', '') or '').strip()
