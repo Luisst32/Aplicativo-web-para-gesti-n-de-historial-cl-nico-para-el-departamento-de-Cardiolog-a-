@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 # Palabras y expresiones asociadas a datos sensibles personales (PII)
 SENSITIVE_PATTERNS = [
+    r'\b(nombres?|apellidos?)\b',
     r'\b(c[eé]dula|c\.?i\.?|identificaci[oó]n|dni|pasaporte|documento\s+de\s+identidad)\b',
     r'\b(nombre|apellidos?|c[oó]mo\s+se\s+llama|qui[eé]n\s+es\s+el\s+paciente)\b',
     r'\b(tel[eé]fono|celular|m[oó]vil|direcci[oó]n|domicilio|vivienda\s+exacta)\b',
@@ -238,6 +239,8 @@ def _is_safe_question_variable(question_obj) -> bool:
     descriptor = normalize_clinical_query(f'{question_obj.code} {question_obj.text}')
     if SENSITIVE_VARIABLE_PATTERN.search(descriptor):
         return False
+    if re.search(r'\b(nombres?|apellidos?)\b', descriptor):
+        return False
     return question_obj.response_type in {'OPCION', 'BOOLEANO', 'NUMERICO', 'TEXTO'}
 
 
@@ -290,7 +293,9 @@ def get_live_questionnaire_metric(question: str) -> Optional[str]:
                     labels.append('No')
             elif item.response_type == Question.ResponseType.TEXTO:
                 raw_value = (answer.text_value or '').strip()
-                if raw_value and not SENSITIVE_VALUE_PATTERN.search(normalize_clinical_query(raw_value)):
+                value_normalized = normalize_clinical_query(raw_value)
+                if (raw_value and not SENSITIVE_VALUE_PATTERN.search(value_normalized)
+                        and not re.search(r'\b(nombres?|apellidos?)\b', value_normalized)):
                     labels.append(raw_value)
         counts = Counter(labels)
         if not counts:

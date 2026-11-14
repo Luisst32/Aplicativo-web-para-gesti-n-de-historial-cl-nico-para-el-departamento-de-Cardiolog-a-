@@ -48,6 +48,7 @@ class ChatbotSecurityAndPrivacyTests(TestCase):
     def test_sensitive_query_detection_nombre(self):
         self.assertTrue(is_sensitive_or_pii_query("¿Cómo se llama el paciente con HTA?"))
         self.assertTrue(is_sensitive_or_pii_query("dame los nombres y apellidos de los evaluados"))
+        self.assertTrue(is_sensitive_or_pii_query("dame los nombres de 2 pacientes"))
         self.assertTrue(is_sensitive_or_pii_query("quién es el paciente de 55 años"))
 
     def test_user_query_with_specific_person_name_blocked(self):
@@ -174,9 +175,14 @@ class ChatbotSecurityAndPrivacyTests(TestCase):
             section=section, code='contacto_telefono', text='Teléfono de contacto',
             response_type=Question.ResponseType.OPCION, display_order=2,
         )
+        Question.objects.create(
+            section=section, code='nombres', text='Nombres del paciente',
+            response_type=Question.ResponseType.TEXTO, display_order=3,
+        )
 
         self.assertIn('Calidad del sueño', get_live_questionnaire_metric('calidad de sueno'))
         self.assertIsNone(get_live_questionnaire_metric('telefono de contacto'))
+        self.assertIsNone(get_live_questionnaire_metric('nombres del paciente'))
 
     def test_variable_match_does_not_confuse_tiene_with_detiene(self):
         rose = SimpleNamespace(code='rose_3', text='¿Se detiene o disminuye la marcha?')
