@@ -73,7 +73,7 @@ comparten el mismo ámbito global y se cargan en el mismo orden lógico.
 
 | Alcance visual | Tratamiento |
 | --- | --- |
-| Solo Resumen General | Dona y barras gruesas con valores blancos; factores globales con eje 0–100 % y etiquetas sobre fondo oscuro para conservar legibilidad incluso en cero. Configuración propia en `sections/resumen-general.js`. |
+| Solo Resumen General | Dona y barras gruesas con valores blancos directos, sin fondo ni contorno; factores globales con eje 0–100 % y cero en texto oscuro al no existir barra. Configuración propia en `sections/resumen-general.js`. |
 
 | Archivo | Responsabilidad |
 | --- | --- |

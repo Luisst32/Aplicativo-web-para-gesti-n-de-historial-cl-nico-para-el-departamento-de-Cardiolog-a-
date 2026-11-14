@@ -74,8 +74,12 @@ function renderTabResumenGeneral() {
             const casos = Math.round((parseFloat(val) * total) / 100);
             return `${casos} (${val}%)`;
           },
-          style: { fontSize: '11px', fontWeight: 700, colors: ['#334155'] },
-          background: { enabled: true, foreColor: '#ffffff', borderWidth: 0, borderRadius: 4, padding: 3, opacity: 1 }
+          style: {
+            fontSize: '11px', fontWeight: 700,
+            colors: [({ w, seriesIndex, dataPointIndex }) =>
+              Number(w.config.series[seriesIndex].data[dataPointIndex]) === 0 ? '#0f172a' : '#ffffff']
+          },
+          background: { enabled: false }
         },
         tooltip: apexPctTooltip()
       });
