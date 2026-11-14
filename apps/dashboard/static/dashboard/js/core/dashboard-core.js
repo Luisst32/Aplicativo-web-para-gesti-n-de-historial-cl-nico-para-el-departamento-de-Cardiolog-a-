@@ -327,18 +327,14 @@ function chartJsDonutDataLabels(minPct = 0.06) {
       const sum = ctx.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0) || 1;
       const pct = v / sum;
       if (pct >= 0.25) return { size: 12, weight: 'bold', family: 'inherit', lineHeight: 1.15 };
-      if (pct >= 0.12) return { size: 11, weight: 'bold', family: 'inherit', lineHeight: 1.15 };
-      return { size: 10, weight: 'bold', family: 'inherit', lineHeight: 1.1 };
+      if (pct >= 0.10) return { size: 11, weight: 'bold', family: 'inherit', lineHeight: 1.15 };
+      return { size: 9.5, weight: 'bold', family: 'inherit', lineHeight: 1.1 };
     },
     formatter: (val, ctx) => {
       const v = Number(val) || 0;
       const sum = ctx.dataset.data.reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0) || 1;
       const pct = ((v / sum) * 100).toFixed(1).replace('.', ',');
-      // Adaptativo según el porcentaje del valor: dos líneas si hay espacio, o porcentaje compacto
-      if (v / sum >= 0.14) {
-        return [String(v), `(${pct}%)`];
-      }
-      return `(${pct}%)`;
+      return [String(v), `(${pct}%)`];
     }
   };
 }

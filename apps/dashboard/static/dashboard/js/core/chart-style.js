@@ -300,8 +300,8 @@ function dashboardChartJsStyle(config) {
         const sum = ctx.dataset.data.reduce((a, b) => a + (Number(b) || 0), 0) || 1;
         const pct = v / sum;
         if (pct >= 0.25) return { size: 12, weight: 'bold', family: 'inherit', lineHeight: 1.15 };
-        if (pct >= 0.12) return { size: 11, weight: 'bold', family: 'inherit', lineHeight: 1.15 };
-        return { size: 10, weight: 'bold', family: 'inherit', lineHeight: 1.1 };
+        if (pct >= 0.10) return { size: 11, weight: 'bold', family: 'inherit', lineHeight: 1.15 };
+        return { size: 9.5, weight: 'bold', family: 'inherit', lineHeight: 1.1 };
       },
       formatter: (value, ctx) => {
         const val = Number(value) || 0;
@@ -312,15 +312,12 @@ function dashboardChartJsStyle(config) {
           if (Array.isArray(res)) return res;
           if (typeof res === 'string' && res.includes('\n')) return res.split('\n');
           const match = String(res).match(/^(.*?)\s*\(?([\d.,]+\s*%)\)?$/);
-          if (match && (val / total) >= 0.14) {
+          if (match) {
             return [match[1].trim(), `(${match[2]})`];
           }
           return res;
         }
-        if (val / total >= 0.14) {
-          return [String(val), `(${pct}%)`];
-        }
-        return `(${pct}%)`;
+        return [String(val), `(${pct}%)`];
       }
     };
     return;
