@@ -368,7 +368,7 @@ function actualizarBadgeSwitchPrivacidad(activo) {
     badge.style.color = activo ? '#15803d' : '#64748b';
   }
   if (slider) {
-    slider.style.backgroundColor = activo ? '#166534' : '#cbd5e1';
+    slider.style.backgroundColor = activo ? '#3aa0ff' : '#cbd5e1';
   }
   if (circulo) {
     circulo.style.transform = activo ? 'translateX(22px)' : 'translateX(0)';
