@@ -405,16 +405,6 @@
           </div>
         </div>
 
-        <!-- CUADRO DE PREVISUALIZACION EN VIVO -->
-        <div style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:12px 14px; display:flex; align-items:center; gap:12px;">
-          <div style="width:36px; height:36px; border-radius:50%; background:#eff6ff; color:#1b2a41; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-          </div>
-          <div style="font-size:0.83rem; color:#334155; line-height:1.4;" id="exportPreviewText">
-            Se exportarán <strong>58 pacientes</strong> en formato <strong>SPSS Statistics (.sav)</strong> con las variables clínicas completas y nuevos campos Cuestionario UNEMI 2026.
-          </div>
-        </div>
-
       </div>
 
       <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 22px; background:#f8fafc; border-top:1px solid #e2e8f0;">
@@ -592,5 +582,5 @@
 
 {% block extra_js %}
   <script src="{% static 'clinical/js/pacientes.js' %}?v=20261113_priv01"></script>
-  <script src="{% static 'clinical/js/list.js' %}?v=20261114_multiformat_export01"></script>
+  <script src="{% static 'clinical/js/list.js' %}?v=20261114_multiformat_export02"></script>
 {% endblock %}

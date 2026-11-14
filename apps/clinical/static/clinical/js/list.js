@@ -748,20 +748,6 @@ function obtenerPacientesSegunAlcance() {
 }
 
 function actualizarResumenExportacion() {
-  const pacs = obtenerPacientesSegunAlcance();
-  const formato = document.querySelector('input[name="exportFormato"]:checked')?.value || 'sav';
-  const totalRegistros = pacs.length;
-
-  const nombresFormatos = {
-    'sav': 'SPSS Statistics (.sav)',
-    'zsav': 'SPSS Comprimido (.zsav)',
-    'rds': 'RStudio (.rds)',
-    'rdata': 'RStudio Workspace (.RData)',
-    'rda': 'RStudio Workspace (.rda)',
-    'csv': 'Excel / CSV (.csv)'
-  };
-  const etiquetaFormato = nombresFormatos[formato] || 'SPSS Statistics (.sav)';
-
   // Actualizar estilos activos de las tarjetas de formato
   document.querySelectorAll('.export-format-card').forEach(card => {
     const radio = card.querySelector('input[name="exportFormato"]');
@@ -773,11 +759,6 @@ function actualizarResumenExportacion() {
       card.style.background = '#f8fafc';
     }
   });
-
-  const preview = document.getElementById('exportPreviewText');
-  if (preview) {
-    preview.innerHTML = `Se exportarán <strong>${totalRegistros} paciente(s)</strong> en formato <strong>${etiquetaFormato}</strong> con las variables clínicas oficiales y nuevos campos Cuestionario UNEMI 2026.`;
-  }
 }
 
 async function ejecutarExportacionInteligente() {
