@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       restaurarFichaDesdeObjeto(resData.datos);
     }
     aplicarProteccionPrivacidadFormulario(pacienteActual, historialActual);
+    quitarSkeletonsFormulario();
   } catch (err) {
     console.error('Error al cargar la ficha del paciente:', err);
     alert('No se pudo cargar la información del paciente desde la base de datos.');
@@ -59,6 +60,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   restringirCamposNumericos();
 });
+
+// REMOVER PLACEHOLDERS SKELETON SCREENS DEL FORMULARIO
+function quitarSkeletonsFormulario() {
+  const strip = document.getElementById('patientHeroStrip');
+  if (strip) {
+    strip.querySelectorAll('.skeleton-shimmer, .skeleton-text, .skeleton-pill, .skeleton-circle, .skeleton-box').forEach(el => {
+      el.classList.remove('skeleton-shimmer', 'skeleton-text', 'skeleton-pill', 'skeleton-circle', 'skeleton-box');
+      el.style.width = '';
+      el.style.height = '';
+      el.style.minWidth = '';
+    });
+    strip.classList.add('fade-in-content');
+  }
+}
 
 // Los campos numéricos deben aceptar solo dígitos. `type="number"` por sí solo
 // sigue admitiendo 'e', '+' y '-' al teclear, y `pattern` únicamente valida al

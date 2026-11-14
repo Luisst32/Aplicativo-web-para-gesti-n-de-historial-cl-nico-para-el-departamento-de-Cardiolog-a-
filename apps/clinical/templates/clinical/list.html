@@ -146,7 +146,7 @@
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             </div>
             <div>
-              <div class="stat-metric-value" id="statTotalPacientes">--</div>
+              <div class="stat-metric-value" id="statTotalPacientes"><span class="skeleton-shimmer skeleton-pill" style="display:inline-block; width: 42px; height: 26px;"></span></div>
               <div class="stat-metric-label">Total Pacientes</div>
             </div>
           </div>
@@ -168,7 +168,72 @@
                 </tr>
               </thead>
               <tbody id="pacientesTbody">
-                <!-- Filas renderizadas dinámicamente con JS -->
+                <!-- Skeleton screens iniciales mientras se cargan los pacientes -->
+                <tr class="skeleton-row">
+                  <td class="td-check" style="width: 40px;"><div class="skeleton-shimmer skeleton-box" style="width: 18px; height: 18px; border-radius: 4px;"></div></td>
+                  <td>
+                    <div class="skeleton-table-cell">
+                      <div class="skeleton-shimmer skeleton-avatar"></div>
+                      <div class="skeleton-lines">
+                        <div class="skeleton-shimmer skeleton-line-primary"></div>
+                        <div class="skeleton-shimmer skeleton-line-secondary"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align: right; width: 80px; padding-right: 18px;"><div class="skeleton-shimmer skeleton-btn" style="margin-left: auto;"></div></td>
+                </tr>
+                <tr class="skeleton-row">
+                  <td class="td-check" style="width: 40px;"><div class="skeleton-shimmer skeleton-box" style="width: 18px; height: 18px; border-radius: 4px;"></div></td>
+                  <td>
+                    <div class="skeleton-table-cell">
+                      <div class="skeleton-shimmer skeleton-avatar"></div>
+                      <div class="skeleton-lines">
+                        <div class="skeleton-shimmer skeleton-line-primary" style="width: 68%;"></div>
+                        <div class="skeleton-shimmer skeleton-line-secondary" style="width: 45%;"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align: right; width: 80px; padding-right: 18px;"><div class="skeleton-shimmer skeleton-btn" style="margin-left: auto;"></div></td>
+                </tr>
+                <tr class="skeleton-row">
+                  <td class="td-check" style="width: 40px;"><div class="skeleton-shimmer skeleton-box" style="width: 18px; height: 18px; border-radius: 4px;"></div></td>
+                  <td>
+                    <div class="skeleton-table-cell">
+                      <div class="skeleton-shimmer skeleton-avatar"></div>
+                      <div class="skeleton-lines">
+                        <div class="skeleton-shimmer skeleton-line-primary" style="width: 50%;"></div>
+                        <div class="skeleton-shimmer skeleton-line-secondary" style="width: 32%;"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align: right; width: 80px; padding-right: 18px;"><div class="skeleton-shimmer skeleton-btn" style="margin-left: auto;"></div></td>
+                </tr>
+                <tr class="skeleton-row">
+                  <td class="td-check" style="width: 40px;"><div class="skeleton-shimmer skeleton-box" style="width: 18px; height: 18px; border-radius: 4px;"></div></td>
+                  <td>
+                    <div class="skeleton-table-cell">
+                      <div class="skeleton-shimmer skeleton-avatar"></div>
+                      <div class="skeleton-lines">
+                        <div class="skeleton-shimmer skeleton-line-primary" style="width: 60%;"></div>
+                        <div class="skeleton-shimmer skeleton-line-secondary" style="width: 38%;"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align: right; width: 80px; padding-right: 18px;"><div class="skeleton-shimmer skeleton-btn" style="margin-left: auto;"></div></td>
+                </tr>
+                <tr class="skeleton-row">
+                  <td class="td-check" style="width: 40px;"><div class="skeleton-shimmer skeleton-box" style="width: 18px; height: 18px; border-radius: 4px;"></div></td>
+                  <td>
+                    <div class="skeleton-table-cell">
+                      <div class="skeleton-shimmer skeleton-avatar"></div>
+                      <div class="skeleton-lines">
+                        <div class="skeleton-shimmer skeleton-line-primary" style="width: 55%;"></div>
+                        <div class="skeleton-shimmer skeleton-line-secondary" style="width: 42%;"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align: right; width: 80px; padding-right: 18px;"><div class="skeleton-shimmer skeleton-btn" style="margin-left: auto;"></div></td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -488,5 +553,5 @@
 
 {% block extra_js %}
   <script src="{% static 'clinical/js/pacientes.js' %}?v=20261113_priv01"></script>
-  <script src="{% static 'clinical/js/list.js' %}?v=20261113_direct_form"></script>
+  <script src="{% static 'clinical/js/list.js' %}?v=20261113_skeleton01"></script>
 {% endblock %}

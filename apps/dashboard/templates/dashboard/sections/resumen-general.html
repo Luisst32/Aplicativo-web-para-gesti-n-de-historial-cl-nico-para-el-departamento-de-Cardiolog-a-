@@ -30,22 +30,32 @@
         <div class="grid grid-row grid-2-cols summary-trend-factors">
           <div class="card card-visual">
             <div class="visual-header"><div class="visual-title"><h3>Tendencia de Tamizaje Cardiovascular por Año</h3></div></div>
-            <div id="chart-tendencia-temporal" class="chart-container"></div>
+            <div id="chart-tendencia-temporal" class="chart-container">
+              <div class="skeleton-shimmer skeleton-box chart-skeleton-placeholder" style="width: 100%; height: 320px; border-radius: 8px;"></div>
+            </div>
           </div>
           <div class="card card-visual">
             <div class="visual-header"><div class="visual-title"><h3>Prevalencia de Factores Modificables Globales</h3></div></div>
-            <div id="chart-factores-modificables" class="chart-container"></div>
+            <div id="chart-factores-modificables" class="chart-container">
+              <div class="skeleton-shimmer skeleton-box chart-skeleton-placeholder" style="width: 100%; height: 320px; border-radius: 8px;"></div>
+            </div>
           </div>
         </div>
 
         <div class="grid grid-row grid-2-cols-equal">
           <div class="card card-visual">
             <div class="visual-header"><div class="visual-title"><h3>Distribución por Categoría de Personal</h3></div></div>
-            <div class="chart-container"><canvas id="chart-categoria-personal"></canvas></div>
+            <div class="chart-container">
+              <div class="skeleton-shimmer skeleton-box chart-skeleton-placeholder" style="width: 100%; height: 260px; border-radius: 8px;"></div>
+              <canvas id="chart-categoria-personal"></canvas>
+            </div>
           </div>
           <div class="card card-visual">
             <div class="visual-header"><div class="visual-title"><h3>Distribución por Género y Nivel de Riesgo</h3></div></div>
-            <div class="chart-container"><canvas id="chart-genero-riesgo"></canvas></div>
+            <div class="chart-container">
+              <div class="skeleton-shimmer skeleton-box chart-skeleton-placeholder" style="width: 100%; height: 260px; border-radius: 8px;"></div>
+              <canvas id="chart-genero-riesgo"></canvas>
+            </div>
           </div>
         </div>
       </section>

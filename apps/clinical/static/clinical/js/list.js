@@ -430,7 +430,7 @@ function formatearFechaLegible(fechaStr) {
 
 function crearFilaPaciente(p) {
   const tr = document.createElement('tr');
-  tr.className = 'paciente-fila';
+  tr.className = 'paciente-fila fade-in-content';
   if (seleccionados.has(p.id)) {
     tr.classList.add('seleccionada');
   }

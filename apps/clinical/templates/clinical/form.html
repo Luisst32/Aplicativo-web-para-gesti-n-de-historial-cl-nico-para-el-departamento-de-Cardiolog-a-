@@ -173,20 +173,20 @@
       <p role="status" style="padding: 12px 24px;">Modo de consulta: no tiene permiso para guardar cambios.</p>
     {% endif %}
     <!-- PATIENT HERO STRIP (ejemplo.png) -->
-    <div class="patient-strip">
+    <div class="patient-strip" id="patientHeroStrip">
       <div class="patient-profile">
-        <div class="avatar-circle" id="heroAvatar">--</div>
+        <div class="avatar-circle skeleton-shimmer skeleton-circle" id="heroAvatar" style="display: flex; align-items: center; justify-content: center;"></div>
         <div>
-          <div class="patient-meta-name">
-            <span id="heroNombre">--</span>
-            <span class="badge-age" id="heroEdad">--</span>
-            <span class="badge-estamento" id="heroEstamento">--</span>
+          <div class="patient-meta-name" style="display: flex; align-items: center; gap: 8px;">
+            <span id="heroNombre" class="skeleton-shimmer skeleton-text" style="width: 130px; height: 22px; display: inline-block;"></span>
+            <span class="badge-age skeleton-shimmer skeleton-pill" id="heroEdad" style="width: 48px; height: 18px; display: inline-block;"></span>
+            <span class="badge-estamento skeleton-shimmer skeleton-pill" id="heroEstamento" style="width: 42px; height: 18px; display: inline-block;"></span>
           </div>
-          <div class="patient-meta-details">
-            <span>N.° Ficha Clínica: <strong id="heroCodigo" style="font-family: 'Consolas', 'Courier New', monospace;">--</strong></span>
-            <span>F. Nacimiento: <strong id="heroFechaNac">--</strong></span>
-            <span>Sexo: <strong id="heroSexo">--</strong></span>
-            <span>Facultad: <strong id="heroFacultad">--</strong></span>
+          <div class="patient-meta-details" style="display: flex; align-items: center; gap: 12px; margin-top: 4px;">
+            <span>N.° Ficha Clínica: <strong id="heroCodigo" class="skeleton-shimmer skeleton-text" style="width: 32px; height: 14px; display: inline-block; font-family: 'Consolas', 'Courier New', monospace;"></strong></span>
+            <span>F. Nacimiento: <strong id="heroFechaNac" class="skeleton-shimmer skeleton-text" style="width: 78px; height: 14px; display: inline-block;"></strong></span>
+            <span>Sexo: <strong id="heroSexo" class="skeleton-shimmer skeleton-text" style="width: 50px; height: 14px; display: inline-block;"></strong></span>
+            <span>Facultad: <strong id="heroFacultad" class="skeleton-shimmer skeleton-text" style="width: 60px; height: 14px; display: inline-block;"></strong></span>
           </div>
         </div>
       </div>
@@ -194,27 +194,27 @@
       <div class="strip-vitals">
         <div class="mini-vital">
           <span class="mini-vital-label">Peso</span>
-          <span class="mini-vital-val" id="heroPeso">-- kg</span>
+          <span class="mini-vital-val" id="heroPeso"><span class="skeleton-shimmer skeleton-pill" style="display:inline-block; width: 48px; height: 16px;"></span></span>
         </div>
         <div class="mini-vital">
           <span class="mini-vital-label">Talla</span>
-          <span class="mini-vital-val" id="heroTalla">-- cm</span>
+          <span class="mini-vital-val" id="heroTalla"><span class="skeleton-shimmer skeleton-pill" style="display:inline-block; width: 48px; height: 16px;"></span></span>
         </div>
         <div class="mini-vital">
           <span class="mini-vital-label">IMC</span>
-          <span class="mini-vital-val" id="heroImc" style="color:#3AA0FF;">--</span>
+          <span class="mini-vital-val" id="heroImc" style="color:#3AA0FF;"><span class="skeleton-shimmer skeleton-pill" style="display:inline-block; width: 40px; height: 16px;"></span></span>
         </div>
         <div class="mini-vital">
           <span class="mini-vital-label">ASC</span>
-          <span class="mini-vital-val" id="heroAsc">--</span>
+          <span class="mini-vital-val" id="heroAsc"><span class="skeleton-shimmer skeleton-pill" style="display:inline-block; width: 40px; height: 16px;"></span></span>
         </div>
         <div class="mini-vital">
           <span class="mini-vital-label">Presión (TAS/TSI)</span>
-          <span class="mini-vital-val" id="heroPresion">-- / --</span>
+          <span class="mini-vital-val" id="heroPresion"><span class="skeleton-shimmer skeleton-pill" style="display:inline-block; width: 55px; height: 16px;"></span></span>
         </div>
         <div class="mini-vital">
           <span class="mini-vital-label">Sat. O2</span>
-          <span class="mini-vital-val" id="heroSatO2">--%</span>
+          <span class="mini-vital-val" id="heroSatO2"><span class="skeleton-shimmer skeleton-pill" style="display:inline-block; width: 38px; height: 16px;"></span></span>
         </div>
       </div>
     </div>
@@ -255,5 +255,5 @@
 
 {% block extra_js %}
   <script src="{% static 'clinical/js/pacientes.js' %}?v=20261113_priv01"></script>
-  <script src="{% static 'clinical/js/form.js' %}?v=20261113_volver01"></script>
+  <script src="{% static 'clinical/js/form.js' %}?v=20261113_skeleton01"></script>
 {% endblock %}

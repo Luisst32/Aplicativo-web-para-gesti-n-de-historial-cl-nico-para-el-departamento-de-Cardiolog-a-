@@ -747,6 +747,12 @@ function updateAllKPIs() {
 
 // Despachador de renderizado por pestaña activa
 function renderTabCharts(tabId) {
+  const targetView = document.getElementById('tab-' + tabId);
+  if (targetView) {
+    targetView.querySelectorAll('.chart-skeleton-placeholder').forEach(el => el.remove());
+    targetView.querySelectorAll('.chart-container').forEach(el => el.classList.remove('skeleton-loading'));
+  }
+
   switch (tabId) {
     case 'resumen-general':
       renderTabResumenGeneral();

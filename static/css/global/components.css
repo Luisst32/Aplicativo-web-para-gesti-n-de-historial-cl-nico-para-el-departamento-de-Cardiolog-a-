@@ -400,3 +400,127 @@
   -webkit-text-security: disc;
   text-security: disc;
 }
+
+/* ==========================================================================
+   SKELETON SCREENS / SHIMMER LOADING PLACEHOLDERS
+   Efecto visual fluido y suave para evitar transiciones bruscas o pop-ins
+   ========================================================================== */
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer,
+.skeleton-box,
+.skeleton-text,
+.skeleton-circle,
+.skeleton-pill,
+.skeleton-btn {
+  background: linear-gradient(
+    90deg,
+    #f1f5f9 0%,
+    #e2e8f0 50%,
+    #f1f5f9 100%
+  ) !important;
+  background-size: 200% 100% !important;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite !important;
+  color: transparent !important;
+  border-color: transparent !important;
+  user-select: none !important;
+  pointer-events: none !important;
+}
+
+.skeleton-circle {
+  border-radius: 50% !important;
+}
+
+.skeleton-pill {
+  border-radius: 9999px !important;
+}
+
+.skeleton-text {
+  height: 12px;
+  border-radius: 4px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.skeleton-text.title {
+  height: 18px;
+  width: 60%;
+}
+
+.skeleton-text.subtitle {
+  height: 12px;
+  width: 40%;
+}
+
+.skeleton-box {
+  border-radius: 8px;
+}
+
+/* Fila de esqueleto para tablas */
+.skeleton-row td {
+  padding: 14px 18px !important;
+  vertical-align: middle;
+}
+
+.skeleton-table-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.skeleton-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50% !important;
+  flex-shrink: 0;
+}
+
+.skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.skeleton-line-primary {
+  height: 14px;
+  width: 55%;
+  border-radius: 4px;
+}
+
+.skeleton-line-secondary {
+  height: 11px;
+  width: 35%;
+  border-radius: 4px;
+}
+
+.skeleton-btn {
+  width: 75px;
+  height: 28px;
+  border-radius: 6px;
+}
+
+/* Transición suave cuando el contenido real reemplaza al skeleton */
+.fade-in-content {
+  animation: skeletonFadeIn 0.3s ease-out forwards;
+}
+
+@keyframes skeletonFadeIn {
+  from {
+    opacity: 0.5;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
