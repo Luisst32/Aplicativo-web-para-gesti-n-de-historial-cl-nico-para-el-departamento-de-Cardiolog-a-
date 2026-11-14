@@ -402,6 +402,12 @@ def get_dashboard_evaluation_data():
             answers_dict.get('res_higado_graso', '')
         )
         higado_graso = _affirmative(r_hg_val) if r_hg_val else None
+        vasculopatia_periferica = _affirmative(_answer(answers_dict, 'r_vasc_perif'))
+        vasculopatia_carotidea = _affirmative(_answer(answers_dict, 'r_vasc_carot'))
+        vasculopatia_femoral = _affirmative(_answer(answers_dict, 'r_vasc_fem'))
+        vasculopatia_values = (vasculopatia_periferica, vasculopatia_carotidea, vasculopatia_femoral)
+        vasculopatia_cualquiera = _any_known(*vasculopatia_values)
+        disfuncion_erectil = _affirmative(_answer(answers_dict, 'r_disfunc'))
 
         # Dieta PREDIMED (Adherencia a Dieta Mediterránea)
         r_fru_val = answers_dict.get('usted_consume_fruta', '') or answers_dict.get('pred_q4', '')
@@ -599,8 +605,8 @@ def get_dashboard_evaluation_data():
         alergia_raw = (answers_dict.get('alergias', '') or answers_dict.get('nc_alergia', '') or '').strip()
         alergias_medicamentos = (not _es_negativo(alergia_raw) and ('tiene' in alergia_raw.lower() or 'si' in alergia_raw.lower() or 'sí' in alergia_raw.lower())) if alergia_raw else None
 
-        irc_raw = (answers_dict.get('r_irc', '') or answers_dict.get('irc', '') or '').strip()
-        insuficiencia_renal = not _es_negativo(irc_raw) and ('tiene' in irc_raw.lower() or 'si' in irc_raw.lower() or 'sí' in irc_raw.lower())
+        irc_raw = _answer(answers_dict, 'r_irc', 'irc')
+        insuficiencia_renal = _affirmative(irc_raw)
 
         # -------------------------------------------------------------
         # BLOQUE 7: COVID-19 Y SECUELAS
@@ -751,6 +757,11 @@ def get_dashboard_evaluation_data():
             'actividad_fisica': actividad_fisica,
             'deporte': deporte,
             'higado_graso': higado_graso,
+            'vasculopatia_periferica': vasculopatia_periferica,
+            'vasculopatia_carotidea': vasculopatia_carotidea,
+            'vasculopatia_femoral': vasculopatia_femoral,
+            'vasculopatia_cualquiera': vasculopatia_cualquiera,
+            'disfuncion_erectil': disfuncion_erectil,
             'consume_fruta': consume_fruta,
             'consume_verdura': consume_verdura,
             'predimed_adherencia': predimed_adherencia,

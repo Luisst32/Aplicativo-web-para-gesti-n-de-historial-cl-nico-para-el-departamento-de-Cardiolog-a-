@@ -22,6 +22,13 @@
           </div>
         </div>
 
+        <div class="kpi-row" style="margin-bottom: 1.25rem;">
+          <div class="card card-kpi"><div class="kpi-header-row"><span class="kpi-title">Hígado Graso</span></div><div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-mod-higado">—</div></div></div>
+          <div class="card card-kpi"><div class="kpi-header-row"><span class="kpi-title">Apnea del Sueño</span></div><div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-mod-apnea">—</div></div></div>
+          <div class="card card-kpi"><div class="kpi-header-row"><span class="kpi-title">Cualquier Vasculopatía</span></div><div class="kpi-main-body"><div class="kpi-value color-semaforo-red" id="kpi-mod-vasculopatia">—</div></div></div>
+          <div class="card card-kpi"><div class="kpi-header-row"><span class="kpi-title">Disfunción Eréctil (solo hombres)</span></div><div class="kpi-main-body"><div class="kpi-value color-semaforo-yellow" id="kpi-mod-disfuncion">—</div></div></div>
+        </div>
+
         <div class="grid grid-row grid-2-cols">
           <div class="card card-visual">
             <div class="visual-header"><div class="visual-title"><h3>Control Terapéutico de Patologías Crónicas (Tratada vs No Tratada)</h3></div></div>
@@ -41,6 +48,16 @@
           <div class="card card-visual">
             <div class="visual-header"><div class="visual-title"><h3>Adherencia a Patrón Mediterráneo (Cuestionario PREDIMED)</h3></div></div>
             <div class="chart-container"><canvas id="chart-mod-predimed"></canvas></div>
+          </div>
+        </div>
+        <div class="grid grid-row grid-2-cols">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Indicadores Obligatorios de Riesgo</h3></div></div>
+            <div id="chart-mod-obligatorios" class="chart-container"></div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Vasculopatía por Localización</h3></div></div>
+            <div id="chart-mod-vasculopatia" class="chart-container"></div>
           </div>
         </div>
       </section>

@@ -9,6 +9,7 @@ from catalog.models import Question, QuestionnaireSection, AnswerOption
 from clinical.models import VisitAnswer, Echocardiogram, OrderedStudies, Patient
 from dashboard.questionnaire import get_questionnaire_dashboard, catalog, safe_value, SECTIONS, SENSITIVE
 from dashboard import tests as dashboard_fixtures
+from dashboard import services
 
 
 class QuestionnaireCoverageTests(TestCase):
@@ -111,6 +112,16 @@ class QuestionnaireCoverageTests(TestCase):
         self.answer('covid_ingreso','No')
         row=next(r for r in get_questionnaire_dashboard()['records'] if r['id']==self.visit1.pk)
         self.assertEqual(row['values']['covid_ingreso'],'No')
+
+    def test_required_risk_answers_feed_the_dashboard_without_cross_counting(self):
+        self.answer('r_apnea', 'Si')
+        self.answer('r_disfunc', 'Si')
+        self.answer('r_irc', 'Si')
+        record = next(row for row in services.get_dashboard_evaluation_data()['records'] if row['id'] == self.visit1.pk)
+        self.assertTrue(record['apnea_sueno'])
+        self.assertTrue(record['disfuncion_erectil'])
+        self.assertTrue(record['insuficiencia_renal'])
+        self.assertFalse(record['cancer'])
 
 
 class QuestionnaireValueTests(SimpleTestCase):

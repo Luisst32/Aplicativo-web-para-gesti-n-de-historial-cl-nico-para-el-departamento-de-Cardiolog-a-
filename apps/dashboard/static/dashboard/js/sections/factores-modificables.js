@@ -152,6 +152,35 @@ function renderTabFactoresModificables() {
       });
     }
   }
+  const mandatory = [
+    ['Hígado graso', 'higado_graso', filteredRecords],
+    ['Apnea del sueño', 'apnea_sueno', filteredRecords],
+    ['Disfunción eréctil (hombres)', 'disfuncion_erectil', filteredRecords.filter(r => r.sexo === 'Hombre')],
+  ];
+  const mandatoryCounts = mandatory.map(([, field, records]) => records.filter(r => r[field]).length);
+  const mandatoryLabels = mandatory.map(([label, field, records], index) => {
+    const valid = records.filter(r => r[field] !== null && r[field] !== undefined).length;
+    return `${label}: ${mandatoryCounts[index]} (${formatPct(mandatoryCounts[index], valid)}%) · ${valid} válidos de ${records.length}; ${records.length - valid} sin dato`;
+  });
+  const elMandatory = document.getElementById('chart-mod-obligatorios');
+  if (elMandatory) {
+    const options = { chart: { type: 'bar', height: 260, toolbar: { show: false } }, series: [{ name: 'Casos', data: mandatoryCounts }], xaxis: { categories: mandatoryLabels }, legend: { show: false }, dataLabels: apexCountAndPctDataLabel() };
+    if (charts.modMandatory) charts.modMandatory.updateOptions(options);
+    else { charts.modMandatory = new ApexCharts(elMandatory, options); charts.modMandatory.render(); }
+  }
+
+  const vascular = [['Periférica', 'vasculopatia_periferica'], ['Carotídea', 'vasculopatia_carotidea'], ['Femoral', 'vasculopatia_femoral'], ['Cualquier vasculopatía', 'vasculopatia_cualquiera']];
+  const vascularCounts = vascular.map(([, field]) => filteredRecords.filter(r => r[field]).length);
+  const vascularLabels = vascular.map(([label, field], index) => {
+    const valid = recordsWithValue(field).length;
+    return `${label}: ${vascularCounts[index]} (${formatPct(vascularCounts[index], valid)}%) · ${valid} válidos de ${filteredRecords.length}; ${filteredRecords.length - valid} sin dato`;
+  });
+  const elVascular = document.getElementById('chart-mod-vasculopatia');
+  if (elVascular) {
+    const options = { chart: { type: 'bar', height: 260, toolbar: { show: false } }, series: [{ name: 'Casos', data: vascularCounts }], xaxis: { categories: vascularLabels }, legend: { show: false }, dataLabels: apexCountAndPctDataLabel() };
+    if (charts.modVascular) charts.modVascular.updateOptions(options);
+    else { charts.modVascular = new ApexCharts(elVascular, options); charts.modVascular.render(); }
+  }
 }
 
 // -------------------------------------------------------------
