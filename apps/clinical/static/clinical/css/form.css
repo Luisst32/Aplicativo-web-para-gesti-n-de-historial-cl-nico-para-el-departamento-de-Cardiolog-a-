@@ -265,7 +265,7 @@ body {
 /* MAIN UNIFIED MODULE TABS (.contenedor aporta width:100%; el max-width
    y el padding son propios de esta página) */
 .content-area {
-  padding: 20px 28px 60px 28px;
+  padding: 20px 28px 120px 28px;
   max-width: 1180px;
 }
 

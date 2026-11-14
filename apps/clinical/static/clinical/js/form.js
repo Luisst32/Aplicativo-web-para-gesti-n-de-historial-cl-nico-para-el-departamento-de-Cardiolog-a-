@@ -775,6 +775,12 @@ function seleccionarPaciente(p, h) {
 
 // NAVEGACIÓN Y SCROLL SUAVE ENTRE MÓDULOS UNIFICADOS
 function scrollToModule(modId) {
+  const sections = ['mod-sociodemo', 'mod-exploracion', 'mod-cardio', 'mod-nocardio', 'mod-laboratorio', 'mod-estilovida', 'mod-estudios'];
+  const modIndex = sections.indexOf(modId);
+  if (modIndex !== -1) {
+    marcarModuloActivo(modIndex);
+  }
+
   const el = document.getElementById(modId);
   if (el) {
     const header = document.querySelector('.top-header');
@@ -788,26 +794,47 @@ function scrollToModule(modId) {
   }
 }
 
+function marcarModuloActivo(index) {
+  document.querySelectorAll('.sidebar-nav .nav-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('sideBtn-mod' + (index + 1));
+  if (btn) btn.classList.add('active');
+
+  document.querySelectorAll('.mobile-module-nav .mobile-mod-pill').forEach(b => b.classList.remove('active'));
+  const mobileBtn = document.getElementById('mobileBtn-mod' + (index + 1));
+  if (mobileBtn) mobileBtn.classList.add('active');
+}
+
 // Actualizar sección activa en el sidebar y pills móviles según el scroll
-window.addEventListener('scroll', () => {
+function actualizarModuloActivoScroll() {
   const sections = ['mod-sociodemo', 'mod-exploracion', 'mod-cardio', 'mod-nocardio', 'mod-laboratorio', 'mod-estilovida', 'mod-estudios'];
   const header = document.querySelector('.top-header');
-  const scrollPos = window.scrollY + (header ? header.offsetHeight : 66) + 50;
+  const headerHeight = header ? header.offsetHeight : 66;
 
+  // Si el usuario está al final o muy cerca del fondo de la página, activar siempre el último módulo
+  const scrollTotal = document.documentElement.scrollHeight;
+  const scrollActual = window.innerHeight + window.scrollY;
+  if (scrollActual >= scrollTotal - 80) {
+    marcarModuloActivo(sections.length - 1);
+    return;
+  }
+
+  // Detectar de abajo hacia arriba cuál sección ha cruzado la línea de visión superior
+  const triggerPoint = headerHeight + 100;
   for (let i = sections.length - 1; i >= 0; i--) {
     const sec = document.getElementById(sections[i]);
-    if (sec && sec.offsetTop <= scrollPos) {
-      document.querySelectorAll('.sidebar-nav .nav-btn').forEach(b => b.classList.remove('active'));
-      const btn = document.getElementById('sideBtn-mod' + (i + 1));
-      if (btn) btn.classList.add('active');
-
-      document.querySelectorAll('.mobile-module-nav .mobile-mod-pill').forEach(b => b.classList.remove('active'));
-      const mobileBtn = document.getElementById('mobileBtn-mod' + (i + 1));
-      if (mobileBtn) mobileBtn.classList.add('active');
-      break;
+    if (sec) {
+      const rect = sec.getBoundingClientRect();
+      if (rect.top <= triggerPoint) {
+        marcarModuloActivo(i);
+        return;
+      }
     }
   }
-});
+
+  marcarModuloActivo(0);
+}
+
+window.addEventListener('scroll', actualizarModuloActivoScroll, { passive: true });
 
 // ACTUALIZACIÓN DE WIDGET DE PRESIÓN EN TIEMPO REAL
 function actualizarHeroPresion() {
