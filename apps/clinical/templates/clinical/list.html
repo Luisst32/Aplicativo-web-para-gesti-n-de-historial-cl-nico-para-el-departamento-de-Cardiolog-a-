@@ -5,7 +5,7 @@
 
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'clinical/css/pacientes.css' %}?v=20261111_07">
-  <link rel="stylesheet" href="{% static 'clinical/css/list.css' %}?v=20261111_07">
+  <link rel="stylesheet" href="{% static 'clinical/css/list.css' %}?v=20261113_direct_form">
 {% endblock %}
 
 {% block content %}
@@ -196,48 +196,6 @@
            VISTA 2: EXPEDIENTE DE HISTORIALES DEL PACIENTE (SIN MODAL)
            (Limpia, sobria, sin código y sin saturación)
            ===================================================================== -->
-      <section id="vistaExpedientePaciente" class="oculto">
-        
-        <!-- Barra superior del expediente: botón Volver -->
-        <div class="expediente-top-bar">
-          <button type="button" class="btn btn-volver-listado" onclick="volverAListadoPacientes()" title="Regresar al listado general de pacientes">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            <span>Volver al Listado de Pacientes</span>
-          </button>
-        </div>
-
-        <!-- Tarjeta limpia de expediente -->
-        <div class="expediente-card-limpia">
-
-          <!-- Encabezado simple y despejado del paciente (sin código) -->
-          <div class="expediente-perfil-simple">
-            <div class="expediente-avatar-simple" id="expAvatar">--</div>
-            <div class="expediente-textos-simple">
-              <h2 id="expNombre" class="expediente-titulo-nombre">Nombre del Paciente</h2>
-              <div class="expediente-subtitulo-simple">
-                <span id="expEdadSexo">-- años · --</span>
-                <span class="separador-punto">·</span>
-                <span id="expEstamentoFacultad">--</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Título de sección del expediente -->
-          <div class="expediente-historiales-cabecera">
-            <h3 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--color-navy);">
-              Historial Clínico (Ficha Médica)
-            </h3>
-          </div>
-
-          <!-- Lista ordenada y limpia de historiales (sin saturación de signos ni código) -->
-          <div class="timeline-historiales-limpia" id="timelineHistoriales">
-            <!-- Historiales limpios renderizados dinámicamente -->
-          </div>
-
-        </div>
-
-      </section>
-
       <!-- Contenedor oculto para impresión PDF -->
       <div id="printFormsContainer"></div>
     </main>
@@ -530,5 +488,5 @@
 
 {% block extra_js %}
   <script src="{% static 'clinical/js/pacientes.js' %}?v=20261113_priv01"></script>
-  <script src="{% static 'clinical/js/list.js' %}?v=20261113_priv01"></script>
+  <script src="{% static 'clinical/js/list.js' %}?v=20261113_direct_form"></script>
 {% endblock %}

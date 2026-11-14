@@ -56,9 +56,9 @@
       </button>
     </div>
 
-    <a href="{% url 'home' %}" class="nav-back" id="btnVolverListado" title="Regresar al expediente del paciente">
+    <a href="{% url 'home' %}" class="nav-back" id="btnVolverListado" title="Regresar al Directorio de Pacientes y Fichas Clínicas">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-      <span>Volver al Expediente</span>
+      <span>Volver al Directorio</span>
     </a>
   </aside>
 
@@ -255,5 +255,5 @@
 
 {% block extra_js %}
   <script src="{% static 'clinical/js/pacientes.js' %}?v=20261113_priv01"></script>
-  <script src="{% static 'clinical/js/form.js' %}?v=20261113_soplo02"></script>
+  <script src="{% static 'clinical/js/form.js' %}?v=20261113_volver01"></script>
 {% endblock %}

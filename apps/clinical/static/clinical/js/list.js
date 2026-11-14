@@ -16,9 +16,6 @@ let direccionOrdenActual = 'asc';
 const PACIENTES_POR_PAGINA = 10;
 let paginaActual = 1;
 
-// Paciente activo mostrado en el expediente
-let pacienteActivoExpediente = null;
-
 document.addEventListener('DOMContentLoaded', async () => {
   // Listeners de búsqueda y filtros (resetean a la página 1)
   document.getElementById('filtroBusqueda').addEventListener('input', () => {
@@ -46,26 +43,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   montarModalAgregarPaciente((nuevoPaciente) => {
     actualizarOpcionesFiltrosDinamicos();
     renderPacientesTabla();
-    abrirHistorialesPaciente(nuevoPaciente.id);
+    window.location.assign(`/clinical/formulario/?paciente=${encodeURIComponent(nuevoPaciente.id)}`);
   });
 
   // Cargar cohorte real desde base de datos PostgreSQL (HU-15)
   await cargarPacientesDesdeServidor();
   actualizarOpcionesFiltrosDinamicos();
 
-  // Si la URL contiene ?paciente=<id>, abrir directamente la vista de su expediente (sin modal)
+  // Si la URL contiene ?paciente=<id>, filtrar en el buscador del listado sin bucle de redirección
   const params = new URLSearchParams(window.location.search);
   const idPacienteUrl = params.get('paciente');
   if (idPacienteUrl) {
     const pacienteEncontrado = pacientes.find(p => p.id === idPacienteUrl);
-    if (pacienteEncontrado) {
-      abrirHistorialesPaciente(idPacienteUrl);
-    } else {
-      renderPacientesTabla();
+    const filtroInp = document.getElementById('filtroBusqueda');
+    if (pacienteEncontrado && filtroInp) {
+      filtroInp.value = pacienteEncontrado.codigo || pacienteEncontrado.nombre;
     }
-  } else {
-    renderPacientesTabla();
   }
+  renderPacientesTabla();
 
   // Cerrar modales con Escape
   document.addEventListener('keydown', (e) => {
@@ -458,7 +453,7 @@ function crearFilaPaciente(p) {
       <div class="celda-paciente">
         <div class="avatar-paciente">${escapeHtml(inits)}</div>
         <div class="info-paciente">
-          <span class="nombre-paciente" title="Haga clic para ver el expediente y ficha médica de este paciente"><span style="display:inline-block; min-width:24px; padding:2px 8px; margin-right:8px; border-radius:6px; background:#eff6ff; color:#1d4ed8; font-size:0.82rem; font-weight:800; border:1px solid #bfdbfe;">#${escapeHtml(p.codigo)}</span>${escapeHtml(nombreMostrar)}</span>
+          <span class="nombre-paciente" title="Abrir ficha clínica de este paciente"><span style="display:inline-block; min-width:24px; padding:2px 8px; margin-right:8px; border-radius:6px; background:#eff6ff; color:#1d4ed8; font-size:0.82rem; font-weight:800; border:1px solid #bfdbfe;">#${escapeHtml(p.codigo)}</span>${escapeHtml(nombreMostrar)}</span>
           <div class="meta-secundaria">
             <span>C.I: ${escapeHtml(cedulaMostrar)}</span>
             ${privacidad ? '' : `<span>·</span><span>${escapeHtml(contactoMostrar)}</span>`}
@@ -481,130 +476,36 @@ function crearFilaPaciente(p) {
     solicitarEliminarFicha(p.id, p.nombre, p.codigo);
   });
   tr.addEventListener('click', () => {
-    abrirHistorialesPaciente(p.id);
+    window.location.assign(`/clinical/formulario/?paciente=${encodeURIComponent(p.id)}`);
   });
 
   return tr;
 }
 
-// =========================================================================
-// GESTIÓN DEL EXPEDIENTE E HISTORIALES CLÍNICOS DEL PACIENTE
-// (VISTA EN PÁGINA, SIN MODAL Y SIN SATURACIÓN VISUAL)
-// =========================================================================
-
 function abrirHistorialesPaciente(pacienteId) {
   const p = pacientes.find(item => item.id === pacienteId);
   if (!p) return;
-
-  pacienteActivoExpediente = p;
-
-  // 1. Ocultar la tabla de listado y la barra de herramientas, y mostrar la vista de expediente
-  const vistaListado = document.getElementById('vistaListadoPacientes');
-  const vistaExpediente = document.getElementById('vistaExpedientePaciente');
-  const slicers = document.getElementById('slicersFiltros');
-  const topBarActions = document.getElementById('topBarActions');
-
-  if (vistaListado) vistaListado.classList.add('oculto');
-  if (vistaExpediente) vistaExpediente.classList.remove('oculto');
-  if (slicers) slicers.classList.add('oculto');
-  if (topBarActions) topBarActions.classList.add('oculto');
-
-  // Actualizar título superior
-  const privacidadExp = typeof esModoPrivacidadActivo === 'function' && esModoPrivacidadActivo();
-  const nombreMostrarExp = privacidadExp ? `Paciente ${p.codigo || p.id}` : p.nombre;
-  const initsExp = privacidadExp ? `P${p.codigo || ''}` : inicialesDe(p.nombre);
-
-  document.getElementById('topPageTitle').textContent = `Expediente Clínico · ${nombreMostrarExp}`;
-
-  // 2. Llenar datos limpios del encabezado del paciente (sin código ni datos saturados)
-  document.getElementById('expAvatar').textContent = initsExp;
-  document.getElementById('expNombre').textContent = nombreMostrarExp;
-  document.getElementById('expEdadSexo').textContent = `${calcAgeStr(p.fechaNac)} · ${p.sexo === 'H' ? 'Hombre' : 'Mujer'}`;
-  document.getElementById('expEstamentoFacultad').textContent = `${p.estamento} · ${p.facultad || 'UNEMI'}`;
-
-  // 3. Renderizar el historial clínico (despejado y ordenado)
-  const historiales = obtenerHistorialesPaciente(p);
   const containerTimeline = document.getElementById('timelineHistoriales');
-  containerTimeline.innerHTML = '';
-
-  historiales.forEach((h) => {
-    const cardH = document.createElement('div');
-    cardH.className = 'historial-fila-limpia';
-
-    const fechaFmt = formatearFechaLegible(h.fechaVisita);
-
-    cardH.innerHTML = `
-      <div class="historial-info-principal">
-        <div class="historial-encabezado-linea">
-          <span class="historial-tag-numero">Historial Clínico Único</span>
-          <span style="font-size:0.84rem; color:var(--color-text-muted); font-weight:600;">Última atención: ${escapeHtml(fechaFmt)}</span>
-          <span style="font-size:0.75rem; background:var(--color-ice-blue); color:var(--color-primary-blue); padding:2px 8px; border-radius:4px; font-weight:600;">Ficha Médica Activa</span>
-        </div>
-
-        <div class="historial-evaluador-linea">
-          <span><strong>Evaluador:</strong> ${escapeHtml(h.medico || 'Médico Especialista')}</span>
-        </div>
-      </div>
-
-      <div class="historial-acciones-derecha">
-        <button type="button" class="btn btn-sm" data-clinical-action="export" title="Imprimir reporte en PDF">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-          <span>PDF</span>
-        </button>
-        <a class="btn btn-sm btn-primary" href="/clinical/formulario/?paciente=${encodeURIComponent(p.id)}" title="Abrir la ficha médica completa para analizar antecedentes y registrar atención">
-          <span>Abrir Ficha Médica Completa &rarr;</span>
-        </a>
-        <button type="button" class="btn btn-sm btn-outline-danger" data-clinical-action="delete" title="Eliminar ficha clínica">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-          <span>Eliminar Ficha</span>
-        </button>
-      </div>
-    `;
-
-    cardH.querySelector('[data-clinical-action="export"]').addEventListener('click', () => exportarPDFHistorial(p.id, h.id));
-    cardH.querySelector('[data-clinical-action="delete"]').addEventListener('click', () => solicitarEliminarFicha(p.id, p.nombre, p.codigo));
-    containerTimeline.appendChild(cardH);
-  });
-
-  // 4. Actualizar URL de forma limpia en el historial del navegador
-  try {
-    const baseListPath = window.location.pathname === '/' ? '/' : '/clinical/listado/';
-    history.replaceState(null, '', `${baseListPath}?paciente=${encodeURIComponent(p.id)}`);
-  } catch (err) {}
-
-  // Scroll suave al inicio
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (containerTimeline) {
+    containerTimeline.innerHTML = '';
+    const historiales = obtenerHistorialesPaciente(p);
+    historiales.forEach(h => {
+      const cardH = document.createElement('div');
+      cardH.className = 'historial-card-item';
+      cardH.innerHTML = `
+        <span class="historial-tag-numero">${escapeHtml(h.numeroVisita)}</span>
+        <span>${escapeHtml(h.medico || '')}</span>
+        <button type="button" data-clinical-action="export">PDF</button>
+        <button type="button" data-clinical-action="delete">Eliminar</button>
+      `;
+      cardH.querySelector('[data-clinical-action="delete"]').addEventListener('click', () => {
+        if (typeof solicitarEliminarFicha === 'function') solicitarEliminarFicha(p.id, p.nombre, p.codigo);
+      });
+      containerTimeline.appendChild(cardH);
+    });
+  }
 }
-
-// Volver de la vista de expediente al listado ordenado de pacientes
-function volverAListadoPacientes() {
-  const vistaListado = document.getElementById('vistaListadoPacientes');
-  const vistaExpediente = document.getElementById('vistaExpedientePaciente');
-  const slicers = document.getElementById('slicersFiltros');
-  const topBarActions = document.getElementById('topBarActions');
-
-  if (vistaExpediente) vistaExpediente.classList.add('oculto');
-  if (vistaListado) vistaListado.classList.remove('oculto');
-  if (slicers) slicers.classList.remove('oculto');
-  if (topBarActions) topBarActions.classList.remove('oculto');
-
-  // Restaurar título
-  document.getElementById('topPageTitle').textContent = 'Directorio de Pacientes y Fichas Clínicas';
-
-  pacienteActivoExpediente = null;
-
-  try {
-    const baseListPath = window.location.pathname === '/' ? '/' : '/clinical/listado/';
-    history.replaceState(null, '', baseListPath);
-  } catch (err) {}
-
-  renderPacientesTabla();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// =========================================================================
-// SELECCIÓN CON CHECKBOX PARA EXPORTACIÓN MASIVA
-// =========================================================================
+window.abrirHistorialesPaciente = abrirHistorialesPaciente;
 
 function toggleSeleccion(id, marcado) {
   if (marcado) {
@@ -972,12 +873,6 @@ function exportarPDFPaciente(pacienteId) {
   window.print();
 }
 
-function exportarPDFPacienteActivo() {
-  if (pacienteActivoExpediente) {
-    exportarPDFPaciente(pacienteActivoExpediente.id);
-  }
-}
-
 // =========================================================================
 // ENVÍO DE ENLACE SEGURO CON CÓDIGO TEMPORAL (FLUJO SECURE SHARE)
 // =========================================================================
@@ -1299,10 +1194,4 @@ function enviarOtraFichaDesdeModal() {
 // Reactividad inmediata al cambiar el Modo de Privacidad en Ajustes
 window.addEventListener('cardio_privacy_mode_changed', () => {
   renderPacientesTabla();
-  if (pacienteActivoExpediente && pacienteActivoExpediente.id) {
-    const vistaExp = document.getElementById('vistaExpedientePaciente');
-    if (vistaExp && !vistaExp.classList.contains('oculto')) {
-      abrirHistorialesPaciente(pacienteActivoExpediente.id);
-    }
-  }
 });

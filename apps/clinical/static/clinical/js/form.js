@@ -25,10 +25,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     pacienteActual = resData.paciente;
     historialActual = obtenerUltimoHistorial(pacienteActual);
 
-    // Actualizar enlace "Volver al Expediente" para volver directamente a la vista de este paciente
+    // Enlace "Volver al Directorio" para regresar directamente al Directorio de Pacientes y Fichas Clínicas
     const btnVolver = document.getElementById('btnVolverListado');
     if (btnVolver) {
-      btnVolver.href = `/clinical/listado/?paciente=${encodeURIComponent(pacienteActual.id)}`;
+      btnVolver.href = '/clinical/listado/';
     }
 
     // Actualizar badge de historial activo en el header
