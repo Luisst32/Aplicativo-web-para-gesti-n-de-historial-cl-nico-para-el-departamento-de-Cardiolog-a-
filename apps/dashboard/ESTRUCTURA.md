@@ -73,7 +73,7 @@ comparten el mismo ámbito global y se cargan en el mismo orden lógico.
 
 | Archivo | Responsabilidad |
 | --- | --- |
-| `static/dashboard/css/dashboard.css` | Tarjetas KPI con subtítulo; mosaico alternado 7/5 y 5/7, altura de 320 px y una columna en móvil (≤700 px). Actividad física y anomalías ECG ocupan filas completas. |
+| `static/dashboard/css/dashboard.css` | Tarjetas KPI con subtítulo; mosaico alternado 7/5 y 5/7, altura de 320 px y una columna en móvil (≤700 px). Actividad física y solo anomalías ECG ocupan filas completas; las demás gráficas ECG conservan el ancho del mosaico. |
 | `static/dashboard/css/questionnaire.css` | Estilos del dashboard del cuestionario; no modificado durante la separación. |
 
 ## Datos y servidor
