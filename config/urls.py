@@ -8,6 +8,7 @@ from clinical import views as clinical_views
 from dashboard import views as dashboard_views
 
 urlpatterns = [
+    path('favicon.ico', RedirectView.as_view(url='/static/assets/images/favicon.ico', permanent=True)),
     path('admin/', admin.site.urls),
     path('login/', RedirectView.as_view(pattern_name='security:login', permanent=False)),
     path('accounts/login/', RedirectView.as_view(pattern_name='security:login', permanent=False)),

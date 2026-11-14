@@ -33,9 +33,11 @@
   height: 38px;
   width: 38px;
   object-fit: contain;
-  background: var(--color-white);
-  padding: 4px;
-  border-radius: var(--radius-xs);
+  background: #ffffff;
+  padding: 3px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
 }
 
 .sidebar-brand-title {
