@@ -243,7 +243,7 @@
             <p>No se encontraron pacientes que coincidan con los filtros seleccionados.</p>
           </div>
 
-          <!-- BARRA DE PAGINACIÓN (10 pacientes por página) -->
+          <!-- BARRA DE PAGINACIÓN (20 pacientes por página) -->
           <div class="tabla-paginacion-bar" id="paginacionBar">
             <div class="paginacion-resumen" id="paginacionResumen">
               Página 1 de 1 · 0 pacientes
@@ -553,5 +553,5 @@
 
 {% block extra_js %}
   <script src="{% static 'clinical/js/pacientes.js' %}?v=20261113_priv01"></script>
-  <script src="{% static 'clinical/js/list.js' %}?v=20261113_skeleton01"></script>
+  <script src="{% static 'clinical/js/list.js' %}?v=20261113_pag20"></script>
 {% endblock %}

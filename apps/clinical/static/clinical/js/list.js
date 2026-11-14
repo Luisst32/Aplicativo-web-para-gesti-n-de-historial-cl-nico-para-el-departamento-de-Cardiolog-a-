@@ -12,8 +12,8 @@ const seleccionados = new Set();
 let columnaOrdenActual = 'codigo';
 let direccionOrdenActual = 'asc';
 
-// Paginación: 10 pacientes por página
-const PACIENTES_POR_PAGINA = 10;
+// Paginación: 20 pacientes por página
+const PACIENTES_POR_PAGINA = 20;
 let paginaActual = 1;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -378,7 +378,7 @@ function actualizarControlesPaginacion(totalItems, totalPaginas) {
   const hasta = Math.min(paginaActual * PACIENTES_POR_PAGINA, totalItems);
 
   if (resumen) {
-    resumen.textContent = `Página ${paginaActual} de ${totalPaginas} · Mostrando ${desde}-${hasta} de ${totalItems} pacientes (10 por pág.)`;
+    resumen.textContent = `Página ${paginaActual} de ${totalPaginas} · Mostrando ${desde}-${hasta} de ${totalItems} pacientes (20 por pág.)`;
   }
 
   if (btnAnt) {
