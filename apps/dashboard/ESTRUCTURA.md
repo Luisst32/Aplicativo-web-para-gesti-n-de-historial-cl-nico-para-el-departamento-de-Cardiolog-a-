@@ -73,7 +73,7 @@ comparten el mismo ámbito global y se cargan en el mismo orden lógico.
 
 | Alcance visual | Tratamiento |
 | --- | --- |
-| Solo Resumen General | Tarjetas con sombra suave, títulos discretos, área con degradado tenue, barras estrechas y leyendas con puntos; configuración propia en `sections/resumen-general.js`. |
+| Solo Resumen General | Tarjetas con sombra suave, área tenue, barras estrechas y leyendas oscuras seminegritas de 12–13 px; etiquetas sobre colores con contorno blanco. Configuración propia en `sections/resumen-general.js`. |
 
 | Archivo | Responsabilidad |
 | --- | --- |

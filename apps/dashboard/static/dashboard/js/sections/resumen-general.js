@@ -18,7 +18,7 @@ function renderTabResumenGeneral() {
       });
     } else {
       charts.tendencia = new ApexCharts(elTendencia, {
-        chart: { type: 'area', height: 320, toolbar: { show: false }, fontFamily: 'inherit', foreColor: '#64748b' },
+        chart: { type: 'area', height: 320, toolbar: { show: false }, fontFamily: 'inherit', foreColor: '#1e293b', fontSize: '12px' },
         grid: { borderColor: '#e8eef5', strokeDashArray: 4 },
         markers: { size: 4, strokeWidth: 3, strokeColors: '#ffffff', hover: { size: 6 } },
         yaxis: { min: 0, labels: { formatter: val => Math.round(val) } },
@@ -31,7 +31,7 @@ function renderTabResumenGeneral() {
           enabled: true,
           formatter: val => `${val} (${formatPct(val, filteredRecords.length)}%)`,
           offsetY: -10,
-          style: { fontSize: '11px', fontWeight: 600, colors: ['#334155'] },
+          style: { fontSize: '12px', fontWeight: 700, colors: ['#0f172a'] },
           background: { enabled: false }
         },
         tooltip: apexCountTooltip()
@@ -59,7 +59,7 @@ function renderTabResumenGeneral() {
       });
     } else {
       charts.factores = new ApexCharts(elFactores, {
-        chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false }, fontFamily: 'inherit', foreColor: '#64748b' },
+        chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false }, fontFamily: 'inherit', foreColor: '#1e293b', fontSize: '12px' },
         grid: { borderColor: '#e8eef5', strokeDashArray: 4, padding: { right: 16 } },
         fill: { type: 'solid', opacity: 1 },
         plotOptions: { bar: { horizontal: true, distributed: true, borderRadius: 6, barHeight: '48%', colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
@@ -74,7 +74,7 @@ function renderTabResumenGeneral() {
             const casos = Math.round((parseFloat(val) * total) / 100);
             return `${casos} (${val}%)`;
           },
-          style: { fontSize: '11px', fontWeight: 600, colors: ['#1e293b'] },
+          style: { fontSize: '12px', fontWeight: 700, colors: ['#0f172a'] },
           background: { enabled: false }
         },
         tooltip: apexPctTooltip()
@@ -113,8 +113,8 @@ function renderTabResumenGeneral() {
           cutout: '72%',
           layout: { padding: 12 },
           plugins: {
-            legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8, padding: 18, color: '#475569', font: { size: 11 } } },
-            datalabels: chartJsDonutDataLabels()
+            legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 10, padding: 18, color: '#0f172a', font: { size: 12, weight: '600' } } },
+            datalabels: { ...chartJsDonutDataLabels(), color: '#0f172a', font: { size: 12, weight: 'bold' }, textStrokeColor: '#ffffff', textStrokeWidth: 3 }
           }
         }
       });
@@ -147,27 +147,29 @@ function renderTabResumenGeneral() {
           maintainAspectRatio: false,
           layout: { padding: { top: 25, right: 8, bottom: 4, left: 4 } },
           scales: {
-            x: { stacked: true, grid: { display: false }, border: { display: false }, ticks: { color: '#64748b', font: { size: 11 } } },
+            x: { stacked: true, grid: { display: false }, border: { display: false }, ticks: { color: '#1e293b', font: { size: 12, weight: '600' } } },
             y: {
               stacked: true,
               grid: { color: '#edf2f7' },
               border: { display: false },
-              ticks: { precision: 0, color: '#64748b' },
+              ticks: { precision: 0, color: '#1e293b', font: { size: 12, weight: '600' } },
               beginAtZero: true,
               grace: '20%',
               title: { display: true, text: 'Casos (n)', font: { size: 11, weight: 'bold' } }
             }
           },
           plugins: {
-            legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, boxWidth: 8, color: '#475569' } },
+            legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, boxWidth: 10, color: '#0f172a', font: { size: 13, weight: '600' } } },
             datalabels: {
               display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0,
-              color: '#172b4d',
+              color: '#0f172a',
+              textStrokeColor: '#ffffff',
+              textStrokeWidth: 3,
               backgroundColor: 'transparent',
               borderRadius: 0,
               padding: { top: 1, bottom: 1, left: 2, right: 2 },
               borderWidth: 0,
-              font: { weight: 'bold', size: 9.5 },
+              font: { weight: 'bold', size: 11 },
               clip: false,
               formatter: (val) => {
                 if (!val || val <= 0) return '';
