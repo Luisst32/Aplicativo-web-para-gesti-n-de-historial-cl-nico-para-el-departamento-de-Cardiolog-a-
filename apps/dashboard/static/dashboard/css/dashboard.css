@@ -811,6 +811,28 @@ body {
 }
 
 /* TABLAS ESTILO POWER BI */
+#tab-resumen-general .card-visual {
+  background: #ffffff;
+  border: 1px solid #e5ecf3;
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 4px 18px rgba(27, 42, 65, 0.045);
+}
+
+#tab-resumen-general .visual-header {
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-bottom: 0.75rem;
+}
+
+#tab-resumen-general .visual-title h3 {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #334155;
+}
+
 .pbi-table-wrapper {
   width: 100%;
   overflow-x: auto;

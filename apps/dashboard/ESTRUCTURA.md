@@ -71,6 +71,10 @@ comparten el mismo ámbito global y se cargan en el mismo orden lógico.
 
 ## CSS
 
+| Alcance visual | Tratamiento |
+| --- | --- |
+| Solo Resumen General | Tarjetas con sombra suave, títulos discretos, área con degradado tenue, barras estrechas y leyendas con puntos; configuración propia en `sections/resumen-general.js`. |
+
 | Archivo | Responsabilidad |
 | --- | --- |
 | `static/dashboard/css/dashboard.css` | Tarjetas KPI con subtítulo; mosaico alternado 7/5 y 5/7, altura de 320 px y una columna en móvil (≤700 px). Actividad física y solo anomalías ECG ocupan filas completas; las demás gráficas ECG conservan el ancho del mosaico. |
