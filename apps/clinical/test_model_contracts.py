@@ -109,7 +109,8 @@ class ClinicalModelContractTests(TestCase):
 
     def test_csv_export_age_uses_evaluation_date_before_birthday(self):
         frame = self.export_frame()
-        self.assertEqual(len(frame.columns), 342)
+        self.assertEqual(len(frame.columns), 391)
+        self.assertIn('EST_ECOCARDIOGRAMA', frame.columns)
         self.assertEqual(frame.iloc[0]['EDAD'], 25)
 
     def test_csv_export_age_changes_on_birthday(self):
@@ -119,9 +120,36 @@ class ClinicalModelContractTests(TestCase):
 
     def test_sav_export_uses_full_template_and_can_be_read_back(self):
         frame = self.export_frame('sav')
-        self.assertEqual(len(frame.columns), 342)
+        self.assertEqual(len(frame.columns), 391)
+        self.assertIn('EST_ECOCARDIOGRAMA', frame.columns)
         self.assertEqual(frame.iloc[0]['EDAD'], 25)
         self.assertFalse(pd.isna(frame.iloc[0]['FECHA']))
+
+    def test_multiformat_export_supports_zsav_rds_and_rdata(self):
+        # Prueba exportación comprimida ZSAV
+        zsav_data, zsav_name, zsav_type = sav_exporter.generate_export_dataset([self.patient.pk], format_type='zsav')
+        self.assertTrue(zsav_name.endswith('.zsav'))
+        self.assertEqual(zsav_type, 'application/x-spss-sav')
+        self.assertGreater(len(zsav_data), 0)
+
+        # Prueba exportación RStudio RDS
+        rds_data, rds_name, rds_type = sav_exporter.generate_export_dataset([self.patient.pk], format_type='rds')
+        self.assertTrue(rds_name.endswith('.rds'))
+        self.assertEqual(rds_type, 'application/octet-stream')
+        p_rds = Path(self.folder) / 'test.rds'
+        p_rds.write_bytes(rds_data)
+        rds_read = pyreadr.read_r(str(p_rds))[None]
+        self.assertEqual(len(rds_read.columns), 391)
+        self.assertIn('EST_ECOCARDIOGRAMA', rds_read.columns)
+
+        # Prueba exportación RStudio RData
+        rdata_data, rdata_name, rdata_type = sav_exporter.generate_export_dataset([self.patient.pk], format_type='rdata')
+        self.assertTrue(rdata_name.endswith('.RData'))
+        p_rdata = Path(self.folder) / 'test.RData'
+        p_rdata.write_bytes(rdata_data)
+        rdata_read = pyreadr.read_r(str(p_rdata))['CardioUnemi']
+        self.assertEqual(len(rdata_read.columns), 391)
+        self.assertIn('EST_ECOCARDIOGRAMA', rdata_read.columns)
 
     def test_echo_export_does_not_read_nonexistent_fractional_shortening(self):
         Echocardiogram.objects.create(visit=self.visit, lvef_percentage=Decimal('61.0'))

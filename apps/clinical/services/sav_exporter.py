@@ -1,9 +1,13 @@
 """
 apps/clinical/services/sav_exporter.py
-Servicio de exportación de base de datos a formato SPSS Statistics (.sav) y CSV / Excel.
-Garantiza la exportación de las 342 columnas completas idénticas a
-'Base_datos_Unemi_CardioUnemi-ACTUALIZADO.sav', conservando tipos, diccionarios
-de variables, etiquetas de valor (value labels) y respuestas no modeladas.
+Servicio de exportación de base de datos a formatos oficiales:
+- IBM SPSS Statistics (.sav, .zsav)
+- RStudio (.rds, .RData)
+- Delimitado Excel / CSV (.csv UTF-8 con BOM)
+Garantiza la exportación de las columnas clínicas históricas idénticas a
+'Base_datos_Unemi_CardioUnemi-ACTUALIZADO.sav' más todos los nuevos campos
+del Cuestionario UNEMI 2026, conservando tipos, diccionarios de variables,
+etiquetas de valor (value labels) y respuestas no modeladas.
 """
 
 import os
@@ -16,27 +20,90 @@ from decimal import Decimal
 import numpy as np
 import pandas as pd
 import pyreadstat
+import pyreadr
 from django.conf import settings
 
 from clinical.services.record_selection import selected_visits
 from clinical.models import Patient, Visit, VisitAnswer
 from clinical.services.sav_importer import normalize_var_name
 
-# Cache en memoria de la plantilla original de 342 columnas
+# Catálogo oficial de nuevas variables incorporadas en Cuestionario UNEMI 2026
+NEW_2026_EXPORT_COLUMNS = [
+    # Módulo Factores de Riesgo Modificables - Drogas (Frecuencia detallada y cesación)
+    ('DROGAS_DOSIS_DIARIA', 'Drogas: Consumo con dosis diaria (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('DROGAS_DOSIS_SEMANAL', 'Drogas: Consumo con dosis semanal (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('DROGAS_DOSIS_OCASIONAL', 'Drogas: Consumo con dosis ocasional (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('CHK_EX_DROGAS', 'Drogas: Ex-consumidor > 1 año (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('DROGAS_CUALES', 'Drogas: Sustancias que consume o consumió', 'object', {}),
+    ('DROGAS_FRECUENCIA', 'Drogas: Frecuencia general de consumo', 'object', {}),
+
+    # Módulo Historia Cardiovascular Actual (Pág. 4-5)
+    ('HC_ISQUEMICA', 'Historia cardiovascular: Cardiopatía isquémica (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('HC_ISQUEMICA_ANGINA', 'Cardiopatía isquémica: Angina de pecho (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('HC_ISQUEMICA_INFARTO', 'Cardiopatía isquémica: Infarto de miocardio (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('HC_REVASC', 'Historia cardiovascular: Revascularización coronaria (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('REVASCULARIZACION_TIPO', 'Revascularización coronaria: Tipo (1=Angioplastia, 2=Bypass, 3=Ambas)', 'float64', {1.0: 'Angioplastia', 2.0: 'Bypass', 3.0: 'Ambas'}),
+    ('HC_INSUF_CARDIACA', 'Historia cardiovascular: Insuficiencia cardíaca (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('HC_VALVULOPATIA', 'Historia cardiovascular: Valvulopatía (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('HC_VALVULOPATIA_CUALES', 'Valvulopatía: ¿Cuáles válvulas o lesiones?', 'object', {}),
+    ('HC_VALVULOPATIA_OPERADO', 'Valvulopatía: Operado por este motivo (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('HC_HOSPITALIZACION', 'Ingreso hospitalario por problema cardíaco (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('HC_HOSPITALIZACION_MOTIVO', 'Ingreso hospitalario: Motivo de internamiento', 'object', {}),
+
+    # Módulo Historia No Cardiovascular - Cáncer
+    ('NC_CANCER', 'Historia no cardiovascular: Cáncer (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('CANCER_PULMON', 'Cáncer: Pulmón (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('CANCER_PROSTATA', 'Cáncer: Próstata (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('CANCER_COLON', 'Cáncer: Colon (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('CANCER_MAMA', 'Cáncer: Mama (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('CANCER_VEJIGA', 'Cáncer: Vejiga (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('CANCER_UTERO', 'Cáncer: Útero (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('CANCER_OVARIO', 'Cáncer: Ovario (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('CANCER_OTRO', 'Cáncer: Otro tipo tumoral (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('CANCER_OTRO_DETALLE', 'Cáncer: Especificar otro tipo tumoral', 'object', {}),
+    ('CANCER_QT', 'Cáncer: Recibió Quimioterapia (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('CANCER_RT', 'Cáncer: Recibió Radioterapia (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+
+    # Módulo Estudios Prescritos (Catálogo Oficial 2026: 8 ítems + Observaciones)
+    ('EST_ANALISIS_CLINICOS', 'Estudios prescritos: 1.- Análisis clínicos (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('EST_ERGOMETRIA_SPECT', 'Estudios prescritos: 2.- Ergometría con SPECT (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('EST_TAC_CARDIACO', 'Estudios prescritos: 3.- TAC Cardíaco (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('EST_RNM_CARDIACO', 'Estudios prescritos: 4.- RNM Cardíaco (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('EST_ELECTROFISIOLOGIA', 'Estudios prescritos: 5.- Electrofisiología Cardíaca (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('EST_ECOCARDIOGRAMA', 'Estudios prescritos: 6.- Ecocardiografía (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('EST_HOLTER', 'Estudios prescritos: 7.- Holter ECG (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('EST_MAPA', 'Estudios prescritos: 8.- MAPA (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('ESTUDIOS_OBSERVACIONES', 'Estudios prescritos: Observaciones y otros estudios indicados', 'object', {}),
+
+    # Módulo Estilo de Vida: PREDIMED (Lácteos y Sofrito 2026)
+    ('PRED_Q13_CONSUME', 'PREDIMED: 13. Consume leche de vaca (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('PRED_LECHE_VASOS_DIA', 'PREDIMED: Leche de vaca - vasos al día', 'float64', {}),
+    ('PRED_LECHE_VASOS_SEM', 'PREDIMED: Leche de vaca - vasos a la semana', 'float64', {}),
+    ('PRED_LECHE_TIPO', 'PREDIMED: Leche de vaca - tipo (Entera, Desnatada, etc.)', 'object', {}),
+    ('PRED_Q14_CONSUME', 'PREDIMED: 14. Consume queso (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('PRED_QUESO_VECES_SEM', 'PREDIMED: Queso - veces a la semana', 'float64', {}),
+    ('PRED_QUESO_GRAMOS', 'PREDIMED: Queso - gramos consumidos', 'float64', {}),
+    ('PRED_Q15_CONSUME', 'PREDIMED: 15. Consume yogurt (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+    ('PRED_YOGURT_CANT_SEM', 'PREDIMED: Yogurt - unidades a la semana', 'float64', {}),
+    ('PRED_YOGURT_TIPO', 'PREDIMED: Yogurt - tipo', 'object', {}),
+    ('PRED_Q19', 'PREDIMED: 19. Consume sofrito casero >= 2 veces/sem (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
+]
+
+# Cache en memoria de la plantilla de columnas y metadatos
 _SAV_TEMPLATE_CACHE = None
+
 
 def get_sav_template_metadata():
     """
-    Carga e indexa en memoria las 342 columnas y metadatos oficiales de CardioUNEMI.
-    Prioriza el archivo de especificación JSON empaquetado ('sav_columns_spec.json')
-    para no depender de archivos .sav externos en servidores de producción o EC2.
+    Carga e indexa en memoria las columnas y metadatos oficiales de CardioUNEMI,
+    integrando las 342 columnas de la cohorte histórica más las variables del Cuestionario 2026.
     """
     global _SAV_TEMPLATE_CACHE
     if _SAV_TEMPLATE_CACHE is not None:
         return _SAV_TEMPLATE_CACHE
 
     spec_json_path = Path(__file__).resolve().parent / 'sav_columns_spec.json'
-    
+
     cols = []
     col_dtypes = {}
     col_value_labels = {}
@@ -52,7 +119,7 @@ def get_sav_template_metadata():
         raw_dtypes = spec.get('dtypes', {})
         col_dtypes = {col: str(dt) for col, dt in raw_dtypes.items()}
 
-        # Convertir llaves numéricas en value labels (JSON serializa int/float como str)
+        # Convertir llaves numéricas en value labels
         for col, vmap in raw_val_labels.items():
             parsed_vmap = {}
             for k, v in vmap.items():
@@ -65,7 +132,6 @@ def get_sav_template_metadata():
                     parsed_vmap[k] = v
             col_value_labels[col] = parsed_vmap
     else:
-        # Fallback si existiera el archivo binario .sav local
         template_candidates = [
             Path(settings.BASE_DIR) / 'Base_datos_Unemi_CardioUnemi-ACTUALIZADO.sav',
             Path(settings.BASE_DIR) / 'media' / 'Base_datos_Unemi_CardioUnemi-ACTUALIZADO.sav',
@@ -86,6 +152,15 @@ def get_sav_template_metadata():
     if not cols:
         raise RuntimeError("No se pudieron cargar las especificaciones de las columnas del dataset SPSS.")
 
+    # Incorporar las nuevas columnas del Cuestionario UNEMI 2026
+    for col_name, col_label, col_dt, v_labels in NEW_2026_EXPORT_COLUMNS:
+        if col_name not in cols:
+            cols.append(col_name)
+            col_dtypes[col_name] = col_dt
+            col_names_to_labels[col_name] = col_label
+            if v_labels:
+                col_value_labels[col_name] = v_labels
+
     # Construir mapa inverso de etiquetas a valores numéricos
     lbl_to_val_map = {}
     for col, vmap in col_value_labels.items():
@@ -96,7 +171,6 @@ def get_sav_template_metadata():
             norm_lbl = normalize_var_name(lbl_str)
             if norm_lbl:
                 inv[norm_lbl.upper()] = num_v
-            # Versión entera si aplica
             if isinstance(num_v, (int, float)) and num_v == int(num_v):
                 inv[str(int(num_v))] = num_v
             inv[str(num_v)] = num_v
@@ -112,12 +186,30 @@ def get_sav_template_metadata():
     return _SAV_TEMPLATE_CACHE
 
 
+def _is_yes(val):
+    if val is None or str(val).strip() == '':
+        return False
+    return str(val).strip().lower() in ('si', 'sí', '1', '1.0', 'true', 'yes')
+
+
+def _to_float(val):
+    if val is None or str(val).strip() == '':
+        return np.nan
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return np.nan
+
+
 def generate_export_dataset(patient_ids=None, format_type='sav'):
     """
-    Genera el dataset de exportación con las 342 columnas completas.
-    Parámetros:
-      - patient_ids: lista de IDs de paciente (o None para todos los activos)
-      - format_type: 'sav' para SPSS Statistics o 'csv' para Excel / CSV UTF-8 BOM
+    Genera el dataset de exportación con todas las columnas clínicas oficiales y los nuevos campos 2026.
+    Soporta los mismos formatos de exportación que se admiten en importación:
+      - 'sav': IBM SPSS Statistics (.sav)
+      - 'zsav': IBM SPSS Comprimido (.zsav)
+      - 'rds': RStudio Dataframe serializado (.rds)
+      - 'rdata' / 'rda': RStudio Workspace (.RData)
+      - 'csv': Archivo delimitado por comas (.csv UTF-8 BOM)
     Retorna: (file_bytes, filename, content_type)
     """
     tpl = get_sav_template_metadata()
@@ -133,11 +225,11 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
         'patient__sex', 'patient__ethnicity', 'residence_canton', 'residence_canton__province',
         'staff_category', 'professional_category', 'marital_status', 'living_situation',
         'education_level', 'work_schedule', 'housing_type', 'income_range',
-        'anthropometry', 'vital_signs', 'electrocardiogram', 'laboratory', 'echocardiogram'
+        'anthropometry', 'vital_signs', 'electrocardiogram', 'laboratory', 'echocardiogram',
+        'ordered_studies'
     ).order_by('visit_id')
 
     if patient_ids is not None:
-        # Validate the complete selection before generating a file. No partial/all fallback.
         visits = selected_visits(patient_ids, active_only=True)
         visits_qs = visits_qs.filter(pk__in=[visit.pk for visit in visits])
     visits = list(visits_qs)
@@ -153,19 +245,24 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
         val = (va.selected_option.label if va.selected_option else
                va.numeric_value if va.numeric_value is not None else va.text_value)
         answers_by_visit[v_id][code] = val
+        clean_code = normalize_var_name(code)[:30]
+        answers_by_visit[v_id][clean_code] = val
+        answers_by_visit[v_id][code.lower()] = val
+        answers_by_visit[v_id][clean_code.lower()] = val
 
-    # 3. Construir las 342 columnas para cada visita
+    # 3. Construir filas de datos
     rows_data = []
     for v in visits:
         p = v.patient
         ans = answers_by_visit.get(v.visit_id, {})
+        studies = getattr(v, 'ordered_studies', None)
         row = {}
 
         for col in cols:
             clean = normalize_var_name(col)[:30]
-            val = ans.get(clean)
+            val = ans.get(col) or ans.get(col.lower()) or ans.get(clean) or ans.get(clean.lower())
 
-            # Mapeo de respaldo desde modelos relacionales de la BD
+            # Mapeo de respaldo desde modelos relacionales de la BD y nuevos campos 2026
             if val is None or str(val).strip() == '':
                 c_up = col.upper()
                 if clean.upper() == 'CODIGO':
@@ -215,6 +312,8 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
                     val = v.housing_type.name if v.housing_type else None
                 elif 'INGRESOS' in c_up:
                     val = v.income_range.name if v.income_range else None
+
+                # Antropometría
                 elif col == 'PESO_KG' and hasattr(v, 'anthropometry') and v.anthropometry and v.anthropometry.weight_kg:
                     val = float(v.anthropometry.weight_kg)
                 elif col == 'TALLA_CM' and hasattr(v, 'anthropometry') and v.anthropometry and v.anthropometry.height_cm:
@@ -225,6 +324,8 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
                     val = float(v.anthropometry.waist_circumference_cm)
                 elif col == 'ASC_M2' and hasattr(v, 'anthropometry') and v.anthropometry and v.anthropometry.body_surface_area:
                     val = float(v.anthropometry.body_surface_area)
+
+                # Signos Vitales
                 elif col == 'TAS_TS' and hasattr(v, 'vital_signs') and v.vital_signs and v.vital_signs.systolic_bp:
                     val = float(v.vital_signs.systolic_bp)
                 elif col == 'TAS_MMHG' and hasattr(v, 'vital_signs') and v.vital_signs and v.vital_signs.diastolic_bp:
@@ -241,6 +342,7 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
                     val = 1.0 if v.vital_signs.pulmonary_auscultation_normal else 0.0
                 elif col == 'EXPLORACION_ABDOMINAL' and hasattr(v, 'vital_signs') and v.vital_signs:
                     val = 1.0 if v.vital_signs.abdominal_auscultation_normal else 0.0
+
                 # ECG
                 elif col == 'ECG_RITMO' and hasattr(v, 'electrocardiogram') and v.electrocardiogram and v.electrocardiogram.rhythm:
                     val = v.electrocardiogram.rhythm.name
@@ -254,6 +356,7 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
                     val = float(v.electrocardiogram.qtc_bazett_ms)
                 elif 'EJE_ELECTRICO' in c_up and hasattr(v, 'electrocardiogram') and v.electrocardiogram and v.electrocardiogram.qrs_axis_degrees:
                     val = float(v.electrocardiogram.qrs_axis_degrees)
+
                 # Laboratorio
                 elif hasattr(v, 'laboratory') and v.laboratory:
                     lab = v.laboratory
@@ -273,20 +376,130 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
                     elif 'GPT' in c_up and lab.alt_gpt_u_l: val = float(lab.alt_gpt_u_l)
                     elif 'GGT' in c_up and lab.ggt_u_l: val = float(lab.ggt_u_l)
                     elif 'TSH' in c_up and lab.tsh_u_iu_ml: val = float(lab.tsh_u_iu_ml)
+
                 # Ecocardiograma
                 elif hasattr(v, 'echocardiogram') and v.echocardiogram:
                     echo = v.echocardiogram
                     if 'FRACCION_EYECCION' in c_up and echo.lvef_percentage: val = float(echo.lvef_percentage)
-                    # Fractional shortening has no relational field. Its stored
-                    # VisitAnswer, if any, was read above; otherwise leave missing.
 
-            # 4. Formatear y convertir al tipo de dato exacto de SPSS
+                # Nuevos campos Cuestionario UNEMI 2026: Drogas
+                elif col == 'DROGAS_DOSIS_DIARIA':
+                    val = 1.0 if _is_yes(ans.get('drogas_dosis_diaria')) else (0.0 if ans.get('drogas_dosis_diaria') is not None else np.nan)
+                elif col == 'DROGAS_DOSIS_SEMANAL':
+                    val = 1.0 if _is_yes(ans.get('drogas_dosis_semanal')) else (0.0 if ans.get('drogas_dosis_semanal') is not None else np.nan)
+                elif col == 'DROGAS_DOSIS_OCASIONAL':
+                    val = 1.0 if _is_yes(ans.get('drogas_dosis_ocasional')) else (0.0 if ans.get('drogas_dosis_ocasional') is not None else np.nan)
+                elif col == 'CHK_EX_DROGAS':
+                    val = 1.0 if _is_yes(ans.get('chk_ex_drogas')) else (0.0 if ans.get('chk_ex_drogas') is not None else np.nan)
+                elif col == 'DROGAS_CUALES':
+                    val = ans.get('drogas_cuales', '')
+                elif col == 'DROGAS_FRECUENCIA':
+                    val = ans.get('drogas_frecuencia', '')
+
+                # Nuevos campos Cuestionario UNEMI 2026: Historia Cardiovascular
+                elif col == 'HC_ISQUEMICA':
+                    val = 1.0 if _is_yes(ans.get('hc_isquemica') or ans.get('cardiopatia_isquemica')) else 0.0
+                elif col == 'HC_ISQUEMICA_ANGINA':
+                    val = 1.0 if _is_yes(ans.get('hc_isquemica_angina')) else 0.0
+                elif col == 'HC_ISQUEMICA_INFARTO':
+                    val = 1.0 if _is_yes(ans.get('hc_isquemica_infarto')) else 0.0
+                elif col == 'HC_REVASC':
+                    val = 1.0 if _is_yes(ans.get('hc_revasc') or ans.get('revascularizacion_coronaria')) else 0.0
+                elif col == 'REVASCULARIZACION_TIPO':
+                    raw_rev = str(ans.get('revascularizacion_tipo') or ans.get('hc_revasc_tipo') or '').lower()
+                    if 'ambas' in raw_rev or '3' in raw_rev: val = 3.0
+                    elif 'bypass' in raw_rev or '2' in raw_rev: val = 2.0
+                    elif 'angioplastia' in raw_rev or '1' in raw_rev: val = 1.0
+                    else: val = np.nan
+                elif col == 'HC_INSUF_CARDIACA':
+                    val = 1.0 if _is_yes(ans.get('hc_insuf_cardiaca') or ans.get('insuficiencia_cardiaca')) else 0.0
+                elif col == 'HC_VALVULOPATIA':
+                    val = 1.0 if _is_yes(ans.get('hc_valvulopatia') or ans.get('valvulopatia')) else 0.0
+                elif col == 'HC_VALVULOPATIA_CUALES':
+                    val = ans.get('hc_valvulopatia_cuales') or ans.get('valvulopatia_cuales') or ''
+                elif col == 'HC_VALVULOPATIA_OPERADO':
+                    val = 1.0 if _is_yes(ans.get('hc_valvulopatia_operado') or ans.get('valvulopatia_operado')) else 0.0
+                elif col == 'HC_HOSPITALIZACION':
+                    val = 1.0 if _is_yes(ans.get('hc_ingresado') or ans.get('hc_hospitalizacion') or ans.get('ingreso_hospitalario_problema_cardiaco')) else 0.0
+                elif col == 'HC_HOSPITALIZACION_MOTIVO':
+                    val = ans.get('hc_ingresado_cual') or ans.get('hc_hospitalizacion_motivo') or ''
+
+                # Nuevos campos Cuestionario UNEMI 2026: Cáncer
+                elif col == 'NC_CANCER':
+                    val = 1.0 if _is_yes(ans.get('nc_cancer') or ans.get('historia_cancer')) else 0.0
+                elif col == 'CANCER_PULMON':
+                    val = 1.0 if _is_yes(ans.get('cancer_pulmon')) else 0.0
+                elif col == 'CANCER_PROSTATA':
+                    val = 1.0 if _is_yes(ans.get('cancer_prostata')) else 0.0
+                elif col == 'CANCER_COLON':
+                    val = 1.0 if _is_yes(ans.get('cancer_colon')) else 0.0
+                elif col == 'CANCER_MAMA':
+                    val = 1.0 if _is_yes(ans.get('cancer_mama')) else 0.0
+                elif col == 'CANCER_VEJIGA':
+                    val = 1.0 if _is_yes(ans.get('cancer_vejiga')) else 0.0
+                elif col == 'CANCER_UTERO':
+                    val = 1.0 if _is_yes(ans.get('cancer_utero')) else 0.0
+                elif col == 'CANCER_OVARIO':
+                    val = 1.0 if _is_yes(ans.get('cancer_ovario')) else 0.0
+                elif col == 'CANCER_OTRO':
+                    val = 1.0 if _is_yes(ans.get('cancer_otro')) else 0.0
+                elif col == 'CANCER_OTRO_DETALLE':
+                    val = ans.get('cancer_otro_detalle', '')
+                elif col == 'CANCER_QT':
+                    val = 1.0 if _is_yes(ans.get('cancer_qt') or ans.get('cancer_quimioterapia')) else 0.0
+                elif col == 'CANCER_RT':
+                    val = 1.0 if _is_yes(ans.get('cancer_rt') or ans.get('cancer_radioterapia')) else 0.0
+
+                # Nuevos campos Cuestionario UNEMI 2026: Estudios Prescritos
+                elif col == 'EST_ANALISIS_CLINICOS':
+                    val = 1.0 if (studies and studies.clinical_analysis) or _is_yes(ans.get('est_analisis_clinicos')) else 0.0
+                elif col == 'EST_ERGOMETRIA_SPECT':
+                    val = 1.0 if (studies and studies.ergometry_spect) or _is_yes(ans.get('est_ergometria_spect')) else 0.0
+                elif col == 'EST_TAC_CARDIACO':
+                    val = 1.0 if (studies and studies.cardiac_ct) or _is_yes(ans.get('est_tac_cardiaco')) else 0.0
+                elif col == 'EST_RNM_CARDIACO':
+                    val = 1.0 if (studies and studies.cardiac_mri) or _is_yes(ans.get('est_rnm_cardiaco')) else 0.0
+                elif col == 'EST_ELECTROFISIOLOGIA':
+                    val = 1.0 if (studies and studies.electrophysiology) or _is_yes(ans.get('est_electrofisiologia')) else 0.0
+                elif col == 'EST_ECOCARDIOGRAMA':
+                    val = 1.0 if _is_yes(ans.get('est_ecocardiograma') or ans.get('est_eco')) else 0.0
+                elif col == 'EST_HOLTER':
+                    val = 1.0 if _is_yes(ans.get('est_holter')) else 0.0
+                elif col == 'EST_MAPA':
+                    val = 1.0 if _is_yes(ans.get('est_mapa')) else 0.0
+                elif col == 'ESTUDIOS_OBSERVACIONES':
+                    val = ans.get('est_otros_detalle') or ans.get('estudios_observaciones') or ''
+
+                # Nuevos campos Cuestionario UNEMI 2026: PREDIMED Lácteos y Sofrito
+                elif col == 'PRED_Q13_CONSUME':
+                    val = 1.0 if _is_yes(ans.get('pred_q13_consume')) else 0.0
+                elif col == 'PRED_LECHE_VASOS_DIA':
+                    val = _to_float(ans.get('pred_leche_vasos_dia'))
+                elif col == 'PRED_LECHE_VASOS_SEM':
+                    val = _to_float(ans.get('pred_leche_vasos_sem'))
+                elif col == 'PRED_LECHE_TIPO':
+                    val = ans.get('pred_leche_tipo', '')
+                elif col == 'PRED_Q14_CONSUME':
+                    val = 1.0 if _is_yes(ans.get('pred_q14_consume')) else 0.0
+                elif col == 'PRED_QUESO_VECES_SEM':
+                    val = _to_float(ans.get('pred_queso_veces_sem'))
+                elif col == 'PRED_QUESO_GRAMOS':
+                    val = _to_float(ans.get('pred_queso_gramos'))
+                elif col == 'PRED_Q15_CONSUME':
+                    val = 1.0 if _is_yes(ans.get('pred_q15_consume')) else 0.0
+                elif col == 'PRED_YOGURT_CANT_SEM':
+                    val = _to_float(ans.get('pred_yogurt_cant_sem'))
+                elif col == 'PRED_YOGURT_TIPO':
+                    val = ans.get('pred_yogurt_tipo', '')
+                elif col == 'PRED_Q19':
+                    val = 1.0 if _is_yes(ans.get('pred_q19')) else 0.0
+
+            # 4. Formatear y convertir al tipo de dato exacto de la plantilla
             target_dtype = col_dtypes.get(col)
             if target_dtype and str(target_dtype).startswith('float'):
                 if val is None or str(val).strip() == '' or str(val).lower() == 'nan':
                     row[col] = np.nan
                 else:
-                    # Mapear valor textual a código numérico si existe en etiquetas de valor (value labels)
                     col_inv = lbl_to_val_map.get(col, {})
                     val_str = str(val).strip().upper()
                     if val_str in col_inv:
@@ -295,6 +508,10 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
                         norm_v = normalize_var_name(val_str).upper()
                         if norm_v in col_inv:
                             row[col] = float(col_inv[norm_v])
+                        elif val_str in ('SI', 'SÍ', 'TRUE', 'YES'):
+                            row[col] = 1.0
+                        elif val_str in ('NO', 'FALSE'):
+                            row[col] = 0.0
                         else:
                             try:
                                 row[col] = float(val)
@@ -314,7 +531,6 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
                         except Exception:
                             row[col] = None
             else:
-                # Columna de texto / string
                 if val is None or str(val).lower() == 'nan':
                     row[col] = ''
                 else:
@@ -324,19 +540,73 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
 
     out_df = pd.DataFrame(rows_data, columns=cols)
     fecha_str = datetime.date.today().strftime('%Y%m%d')
+    fmt = (format_type or 'sav').strip().lower()
 
-    if format_type.lower() == 'csv':
+    if fmt == 'csv':
         # Exportación en CSV / Excel UTF-8 BOM
         csv_bytes = out_df.to_csv(index=False, encoding='utf-8-sig').encode('utf-8-sig')
         filename = f"CardioUNEMI_Dataset_{fecha_str}.csv"
         content_type = "text/csv; charset=utf-8"
         return csv_bytes, filename, content_type
 
+    elif fmt in ('rds',):
+        # Exportación en RStudio RDS
+        with tempfile.NamedTemporaryFile(suffix='.rds', delete=False) as tmp:
+            tmp_path = tmp.name
+        try:
+            pyreadr.write_rds(tmp_path, out_df)
+            with open(tmp_path, 'rb') as f:
+                rds_bytes = f.read()
+        finally:
+            if os.path.exists(tmp_path):
+                try: os.unlink(tmp_path)
+                except Exception: pass
+        filename = f"CardioUNEMI_Dataset_{fecha_str}.rds"
+        content_type = "application/octet-stream"
+        return rds_bytes, filename, content_type
+
+    elif fmt in ('rdata', 'rda', 'r'):
+        # Exportación en RStudio Workspace RData
+        with tempfile.NamedTemporaryFile(suffix='.RData', delete=False) as tmp:
+            tmp_path = tmp.name
+        try:
+            pyreadr.write_rdata(tmp_path, out_df, df_name='CardioUnemi')
+            with open(tmp_path, 'rb') as f:
+                rdata_bytes = f.read()
+        finally:
+            if os.path.exists(tmp_path):
+                try: os.unlink(tmp_path)
+                except Exception: pass
+        filename = f"CardioUNEMI_Dataset_{fecha_str}.RData"
+        content_type = "application/octet-stream"
+        return rdata_bytes, filename, content_type
+
+    elif fmt in ('zsav',):
+        # Exportación en IBM SPSS Comprimido (.zsav)
+        with tempfile.NamedTemporaryFile(suffix='.zsav', delete=False) as tmp:
+            tmp_path = tmp.name
+        try:
+            pyreadstat.write_sav(
+                out_df,
+                tmp_path,
+                compress=True,
+                column_labels=col_names_to_labels,
+                variable_value_labels=col_value_labels
+            )
+            with open(tmp_path, 'rb') as f:
+                zsav_bytes = f.read()
+        finally:
+            if os.path.exists(tmp_path):
+                try: os.unlink(tmp_path)
+                except Exception: pass
+        filename = f"CardioUNEMI_Dataset_{fecha_str}.zsav"
+        content_type = "application/x-spss-sav"
+        return zsav_bytes, filename, content_type
+
     else:
-        # Exportación nativa en IBM SPSS Statistics (.sav)
+        # Por defecto: IBM SPSS Statistics estándar (.sav)
         with tempfile.NamedTemporaryFile(suffix='.sav', delete=False) as tmp:
             tmp_path = tmp.name
-
         try:
             pyreadstat.write_sav(
                 out_df,
@@ -350,7 +620,6 @@ def generate_export_dataset(patient_ids=None, format_type='sav'):
             if os.path.exists(tmp_path):
                 try: os.unlink(tmp_path)
                 except Exception: pass
-
         filename = f"CardioUNEMI_Dataset_{fecha_str}.sav"
         content_type = "application/x-spss-sav"
         return sav_bytes, filename, content_type

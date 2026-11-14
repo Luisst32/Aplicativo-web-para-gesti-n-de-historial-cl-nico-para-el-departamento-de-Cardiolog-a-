@@ -284,7 +284,7 @@
           </div>
           <div>
             <h3 class="modal-title" style="margin:0; font-size:1.12rem; font-weight:800; color:#1b2a41;">Exportación Oficial de Base de Datos</h3>
-            <p style="margin:2px 0 0 0; font-size:0.78rem; color:#64748b;">Dataset completo con las 342 columnas de la investigación CardioUNEMI</p>
+            <p style="margin:2px 0 0 0; font-size:0.78rem; color:#64748b;">Dataset completo con variables clínicas y nuevos campos Cuestionario UNEMI 2026</p>
           </div>
         </div>
         <button type="button" class="modal-close-btn" onclick="cerrarModalExportar()" title="Cerrar ventana">&times;</button>
@@ -336,30 +336,69 @@
 
         <!-- 2. FORMATO DE SALIDA -->
         <div class="export-seccion">
-          <label style="display:block; font-size:0.86rem; font-weight:700; color:#1b2a41; margin-bottom:8px;">2. Formato de Salida</label>
-          <div class="export-format-grid" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;">
-            <label class="export-format-card" style="border:1.5px solid #bfdbfe; border-radius:8px; padding:12px 14px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:#eff6ff; transition:all 0.15s ease;">
+          <label style="display:block; font-size:0.86rem; font-weight:700; color:#1b2a41; margin-bottom:8px;">2. Formato de Salida (SPSS, RStudio o CSV)</label>
+          <div class="export-format-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
+            <label class="export-format-card" id="cardFormatoSav" style="border:1.5px solid #bfdbfe; border-radius:8px; padding:10px 12px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:#eff6ff; transition:all 0.15s ease;">
               <input type="radio" name="exportFormato" value="sav" checked onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41; margin-top:3px;">
               <div>
-                <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-                  <span style="background:#1b2a41; color:#fff; font-size:0.7rem; font-weight:800; padding:2px 6px; border-radius:4px;">SPSS (.SAV)</span>
-                  <strong style="font-size:0.88rem; color:#1e293b;">SPSS Statistics</strong>
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+                  <span style="background:#1b2a41; color:#fff; font-size:0.68rem; font-weight:800; padding:2px 6px; border-radius:4px;">SPSS (.SAV)</span>
+                  <strong style="font-size:0.86rem; color:#1e293b;">SPSS Statistics</strong>
                 </div>
-                <span style="font-size:0.76rem; color:#475569; line-height:1.35; display:block;">
-                  Dataset binario oficial con las <strong>342 columnas completas</strong>, diccionarios de variables y etiquetas de valor (idéntico a Base_datos_Unemi_CardioUnemi).
+                <span style="font-size:0.74rem; color:#475569; line-height:1.3; display:block;">
+                  Dataset binario estándar de IBM SPSS con metadatos, etiquetas de valor y nuevos campos 2026.
                 </span>
               </div>
             </label>
 
-            <label class="export-format-card" style="border:1.5px solid #e2e8f0; border-radius:8px; padding:12px 14px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:#f8fafc; transition:all 0.15s ease;">
+            <label class="export-format-card" id="cardFormatoZsav" style="border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 12px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:#f8fafc; transition:all 0.15s ease;">
+              <input type="radio" name="exportFormato" value="zsav" onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41; margin-top:3px;">
+              <div>
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+                  <span style="background:#334155; color:#fff; font-size:0.68rem; font-weight:800; padding:2px 6px; border-radius:4px;">SPSS (.ZSAV)</span>
+                  <strong style="font-size:0.86rem; color:#1e293b;">SPSS Comprimido</strong>
+                </div>
+                <span style="font-size:0.74rem; color:#475569; line-height:1.3; display:block;">
+                  Formato comprimido de alta eficiencia para IBM SPSS Statistics.
+                </span>
+              </div>
+            </label>
+
+            <label class="export-format-card" id="cardFormatoRds" style="border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 12px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:#f8fafc; transition:all 0.15s ease;">
+              <input type="radio" name="exportFormato" value="rds" onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41; margin-top:3px;">
+              <div>
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+                  <span style="background:#2563eb; color:#fff; font-size:0.68rem; font-weight:800; padding:2px 6px; border-radius:4px;">R (.RDS)</span>
+                  <strong style="font-size:0.86rem; color:#1e293b;">RStudio (readRDS)</strong>
+                </div>
+                <span style="font-size:0.74rem; color:#475569; line-height:1.3; display:block;">
+                  Objeto de datos individual para R y RStudio preservando tipos nativos.
+                </span>
+              </div>
+            </label>
+
+            <label class="export-format-card" id="cardFormatoRdata" style="border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 12px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:#f8fafc; transition:all 0.15s ease;">
+              <input type="radio" name="exportFormato" value="rdata" onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41; margin-top:3px;">
+              <div>
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+                  <span style="background:#1d4ed8; color:#fff; font-size:0.68rem; font-weight:800; padding:2px 6px; border-radius:4px;">R (.RDATA)</span>
+                  <strong style="font-size:0.86rem; color:#1e293b;">RStudio Workspace</strong>
+                </div>
+                <span style="font-size:0.74rem; color:#475569; line-height:1.3; display:block;">
+                  Espacio de trabajo listo para cargar en R (load) con el dataframe CardioUnemi.
+                </span>
+              </div>
+            </label>
+
+            <label class="export-format-card" id="cardFormatoCsv" style="border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 12px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:#f8fafc; transition:all 0.15s ease;">
               <input type="radio" name="exportFormato" value="csv" onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41; margin-top:3px;">
               <div>
-                <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-                  <span style="background:#047857; color:#fff; font-size:0.7rem; font-weight:800; padding:2px 6px; border-radius:4px;">CSV / EXCEL</span>
-                  <strong style="font-size:0.88rem; color:#1e293b;">Hoja de Cálculo</strong>
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+                  <span style="background:#047857; color:#fff; font-size:0.68rem; font-weight:800; padding:2px 6px; border-radius:4px;">CSV / EXCEL</span>
+                  <strong style="font-size:0.86rem; color:#1e293b;">Hoja de Cálculo</strong>
                 </div>
-                <span style="font-size:0.76rem; color:#475569; line-height:1.35; display:block;">
-                  Archivo tabular delimitado por comas con las <strong>342 columnas completas</strong> y codificación UTF-8 BOM compatible con Excel y Google Sheets.
+                <span style="font-size:0.74rem; color:#475569; line-height:1.3; display:block;">
+                  Archivo delimitado por comas con codificación UTF-8 BOM para Excel y Sheets.
                 </span>
               </div>
             </label>
@@ -372,7 +411,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
           </div>
           <div style="font-size:0.83rem; color:#334155; line-height:1.4;" id="exportPreviewText">
-            Se exportarán <strong>58 pacientes</strong> en formato <strong>SPSS Statistics (.sav)</strong> con las <strong>342 columnas completas</strong> de la base de datos de Cardiología UNEMI.
+            Se exportarán <strong>58 pacientes</strong> en formato <strong>SPSS Statistics (.sav)</strong> con las variables clínicas completas y nuevos campos Cuestionario UNEMI 2026.
           </div>
         </div>
 
@@ -553,5 +592,5 @@
 
 {% block extra_js %}
   <script src="{% static 'clinical/js/pacientes.js' %}?v=20261113_priv01"></script>
-  <script src="{% static 'clinical/js/list.js' %}?v=20261113_searchcode01"></script>
+  <script src="{% static 'clinical/js/list.js' %}?v=20261114_multiformat_export01"></script>
 {% endblock %}

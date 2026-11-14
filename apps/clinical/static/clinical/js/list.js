@@ -752,10 +752,31 @@ function actualizarResumenExportacion() {
   const formato = document.querySelector('input[name="exportFormato"]:checked')?.value || 'sav';
   const totalRegistros = pacs.length;
 
+  const nombresFormatos = {
+    'sav': 'SPSS Statistics (.sav)',
+    'zsav': 'SPSS Comprimido (.zsav)',
+    'rds': 'RStudio (.rds)',
+    'rdata': 'RStudio Workspace (.RData)',
+    'rda': 'RStudio Workspace (.rda)',
+    'csv': 'Excel / CSV (.csv)'
+  };
+  const etiquetaFormato = nombresFormatos[formato] || 'SPSS Statistics (.sav)';
+
+  // Actualizar estilos activos de las tarjetas de formato
+  document.querySelectorAll('.export-format-card').forEach(card => {
+    const radio = card.querySelector('input[name="exportFormato"]');
+    if (radio && radio.checked) {
+      card.style.borderColor = '#bfdbfe';
+      card.style.background = '#eff6ff';
+    } else {
+      card.style.borderColor = '#e2e8f0';
+      card.style.background = '#f8fafc';
+    }
+  });
+
   const preview = document.getElementById('exportPreviewText');
   if (preview) {
-    const etiquetaFormato = formato === 'sav' ? 'SPSS Statistics (.sav)' : 'Excel / CSV (.csv)';
-    preview.innerHTML = `Se exportarán <strong>${totalRegistros} paciente(s)</strong> en formato <strong>${etiquetaFormato}</strong> con las <strong>342 columnas completas</strong> de la base de datos de Cardiología UNEMI.`;
+    preview.innerHTML = `Se exportarán <strong>${totalRegistros} paciente(s)</strong> en formato <strong>${etiquetaFormato}</strong> con las variables clínicas oficiales y nuevos campos Cuestionario UNEMI 2026.`;
   }
 }
 
@@ -773,7 +794,7 @@ async function ejecutarExportacionInteligente() {
   const btnTxt = document.getElementById('btnTxtDescargar');
   const btn = document.querySelector('.btn-ejecutar-exportacion');
   if (btn) btn.disabled = true;
-  if (btnTxt) btnTxt.textContent = 'Generando dataset oficial (342 columnas)...';
+  if (btnTxt) btnTxt.textContent = 'Generando dataset oficial...';
 
   try {
     const csrfToken = (typeof getCsrfToken === 'function') ? getCsrfToken() : (
@@ -801,7 +822,16 @@ async function ejecutarExportacionInteligente() {
 
     const blob = await res.blob();
     const disposition = res.headers.get('Content-Disposition') || '';
-    let filename = formato === 'sav' ? 'Base_datos_Unemi_CardioUnemi.sav' : 'Base_datos_Unemi_CardioUnemi.csv';
+    const extMap = {
+      'sav': 'sav',
+      'zsav': 'zsav',
+      'rds': 'rds',
+      'rdata': 'RData',
+      'rda': 'RData',
+      'csv': 'csv'
+    };
+    const ext = extMap[formato] || 'sav';
+    let filename = `Base_datos_Unemi_CardioUnemi.${ext}`;
     const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
     if (match && match[1]) {
       filename = match[1].replace(/['"]/g, '').trim();
