@@ -206,8 +206,47 @@ function actualizarOpcionesFiltrosDinamicos() {
   }
 }
 
+function calcularRelevanciaBusqueda(p, q, cleanQ, isNumericQuery) {
+  const cod = String(p.codigo || '').toLowerCase().trim();
+  const nom = String(p.nombre || '').toLowerCase().trim();
+  const ced = String(p.cedula || '').toLowerCase().trim();
+
+  // 1. Coincidencia exacta de código (ej: el usuario busca '3' y este es el paciente #3)
+  if (cod === cleanQ) return 0;
+
+  // 2. Código comienza con la búsqueda (ej: '3' -> '3', '30', '31'...)
+  if (cod.startsWith(cleanQ)) return 1;
+
+  // 3. Nombre coincide exactamente
+  if (nom === q) return 2;
+
+  // 4. Nombre comienza con la búsqueda
+  if (nom.startsWith(q)) return 3;
+
+  // 5. Alguna palabra del nombre comienza con la búsqueda
+  if (nom.includes(' ' + q)) return 4;
+
+  // 6. Nombre contiene la búsqueda
+  if (nom.includes(q)) return 5;
+
+  // 7. Cédula comienza con la búsqueda
+  if (ced.startsWith(cleanQ)) return 6;
+
+  // 8. Código contiene la búsqueda
+  if (cod.includes(cleanQ)) return 7;
+
+  // 9. Cédula contiene la búsqueda (si tiene al menos 3 dígitos)
+  if (cleanQ.length >= 3 && ced.includes(cleanQ)) return 8;
+
+  return 9;
+}
+
 function obtenerPacientesFiltrados() {
-  const q = document.getElementById('filtroBusqueda').value.trim().toLowerCase();
+  const rawQ = document.getElementById('filtroBusqueda').value.trim();
+  const q = rawQ.toLowerCase();
+  const cleanQ = q.replace(/^#/, '').trim();
+  const isNumericQuery = /^\d+$/.test(cleanQ);
+
   const anio = (document.getElementById('filtroAnio').value || 'all').trim();
   const rawEstamento = (document.getElementById('filtroEstamento').value || 'all').trim();
   const rawSexo = (document.getElementById('filtroSexo').value || 'all').trim();
@@ -225,7 +264,21 @@ function obtenerPacientesFiltrados() {
     const nombre = (p.nombre || '').toLowerCase();
     const facultad = (p.facultad || '').toLowerCase();
 
-    const matchQuery = !q || nombre.includes(q) || codigo.includes(q) || cedula.includes(q) || facultad.includes(q);
+    let matchQuery = true;
+    if (q) {
+      if (isNumericQuery) {
+        const matchExactCodigo = codigo === cleanQ;
+        const matchPrefixCodigo = codigo.startsWith(cleanQ);
+        const matchNombreNum = nombre.includes(q);
+        const matchPrefixCedula = cedula.startsWith(cleanQ);
+        // Si la búsqueda numérica es de 1 o 2 dígitos, NO buscar substring en el medio de la cédula de 10 dígitos
+        // porque casi todas las cédulas ecuatorianas contienen dígitos del 0 al 9.
+        const matchSubCedula = cleanQ.length >= 3 && cedula.includes(cleanQ);
+        matchQuery = matchExactCodigo || matchPrefixCodigo || matchNombreNum || matchPrefixCedula || matchSubCedula;
+      } else {
+        matchQuery = nombre.includes(q) || codigo === cleanQ || codigo.includes(cleanQ) || cedula.includes(q) || facultad.includes(q);
+      }
+    }
 
     const anioPac = String(anioDePaciente(p));
     const historiales = p.historiales || [];
@@ -240,8 +293,16 @@ function obtenerPacientesFiltrados() {
     return matchQuery && matchAnio && matchEstamento && matchSexo;
   });
 
-  // Ordenar lista según columna activa
+  // Ordenar lista según relevancia de búsqueda (si hay término de búsqueda) y luego columna activa
   filtrados.sort((a, b) => {
+    if (q) {
+      const relA = calcularRelevanciaBusqueda(a, q, cleanQ, isNumericQuery);
+      const relB = calcularRelevanciaBusqueda(b, q, cleanQ, isNumericQuery);
+      if (relA !== relB) {
+        return relA - relB;
+      }
+    }
+
     let factor = direccionOrdenActual === 'asc' ? 1 : -1;
 
     switch (columnaOrdenActual) {
