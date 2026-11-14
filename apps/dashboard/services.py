@@ -322,42 +322,41 @@ def get_dashboard_evaluation_data():
 
         # Diabetes Mellitus
         lab = getattr(v, 'laboratory', None)
-        glucosa = float(lab.glucose_mg_dl) if lab and lab.glucose_mg_dl is not None else 0.0
-        r_dm_val = (
-            answers_dict.get('r_dm', '') or
-            answers_dict.get('diabetes_mellitus', '') or
-            answers_dict.get('dm', '') or
-            answers_dict.get('diab_glucosa', '') or
-            ''
-        ).strip()
-        is_dm_ans = not _es_negativo(r_dm_val) and ('si' in r_dm_val.lower() or 'sí' in r_dm_val.lower())
-        is_dm_lab = glucosa >= 126.0
-        diabetes = is_dm_ans or is_dm_lab
-        if 'tratada' in r_dm_val.lower():
+        glucosa = float(lab.glucose_mg_dl) if lab and lab.glucose_mg_dl is not None else None
+        r_dm_val = _answer(answers_dict, 'r_dm', 'diabetes_mellitus', 'dm', 'diab_glucosa')
+        is_dm_ans = _affirmative(r_dm_val)
+        is_dm_lab = glucosa >= 126.0 if glucosa is not None else None
+        diabetes = _any_known(is_dm_ans, is_dm_lab)
+        if r_dm_val and 'tratada' in r_dm_val.lower():
             db_desc = 'Tipo 2 tratada'
-        elif diabetes or glucosa >= 100.0:
+        elif diabetes is True or (glucosa is not None and glucosa >= 100.0):
             db_desc = 'Diabetes/Prediabetes'
-        else:
+        elif diabetes is False:
             db_desc = 'No'
+        else:
+            db_desc = 'Sin dato'
 
         # Dislipemia
-        col_total = float(lab.total_cholesterol_mg_dl) if lab and lab.total_cholesterol_mg_dl is not None else 0.0
-        col_ldl = float(lab.ldl_mg_dl) if lab and lab.ldl_mg_dl is not None else 0.0
-        triglic = float(lab.triglycerides_mg_dl) if lab and lab.triglycerides_mg_dl is not None else 0.0
+        col_total = float(lab.total_cholesterol_mg_dl) if lab and lab.total_cholesterol_mg_dl is not None else None
+        col_ldl = float(lab.ldl_mg_dl) if lab and lab.ldl_mg_dl is not None else None
+        triglic = float(lab.triglycerides_mg_dl) if lab and lab.triglycerides_mg_dl is not None else None
 
-        r_dl_val = (answers_dict.get('r_dislip', '') or answers_dict.get('dislipemia', '') or '').strip()
-        is_dl_ans = not _es_negativo(r_dl_val) and ('si' in r_dl_val.lower() or 'sí' in r_dl_val.lower())
-        is_dl_lab = col_total >= 200.0 or col_ldl >= 130.0 or triglic >= 150.0
-        dislipemia = is_dl_ans or is_dl_lab
+        r_dl_val = _answer(answers_dict, 'r_dislip', 'dislipemia')
+        is_dl_ans = _affirmative(r_dl_val)
+        lipid_values = (col_total, col_ldl, triglic)
+        is_dl_lab = (col_total >= 200.0 or col_ldl >= 130.0 or triglic >= 150.0) if all(value is not None for value in lipid_values) else None
+        dislipemia = _any_known(is_dl_ans, is_dl_lab)
 
-        if 'no tratada' in r_dl_val.lower():
+        if r_dl_val and 'no tratada' in r_dl_val.lower():
             dl_desc = 'No tratada'
-        elif 'tratada' in r_dl_val.lower():
+        elif r_dl_val and 'tratada' in r_dl_val.lower():
             dl_desc = 'Tratada'
-        elif dislipemia:
+        elif dislipemia is True:
             dl_desc = 'No tratada'
-        else:
+        elif dislipemia is False:
             dl_desc = 'No'
+        else:
+            dl_desc = 'Sin dato'
 
         # Tabaquismo
         r_tab_val = _answer(answers_dict, 'r_tabaco', 'tabaquismo')
@@ -402,7 +401,7 @@ def get_dashboard_evaluation_data():
             answers_dict.get('higado_graso', '') or
             answers_dict.get('res_higado_graso', '')
         )
-        higado_graso = 'si' in r_hg_val.lower() or 'sí' in r_hg_val.lower()
+        higado_graso = _affirmative(r_hg_val) if r_hg_val else None
 
         # Dieta PREDIMED (Adherencia a Dieta Mediterránea)
         r_fru_val = answers_dict.get('usted_consume_fruta', '') or answers_dict.get('pred_q4', '')
