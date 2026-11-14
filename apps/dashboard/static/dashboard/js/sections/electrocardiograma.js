@@ -147,25 +147,49 @@ function renderTabElectrocardiograma() {
       charts.ecgFc = createDashboardChart(ctxFc, {
         type: 'bar',
         data: {
-          labels: ['FC por Trazado ECG', 'FC por Auscultación / Pulso'],
-          datasets: [{ label: 'Latidos por Minuto (lpm)', data: [fcEcgMedia, fcClinicaMedia], backgroundColor: [PALETTE.primaryBlue, PALETTE.teal], borderRadius: 6 }]
+          labels: [['FC por Trazado', 'ECG'], ['FC por Auscultación', 'o Pulso']],
+          datasets: [{
+            label: 'Latidos por Minuto (lpm)',
+            data: [fcEcgMedia, fcClinicaMedia],
+            backgroundColor: [PALETTE.primaryBlue, PALETTE.teal],
+            borderRadius: 6
+          }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: { y: { min: 40, max: 120, title: { display: true, text: 'Frecuencia Cardíaca (lpm)' } } },
+          layout: {
+            padding: { top: 16, right: 12, bottom: 8, left: 8 }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              border: { display: false },
+              ticks: { maxRotation: 0, minRotation: 0, color: '#1e293b', font: { size: 12, weight: '600' } }
+            },
+            y: {
+              min: 40,
+              max: 120,
+              beginAtZero: false,
+              grid: { color: '#edf2f7' },
+              border: { display: false },
+              ticks: { precision: 0, color: '#1e293b', font: { size: 12, weight: '600' } },
+              title: { display: true, text: 'Frecuencia Cardíaca (lpm)' }
+            }
+          },
           plugins: {
             legend: { display: false },
             datalabels: {
               display: true,
               anchor: 'center',
               align: 'center',
-              font: { weight: 'bold', size: 10.5 },
+              font: { weight: 'bold', size: 12, family: 'inherit' },
               color: '#ffffff',
+              textStrokeColor: 'rgba(15, 23, 42, 0.50)',
+              textStrokeWidth: 2,
+              textShadowBlur: 3,
+              textShadowColor: 'rgba(0, 0, 0, 0.35)',
               backgroundColor: 'transparent',
-              borderRadius: 0,
-              padding: { top: 1, bottom: 1, left: 2, right: 2 },
-              borderWidth: 0,
               clip: false,
               formatter: (val) => `${val} lpm`
             }

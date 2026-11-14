@@ -117,6 +117,7 @@ function apexCountAndPctDataLabel(customTotal, extraOptions = {}) {
     },
     style: {
       fontSize: '11px',
+      fontFamily: 'inherit',
       fontWeight: 'bold',
       colors: ['#ffffff'],
       ...extraStyle
@@ -127,14 +128,15 @@ function apexCountAndPctDataLabel(customTotal, extraOptions = {}) {
     dropShadow: {
       enabled: true,
       top: 1,
-      left: 0,
-      blur: 1,
+      left: 1,
+      blur: 2,
       color: '#0f172a',
-      opacity: 0.45
+      opacity: 0.6
     },
     ...extraOptions,
     style: {
       fontSize: '11px',
+      fontFamily: 'inherit',
       fontWeight: 'bold',
       colors: ['#ffffff'],
       ...extraStyle
@@ -238,7 +240,17 @@ if (typeof Chart !== 'undefined') {
     Chart.register(ChartDataLabels);
     Chart.defaults.plugins.datalabels = {
       display: false,
-      clip: false
+      clip: false,
+      color: '#ffffff',
+      textStrokeColor: 'rgba(15, 23, 42, 0.50)',
+      textStrokeWidth: 2,
+      textShadowBlur: 3,
+      textShadowColor: 'rgba(0, 0, 0, 0.35)',
+      font: {
+        family: 'inherit',
+        weight: 'bold',
+        size: 11
+      }
     };
   }
   Chart.defaults.layout = Chart.defaults.layout || {};
@@ -276,7 +288,7 @@ if (typeof Chart !== 'undefined') {
   }
 }
 
-// Helper para datalabels de Chart.js en barras (sin fondo negro, texto negro)
+// Helper para datalabels de Chart.js en barras (con contorno de contraste y sombra antiamuflaje)
 function chartJsBarDataLabels(showPct = true, customTotal = null) {
   return {
     display: (ctx) => {
@@ -288,11 +300,15 @@ function chartJsBarDataLabels(showPct = true, customTotal = null) {
     offset: 0,
     clip: false,
     color: '#ffffff',
+    textStrokeColor: 'rgba(15, 23, 42, 0.50)',
+    textStrokeWidth: 2,
+    textShadowBlur: 3,
+    textShadowColor: 'rgba(0, 0, 0, 0.35)',
     backgroundColor: 'transparent',
     borderRadius: 0,
     padding: { top: 1, bottom: 1, left: 2, right: 2 },
     borderWidth: 0,
-    font: { weight: 'bold', size: 11 },
+    font: { family: 'inherit', weight: 'bold', size: 11 },
     formatter: (val) => {
       if (!val || val <= 0) return '';
       const total = customTotal || filteredRecords.length || 1;

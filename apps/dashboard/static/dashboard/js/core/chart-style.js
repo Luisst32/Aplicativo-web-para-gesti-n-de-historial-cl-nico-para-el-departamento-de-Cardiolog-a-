@@ -26,6 +26,7 @@ function dashboardVerticalLabel(formatted) {
 
 function dashboardFitVerticalChartJsBars(chart, formatLabel) {
   if (chart.config.type !== 'bar' || chart.options.indexAxis === 'y') return;
+  if (chart.canvas?.id === 'chart-ecg-fc-comparativa' || chart.config.data.datasets[0]?.label === 'Latidos por Minuto (lpm)' || chart.options.scales?.y?.min !== undefined) return;
   const stacked = chart.options.scales?.y?.stacked;
   const stackEdges = new Map();
   const canvas = chart.ctx;
@@ -237,8 +238,9 @@ function dashboardApexBarStyle(options, id) {
         const label = dashboardLabelLines(originalFormatter ? originalFormatter(value, ctx) : value, horizontal);
         return horizontal ? label : dashboardVerticalLabel(label);
       },
-      style: { fontSize: '11px', fontWeight: 700, colors: ['#ffffff'] },
-      background: { enabled: false }, dropShadow: { enabled: false }
+      style: { fontSize: '11px', fontWeight: 700, fontFamily: 'inherit', colors: ['#ffffff'] },
+      background: { enabled: false },
+      dropShadow: { enabled: true, top: 1, left: 1, blur: 2, color: '#0f172a', opacity: 0.6 }
     }
   };
   return horizontal ? dashboardMergeStyle(styled, dashboardHorizontalStyle()) : styled;
@@ -333,15 +335,16 @@ function dashboardChartJsStyle(config) {
   if (!horizontal) options.animation = false;
   const valueAxis = horizontal ? 'x' : 'y';
   const categoryAxis = horizontal ? 'y' : 'x';
-  if (options.scales[valueAxis] && config.data.datasets[0]?.label !== 'Latidos por Minuto (lpm)') {
+  const isLpm = config.data.datasets[0]?.label === 'Latidos por Minuto (lpm)' || options.scales[valueAxis]?.min !== undefined;
+  if (options.scales[valueAxis] && !isLpm) {
     delete options.scales[valueAxis].max;
   }
   options.scales[categoryAxis] = dashboardMergeStyle(options.scales[categoryAxis] || {}, {
     grid: { display: false }, border: { display: false },
-    ticks: { color: '#1e293b', font: { size: 12, weight: '600' } }
+    ticks: { maxRotation: 0, minRotation: 0, color: '#1e293b', font: { size: 12, weight: '600' } }
   });
   options.scales[valueAxis] = dashboardMergeStyle(options.scales[valueAxis] || {}, {
-    beginAtZero: true, grid: { color: '#edf2f7' }, border: { display: false },
+    beginAtZero: !isLpm, grid: { color: '#edf2f7' }, border: { display: false },
     ticks: { precision: 0, color: '#1e293b', font: { size: 12, weight: '600' } }
   });
   config.data.datasets.forEach(dataset => Object.assign(dataset, {
@@ -351,12 +354,32 @@ function dashboardChartJsStyle(config) {
   options.plugins.datalabels = {
     ...oldLabels,
     display: ctx => Number(ctx.dataset.data[ctx.dataIndex]) > 0,
-    color: '#ffffff', anchor: 'center', align: 'center', offset: 0,
-    clip: false, font: { weight: 'bold', size: 11 }, borderWidth: 0, borderRadius: 4,
+    color: '#ffffff',
+    textStrokeColor: 'rgba(15, 23, 42, 0.50)',
+    textStrokeWidth: 2,
+    textShadowBlur: 3,
+    textShadowColor: 'rgba(0, 0, 0, 0.35)',
+    anchor: 'center', align: 'center', offset: 0,
+    clip: false,
+    font: (ctx) => {
+      const customFont = typeof oldLabels.font === 'function' ? oldLabels.font(ctx) : oldLabels.font;
+      return {
+        family: 'inherit',
+        weight: 'bold',
+        size: customFont?.size || 11,
+        lineHeight: 1.15
+      };
+    },
+    borderWidth: 0, borderRadius: 4,
     padding: 0, textAlign: 'center', backgroundColor: 'transparent',
     formatter: (value, ctx) => {
-      const formatted = oldLabels.formatter ? oldLabels.formatter(value, ctx) : String(value);
-      return horizontal ? dashboardLabelLines(formatted, true) : dashboardVerticalLabel(formatted);
+      if (oldLabels.formatter) {
+        const formatted = oldLabels.formatter(value, ctx);
+        if (Array.isArray(formatted)) return formatted;
+        if (typeof formatted === 'string' && formatted.endsWith(' lpm')) return formatted;
+        return horizontal ? dashboardLabelLines(formatted, true) : dashboardVerticalLabel(formatted);
+      }
+      return horizontal ? dashboardLabelLines(value, true) : dashboardVerticalLabel(value);
     }
   };
   config.data.datasets.forEach(dataset => {
