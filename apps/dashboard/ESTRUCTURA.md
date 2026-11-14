@@ -33,7 +33,6 @@ comparten el mismo ámbito global y se cargan en el mismo orden lógico.
 | `static/dashboard/js/sections/historia-no-cardio.js` | Historia No Cardio | Comorbilidad, salud mental, respiratorio, reuma y alergias. |
 | `static/dashboard/js/sections/covid-19.js` | COVID-19 | Infección, secuelas, categoría y sexo. |
 | `static/dashboard/js/sections/electrocardiograma.js` | Electrocardiograma | Ritmo, intervalos, anomalías y frecuencia. |
-| `static/dashboard/js/questionnaire.js` | Cuestionario | Renderizador de catálogo no integrado en `index.html`; no se carga en la vista actual. |
 
 ## Orden de carga de scripts
 
