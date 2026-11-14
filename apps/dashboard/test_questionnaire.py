@@ -123,6 +123,18 @@ class QuestionnaireCoverageTests(TestCase):
         self.assertTrue(record['insuficiencia_renal'])
         self.assertFalse(record['cancer'])
 
+    def test_any_vasculopathy_uses_any_recorded_location(self):
+        self.answer('r_vasc_perif', 'No')
+        self.answer('r_vasc_fem', 'Si')
+        record = next(row for row in services.get_dashboard_evaluation_data()['records'] if row['id'] == self.visit1.pk)
+        self.assertFalse(record['vasculopatia_periferica'])
+        self.assertTrue(record['vasculopatia_femoral'])
+        self.assertTrue(record['vasculopatia_cualquiera'])
+
+        VisitAnswer.objects.filter(visit=self.visit1, question__code='r_vasc_fem').delete()
+        record = next(row for row in services.get_dashboard_evaluation_data()['records'] if row['id'] == self.visit1.pk)
+        self.assertFalse(record['vasculopatia_cualquiera'])
+
 
 class QuestionnaireValueTests(SimpleTestCase):
     def test_free_text_cannot_be_rendered_as_a_category(self):

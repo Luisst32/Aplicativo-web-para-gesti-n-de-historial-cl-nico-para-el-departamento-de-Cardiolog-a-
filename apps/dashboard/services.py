@@ -406,7 +406,11 @@ def get_dashboard_evaluation_data():
         vasculopatia_carotidea = _affirmative(_answer(answers_dict, 'r_vasc_carot'))
         vasculopatia_femoral = _affirmative(_answer(answers_dict, 'r_vasc_fem'))
         vasculopatia_values = (vasculopatia_periferica, vasculopatia_carotidea, vasculopatia_femoral)
-        vasculopatia_cualquiera = _any_known(*vasculopatia_values)
+        vasculopatia_cualquiera = (
+            True if any(value is True for value in vasculopatia_values)
+            else False if any(value is False for value in vasculopatia_values)
+            else None
+        )
         disfuncion_erectil = _affirmative(_answer(answers_dict, 'r_disfunc'))
 
         # Dieta PREDIMED (Adherencia a Dieta Mediterránea)
