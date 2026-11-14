@@ -427,6 +427,38 @@ body {
   justify-content: space-between;
 }
 
+/* BANNER PRINCIPAL DE CATEGORÍA DE LABORATORIO (Bioquímica General) */
+.category-block-header {
+  margin: 32px 0 18px 0;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, var(--color-navy, #1B2A41) 0%, #2B3D5B 100%);
+  color: #ffffff;
+  border-radius: var(--radius-sm, 6px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 6px rgba(27, 42, 65, 0.12);
+  border-left: 5px solid var(--color-primary-blue, #1B73BC);
+}
+.category-block-header .category-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  letter-spacing: 0.3px;
+}
+.category-block-header .category-badge {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #cfe9ff;
+  background: rgba(255, 255, 255, 0.14);
+  padding: 4px 12px;
+  border-radius: 12px;
+  letter-spacing: 0.3px;
+}
+
 /* FORM CONTROLS & SELECTION (.grid aporta display:grid; columnas y gap
    son propios de cada variante) */
 .form-grid-3 {
