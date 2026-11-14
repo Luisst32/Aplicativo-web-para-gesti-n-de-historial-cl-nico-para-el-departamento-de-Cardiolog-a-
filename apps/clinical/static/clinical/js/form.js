@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     aplicarProteccionPrivacidadFormulario(pacienteActual, historialActual);
     quitarSkeletonsFormulario();
+    inicializarTodasLasCondiciones();
   } catch (err) {
     console.error('Error al cargar la ficha del paciente:', err);
     alert('No se pudo cargar la información del paciente desde la base de datos.');
@@ -281,21 +282,24 @@ function setEstadoAlcohol(origen) {
 
   if (origen === 'toggle_no') {
     toggleCondition('row_alcohol', false);
-    if (chkEx) chkEx.checked = false;
+    if (chkEx) { chkEx.checked = false; chkEx.disabled = true; }
+    if (selFrec) { selFrec.selectedIndex = 0; selFrec.disabled = true; }
+    if (inpUnid) { inpUnid.value = ''; inpUnid.disabled = true; }
   } else if (origen === 'toggle_si') {
     toggleCondition('row_alcohol', true);
-    if (selFrec) { selFrec.disabled = false; selFrec.style.opacity = '1'; }
-    if (inpUnid) { inpUnid.disabled = false; inpUnid.style.opacity = '1'; }
+    if (chkEx) { chkEx.disabled = false; }
+    if (selFrec) { selFrec.disabled = false; selFrec.style.opacity = '1'; selFrec.style.pointerEvents = 'auto'; }
+    if (inpUnid) { inpUnid.disabled = false; inpUnid.style.opacity = '1'; inpUnid.style.pointerEvents = 'auto'; }
   } else if (origen === 'chk_ex') {
     if (chkEx && chkEx.checked) {
       if (toggleSi) toggleSi.checked = true;
       if (toggleNo) toggleNo.checked = false;
       toggleCondition('row_alcohol', true);
-      if (selFrec) { selFrec.disabled = true; selFrec.style.opacity = '0.45'; }
-      if (inpUnid) { inpUnid.disabled = true; inpUnid.style.opacity = '0.45'; }
+      if (selFrec) { selFrec.disabled = true; selFrec.style.opacity = '0.45'; selFrec.style.pointerEvents = 'none'; selFrec.selectedIndex = 0; }
+      if (inpUnid) { inpUnid.disabled = true; inpUnid.style.opacity = '0.45'; inpUnid.style.pointerEvents = 'none'; inpUnid.value = ''; }
     } else {
-      if (selFrec) { selFrec.disabled = false; selFrec.style.opacity = '1'; }
-      if (inpUnid) { inpUnid.disabled = false; inpUnid.style.opacity = '1'; }
+      if (selFrec) { selFrec.disabled = false; selFrec.style.opacity = '1'; selFrec.style.pointerEvents = 'auto'; }
+      if (inpUnid) { inpUnid.disabled = false; inpUnid.style.opacity = '1'; inpUnid.style.pointerEvents = 'auto'; }
     }
   }
 }
@@ -307,24 +311,42 @@ function setEstadoDrogas(origen) {
   const chkEx = document.getElementById('chk_ex_drogas');
   const selFrec = document.getElementById('drogas_frecuencia');
   const inpCuales = document.getElementById('drogas_cuales');
+  const inpDiaria = document.getElementById('drogas_dosis_diaria');
+  const inpSemanal = document.getElementById('drogas_dosis_semanal');
+  const inpOcasional = document.getElementById('drogas_dosis_ocasional');
 
   if (origen === 'toggle_no') {
     toggleCondition('row_drogas', false);
-    if (chkEx) chkEx.checked = false;
+    if (chkEx) { chkEx.checked = false; chkEx.disabled = true; }
+    if (selFrec) { selFrec.selectedIndex = 0; selFrec.disabled = true; }
+    if (inpCuales) { inpCuales.value = ''; inpCuales.disabled = true; }
+    if (inpDiaria) { inpDiaria.value = ''; inpDiaria.disabled = true; }
+    if (inpSemanal) { inpSemanal.value = ''; inpSemanal.disabled = true; }
+    if (inpOcasional) { inpOcasional.value = ''; inpOcasional.disabled = true; }
   } else if (origen === 'toggle_si') {
     toggleCondition('row_drogas', true);
-    if (selFrec) { selFrec.disabled = false; selFrec.style.opacity = '1'; }
-    if (inpCuales) { inpCuales.disabled = false; inpCuales.style.opacity = '1'; }
+    if (chkEx) { chkEx.disabled = false; }
+    if (selFrec) { selFrec.disabled = false; selFrec.style.opacity = '1'; selFrec.style.pointerEvents = 'auto'; }
+    if (inpCuales) { inpCuales.disabled = false; inpCuales.style.opacity = '1'; inpCuales.style.pointerEvents = 'auto'; }
+    if (inpDiaria) { inpDiaria.disabled = false; inpDiaria.style.opacity = '1'; inpDiaria.style.pointerEvents = 'auto'; }
+    if (inpSemanal) { inpSemanal.disabled = false; inpSemanal.style.opacity = '1'; inpSemanal.style.pointerEvents = 'auto'; }
+    if (inpOcasional) { inpOcasional.disabled = false; inpOcasional.style.opacity = '1'; inpOcasional.style.pointerEvents = 'auto'; }
   } else if (origen === 'chk_ex') {
     if (chkEx && chkEx.checked) {
       if (toggleSi) toggleSi.checked = true;
       if (toggleNo) toggleNo.checked = false;
       toggleCondition('row_drogas', true);
-      if (selFrec) { selFrec.disabled = true; selFrec.style.opacity = '0.45'; }
-      if (inpCuales) { inpCuales.disabled = true; inpCuales.style.opacity = '0.45'; }
+      if (selFrec) { selFrec.disabled = true; selFrec.style.opacity = '0.45'; selFrec.style.pointerEvents = 'none'; selFrec.selectedIndex = 0; }
+      if (inpDiaria) { inpDiaria.disabled = true; inpDiaria.style.opacity = '0.45'; inpDiaria.style.pointerEvents = 'none'; inpDiaria.value = ''; }
+      if (inpSemanal) { inpSemanal.disabled = true; inpSemanal.style.opacity = '0.45'; inpSemanal.style.pointerEvents = 'none'; inpSemanal.value = ''; }
+      if (inpOcasional) { inpOcasional.disabled = true; inpOcasional.style.opacity = '0.45'; inpOcasional.style.pointerEvents = 'none'; inpOcasional.value = ''; }
+      if (inpCuales) { inpCuales.disabled = false; inpCuales.style.opacity = '1'; inpCuales.style.pointerEvents = 'auto'; }
     } else {
-      if (selFrec) { selFrec.disabled = false; selFrec.style.opacity = '1'; }
-      if (inpCuales) { inpCuales.disabled = false; inpCuales.style.opacity = '1'; }
+      if (selFrec) { selFrec.disabled = false; selFrec.style.opacity = '1'; selFrec.style.pointerEvents = 'auto'; }
+      if (inpCuales) { inpCuales.disabled = false; inpCuales.style.opacity = '1'; inpCuales.style.pointerEvents = 'auto'; }
+      if (inpDiaria) { inpDiaria.disabled = false; inpDiaria.style.opacity = '1'; inpDiaria.style.pointerEvents = 'auto'; }
+      if (inpSemanal) { inpSemanal.disabled = false; inpSemanal.style.opacity = '1'; inpSemanal.style.pointerEvents = 'auto'; }
+      if (inpOcasional) { inpOcasional.disabled = false; inpOcasional.style.opacity = '1'; inpOcasional.style.pointerEvents = 'auto'; }
     }
   }
 }
@@ -561,12 +583,73 @@ function toggleCard(headerEl) {
   headerEl.closest('.card').classList.toggle('expanded');
 }
 
-// Función condicional: mostrar input SOLO si Sí
+// Función condicional universal: bloquear/desbloquear y mostrar/ocultar opciones
 function toggleCondition(rowId, show) {
   const row = document.getElementById(rowId);
-  if (row) {
-    row.classList.toggle('active-yes', show);
-  }
+  if (!row) return;
+
+  row.classList.toggle('active-yes', !!show);
+
+  const details = row.querySelectorAll('.condition-details');
+  details.forEach(box => {
+    // Tabaco tiene su propia gestión de visibilidad y checkboxes
+    if (rowId !== 'row_tabaco') {
+      if (!show) {
+        box.style.display = 'none';
+        box.classList.add('is-blocked');
+      } else {
+        box.style.display = '';
+        box.classList.remove('is-blocked');
+      }
+    }
+
+    // Bloquear (disabled) o desbloquear TODOS los controles interactivos dentro de la caja condicional
+    const formControls = box.querySelectorAll('input, select, textarea');
+    formControls.forEach(ctrl => {
+      // Ignorar radios de la propia fila principal
+      if (ctrl.name && ctrl.name.startsWith('r_') && (ctrl.value === 'No' || ctrl.value === 'Si')) return;
+
+      ctrl.disabled = !show;
+      if (!show) {
+        ctrl.style.pointerEvents = 'none';
+        ctrl.style.opacity = '0.45';
+        ctrl.setAttribute('tabindex', '-1');
+        // Resetear selección para no enviar datos residuales cuando está en No
+        if (ctrl.type === 'checkbox' || ctrl.type === 'radio') {
+          ctrl.checked = false;
+        } else if (ctrl.tagName === 'SELECT') {
+          ctrl.selectedIndex = 0;
+        } else {
+          ctrl.value = '';
+        }
+      } else {
+        ctrl.style.pointerEvents = 'auto';
+        ctrl.style.opacity = '1';
+        ctrl.removeAttribute('tabindex');
+      }
+    });
+  });
+}
+
+// Sincronizar y bloquear todas las opciones condicionales en 'No' en todo el formulario
+function inicializarTodasLasCondiciones() {
+  const rows = document.querySelectorAll('.condition-row');
+  rows.forEach(row => {
+    if (row.id === 'row_tabaco') return;
+
+    // Buscar si tiene radio principal seleccionado
+    const checkedRadio = row.querySelector('.condition-header input[type="radio"]:checked') ||
+                         row.querySelector('.toggle-pills input[type="radio"]:checked');
+    if (checkedRadio) {
+      const val = checkedRadio.value.toLowerCase().trim();
+      const isSi = (val === 'si' || val === 'sí' || val === 'alterada' || val === 'alteradas');
+      toggleCondition(row.id, isSi);
+    } else {
+      if (!row.classList.contains('active-yes')) {
+        toggleCondition(row.id, false);
+      }
+    }
+  });
 }
 
 function onBirthDateChange(dateStr) {
@@ -1044,12 +1127,14 @@ function restaurarFichaDesdeObjeto(datos) {
         for (let i = 0; i < elements.length; i++) {
           if (elements[i].checked) {
             const row = elements[i].closest('.condition-row');
-            if (row) {
+            if (row && row.id) {
               const rVal = elements[i].value.toLowerCase().trim();
-              if (rVal === 'si' || rVal === 'sí' || rVal === 'alterada' || rVal === 'alteradas') {
-                row.classList.add('active-yes');
-              } else if (rVal === 'no' || rVal === 'normal' || rVal === 'normales') {
-                row.classList.remove('active-yes');
+              const isYes = (rVal === 'si' || rVal === 'sí' || rVal === 'alterada' || rVal === 'alteradas');
+              const isNot = (rVal === 'no' || rVal === 'normal' || rVal === 'normales');
+              if (isYes) {
+                toggleCondition(row.id, true);
+              } else if (isNot) {
+                toggleCondition(row.id, false);
               }
             }
           }

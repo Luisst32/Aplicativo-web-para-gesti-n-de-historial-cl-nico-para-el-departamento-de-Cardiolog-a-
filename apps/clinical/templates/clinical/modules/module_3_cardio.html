@@ -156,7 +156,7 @@
                   <label class="yes"><input type="radio" name="r_drogas" id="drogas_toggle_si" value="Si" onchange="setEstadoDrogas('toggle_si')"> Sí</label>
                 </div>
               </div>
-              <div class="condition-details" style="display: flex; flex-direction: column; gap: 8px;">
+              <div class="condition-details flex-col" id="details_drogas">
                 <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                   <span class="field-label">Cuáles:</span>
                   <input type="text" class="form-input" id="drogas_cuales" style="width: 160px;" placeholder="Sustancia..." name="drogas_cuales">
@@ -502,7 +502,7 @@
                     <label class="yes"><input type="radio" name="em_pers_a" value="Si" onchange="toggleCondition('row_pers_a', true)"> Si</label>
                   </div>
                 </div>
-                <div class="condition-details" style="display: flex; flex-direction: column; gap: 8px;">
+                <div class="condition-details flex-col" id="details_pers_a">
                   <span class="field-label" style="font-weight: 600; font-size: 0.8rem;">Características conductuales (marque las que apliquen):</span>
                   <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
                     <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="em_exigente" id="em_exigente" value="1"> Exigente con uno mismo y con los demás</label>
@@ -625,7 +625,7 @@
                   <label class="yes"><input type="radio" name="hc_isquemica" value="Si" onchange="toggleCondition('row_hc_isquemica', true)"> Sí</label>
                 </div>
               </div>
-              <div class="condition-details" style="display: flex; gap: 18px; align-items: center; flex-wrap: wrap;">
+              <div class="condition-details flex-wrap-gap" id="details_hc_isquemica">
                 <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="hc_isquemica_angina" id="hc_isquemica_angina" value="1"> Angina</label>
                 <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" name="hc_isquemica_infarto" id="hc_isquemica_infarto" value="1"> Infarto de miocardio</label>
               </div>
@@ -640,7 +640,7 @@
                   <label class="yes"><input type="radio" name="hc_revasc" value="Si" onchange="toggleCondition('row_hc_revasc', true)"> Sí</label>
                 </div>
               </div>
-              <div class="condition-details" style="display: flex; gap: 18px; align-items: center; flex-wrap: wrap;">
+              <div class="condition-details flex-wrap-gap" id="details_hc_revasc">
                 <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="radio" name="hc_revasc_tipo" value="angioplastia"> Con angioplastia</label>
                 <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="radio" name="hc_revasc_tipo" value="bypass"> Con Bypass</label>
                 <label class="field-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;"><input type="radio" name="hc_revasc_tipo" value="ambas"> Con ambas</label>
@@ -667,7 +667,7 @@
                   <label class="yes"><input type="radio" name="hc_valvulopatia" value="Si" onchange="toggleCondition('row_hc_valvulopatia', true)"> Sí</label>
                 </div>
               </div>
-              <div class="condition-details" style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+              <div class="condition-details flex-wrap-gap" id="details_hc_valvulopatia">
                 <span class="field-label">¿Cuáles?</span>
                 <input type="text" class="form-input" id="hc_valvulopatia_cuales" name="hc_valvulopatia_cuales" style="flex: 1; min-width: 160px;" placeholder="Válvula o afección...">
                 <span class="field-label" style="margin-left: 10px;">Operado por este motivo:</span>
@@ -687,7 +687,7 @@
                   <label class="yes"><input type="radio" name="hc_ingresado" value="Si" onchange="toggleCondition('row_hc_ingresado', true)"> Sí</label>
                 </div>
               </div>
-              <div class="condition-details" style="display: flex; gap: 14px; align-items: center;">
+              <div class="condition-details" id="details_hc_ingresado">
                 <span class="field-label">¿Cuál?</span>
                 <input type="text" class="form-input" id="hc_ingresado_cual" name="hc_ingresado_cual" style="flex: 1;" placeholder="Motivo o causa de ingreso...">
               </div>

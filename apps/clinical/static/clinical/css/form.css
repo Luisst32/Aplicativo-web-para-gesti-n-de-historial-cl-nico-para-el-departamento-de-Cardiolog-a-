@@ -530,6 +530,26 @@ body {
   gap: 10px;
   align-items: center;
 }
+.condition-details.flex-col {
+  flex-direction: column !important;
+  gap: 8px !important;
+  align-items: stretch !important;
+}
+.condition-details.flex-wrap-gap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+.condition-row:not(.active-yes) .condition-details:not(#details_tabaco) {
+  display: none !important;
+}
+.condition-details.is-blocked,
+.condition-details [disabled] {
+  opacity: 0.45 !important;
+  pointer-events: none !important;
+  cursor: not-allowed !important;
+}
 #row_tabaco .condition-details {
   display: flex !important;
   transition: opacity 0.2s ease;
