@@ -16,7 +16,7 @@ function renderTabDatosIndividuo() {
       });
     } else {
       charts.indEdad = new ApexCharts(elPiramide, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        chart: { type: 'bar', height: 380, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.primaryBlue, PALETTE.purple],
         plotOptions: { bar: { horizontal: true, barHeight: '65%', borderRadius: 4 } },
@@ -119,7 +119,7 @@ function renderTabDatosIndividuo() {
       });
     } else {
       charts.indViv = new ApexCharts(elViv, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        chart: { type: 'bar', height: 380, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.primaryBlue],
         plotOptions: { bar: { horizontal: true, borderRadius: 4 } },

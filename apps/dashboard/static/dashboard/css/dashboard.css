@@ -718,19 +718,20 @@ body {
 
 /* GRID DE VISUALIZACIONES (display:grid viene de .grid en base.css) */
 .grid-row {
-  gap: 1.25rem;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .grid-2-cols {
-  grid-template-columns: 1.4fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr));
 }
 
 .grid-2-cols-equal {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr));
 }
 
 .grid-3-cols {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
 }
 
 @media (max-width: 1024px) {
@@ -742,6 +743,11 @@ body {
 /* TARJETA DE VISUAL / GRÁFICO (POWER BI VISUAL CONTAINER)
    El aspecto (fondo/borde/radio/sombra/padding) es el componente
    compartido .card-visual de base.css, el mismo que usa el formulario. */
+.tab-view .card-visual {
+  min-width: 0;
+  padding: 1.25rem;
+}
+
 .visual-header {
   display: flex;
   justify-content: space-between;
@@ -762,8 +768,23 @@ body {
 
 .chart-container {
   width: 100%;
-  min-height: 280px;
+  height: 380px;
+  min-height: 380px;
   position: relative;
+}
+
+.chart-container > canvas {
+  max-width: 100%;
+}
+
+@media (max-width: 600px) {
+  .dashboard-content {
+    padding: 1rem;
+  }
+
+  .tab-view .card-visual {
+    padding: 1rem 0.75rem;
+  }
 }
 
 /* TABLAS ESTILO POWER BI */

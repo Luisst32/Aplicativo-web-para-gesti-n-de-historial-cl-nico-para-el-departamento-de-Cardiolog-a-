@@ -11,7 +11,7 @@ function renderTabExploracionFisica() {
       });
     } else {
       charts.expImc = new ApexCharts(elImc, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        chart: { type: 'bar', height: 380, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.iceBlue, PALETTE.green, PALETTE.yellow, PALETTE.emergencyRed, '#DC2626', '#991B1B'],
         plotOptions: {
@@ -111,7 +111,7 @@ function renderTabExploracionFisica() {
       });
     } else {
       charts.expAusc = new ApexCharts(elAusc, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        chart: { type: 'bar', height: 380, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.green, PALETTE.yellow, PALETTE.emergencyRed],
         plotOptions: { bar: { distributed: true, borderRadius: 5 } },

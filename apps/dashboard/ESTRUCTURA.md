@@ -73,7 +73,7 @@ comparten el mismo ámbito global y se cargan en el mismo orden lógico.
 
 | Archivo | Responsabilidad |
 | --- | --- |
-| `static/dashboard/css/dashboard.css` | Estilos compartidos; tarjetas KPI compactas blancas, borde superior azul, valores semáforo y subtítulo discreto con contexto del indicador. |
+| `static/dashboard/css/dashboard.css` | Tarjetas KPI compactas con subtítulo; rejillas de gráficas adaptables (una o dos columnas según ancho disponible), contenedores de 380 px y separación uniforme. |
 | `static/dashboard/css/questionnaire.css` | Estilos del dashboard del cuestionario; no modificado durante la separación. |
 
 ## Datos y servidor

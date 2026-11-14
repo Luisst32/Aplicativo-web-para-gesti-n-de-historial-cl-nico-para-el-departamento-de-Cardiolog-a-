@@ -12,7 +12,7 @@ function renderTabCovid19() {
       });
     } else {
       charts.covHist = new ApexCharts(elHist, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        chart: { type: 'bar', height: 380, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.yellow, PALETTE.emergencyRed, PALETTE.green],
         plotOptions: {
@@ -91,7 +91,7 @@ function renderTabCovid19() {
       });
     } else {
       charts.covCat = new ApexCharts(elPorCat, {
-        chart: { type: 'bar', height: 260, toolbar: { show: false }, animations: { enabled: false } },
+        chart: { type: 'bar', height: 380, toolbar: { show: false }, animations: { enabled: false } },
         fill: { type: 'solid', opacity: 1 },
         colors: [PALETTE.primaryBlue, PALETTE.emergencyRed],
         plotOptions: { bar: { horizontal: true, barHeight: '65%', borderRadius: 4 } },
