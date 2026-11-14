@@ -52,7 +52,7 @@ function recordsWithValue(field) {
 }
 
 function prevalenceLabel(cases, valid) {
-  return `${cases} (${formatPct(cases, valid)}%)`;
+  return `${cases} · ${formatPct(cases, valid)}%`;
 }
 
 // Helpers para tooltips con porcentaje (ApexCharts y Chart.js)
