@@ -73,7 +73,7 @@ comparten el mismo ámbito global y se cargan en el mismo orden lógico.
 
 | Alcance visual | Tratamiento |
 | --- | --- |
-| Solo Resumen General | Tarjetas con sombra suave y leyendas oscuras seminegritas; dona de personal y barras de género más gruesas con valores blancos centrados, sin contorno. Configuración propia en `sections/resumen-general.js`. |
+| Solo Resumen General | Dona y barras gruesas con valores blancos; factores globales con eje 0–100 % y etiquetas sobre fondo oscuro para conservar legibilidad incluso en cero. Configuración propia en `sections/resumen-general.js`. |
 
 | Archivo | Responsabilidad |
 | --- | --- |

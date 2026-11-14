@@ -62,10 +62,10 @@ function renderTabResumenGeneral() {
         chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false }, fontFamily: 'inherit', foreColor: '#1e293b', fontSize: '12px' },
         grid: { borderColor: '#e8eef5', strokeDashArray: 4, padding: { right: 16 } },
         fill: { type: 'solid', opacity: 1 },
-        plotOptions: { bar: { horizontal: true, distributed: true, borderRadius: 6, barHeight: '48%', colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
+        plotOptions: { bar: { horizontal: true, distributed: true, borderRadius: 6, barHeight: '78%', dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
         colors: [PALETTE.emergencyRed, PALETTE.yellow, PALETTE.yellow, PALETTE.primaryBlue, PALETTE.green, PALETTE.purple],
         series: [{ name: 'Prevalencia (%)', data: fData }],
-        xaxis: { categories: fLabels, max: 100, tickAmount: 4, axisBorder: { show: false }, axisTicks: { show: false }, labels: { formatter: val => `${Math.round(val)} %` } },
+        xaxis: { categories: fLabels, min: 0, max: 100, tickAmount: 4, axisBorder: { show: false }, axisTicks: { show: false }, labels: { formatter: val => `${Math.round(val)} %` } },
         legend: { show: false },
         dataLabels: {
           enabled: true,
@@ -74,8 +74,8 @@ function renderTabResumenGeneral() {
             const casos = Math.round((parseFloat(val) * total) / 100);
             return `${casos} (${val}%)`;
           },
-          style: { fontSize: '12px', fontWeight: 700, colors: ['#0f172a'] },
-          background: { enabled: false }
+          style: { fontSize: '11px', fontWeight: 700, colors: ['#334155'] },
+          background: { enabled: true, foreColor: '#ffffff', borderWidth: 0, borderRadius: 4, padding: 3, opacity: 1 }
         },
         tooltip: apexPctTooltip()
       });
