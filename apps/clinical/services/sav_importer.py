@@ -819,21 +819,76 @@ def _resolve_canton_safe(canton_name, province_name=None):
     return cantons[0] if cantons else None
 
 
+def _is_empty_or_nan(val):
+    """Determina si un valor debe considerarse nulo/vacío en la importación."""
+    if val is None:
+        return True
+    if isinstance(val, (float, int)):
+        import math
+        if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
+            return True
+        return False
+    s = str(val).strip()
+    if s == '' or s.lower() in ('nan', 'none', 'null', 'na', '<na>'):
+        return True
+    return False
+
+
+def _sanitize_dataset_dict(raw_dict):
+    """
+    Reemplaza NaN, NaT, infinitos y cadenas vacías por None en todas las columnas
+    para evitar fallos de casteo a Decimal o enteros en Django.
+    """
+    import math
+    import pandas as pd
+    clean_dict = {}
+    for col, values in raw_dict.items():
+        clean_vals = []
+        for v in values:
+            if v is None:
+                clean_vals.append(None)
+            elif isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                clean_vals.append(None)
+            elif isinstance(v, str):
+                s = v.strip()
+                if s.lower() in ('', 'nan', 'none', 'null', 'na', '<na>'):
+                    clean_vals.append(None)
+                else:
+                    clean_vals.append(s)
+            else:
+                try:
+                    if pd.isna(v):
+                        clean_vals.append(None)
+                        continue
+                except Exception:
+                    pass
+                clean_vals.append(v)
+        clean_dict[str(col)] = clean_vals
+    return clean_dict
+
+
 def _get_val_and_label(val, val_labels_dict):
     """Extrae tanto el valor crudo como la etiqueta textual de SPSS si existe."""
     if val is None:
         return None, ""
+    if isinstance(val, float):
+        import math
+        if math.isnan(val) or math.isinf(val):
+            return None, ""
     lbl = val_labels_dict.get(val) if val_labels_dict else None
     if lbl is None and isinstance(val, (int, float)):
         # Probar versión float/int
-        lbl = val_labels_dict.get(float(val)) if val_labels_dict else None
+        try:
+            lbl = val_labels_dict.get(float(val)) if val_labels_dict else None
+        except Exception:
+            pass
     lbl_str = str(lbl).strip() if lbl is not None else ""
     return val, lbl_str
 
 
 def _clean_decimal(val, max_digits=5, decimal_places=2):
     """Convierte con seguridad un valor numérico a Decimal respetando max_digits y decimal_places para evitar overflow."""
-    if val is None or str(val).strip() == '':
+    if val is None or str(val).strip() == '' or str(val).strip().lower() in ('nan', 'none', 'null', 'na', '<na>'):
         return None
     try:
         import math
@@ -843,7 +898,9 @@ def _clean_decimal(val, max_digits=5, decimal_places=2):
         max_int = max_digits - decimal_places
         limit = (10 ** max_int) - (10 ** -decimal_places)
         if -limit <= f <= limit:
-            return Decimal(str(round(f, decimal_places)))
+            d = Decimal(str(round(f, decimal_places)))
+            if not d.is_nan() and not d.is_infinite():
+                return d
         return None
     except Exception:
         return None
@@ -867,13 +924,14 @@ class DatasetMetadata:
 def _read_dataset_file(temp_path: Path, filename: str):
     """
     Lee archivos SPSS (.sav, .zsav) mediante pyreadstat,
-    archivos de RStudio (.rds, .RData, .rda) mediante pyreadr,
+    archivos de RStudio (.rds, .RData, .rda, .r) mediante pyreadr,
     o archivos CSV mediante pandas.
     """
     ext = Path(filename).suffix.lower()
     if ext in ('.rds', '.rdata', '.rda', '.r'):
         try:
             import pyreadr
+            import pandas as pd
             res = pyreadr.read_r(str(temp_path))
             df = None
             if None in res:
@@ -885,19 +943,27 @@ def _read_dataset_file(temp_path: Path, filename: str):
             if df is None:
                 raise ValueError("No se encontró ningún DataFrame válido en el archivo de RStudio.")
 
-            df_clean = df.where(df.notnull(), None)
+            df_clean = df.astype(object).where(pd.notnull(df), None)
             df_dict = {str(col): df_clean[col].tolist() for col in df_clean.columns}
+            df_dict = _sanitize_dataset_dict(df_dict)
             meta = DatasetMetadata(df_clean)
             return df_dict, meta
         except Exception as r_err:
-            raise ValueError(f"Error al leer archivo de RStudio: {str(r_err)}")
+            err_msg = str(r_err)
+            if "Unhandled S-Expression" in err_msg or "Unable to read" in err_msg:
+                raise ValueError(
+                    "El archivo seleccionado es un script de código o formato no soportado. "
+                    "Para importar datos de RStudio, guarda tu DataFrame como .rds o .RData (ej: saveRDS(datos, 'archivo.rds') o save(datos, file='archivo.RData'))."
+                )
+            raise ValueError(f"Error al leer archivo de RStudio: {err_msg}")
 
     elif ext == '.csv':
         try:
             import pandas as pd
             df = pd.read_csv(str(temp_path))
-            df_clean = df.where(df.notnull(), None)
+            df_clean = df.astype(object).where(pd.notnull(df), None)
             df_dict = {str(col): df_clean[col].tolist() for col in df_clean.columns}
+            df_dict = _sanitize_dataset_dict(df_dict)
             meta = DatasetMetadata(df_clean)
             return df_dict, meta
         except Exception as csv_err:
@@ -905,7 +971,9 @@ def _read_dataset_file(temp_path: Path, filename: str):
 
     else:
         # SPSS .sav / .zsav
-        return pyreadstat.read_sav(str(temp_path), output_format="dict")
+        df_dict, meta = pyreadstat.read_sav(str(temp_path), output_format="dict")
+        df_dict = _sanitize_dataset_dict(df_dict)
+        return df_dict, meta
 
 
 def analyze_sav_file(file_obj, filename="archivo.sav", user=None):
@@ -1682,29 +1750,39 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
 
                     if 'ecg_pr' in field_to_col:
                         v_pr = df_dict[field_to_col['ecg_pr']][i]
-                        if v_pr:
-                            val_num = float(v_pr)
-                            ecg.pr_interval_ms = int(val_num * 1000) if val_num < 1.0 else int(val_num)
+                        if v_pr and not _is_empty_or_nan(v_pr):
+                            try:
+                                val_num = float(v_pr)
+                                ecg.pr_interval_ms = int(val_num * 1000) if val_num < 1.0 else int(val_num)
+                            except Exception: pass
 
                     if 'ecg_qrs' in field_to_col:
                         v_qrs = df_dict[field_to_col['ecg_qrs']][i]
-                        if v_qrs:
-                            val_num = float(v_qrs)
-                            ecg.qrs_duration_ms = int(val_num * 1000) if val_num < 1.0 else int(val_num)
+                        if v_qrs and not _is_empty_or_nan(v_qrs):
+                            try:
+                                val_num = float(v_qrs)
+                                ecg.qrs_duration_ms = int(val_num * 1000) if val_num < 1.0 else int(val_num)
+                            except Exception: pass
 
                     if 'ecg_qt' in field_to_col:
                         v_qt = df_dict[field_to_col['ecg_qt']][i]
-                        if v_qt:
-                            val_num = float(v_qt)
-                            ecg.qt_interval_ms = int(val_num * 1000) if val_num < 1.0 else int(val_num)
+                        if v_qt and not _is_empty_or_nan(v_qt):
+                            try:
+                                val_num = float(v_qt)
+                                ecg.qt_interval_ms = int(val_num * 1000) if val_num < 1.0 else int(val_num)
+                            except Exception: pass
 
                     if 'ecg_qtc' in field_to_col:
                         v_qtc = df_dict[field_to_col['ecg_qtc']][i]
-                        if v_qtc: ecg.qtc_bazett_ms = int(float(v_qtc))
+                        if v_qtc and not _is_empty_or_nan(v_qtc):
+                            try: ecg.qtc_bazett_ms = int(float(v_qtc))
+                            except Exception: pass
 
                     if 'ecg_eje' in field_to_col:
                         v_eje = df_dict[field_to_col['ecg_eje']][i]
-                        if v_eje: ecg.qrs_axis_degrees = int(float(v_eje))
+                        if v_eje and not _is_empty_or_nan(v_eje):
+                            try: ecg.qrs_axis_degrees = int(float(v_eje))
+                            except Exception: pass
 
                     if 'ecg_hvi' in field_to_col:
                         v_hvi = df_dict[field_to_col['ecg_hvi']][i]
@@ -1893,7 +1971,7 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                     # 10. Persistencia de respuestas de variables SPSS en memoria
                     for col_name in col_names:
                         val_raw = df_dict[col_name][i]
-                        if val_raw is None or str(val_raw).strip() == '':
+                        if _is_empty_or_nan(val_raw):
                             continue
 
                         vlabels = meta.variable_value_labels.get(col_name, {})
@@ -1911,14 +1989,26 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                         num_val = None
                         if isinstance(val_raw, (int, float)) and not text_lbl:
                             try:
-                                num_val = Decimal(str(round(float(val_raw), 3)))
-                                ans_text = None
+                                import math
+                                f_val = float(val_raw)
+                                if not (math.isnan(f_val) or math.isinf(f_val)):
+                                    d_val = Decimal(str(round(f_val, 3)))
+                                    if not d_val.is_nan() and not d_val.is_infinite():
+                                        num_val = d_val
+                                        ans_text = None
+                                    else:
+                                        ans_text = val_str[:250]
+                                else:
+                                    ans_text = None
                             except Exception:
                                 num_val = None
                                 ans_text = val_str[:250]
                         else:
                             num_val = None
                             ans_text = val_str[:250]
+
+                        if num_val is None and not ans_text:
+                            continue
 
                         row_answers[(visit.pk, q.pk)] = VisitAnswer(
                             visit=visit,
