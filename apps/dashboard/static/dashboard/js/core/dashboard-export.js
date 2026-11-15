@@ -95,11 +95,23 @@ async function startExport() {
   }
 }
 
-// Helper para normalizar gradientes y asegurar visibilidad de rellenos SVG en html2canvas
+// Helper para normalizar gradientes, desactivar clipPath problemáticos y asegurar visibilidad de rellenos SVG en html2canvas
 function fixSvgFillsForHtml2Canvas(clonedDoc, tabId) {
   if (!clonedDoc) return;
   try {
     const root = (tabId ? clonedDoc.getElementById('tab-' + tabId) : null) || clonedDoc;
+
+    // 1. Desactivar clip-path SVG que html2canvas no soporta y oculta las barras de ApexCharts
+    root.querySelectorAll('svg [clip-path], svg [clipPath]').forEach(el => {
+      el.removeAttribute('clip-path');
+      el.removeAttribute('clipPath');
+      el.style.clipPath = 'none';
+    });
+    root.querySelectorAll('.apexcharts-canvas path, .apexcharts-canvas rect, .apexcharts-canvas g').forEach(el => {
+      if (el.style.clipPath) el.style.clipPath = 'none';
+    });
+
+    // 2. Normalizar rellenos con gradientes url(#...)
     const svgElements = root.querySelectorAll('svg [fill*="url("]');
     svgElements.forEach(el => {
       const fillAttr = el.getAttribute('fill') || '';
@@ -149,8 +161,58 @@ function fixSvgFillsForHtml2Canvas(clonedDoc, tabId) {
   }
 }
 
+// Helper para calcular cortes limpios de filas de una sección sin dividir tarjetas a la mitad
+function getTabRowSlices(targetEl, canvas, maxSlicePx) {
+  if (!targetEl || !canvas) return [{ startY: 0, endY: canvas ? canvas.height : 0 }];
+
+  const children = Array.from(targetEl.children).filter(c => c.offsetHeight > 0);
+  if (!children.length) {
+    return [{ startY: 0, endY: canvas.height }];
+  }
+
+  const scale = canvas.width / (targetEl.offsetWidth || 1);
+  const rows = children.map(c => ({
+    top: Math.round((c.offsetTop - targetEl.offsetTop) * scale),
+    bottom: Math.round(((c.offsetTop - targetEl.offsetTop) + c.offsetHeight) * scale)
+  }));
+
+  const slices = [];
+  let curStart = 0;
+  let curEnd = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (r.bottom - curStart <= maxSlicePx) {
+      curEnd = r.bottom;
+    } else {
+      if (curEnd > curStart) {
+        slices.push({ startY: curStart, endY: curEnd });
+        curStart = curEnd;
+      }
+      curEnd = r.bottom;
+    }
+  }
+  if (curEnd > curStart) {
+    slices.push({ startY: curStart, endY: curEnd });
+  }
+
+  return slices.length > 0 ? slices : [{ startY: 0, endY: canvas.height }];
+}
+
+// Helper para extraer un sub-canvas nítido
+function createSliceCanvas(sourceCanvas, startY, sliceH) {
+  const sCanvas = document.createElement('canvas');
+  sCanvas.width = sourceCanvas.width;
+  sCanvas.height = sliceH;
+  const sCtx = sCanvas.getContext('2d');
+  sCtx.fillStyle = '#FFFFFF';
+  sCtx.fillRect(0, 0, sCanvas.width, sliceH);
+  sCtx.drawImage(sourceCanvas, 0, startY, sourceCanvas.width, sliceH, 0, 0, sourceCanvas.width, sliceH);
+  return sCanvas;
+}
+
 // Motor de captura ultra-optimizado por pestaña: aísla el DOM e ignora los otros 8 bloques
-async function renderSectionCanvas(h2c, tab, scale = 1.05) {
+async function renderSectionCanvas(h2c, tab, scale = 1.15) {
   const targetEl = document.getElementById('tab-' + tab.id);
   if (!targetEl) return null;
 
@@ -159,7 +221,7 @@ async function renderSectionCanvas(h2c, tab, scale = 1.05) {
     useCORS: false,
     backgroundColor: '#FFFFFF',
     logging: false,
-    imageTimeout: 300,
+    imageTimeout: 500,
     ignoreElements: (el) => {
       if (!el) return false;
       if (el.id === 'modal-export-dashboard') return true;
@@ -189,11 +251,13 @@ async function exportImage(scope, setProgress) {
 
     if (activeTabId !== tab.id) {
       switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
-      await new Promise(r => setTimeout(r, 40));
+      await new Promise(r => setTimeout(r, 180));
+    } else {
+      await new Promise(r => setTimeout(r, 50));
     }
     await new Promise(r => requestAnimationFrame(r));
 
-    const canvas = await renderSectionCanvas(h2c, tab, 1.15);
+    const canvas = await renderSectionCanvas(h2c, tab, 1.2);
     if (!canvas) continue;
 
     const link = document.createElement('a');
@@ -201,7 +265,7 @@ async function exportImage(scope, setProgress) {
     link.download = `CardioUNEMI_${safeTitle}_${new Date().toISOString().slice(0, 10)}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
-    await new Promise(r => setTimeout(r, 40));
+    await new Promise(r => setTimeout(r, 60));
   }
 
   if (activeTabId !== originalTab) {
@@ -210,7 +274,7 @@ async function exportImage(scope, setProgress) {
   setProgress('¡Imágenes descargadas con éxito!', 100);
 }
 
-// 2. Exportación a Documento PDF Paginado de Alta Velocidad (5-7 segundos)
+// 2. Exportación a Documento PDF Paginado de Alta Fidelidad y Velocidad
 async function exportPdf(scope, setProgress) {
   const { jsPDF } = window.jspdf || window;
   if (!jsPDF) {
@@ -229,70 +293,83 @@ async function exportPdf(scope, setProgress) {
   const pageWidth = 297;
   const pageHeight = 210;
   const marginX = 10;
-  const contentWidth = pageWidth - (marginX * 2);
+  const contentWidth = pageWidth - (marginX * 2); // 277 mm
+  const maxImgHeight = pageHeight - 34; // 176 mm
 
   const instVal = document.getElementById('slicer-inst')?.value || 'Todas las Instituciones';
   const anoVal = document.getElementById('slicer-ano')?.value || 'Todos los Años';
   const sampleText = `${filteredRecords.length} de ${allRecords.length} evaluados`;
   const todayStr = new Date().toLocaleDateString('es-EC', { year: 'numeric', month: 'long', day: 'numeric' });
 
+  let pageCount = 0;
+
   for (let i = 0; i < total; i++) {
     const tab = tabsToExport[i];
-    setProgress(`Página ${i + 1} de ${total}: ${tab.title}`, Math.round(((i + 0.1) / total) * 92));
+    setProgress(`Procesando: ${tab.title} (${i + 1}/${total})...`, Math.round(((i + 0.1) / total) * 90));
     await new Promise(r => setTimeout(r, 5));
 
     if (activeTabId !== tab.id) {
       switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
-      await new Promise(r => setTimeout(r, 40));
+      await new Promise(r => setTimeout(r, 180));
+    } else {
+      await new Promise(r => setTimeout(r, 50));
     }
     await new Promise(r => requestAnimationFrame(r));
 
-    const canvas = await renderSectionCanvas(h2c, tab, 1.05);
+    const targetEl = document.getElementById('tab-' + tab.id);
+    const canvas = await renderSectionCanvas(h2c, tab, 1.15);
     if (!canvas) continue;
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const maxSlicePx = Math.floor(maxImgHeight * (canvas.width / contentWidth));
+    const slices = getTabRowSlices(targetEl, canvas, maxSlicePx);
 
-    if (i > 0) {
-      doc.addPage();
+    for (let s = 0; s < slices.length; s++) {
+      const slice = slices[s];
+      const sliceH = slice.endY - slice.startY;
+      if (sliceH <= 0) continue;
+
+      if (pageCount > 0) {
+        doc.addPage();
+      }
+      pageCount++;
+
+      const sCanvas = createSliceCanvas(canvas, slice.startY, sliceH);
+      const imgData = sCanvas.toDataURL('image/jpeg', 0.92);
+
+      // Cabecera Institucional
+      doc.setFillColor(27, 42, 65); // #1B2A41 Navy
+      doc.rect(0, 0, pageWidth, 15, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10.5);
+      doc.text('CARDIOUNEMI • VIGILANCIA EPIDEMIOLÓGICA CARDIOVASCULAR', marginX, 9.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(`Cohorte: ${sampleText} | ${instVal} - Año ${anoVal} | ${todayStr}`, pageWidth - marginX, 9.5, { align: 'right' });
+
+      // Título de la Sección
+      doc.setTextColor(27, 42, 65);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      const partSuffix = slices.length > 1 ? ` (Parte ${s + 1} de ${slices.length})` : '';
+      doc.text(tab.title + partSuffix, marginX, 23);
+
+      // Renderizado del contenido visual a ancho completo
+      const imgAspect = sliceH / canvas.width;
+      const renderW = contentWidth;
+      const renderH = renderW * imgAspect;
+      const renderX = marginX;
+
+      doc.addImage(imgData, 'JPEG', renderX, 26, renderW, renderH, undefined, 'FAST');
+
+      // Pie de página
+      doc.setTextColor(148, 163, 184);
+      doc.setFontSize(7.5);
+      doc.text('Universidad Estatal de Milagro (UNEMI) • Departamento de Cardiología', marginX, pageHeight - 4);
+      doc.text(`Página ${pageCount}`, pageWidth - marginX, pageHeight - 4, { align: 'right' });
     }
-
-    // Cabecera Institucional
-    doc.setFillColor(27, 42, 65); // #1B2A41 Navy
-    doc.rect(0, 0, pageWidth, 15, 'F');
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10.5);
-    doc.text('CARDIOUNEMI • VIGILANCIA EPIDEMIOLÓGICA CARDIOVASCULAR', marginX, 9.5);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text(`Cohorte: ${sampleText} | ${instVal} - Año ${anoVal} | ${todayStr}`, pageWidth - marginX, 9.5, { align: 'right' });
-
-    // Título de la Sección
-    doc.setTextColor(27, 42, 65);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.text(tab.title, marginX, 23);
-
-    // Renderizado del contenido visual
-    const imgAspect = canvas.height / canvas.width;
-    const maxImgHeight = pageHeight - 34;
-    let renderW = contentWidth;
-    let renderH = renderW * imgAspect;
-    if (renderH > maxImgHeight) {
-      renderH = maxImgHeight;
-      renderW = renderH / imgAspect;
-    }
-    const renderX = marginX + (contentWidth - renderW) / 2;
-
-    doc.addImage(imgData, 'JPEG', renderX, 26, renderW, renderH, undefined, 'FAST');
-
-    // Pie de página
-    doc.setTextColor(148, 163, 184);
-    doc.setFontSize(7.5);
-    doc.text('Universidad Estatal de Milagro (UNEMI) • Departamento de Cardiología', marginX, pageHeight - 4);
-    doc.text(`Página ${i + 1} de ${total}`, pageWidth - marginX, pageHeight - 4, { align: 'right' });
   }
 
   if (activeTabId !== originalTab) {
@@ -309,7 +386,7 @@ async function exportPdf(scope, setProgress) {
   setProgress('¡PDF generado exitosamente!', 100);
 }
 
-// 3. Exportación a Diapositivas PowerPoint (.pptx) de Alta Velocidad (5-7 segundos)
+// 3. Exportación a Diapositivas PowerPoint (.pptx) de Alta Fidelidad y Velocidad
 async function exportPowerPoint(scope, setProgress) {
   const pptxClass = window.PptxGenJS || (typeof PptxGenJS !== 'undefined' ? PptxGenJS : null);
   if (!pptxClass) {
@@ -373,66 +450,83 @@ async function exportPowerPoint(scope, setProgress) {
     fontSize: 11
   });
 
+  let slideCount = 1;
+  const maxW = 9.2; // pulgadas
+  const maxH = 4.55; // pulgadas
+
   // Slide 2..N: Slides por cada Módulo Clínico
   for (let i = 0; i < total; i++) {
     const tab = tabsToExport[i];
-    setProgress(`Diapositiva ${i + 2} de ${total + 1}: ${tab.title}`, Math.round(10 + ((i + 1) / total) * 82));
+    setProgress(`Generando diapositivas: ${tab.title} (${i + 1}/${total})...`, Math.round(10 + ((i + 1) / total) * 82));
     await new Promise(r => setTimeout(r, 5));
 
     if (activeTabId !== tab.id) {
       switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
-      await new Promise(r => setTimeout(r, 40));
+      await new Promise(r => setTimeout(r, 180));
+    } else {
+      await new Promise(r => setTimeout(r, 50));
     }
     await new Promise(r => requestAnimationFrame(r));
 
-    const canvas = await renderSectionCanvas(h2c, tab, 1.05);
+    const targetEl = document.getElementById('tab-' + tab.id);
+    const canvas = await renderSectionCanvas(h2c, tab, 1.15);
     if (!canvas) continue;
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const maxSlidePx = Math.floor(maxH * (canvas.width / maxW));
+    const slices = getTabRowSlices(targetEl, canvas, maxSlidePx);
 
-    const slide = pptx.addSlide();
-    slide.background = { color: 'F8FAFC' };
+    for (let s = 0; s < slices.length; s++) {
+      const slice = slices[s];
+      const sliceH = slice.endY - slice.startY;
+      if (sliceH <= 0) continue;
+      slideCount++;
 
-    // Barra Superior
-    slide.addShape(pptx.ShapeType.rect, {
-      x: 0, y: 0, w: 10, h: 0.65,
-      fill: { color: '1B2A41' }
-    });
+      const sCanvas = createSliceCanvas(canvas, slice.startY, sliceH);
+      const imgData = sCanvas.toDataURL('image/jpeg', 0.92);
 
-    slide.addText(`CARDIOUNEMI • ${tab.title.toUpperCase()}`, {
-      x: 0.5, y: 0.12, w: 7.0, h: 0.4,
-      fontSize: 12.5, color: 'FFFFFF', bold: true
-    });
+      const slide = pptx.addSlide();
+      slide.background = { color: 'F8FAFC' };
 
-    slide.addText(`${todayStr} | N = ${filteredRecords.length}`, {
-      x: 7.5, y: 0.14, w: 2.0, h: 0.35,
-      fontSize: 9, color: 'CFE9FF', align: 'right'
-    });
+      // Barra Superior
+      slide.addShape(pptx.ShapeType.rect, {
+        x: 0, y: 0, w: 10, h: 0.65,
+        fill: { color: '1B2A41' }
+      });
 
-    // Imagen del Panel de Gráficos
-    const imgAspect = canvas.height / canvas.width;
-    const maxW = 9.2;
-    const maxH = 4.65;
-    let w = maxW;
-    let h = w * imgAspect;
-    if (h > maxH) {
-      h = maxH;
-      w = h / imgAspect;
+      const partSuffix = slices.length > 1 ? ` (PARTE ${s + 1}/${slices.length})` : '';
+      slide.addText(`CARDIOUNEMI • ${tab.title.toUpperCase()}${partSuffix}`, {
+        x: 0.5, y: 0.12, w: 7.0, h: 0.4,
+        fontSize: 12.5, color: 'FFFFFF', bold: true
+      });
+
+      slide.addText(`${todayStr} | N = ${filteredRecords.length}`, {
+        x: 7.5, y: 0.14, w: 2.0, h: 0.35,
+        fontSize: 9, color: 'CFE9FF', align: 'right'
+      });
+
+      // Imagen del Panel de Gráficos
+      const imgAspect = sliceH / canvas.width;
+      let w = maxW;
+      let h = w * imgAspect;
+      if (h > maxH) {
+        h = maxH;
+        w = h / imgAspect;
+      }
+      const x = 0.4 + (maxW - w) / 2;
+      const y = 0.78;
+
+      slide.addImage({ data: imgData, x: x, y: y, w: w, h: h });
+
+      // Pie de diapositiva
+      slide.addText('Universidad Estatal de Milagro • Departamento de Cardiología', {
+        x: 0.5, y: 5.35, w: 6.0, h: 0.25,
+        fontSize: 8, color: '94A3B8'
+      });
+      slide.addText(`Diapositiva ${slideCount}`, {
+        x: 7.5, y: 5.35, w: 2.0, h: 0.25,
+        fontSize: 8, color: '94A3B8', align: 'right'
+      });
     }
-    const x = 0.4 + (maxW - w) / 2;
-    const y = 0.78 + (maxH - h) / 2;
-
-    slide.addImage({ data: imgData, x: x, y: y, w: w, h: h });
-
-    // Pie de diapositiva
-    slide.addText('Universidad Estatal de Milagro • Departamento de Cardiología', {
-      x: 0.5, y: 5.35, w: 6.0, h: 0.25,
-      fontSize: 8, color: '94A3B8'
-    });
-    slide.addText(`Diapositiva ${i + 2} de ${total + 1}`, {
-      x: 7.5, y: 5.35, w: 2.0, h: 0.25,
-      fontSize: 8, color: '94A3B8', align: 'right'
-    });
   }
 
   if (activeTabId !== originalTab) {
