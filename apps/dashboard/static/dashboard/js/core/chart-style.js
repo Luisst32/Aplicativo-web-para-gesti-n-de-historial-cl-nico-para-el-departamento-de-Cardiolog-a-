@@ -478,7 +478,13 @@ function dashboardApexBarStyle(options, id) {
       borderRadius: 6, barHeight: bar.barHeight || '78%', columnWidth: bar.columnWidth || '72%',
       ...bar, horizontal,
       dataLabels: { position: 'center', hideOverflowingLabels: false, ...bar.dataLabels },
-      colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6, ...bar.colors }
+      colors: {
+        backgroundBarRadius: 6,
+        backgroundBarColors: (id === 'chart-ecg-hist-qtc' || (bar.colors && Array.isArray(bar.colors.backgroundBarColors)))
+          ? (bar.colors?.backgroundBarColors || [])
+          : ['#f1f5f9'],
+        ...bar.colors
+      }
     } },
     xaxis: { ...xaxis, axisBorder: { show: false }, axisTicks: { show: false } },
     yaxis,

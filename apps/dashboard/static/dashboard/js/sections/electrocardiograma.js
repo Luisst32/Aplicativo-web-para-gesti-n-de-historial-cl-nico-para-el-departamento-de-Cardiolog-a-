@@ -195,8 +195,11 @@ function renderTabElectrocardiograma() {
         plotOptions: {
           bar: {
             horizontal: false,
-            columnWidth: '82%',
-            borderRadius: 6
+            columnWidth: '88%',
+            borderRadius: 6,
+            colors: {
+              backgroundBarColors: []
+            }
           }
         },
         colors: [PALETTE.primaryBlue, PALETTE.purple],

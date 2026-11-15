@@ -976,14 +976,28 @@ function renderThreeStateChart(id, key, fields) {
 
   const names = ['S\u00ed', 'No'];
   const values = [evaluableFields.map(f => f.counts.yes), evaluableFields.map(f => f.counts.no)];
-  const label = (value, series, index) =>
-    `${value} (${evaluableFields[index].counts.answered ? formatPct(value, evaluableFields[index].counts.answered)+'%' : '0%'})`;
+  const label = (value, a, b) => {
+    let dataIdx = 0;
+    if (typeof b === 'number') {
+      dataIdx = b;
+    } else if (typeof a === 'number') {
+      dataIdx = a;
+    } else if (a && typeof a.dataPointIndex === 'number') {
+      dataIdx = a.dataPointIndex;
+    } else if (a && typeof a.dataIndex === 'number') {
+      dataIdx = a.dataIndex;
+    }
+    const field = evaluableFields[dataIdx] || evaluableFields[0];
+    const total = field?.counts?.answered || 0;
+    const pct = total > 0 ? formatPct(value, total) + '%' : '0%';
+    return `${value} (${pct})`;
+  };
   const colors = [PALETTE.green, PALETTE.primaryBlue];
   if (el.tagName === 'CANVAS') {
     const data = {labels: evaluableFields.map(f => f.label), datasets: names.map((name,i)=>({label:name,data:values[i],backgroundColor:colors[i]}))};
     const options = {responsive:true, maintainAspectRatio:false,
       scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}},
-      plugins:{legend:{position:'bottom'},datalabels:{...chartJsBarDataLabels(), formatter:(v,ctx)=>v>0?label(v,ctx.datasetIndex,ctx.dataIndex):''},
+      plugins:{legend:{position:'bottom'},datalabels:{...chartJsBarDataLabels(), formatter:(v,ctx)=>v>0?label(v,ctx?.datasetIndex,ctx?.dataIndex):''},
         tooltip:{callbacks:{label:ctx=>names[ctx.datasetIndex]+': '+label(ctx.raw,ctx.datasetIndex,ctx.dataIndex)}}}};
     if (charts[key]) {
       charts[key].destroy();
@@ -994,8 +1008,8 @@ function renderThreeStateChart(id, key, fields) {
     const options={chart:{type:'bar',height:320,stacked:true,toolbar:{show:false}},
       series:names.map((name,i)=>({name,data:values[i]})),colors,
       xaxis:{categories:evaluableFields.map(f => f.label)},plotOptions:{bar:{horizontal:true}},legend:{position:'bottom'},
-      dataLabels:{enabled:true,formatter:(v,o)=>v ? label(v,o.seriesIndex,o.dataPointIndex) : ''},
-      tooltip:{y:{formatter:(v,o)=>label(v,o.seriesIndex,o.dataPointIndex)}}};
+      dataLabels:{enabled:true,formatter:(v,o)=>v ? label(v,o?.seriesIndex,o?.dataPointIndex) : ''},
+      tooltip:{y:{formatter:(v,o)=>label(v,o?.seriesIndex,o?.dataPointIndex)}}};
     if(charts[key])charts[key].updateOptions(options);
     else {charts[key]=createDashboardApexChart(el,options);charts[key].render();}
   }
