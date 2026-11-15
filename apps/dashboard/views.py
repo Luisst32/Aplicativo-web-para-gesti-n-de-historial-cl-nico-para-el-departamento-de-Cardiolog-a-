@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import never_cache
 
 from . import services
 from security.access import clinical_access_required
@@ -8,6 +9,7 @@ from security.access import clinical_access_required
 
 @login_required
 @clinical_access_required('read')
+@never_cache
 def index_view(request):
     """
     Renders the clinical and epidemiological dashboard view.
@@ -31,6 +33,7 @@ def index_view(request):
 
 @login_required
 @clinical_access_required('read', api=True)
+@never_cache
 def api_dashboard_data(request):
     """
     JSON API endpoint returning the dynamic cohort records and slicer metadata
