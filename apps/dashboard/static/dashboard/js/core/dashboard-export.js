@@ -57,9 +57,14 @@ async function startExport() {
   const progBox = document.getElementById('export-progress-container');
   const progText = document.getElementById('export-progress-text');
   const progBar = document.getElementById('export-progress-bar');
+  const modalBackdrop = document.getElementById('modal-export-dashboard');
 
   if (btn) btn.disabled = true;
   if (progBox) progBox.style.display = 'flex';
+  if (modalBackdrop) {
+    modalBackdrop.style.background = 'rgba(15, 23, 42, 0.94)';
+  }
+  document.body.style.overflow = 'hidden';
 
   const setProgress = (text, pct) => {
     if (progText) progText.textContent = text;
@@ -76,22 +81,26 @@ async function startExport() {
     }
     setTimeout(() => {
       closeExportModal();
-    }, 700);
+    }, 500);
   } catch (err) {
     console.error('Error durante la exportación:', err);
     alert('Ocurrió un inconveniente al generar la exportación: ' + (err.message || err));
   } finally {
     if (btn) btn.disabled = false;
     if (progBox) progBox.style.display = 'none';
+    if (modalBackdrop) {
+      modalBackdrop.style.background = 'rgba(15, 23, 42, 0.72)';
+    }
+    document.body.style.overflow = '';
   }
 }
 
-// 1. Exportación a Imagen PNG
 // Helper para normalizar gradientes y asegurar visibilidad de rellenos SVG en html2canvas
-function fixSvgFillsForHtml2Canvas(clonedDoc) {
+function fixSvgFillsForHtml2Canvas(clonedDoc, tabId) {
   if (!clonedDoc) return;
   try {
-    const svgElements = clonedDoc.querySelectorAll('svg [fill*="url("]');
+    const root = (tabId ? clonedDoc.getElementById('tab-' + tabId) : null) || clonedDoc;
+    const svgElements = root.querySelectorAll('svg [fill*="url("]');
     svgElements.forEach(el => {
       const fillAttr = el.getAttribute('fill') || '';
       const match = fillAttr.match(/url\(#?([^)]+)\)/);
@@ -113,7 +122,7 @@ function fixSvgFillsForHtml2Canvas(clonedDoc) {
       }
     });
 
-    clonedDoc.querySelectorAll('.apexcharts-bar-area, .apexcharts-series path, .apexcharts-area').forEach(el => {
+    root.querySelectorAll('.apexcharts-bar-area, .apexcharts-series path, .apexcharts-area').forEach(el => {
       const fill = el.getAttribute('fill') || '';
       if (fill.startsWith('url(')) {
         const match = fill.match(/url\(#?([^)]+)\)/);
@@ -140,6 +149,29 @@ function fixSvgFillsForHtml2Canvas(clonedDoc) {
   }
 }
 
+// Motor de captura ultra-optimizado por pestaña: aísla el DOM e ignora los otros 8 bloques
+async function renderSectionCanvas(h2c, tab, scale = 1.05) {
+  const targetEl = document.getElementById('tab-' + tab.id);
+  if (!targetEl) return null;
+
+  return await h2c(targetEl, {
+    scale: scale,
+    useCORS: false,
+    backgroundColor: '#FFFFFF',
+    logging: false,
+    imageTimeout: 300,
+    ignoreElements: (el) => {
+      if (!el) return false;
+      if (el.id === 'modal-export-dashboard') return true;
+      if (el.id === 'slicers-bar' || el.id === 'main-nav' || el.id === 'app-header' || el.classList?.contains('sidebar')) return true;
+      if (el.classList && el.classList.contains('tab-view') && el.id !== ('tab-' + tab.id)) return true;
+      return false;
+    },
+    onclone: (clonedDoc) => fixSvgFillsForHtml2Canvas(clonedDoc, tab.id)
+  });
+}
+
+// 1. Exportación a Imagen PNG
 async function exportImage(scope, setProgress) {
   const h2c = window.html2canvas || (typeof html2canvas !== 'undefined' ? html2canvas : null);
   if (!h2c) {
@@ -153,31 +185,23 @@ async function exportImage(scope, setProgress) {
   for (let i = 0; i < total; i++) {
     const tab = tabsToExport[i];
     setProgress(`Capturando imagen: ${tab.title} (${i + 1}/${total})...`, Math.round(((i + 0.3) / total) * 100));
-    await new Promise(r => setTimeout(r, 10));
+    await new Promise(r => setTimeout(r, 5));
 
     if (activeTabId !== tab.id) {
       switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 40));
     }
     await new Promise(r => requestAnimationFrame(r));
 
-    const targetEl = document.getElementById('tab-' + tab.id);
-    if (!targetEl) continue;
-    const canvas = await h2c(targetEl, {
-      scale: 1.5,
-      useCORS: true,
-      backgroundColor: '#F8FAFC',
-      logging: false,
-      imageTimeout: 0,
-      onclone: (clonedDoc) => fixSvgFillsForHtml2Canvas(clonedDoc)
-    });
+    const canvas = await renderSectionCanvas(h2c, tab, 1.15);
+    if (!canvas) continue;
 
     const link = document.createElement('a');
     const safeTitle = tab.title.toLowerCase().replace(/[^a-z0-9]/g, '_');
     link.download = `CardioUNEMI_${safeTitle}_${new Date().toISOString().slice(0, 10)}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
-    await new Promise(r => setTimeout(r, 60));
+    await new Promise(r => setTimeout(r, 40));
   }
 
   if (activeTabId !== originalTab) {
@@ -186,7 +210,7 @@ async function exportImage(scope, setProgress) {
   setProgress('¡Imágenes descargadas con éxito!', 100);
 }
 
-// 2. Exportación a Documento PDF Paginado de Alta Velocidad
+// 2. Exportación a Documento PDF Paginado de Alta Velocidad (5-7 segundos)
 async function exportPdf(scope, setProgress) {
   const { jsPDF } = window.jspdf || window;
   if (!jsPDF) {
@@ -214,28 +238,19 @@ async function exportPdf(scope, setProgress) {
 
   for (let i = 0; i < total; i++) {
     const tab = tabsToExport[i];
-    setProgress(`Procesando página PDF: ${tab.title} (${i + 1}/${total})...`, Math.round(((i + 0.2) / total) * 90));
-    await new Promise(r => setTimeout(r, 10));
+    setProgress(`Página ${i + 1} de ${total}: ${tab.title}`, Math.round(((i + 0.1) / total) * 92));
+    await new Promise(r => setTimeout(r, 5));
 
     if (activeTabId !== tab.id) {
       switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 40));
     }
     await new Promise(r => requestAnimationFrame(r));
 
-    const targetEl = document.getElementById('tab-' + tab.id);
-    if (!targetEl) continue;
+    const canvas = await renderSectionCanvas(h2c, tab, 1.05);
+    if (!canvas) continue;
 
-    const canvas = await h2c(targetEl, {
-      scale: 1.4,
-      useCORS: true,
-      backgroundColor: '#FFFFFF',
-      logging: false,
-      imageTimeout: 0,
-      onclone: (clonedDoc) => fixSvgFillsForHtml2Canvas(clonedDoc)
-    });
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.94);
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
 
     if (i > 0) {
       doc.addPage();
@@ -284,17 +299,17 @@ async function exportPdf(scope, setProgress) {
     switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
   }
 
-  setProgress('Compilando archivo PDF final...', 95);
+  setProgress('Compilando archivo PDF final...', 96);
   await new Promise(r => setTimeout(r, 10));
   const fileName = scope === 'all'
-    ? `CardioUNEMI_Reporte_Integral_8_Bloques_${new Date().toISOString().slice(0, 10)}.pdf`
+    ? `CardioUNEMI_Reporte_Integral_9_Secciones_${new Date().toISOString().slice(0, 10)}.pdf`
     : `CardioUNEMI_${activeTabId}_${new Date().toISOString().slice(0, 10)}.pdf`;
 
   doc.save(fileName);
   setProgress('¡PDF generado exitosamente!', 100);
 }
 
-// 3. Exportación a Diapositivas PowerPoint (.pptx) de Alta Velocidad
+// 3. Exportación a Diapositivas PowerPoint (.pptx) de Alta Velocidad (5-7 segundos)
 async function exportPowerPoint(scope, setProgress) {
   const pptxClass = window.PptxGenJS || (typeof PptxGenJS !== 'undefined' ? PptxGenJS : null);
   if (!pptxClass) {
@@ -319,7 +334,7 @@ async function exportPowerPoint(scope, setProgress) {
 
   // Slide 1: Portada Ejecutiva
   setProgress('Construyendo portada institucional...', 5);
-  await new Promise(r => setTimeout(r, 10));
+  await new Promise(r => setTimeout(r, 5));
   const slidePortada = pptx.addSlide();
   slidePortada.background = { color: '1B2A41' }; // Navy UNEMI
 
@@ -352,7 +367,7 @@ async function exportPowerPoint(scope, setProgress) {
     { text: 'Fecha de Emisión: ', options: { bold: true, color: '3AA0FF' } },
     { text: `${todayStr}\n`, options: { color: 'FFFFFF' } },
     { text: 'Alcance del Reporte: ', options: { bold: true, color: '3AA0FF' } },
-    { text: scope === 'all' ? 'Informe Integral Completo (8 Bloques Clínicos)' : `Módulo Específico: ${tabsToExport[0].title}`, options: { color: 'FFFFFF' } }
+    { text: scope === 'all' ? 'Informe Integral Completo (9 Secciones Clínicas)' : `Módulo Específico: ${tabsToExport[0].title}`, options: { color: 'FFFFFF' } }
   ], {
     x: 1.05, y: 3.45, w: 7.9, h: 1.3,
     fontSize: 11
@@ -361,28 +376,78 @@ async function exportPowerPoint(scope, setProgress) {
   // Slide 2..N: Slides por cada Módulo Clínico
   for (let i = 0; i < total; i++) {
     const tab = tabsToExport[i];
-    setProgress(`Generando diapositiva: ${tab.title} (${i + 1}/${total})...`, Math.round(10 + ((i + 1) / total) * 80));
-    await new Promise(r => setTimeout(r, 10));
+    setProgress(`Diapositiva ${i + 2} de ${total + 1}: ${tab.title}`, Math.round(10 + ((i + 1) / total) * 82));
+    await new Promise(r => setTimeout(r, 5));
 
     if (activeTabId !== tab.id) {
       switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 40));
     }
     await new Promise(r => requestAnimationFrame(r));
 
-    const targetEl = document.getElementById('tab-' + tab.id);
-    if (!targetEl) continue;
+    const canvas = await renderSectionCanvas(h2c, tab, 1.05);
+    if (!canvas) continue;
 
-    const canvas = await h2c(targetEl, {
-      scale: 1.4,
-      useCORS: true,
-      backgroundColor: '#FFFFFF',
-      logging: false,
-      imageTimeout: 0,
-      onclone: (clonedDoc) => fixSvgFillsForHtml2Canvas(clonedDoc)
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+    const slide = pptx.addSlide();
+    slide.background = { color: 'F8FAFC' };
+
+    // Barra Superior
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 0, y: 0, w: 10, h: 0.65,
+      fill: { color: '1B2A41' }
     });
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.94);
+    slide.addText(`CARDIOUNEMI • ${tab.title.toUpperCase()}`, {
+      x: 0.5, y: 0.12, w: 7.0, h: 0.4,
+      fontSize: 12.5, color: 'FFFFFF', bold: true
+    });
+
+    slide.addText(`${todayStr} | N = ${filteredRecords.length}`, {
+      x: 7.5, y: 0.14, w: 2.0, h: 0.35,
+      fontSize: 9, color: 'CFE9FF', align: 'right'
+    });
+
+    // Imagen del Panel de Gráficos
+    const imgAspect = canvas.height / canvas.width;
+    const maxW = 9.2;
+    const maxH = 4.65;
+    let w = maxW;
+    let h = w * imgAspect;
+    if (h > maxH) {
+      h = maxH;
+      w = h / imgAspect;
+    }
+    const x = 0.4 + (maxW - w) / 2;
+    const y = 0.78 + (maxH - h) / 2;
+
+    slide.addImage({ data: imgData, x: x, y: y, w: w, h: h });
+
+    // Pie de diapositiva
+    slide.addText('Universidad Estatal de Milagro • Departamento de Cardiología', {
+      x: 0.5, y: 5.35, w: 6.0, h: 0.25,
+      fontSize: 8, color: '94A3B8'
+    });
+    slide.addText(`Diapositiva ${i + 2} de ${total + 1}`, {
+      x: 7.5, y: 5.35, w: 2.0, h: 0.25,
+      fontSize: 8, color: '94A3B8', align: 'right'
+    });
+  }
+
+  if (activeTabId !== originalTab) {
+    switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
+  }
+
+  setProgress('Compilando presentación PowerPoint (.pptx)...', 96);
+  await new Promise(r => setTimeout(r, 10));
+  const fileName = scope === 'all'
+    ? `CardioUNEMI_Presentacion_Completa_${new Date().toISOString().slice(0, 10)}.pptx`
+    : `CardioUNEMI_${activeTabId}_${new Date().toISOString().slice(0, 10)}.pptx`;
+
+  await pptx.writeFile({ fileName: fileName });
+  setProgress('¡Presentación PPTX descargada exitosamente!', 100);
+}
 
     const slide = pptx.addSlide();
     slide.background = { color: 'F8FAFC' };
