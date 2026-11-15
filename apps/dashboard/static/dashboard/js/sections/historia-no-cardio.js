@@ -154,7 +154,6 @@ function renderTabHistoriaNoCardio() {
             if (!val || val <= 0) return '';
             const gIndex = opt.dataPointIndex;
             const tot = groupCounts[gIndex].total;
-            if (tot < 5) return `${val}`; // Regla 8: Con n<5 no mostrar porcentaje
             return `${val} (${formatPct(val, tot)}%)`;
           },
           style: { fontSize: '11px', fontWeight: 700, fontFamily: 'inherit', colors: ['#ffffff'] },

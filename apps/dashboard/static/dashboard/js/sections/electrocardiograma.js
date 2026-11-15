@@ -509,7 +509,7 @@ function renderTabElectrocardiograma() {
             const d = factData[opt.dataPointIndex];
             const cnt = isWith ? d.abnWith : d.abnWithout;
             const tot = isWith ? d.nWith : d.nWithout;
-            if (tot < 5) return `${cnt} de ${tot}*`;
+            if (tot < 5) return `${cnt} de ${tot} (${v.toFixed(1)}%)*`;
             return `${cnt} de ${tot} (${v.toFixed(1)}%)`;
           },
           style: { fontSize: '10px', fontWeight: 700, colors: ['#0f172a'] },

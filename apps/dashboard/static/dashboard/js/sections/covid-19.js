@@ -140,10 +140,10 @@ function renderTabCovid19() {
           formatter: (val, opt) => {
             const d = catData[opt.dataPointIndex];
             if (!d) return '';
-            if (d.total < 5) return `${d.inf} de ${d.total} casos*`;
             const pStr = d.pct.toFixed(1).replace('.', ',');
             const lowStr = d.ci.lower.toFixed(1).replace('.', ',');
             const upStr = d.ci.upper.toFixed(1).replace('.', ',');
+            if (d.total < 5) return `${d.inf} de ${d.total} (${pStr}%)*`;
             return [
               `${d.inf} de ${d.total} · ${pStr}%`,
               `IC 95%: ${lowStr}–${upStr}%`

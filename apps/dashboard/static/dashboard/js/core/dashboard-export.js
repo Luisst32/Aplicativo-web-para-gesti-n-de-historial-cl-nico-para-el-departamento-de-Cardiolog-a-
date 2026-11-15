@@ -152,18 +152,23 @@ async function exportImage(scope, setProgress) {
 
   for (let i = 0; i < total; i++) {
     const tab = tabsToExport[i];
-    setProgress(`Capturando imagen: ${tab.title} (${i + 1}/${total})...`, Math.round(((i + 0.5) / total) * 100));
+    setProgress(`Capturando imagen: ${tab.title} (${i + 1}/${total})...`, Math.round(((i + 0.3) / total) * 100));
+    await new Promise(r => setTimeout(r, 10));
 
-    switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
-    await new Promise(r => setTimeout(r, 450));
+    if (activeTabId !== tab.id) {
+      switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
+      await new Promise(r => setTimeout(r, 100));
+    }
+    await new Promise(r => requestAnimationFrame(r));
 
     const targetEl = document.getElementById('tab-' + tab.id);
     if (!targetEl) continue;
     const canvas = await h2c(targetEl, {
-      scale: 2,
+      scale: 1.5,
       useCORS: true,
       backgroundColor: '#F8FAFC',
       logging: false,
+      imageTimeout: 0,
       onclone: (clonedDoc) => fixSvgFillsForHtml2Canvas(clonedDoc)
     });
 
@@ -172,14 +177,16 @@ async function exportImage(scope, setProgress) {
     link.download = `CardioUNEMI_${safeTitle}_${new Date().toISOString().slice(0, 10)}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => setTimeout(r, 60));
   }
 
-  switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
+  if (activeTabId !== originalTab) {
+    switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
+  }
   setProgress('¡Imágenes descargadas con éxito!', 100);
 }
 
-// 2. Exportación a Documento PDF Paginado
+// 2. Exportación a Documento PDF Paginado de Alta Velocidad
 async function exportPdf(scope, setProgress) {
   const { jsPDF } = window.jspdf || window;
   if (!jsPDF) {
@@ -190,7 +197,7 @@ async function exportPdf(scope, setProgress) {
     throw new Error('La librería html2canvas no está disponible.');
   }
 
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
   const tabsToExport = scope === 'all' ? DASHBOARD_TABS : [DASHBOARD_TABS.find(t => t.id === activeTabId) || DASHBOARD_TABS[0]];
   const total = tabsToExport.length;
   const originalTab = activeTabId;
@@ -207,23 +214,28 @@ async function exportPdf(scope, setProgress) {
 
   for (let i = 0; i < total; i++) {
     const tab = tabsToExport[i];
-    setProgress(`Generando página PDF: ${tab.title} (${i + 1}/${total})...`, Math.round(((i + 0.3) / total) * 100));
+    setProgress(`Procesando página PDF: ${tab.title} (${i + 1}/${total})...`, Math.round(((i + 0.2) / total) * 90));
+    await new Promise(r => setTimeout(r, 10));
 
-    switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
-    await new Promise(r => setTimeout(r, 450));
+    if (activeTabId !== tab.id) {
+      switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
+      await new Promise(r => setTimeout(r, 100));
+    }
+    await new Promise(r => requestAnimationFrame(r));
 
     const targetEl = document.getElementById('tab-' + tab.id);
     if (!targetEl) continue;
 
     const canvas = await h2c(targetEl, {
-      scale: 2,
+      scale: 1.4,
       useCORS: true,
       backgroundColor: '#FFFFFF',
       logging: false,
+      imageTimeout: 0,
       onclone: (clonedDoc) => fixSvgFillsForHtml2Canvas(clonedDoc)
     });
 
-    const imgData = canvas.toDataURL('image/png');
+    const imgData = canvas.toDataURL('image/jpeg', 0.94);
 
     if (i > 0) {
       doc.addPage();
@@ -259,7 +271,7 @@ async function exportPdf(scope, setProgress) {
     }
     const renderX = marginX + (contentWidth - renderW) / 2;
 
-    doc.addImage(imgData, 'PNG', renderX, 26, renderW, renderH, undefined, 'SLOW');
+    doc.addImage(imgData, 'JPEG', renderX, 26, renderW, renderH, undefined, 'FAST');
 
     // Pie de página
     doc.setTextColor(148, 163, 184);
@@ -268,9 +280,12 @@ async function exportPdf(scope, setProgress) {
     doc.text(`Página ${i + 1} de ${total}`, pageWidth - marginX, pageHeight - 4, { align: 'right' });
   }
 
-  switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
+  if (activeTabId !== originalTab) {
+    switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
+  }
 
-  setProgress('Guardando documento PDF...', 95);
+  setProgress('Compilando archivo PDF final...', 95);
+  await new Promise(r => setTimeout(r, 10));
   const fileName = scope === 'all'
     ? `CardioUNEMI_Reporte_Integral_8_Bloques_${new Date().toISOString().slice(0, 10)}.pdf`
     : `CardioUNEMI_${activeTabId}_${new Date().toISOString().slice(0, 10)}.pdf`;
@@ -279,7 +294,7 @@ async function exportPdf(scope, setProgress) {
   setProgress('¡PDF generado exitosamente!', 100);
 }
 
-// 3. Exportación a Diapositivas PowerPoint (.pptx)
+// 3. Exportación a Diapositivas PowerPoint (.pptx) de Alta Velocidad
 async function exportPowerPoint(scope, setProgress) {
   const pptxClass = window.PptxGenJS || (typeof PptxGenJS !== 'undefined' ? PptxGenJS : null);
   if (!pptxClass) {
@@ -303,7 +318,8 @@ async function exportPowerPoint(scope, setProgress) {
   const todayStr = new Date().toLocaleDateString('es-EC', { year: 'numeric', month: 'long', day: 'numeric' });
 
   // Slide 1: Portada Ejecutiva
-  setProgress('Construyendo portada institucional...', 10);
+  setProgress('Construyendo portada institucional...', 5);
+  await new Promise(r => setTimeout(r, 10));
   const slidePortada = pptx.addSlide();
   slidePortada.background = { color: '1B2A41' }; // Navy UNEMI
 
@@ -345,23 +361,28 @@ async function exportPowerPoint(scope, setProgress) {
   // Slide 2..N: Slides por cada Módulo Clínico
   for (let i = 0; i < total; i++) {
     const tab = tabsToExport[i];
-    setProgress(`Generando diapositiva: ${tab.title} (${i + 1}/${total})...`, Math.round(15 + ((i + 1) / total) * 75));
+    setProgress(`Generando diapositiva: ${tab.title} (${i + 1}/${total})...`, Math.round(10 + ((i + 1) / total) * 80));
+    await new Promise(r => setTimeout(r, 10));
 
-    switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
-    await new Promise(r => setTimeout(r, 450));
+    if (activeTabId !== tab.id) {
+      switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
+      await new Promise(r => setTimeout(r, 100));
+    }
+    await new Promise(r => requestAnimationFrame(r));
 
     const targetEl = document.getElementById('tab-' + tab.id);
     if (!targetEl) continue;
 
     const canvas = await h2c(targetEl, {
-      scale: 2,
+      scale: 1.4,
       useCORS: true,
       backgroundColor: '#FFFFFF',
       logging: false,
+      imageTimeout: 0,
       onclone: (clonedDoc) => fixSvgFillsForHtml2Canvas(clonedDoc)
     });
 
-    const imgData = canvas.toDataURL('image/png');
+    const imgData = canvas.toDataURL('image/jpeg', 0.94);
 
     const slide = pptx.addSlide();
     slide.background = { color: 'F8FAFC' };
@@ -408,9 +429,12 @@ async function exportPowerPoint(scope, setProgress) {
     });
   }
 
-  switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
+  if (activeTabId !== originalTab) {
+    switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
+  }
 
   setProgress('Compilando presentación PowerPoint (.pptx)...', 95);
+  await new Promise(r => setTimeout(r, 10));
   const fileName = scope === 'all'
     ? `CardioUNEMI_Presentacion_Completa_${new Date().toISOString().slice(0, 10)}.pptx`
     : `CardioUNEMI_${activeTabId}_${new Date().toISOString().slice(0, 10)}.pptx`;

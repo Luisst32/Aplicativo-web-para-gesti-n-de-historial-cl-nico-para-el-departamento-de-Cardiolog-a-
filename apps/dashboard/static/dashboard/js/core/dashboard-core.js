@@ -276,6 +276,7 @@ if (typeof ApexCharts !== 'undefined' || typeof window.Apex !== 'undefined') {
 }
 
 if (typeof Chart !== 'undefined') {
+  Chart.defaults.animation = false;
   Chart.defaults.devicePixelRatio = Math.max(window.devicePixelRatio || 1, 2);
   Chart.defaults.color = '#000000';
   Chart.defaults.plugins.legend = Chart.defaults.plugins.legend || {};
