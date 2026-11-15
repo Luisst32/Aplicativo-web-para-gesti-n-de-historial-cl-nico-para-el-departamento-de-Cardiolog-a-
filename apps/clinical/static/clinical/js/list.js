@@ -18,26 +18,65 @@ let paginaActual = 1;
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Listeners de búsqueda y filtros (resetean a la página 1)
-  document.getElementById('filtroBusqueda').addEventListener('input', () => {
-    paginaActual = 1;
-    renderPacientesTabla();
-  });
-  document.getElementById('filtroAnio').addEventListener('change', () => {
-    paginaActual = 1;
-    renderPacientesTabla();
-  });
-  document.getElementById('filtroEstamento').addEventListener('change', () => {
-    paginaActual = 1;
-    renderPacientesTabla();
-  });
-  document.getElementById('filtroSexo').addEventListener('change', () => {
-    paginaActual = 1;
-    renderPacientesTabla();
-  });
-  document.getElementById('ordenarPor').addEventListener('change', (e) => {
-    paginaActual = 1;
-    aplicarOrdenDesdeSelect(e.target.value);
-  });
+  const filtroBusqueda = document.getElementById('filtroBusqueda');
+  if (filtroBusqueda) {
+    filtroBusqueda.addEventListener('input', () => {
+      paginaActual = 1;
+      renderPacientesTabla();
+    });
+  }
+  const filtroInst = document.getElementById('filtroInstitucion');
+  if (filtroInst) {
+    filtroInst.addEventListener('change', () => {
+      paginaActual = 1;
+      renderPacientesTabla();
+    });
+  }
+  const filtroAnio = document.getElementById('filtroAnio');
+  if (filtroAnio) {
+    filtroAnio.addEventListener('change', () => {
+      paginaActual = 1;
+      renderPacientesTabla();
+    });
+  }
+  const filtroEst = document.getElementById('filtroEstamento');
+  if (filtroEst) {
+    filtroEst.addEventListener('change', () => {
+      paginaActual = 1;
+      renderPacientesTabla();
+    });
+  }
+  const filtroSex = document.getElementById('filtroSexo');
+  if (filtroSex) {
+    filtroSex.addEventListener('change', () => {
+      paginaActual = 1;
+      renderPacientesTabla();
+    });
+  }
+  const ordenarEl = document.getElementById('ordenarPor');
+  if (ordenarEl) {
+    ordenarEl.addEventListener('change', (e) => {
+      paginaActual = 1;
+      aplicarOrdenDesdeSelect(e.target.value);
+    });
+  }
+
+  // Restaurar preferencia guardada para el colapso de filtros slicers
+  try {
+    const savedCollapsed = localStorage.getItem('cardiounemi_pacientes_slicers_collapsed');
+    if (savedCollapsed === 'true') {
+      const wrapper = document.getElementById('slicers-collapse-wrapper');
+      const btn = document.getElementById('btn-toggle-slicers');
+      const label = document.getElementById('slicers-toggle-label');
+      if (wrapper && btn) {
+        wrapper.classList.add('is-collapsed');
+        btn.classList.add('is-collapsed');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.title = 'Mostrar filtros';
+        if (label) label.textContent = 'Mostrar filtros';
+      }
+    }
+  } catch (e) {}
 
   // Modal compartido "Nuevo Paciente"
   montarModalAgregarPaciente((nuevoPaciente) => {
@@ -204,6 +243,48 @@ function actualizarOpcionesFiltrosDinamicos() {
       selEstamento.value = 'all';
     }
   }
+
+  // 3. DINAMISMO INTELIGENTE PARA FILTRO DE INSTITUCIÓN
+  // Solo se agregan las instituciones reales de los pacientes que existen
+  const selInstitucion = document.getElementById('filtroInstitucion');
+  if (selInstitucion) {
+    const rawInst = selInstitucion.value ? selInstitucion.value.trim() : 'all';
+    const instSeleccionada = (!rawInst || rawInst.toLowerCase() === 'all') ? 'all' : rawInst;
+    const instSet = new Set();
+
+    if (Array.isArray(pacientes) && pacientes.length > 0) {
+      pacientes.forEach(p => {
+        const val = (p.institucion || p.universidad || '').trim();
+        if (val) instSet.add(val);
+      });
+    } else {
+      Array.from(selInstitucion.options).forEach(opt => {
+        if (opt.value && opt.value.toLowerCase() !== 'all') {
+          instSet.add(opt.value.trim());
+        }
+      });
+    }
+
+    const instOrdenadas = Array.from(instSet).sort();
+    selInstitucion.innerHTML = '<option value="all">Todas las Instituciones</option>';
+    instOrdenadas.forEach(instVal => {
+      const opt = document.createElement('option');
+      opt.value = instVal;
+      opt.textContent = instVal;
+      selInstitucion.appendChild(opt);
+    });
+
+    if (instSeleccionada !== 'all') {
+      const matchOpt = Array.from(selInstitucion.options).find(o => o.value.toUpperCase() === instSeleccionada.toUpperCase());
+      if (matchOpt) {
+        selInstitucion.value = matchOpt.value;
+      } else {
+        selInstitucion.value = 'all';
+      }
+    } else {
+      selInstitucion.value = 'all';
+    }
+  }
 }
 
 function calcularRelevanciaBusqueda(p, q, cleanQ, isNumericQuery) {
@@ -242,19 +323,22 @@ function calcularRelevanciaBusqueda(p, q, cleanQ, isNumericQuery) {
 }
 
 function obtenerPacientesFiltrados() {
-  const rawQ = document.getElementById('filtroBusqueda').value.trim();
+  const rawQ = document.getElementById('filtroBusqueda')?.value?.trim() || '';
   const q = rawQ.toLowerCase();
   const cleanQ = q.replace(/^#/, '').trim();
   const isNumericQuery = /^\d+$/.test(cleanQ);
 
-  const anio = (document.getElementById('filtroAnio').value || 'all').trim();
-  const rawEstamento = (document.getElementById('filtroEstamento').value || 'all').trim();
-  const rawSexo = (document.getElementById('filtroSexo').value || 'all').trim();
+  const rawInstitucion = (document.getElementById('filtroInstitucion')?.value || 'all').trim();
+  const anio = (document.getElementById('filtroAnio')?.value || 'all').trim();
+  const rawEstamento = (document.getElementById('filtroEstamento')?.value || 'all').trim();
+  const rawSexo = (document.getElementById('filtroSexo')?.value || 'all').trim();
 
+  const isInstitucionAll = !rawInstitucion || rawInstitucion.toLowerCase() === 'all';
   const isEstamentoAll = !rawEstamento || rawEstamento.toLowerCase() === 'all';
   const isSexoAll = !rawSexo || rawSexo.toLowerCase() === 'all';
   const isAnioAll = !anio || anio.toLowerCase() === 'all';
 
+  const institucion = isInstitucionAll ? 'all' : rawInstitucion.toUpperCase();
   const estamento = isEstamentoAll ? 'all' : rawEstamento.toUpperCase();
   const sexo = isSexoAll ? 'all' : rawSexo.toUpperCase();
 
@@ -280,6 +364,10 @@ function obtenerPacientesFiltrados() {
       }
     }
 
+    const pInst = (p.institucion || p.universidad || '').trim().toUpperCase();
+    const pInstNom = (p.institucion_nombre || '').trim().toUpperCase();
+    const matchInstitucion = isInstitucionAll || pInst === institucion || pInstNom === institucion || pInst.includes(institucion) || pInstNom.includes(institucion);
+
     const anioPac = String(anioDePaciente(p));
     const historiales = p.historiales || [];
     const matchAnio = isAnioAll || anioPac === anio || historiales.some(h => (h.fechaVisita || '').startsWith(anio));
@@ -290,7 +378,7 @@ function obtenerPacientesFiltrados() {
     const pSexo = (p.sexo || '').trim().toUpperCase();
     const matchSexo = isSexoAll || pSexo === sexo || (sexo === 'H' && pSexo.startsWith('H')) || (sexo === 'M' && pSexo.startsWith('M'));
 
-    return matchQuery && matchAnio && matchEstamento && matchSexo;
+    return matchQuery && matchInstitucion && matchAnio && matchEstamento && matchSexo;
   });
 
   // Ordenar lista según relevancia de búsqueda (si hay término de búsqueda) y luego columna activa
@@ -1299,3 +1387,53 @@ window.addEventListener('cardio_privacy_mode_changed', () => {
   renderPacientesTabla();
   actualizarBadgeModalExportarPrivacidad();
 });
+
+// =========================================================================
+// CONTROLADOR DE DESPLAZAMIENTO / COLAPSO DE FILTROS SLICERS
+// =========================================================================
+window.toggleSlicersPanel = function() {
+  const wrapper = document.getElementById('slicers-collapse-wrapper');
+  const btn = document.getElementById('btn-toggle-slicers');
+  const label = document.getElementById('slicers-toggle-label');
+  if (!wrapper) return;
+
+  const isCurrentlyCollapsed = wrapper.classList.contains('is-collapsed');
+
+  if (isCurrentlyCollapsed) {
+    // MOSTRAR: Desplazamiento animado hacia abajo
+    wrapper.classList.add('is-animating');
+    wrapper.classList.remove('is-collapsed');
+    if (btn) {
+      btn.classList.remove('is-collapsed');
+      btn.setAttribute('aria-expanded', 'true');
+      btn.title = 'Ocultar filtros';
+    }
+    if (label) {
+      label.textContent = 'Ocultar filtros';
+    }
+    try { localStorage.setItem('cardiounemi_pacientes_slicers_collapsed', 'false'); } catch (e) {}
+
+    setTimeout(function() {
+      wrapper.classList.remove('is-animating');
+      window.dispatchEvent(new Event('resize'));
+    }, 360);
+  } else {
+    // OCULTAR: Desplazamiento animado hacia arriba
+    wrapper.classList.add('is-animating');
+    wrapper.classList.add('is-collapsed');
+    if (btn) {
+      btn.classList.add('is-collapsed');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.title = 'Mostrar filtros';
+    }
+    if (label) {
+      label.textContent = 'Mostrar filtros';
+    }
+    try { localStorage.setItem('cardiounemi_pacientes_slicers_collapsed', 'true'); } catch (e) {}
+
+    setTimeout(function() {
+      wrapper.classList.remove('is-animating');
+      window.dispatchEvent(new Event('resize'));
+    }, 360);
+  }
+};

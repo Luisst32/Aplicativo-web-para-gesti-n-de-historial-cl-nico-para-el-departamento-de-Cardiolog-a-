@@ -15,6 +15,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.clickjacking import xframe_options_sameorigin
+from django.views.decorators.cache import never_cache
 from django.db import models, transaction, connection
 from django.core.paginator import Paginator
 from django.core.validators import validate_email
@@ -150,6 +151,8 @@ def _patient_to_dict(patient, visit=None):
         "sexo": "H" if (patient.sex and patient.sex.name.lower().startswith('h')) else "M",
         "estamento": visit.staff_category.name if (visit and visit.staff_category) else "PDI",
         "universidad": patient.institution.acronym if (patient.institution and patient.institution.acronym) else "UNEMI",
+        "institucion": patient.institution.acronym if (patient.institution and patient.institution.acronym) else "UNEMI",
+        "institucion_nombre": patient.institution.name if (patient.institution and patient.institution.name) else (patient.institution.acronym if patient.institution else "UNEMI"),
         "facultad": visit.faculty if visit and visit.faculty else "FACI",
         "ciudad": visit.residence_canton.name if (visit and visit.residence_canton) else (patient.birth_canton.name if patient.birth_canton else "Milagro"),
         "provincia": visit.residence_canton.province.name.upper() if (visit and visit.residence_canton and visit.residence_canton.province) else "GUAYAS",
@@ -195,16 +198,17 @@ def form_view(request):
 
 @login_required
 @clinical_access_required('read')
+@never_cache
 def list_view(request):
     """
     Renders the patients directory and medical evaluations list.
-    Populates dynamic filters for available years and staff categories (HU-15, HU-16).
+    Populates dynamic filters for available years, staff categories and institutions (HU-15, HU-16).
     """
     total_pacientes = Patient.objects.filter(status=Patient.Status.ACTIVE).count()
 
     from django.utils import timezone
     from django.db.models.functions import ExtractYear
-    from catalog.models import StaffCategory
+    from catalog.models import StaffCategory, Institution
 
     # Detección dinámica inteligente: ÚNICAMENTE los años de visitas de pacientes activos existentes
     years_qs = Visit.objects.filter(
@@ -244,8 +248,29 @@ def list_view(request):
         for name in estamentos_qs
     ]
 
+    # Instituciones presentes en pacientes activos de la cohorte
+    inst_ids = list(
+        Patient.objects.filter(
+            status=Patient.Status.ACTIVE,
+            institution__isnull=False
+        ).values_list('institution_id', flat=True).distinct()
+    )
+    if inst_ids:
+        available_institutions = list(
+            Institution.objects.filter(institution_id__in=inst_ids)
+            .order_by('acronym')
+            .values('institution_id', 'acronym', 'name')
+        )
+    else:
+        available_institutions = list(
+            Institution.objects.filter(status=Institution.Status.ACTIVE)
+            .order_by('acronym')
+            .values('institution_id', 'acronym', 'name')
+        )
+
     return render(request, 'clinical/list.html', {
         'total_pacientes': total_pacientes,
+        'available_institutions': available_institutions,
         'available_years': available_years,
         'available_estamentos': available_estamentos,
     })
@@ -296,6 +321,14 @@ def patient_list_api(request):
             qs = qs.filter(visit__study_year=anio_int)
         except ValueError:
             pass
+
+    institucion = request.GET.get('institucion', 'all').strip()
+    if institucion and institucion != 'all':
+        from django.db.models import Q
+        qs = qs.filter(
+            Q(institution__acronym__iexact=institucion) |
+            Q(institution__name__iexact=institucion)
+        )
 
     estamento = request.GET.get('estamento', 'all').strip()
     if estamento and estamento != 'all':
