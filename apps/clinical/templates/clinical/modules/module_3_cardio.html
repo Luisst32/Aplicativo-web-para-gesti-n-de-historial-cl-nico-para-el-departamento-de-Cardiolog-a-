@@ -20,12 +20,12 @@
               <div class="condition-header">
                 <span class="condition-title">&bull; 1.- Hipertensión:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="r_hta" value="No" checked onchange="toggleCondition('row_hta', false)"> No</label>
+                  <label><input type="radio" name="r_hta" value="No" onchange="toggleCondition('row_hta', false)"> No</label>
                   <label class="yes"><input type="radio" name="r_hta" value="Si" onchange="toggleCondition('row_hta', true)"> Sí</label>
                 </div>
               </div>
               <div class="condition-details">
-                <label class="field-label"><input type="radio" name="r_hta_trat" value="No" checked> No tratada</label>
+                <label class="field-label"><input type="radio" name="r_hta_trat" value="No"> No tratada</label>
                 <label class="field-label"><input type="radio" name="r_hta_trat" value="Si"> Sí tratada</label>
                 <span class="field-label" style="margin-left: 8px;">Cuáles medicamentos:</span>
                 <input type="text" class="form-input" id="hta_medicamentos" name="hta_medicamentos" style="flex: 1; min-width: 160px;" placeholder="Medicamentos antihipertensivos...">
@@ -37,13 +37,13 @@
               <div class="condition-header">
                 <span class="condition-title">2.- Prueba de MAPA:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="r_mapa" id="mapa_toggle_no" value="No" checked onchange="toggleCondition('row_mapa', false)"> No</label>
+                  <label><input type="radio" name="r_mapa" id="mapa_toggle_no" value="No" onchange="toggleCondition('row_mapa', false)"> No</label>
                   <label class="yes"><input type="radio" name="r_mapa" id="mapa_toggle_si" value="Si" onchange="toggleCondition('row_mapa', true)"> Sí</label>
                 </div>
               </div>
               <div class="condition-details" id="details_mapa">
                 <span class="field-label">Resultado:</span>
-                <label class="field-label"><input type="radio" name="mapa_resultado" value="Normal" checked> Normal</label>
+                <label class="field-label"><input type="radio" name="mapa_resultado" value="Normal"> Normal</label>
                 <label class="field-label" style="margin-left: 10px;"><input type="radio" name="mapa_resultado" value="Alterada"> Alterada</label>
               </div>
             </div>
@@ -53,7 +53,7 @@
               <div class="condition-header">
                 <span class="condition-title">3.- Diabetes mellitus:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="r_dm" id="dm_toggle_no" value="No" checked onchange="toggleCondition('row_dm', false)"> No</label>
+                  <label><input type="radio" name="r_dm" id="dm_toggle_no" value="No" onchange="toggleCondition('row_dm', false)"> No</label>
                   <label class="yes"><input type="radio" name="r_dm" id="dm_toggle_si" value="Si" onchange="toggleCondition('row_dm', true)"> Sí</label>
                 </div>
               </div>
@@ -78,12 +78,12 @@
               <div class="condition-header">
                 <span class="condition-title">4.- Dislipemia:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="r_dislip" value="No" checked onchange="toggleCondition('row_dislip', false)"> No</label>
+                  <label><input type="radio" name="r_dislip" value="No" onchange="toggleCondition('row_dislip', false)"> No</label>
                   <label class="yes"><input type="radio" name="r_dislip" value="Si" onchange="toggleCondition('row_dislip', true)"> Sí</label>
                 </div>
               </div>
               <div class="condition-details">
-                <label class="field-label"><input type="radio" name="r_dislip_trat" value="No" checked> No tratada con fármacos</label>
+                <label class="field-label"><input type="radio" name="r_dislip_trat" value="No"> No tratada con fármacos</label>
                 <label class="field-label"><input type="radio" name="r_dislip_trat" value="Si"> Sí tratada con fármacos</label>
                 <span class="field-label" style="margin-left: 8px;">Tipo:</span>
                 <input type="text" class="form-input" id="dislip_tipo" name="dislip_tipo" style="width: 130px;" placeholder="Tipo de dislipemia...">
@@ -97,7 +97,7 @@
               <div class="condition-header">
                 <span class="condition-title">5.- Tabaquismo:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="r_tabaco" id="tabaco_toggle_no" value="No" checked onchange="setEstadoTabaquismo('toggle_no')"> No</label>
+                  <label><input type="radio" name="r_tabaco" id="tabaco_toggle_no" value="No" onchange="setEstadoTabaquismo('toggle_no')"> No</label>
                   <label class="yes"><input type="radio" name="r_tabaco" id="tabaco_toggle_si" value="Si" onchange="setEstadoTabaquismo('toggle_si')"> Sí</label>
                 </div>
               </div>
@@ -112,13 +112,9 @@
                 </select>
                 <span class="field-label" id="lbl_tabaco_cantidad" style="margin-left: 8px;">Cantidad:</span>
                 <input type="number" class="form-input" id="tabaco_cantidad" style="width: 65px;" value="" min="0" oninput="onTabacoCantidadInput()" name="tabaco_cantidad">
-                <label class="field-label" style="margin-left: 12px; cursor: pointer;">
-                  <input type="checkbox" id="chk_exfumador" onchange="setEstadoTabaquismo('chk_exfumador')" name="chk_exfumador">
-                  Exfumador &gt; 10 años
-                </label>
-                <label class="field-label" style="cursor: pointer;">
-                  <input type="checkbox" id="chk_nunca_fumo" checked onchange="setEstadoTabaquismo('chk_nunca')" name="chk_nunca_fumo">
-                  nunca fumó
+                <label class="field-label" style="margin-left: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                  <input type="checkbox" id="chk_exfumador" onchange="setEstadoTabaquismo('chk_exfumador')" name="chk_exfumador" value="Si">
+                  <span>Exfumador &gt; 1 año</span>
                 </label>
               </div>
             </div>
@@ -128,7 +124,7 @@
               <div class="condition-header">
                 <span class="condition-title">6.- Alcohol:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="r_alcohol" id="alcohol_toggle_no" value="No" checked onchange="setEstadoAlcohol('toggle_no')"> No</label>
+                  <label><input type="radio" name="r_alcohol" id="alcohol_toggle_no" value="No" onchange="setEstadoAlcohol('toggle_no')"> No</label>
                   <label class="yes"><input type="radio" name="r_alcohol" id="alcohol_toggle_si" value="Si" onchange="setEstadoAlcohol('toggle_si')"> Sí</label>
                 </div>
               </div>
@@ -152,7 +148,7 @@
               <div class="condition-header">
                 <span class="condition-title">7.- Drogas:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="r_drogas" id="drogas_toggle_no" value="No" checked onchange="setEstadoDrogas('toggle_no')"> No</label>
+                  <label><input type="radio" name="r_drogas" id="drogas_toggle_no" value="No" onchange="setEstadoDrogas('toggle_no')"> No</label>
                   <label class="yes"><input type="radio" name="r_drogas" id="drogas_toggle_si" value="Si" onchange="setEstadoDrogas('toggle_si')"> Sí</label>
                 </div>
               </div>
@@ -185,7 +181,7 @@
               <div class="condition-header">
                 <span class="condition-title">8.- Obesidad:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="r_obesidad" value="No" checked onchange="toggleCondition('row_obesidad', false)"> No</label>
+                  <label><input type="radio" name="r_obesidad" value="No" onchange="toggleCondition('row_obesidad', false)"> No</label>
                   <label class="yes"><input type="radio" name="r_obesidad" value="Si" onchange="toggleCondition('row_obesidad', true)"> Sí</label>
                 </div>
               </div>
@@ -205,7 +201,7 @@
               <div class="condition-header">
                 <span class="condition-title">9.- Sobrepeso:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="r_sobrepeso" value="No" checked> No</label>
+                  <label><input type="radio" name="r_sobrepeso" value="No"> No</label>
                   <label class="yes"><input type="radio" name="r_sobrepeso" value="Si"> Sí</label>
                 </div>
               </div>
@@ -216,7 +212,7 @@
               <div class="condition-header">
                 <span class="condition-title">10.- Arritmias:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="r_arritmias" value="No" checked onchange="toggleCondition('row_arritmias', false)"> No</label>
+                  <label><input type="radio" name="r_arritmias" value="No" onchange="toggleCondition('row_arritmias', false)"> No</label>
                   <label class="yes"><input type="radio" name="r_arritmias" value="Si" onchange="toggleCondition('row_arritmias', true)"> Sí</label>
                 </div>
               </div>
@@ -240,7 +236,7 @@
               <div class="condition-header">
                 <span class="condition-title">11.- Síncopes:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="r_sincopes" value="No" checked onchange="toggleCondition('row_sincopes', false)"> No</label>
+                  <label><input type="radio" name="r_sincopes" value="No" onchange="toggleCondition('row_sincopes', false)"> No</label>
                   <label class="yes"><input type="radio" name="r_sincopes" value="Si" onchange="toggleCondition('row_sincopes', true)"> Sí</label>
                 </div>
               </div>
@@ -262,13 +258,13 @@
               <div class="condition-header">
                 <span class="condition-title">12.- Prueba de Holter <small style="color: #64748B; font-weight: normal;">(A arritmias y/o síncope se indicará Holter 24h)</small>:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="r_holter" id="holter_toggle_no" value="No" checked onchange="toggleCondition('row_holter', false)"> No</label>
+                  <label><input type="radio" name="r_holter" id="holter_toggle_no" value="No" onchange="toggleCondition('row_holter', false)"> No</label>
                   <label class="yes"><input type="radio" name="r_holter" id="holter_toggle_si" value="Si" onchange="toggleCondition('row_holter', true)"> Sí</label>
                 </div>
               </div>
               <div class="condition-details" id="details_holter">
                 <span class="field-label">Resultado:</span>
-                <label class="field-label"><input type="radio" name="holter_resultado" value="Normal" checked> Normal</label>
+                <label class="field-label"><input type="radio" name="holter_resultado" value="Normal"> Normal</label>
                 <label class="field-label" style="margin-left: 10px;"><input type="radio" name="holter_resultado" value="Alterada"> Alterada</label>
               </div>
             </div>
@@ -279,7 +275,7 @@
                 <div class="condition-header">
                   <span class="condition-title">13.- Vasculopatía periférica:</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="r_vasc_perif" value="No" checked> No</label>
+                    <label><input type="radio" name="r_vasc_perif" value="No"> No</label>
                     <label class="yes"><input type="radio" name="r_vasc_perif" value="Si"> Sí</label>
                   </div>
                 </div>
@@ -289,7 +285,7 @@
                 <div class="condition-header">
                   <span class="condition-title">14.- Vasculopatía carotídea:</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="r_vasc_carot" value="No" checked> No</label>
+                    <label><input type="radio" name="r_vasc_carot" value="No"> No</label>
                     <label class="yes"><input type="radio" name="r_vasc_carot" value="Si"> Sí</label>
                   </div>
                 </div>
@@ -299,7 +295,7 @@
                 <div class="condition-header">
                   <span class="condition-title">15.- Vasculopatía femoral:</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="r_vasc_fem" value="No" checked> No</label>
+                    <label><input type="radio" name="r_vasc_fem" value="No"> No</label>
                     <label class="yes"><input type="radio" name="r_vasc_fem" value="Si"> Sí</label>
                   </div>
                 </div>
@@ -311,7 +307,7 @@
               <div class="condition-header">
                 <span class="condition-title">16.- Insuficiencia renal crónica:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="r_irc" value="No" checked onchange="toggleCondition('row_irc', false)"> No</label>
+                  <label><input type="radio" name="r_irc" value="No" onchange="toggleCondition('row_irc', false)"> No</label>
                   <label class="yes"><input type="radio" name="r_irc" value="Si" onchange="toggleCondition('row_irc', true)"> Sí</label>
                 </div>
               </div>
@@ -327,7 +323,7 @@
                 <div class="condition-header">
                   <span class="condition-title">17.- Antecedentes ictus/AIT:</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="r_ictus" value="No" checked> No</label>
+                    <label><input type="radio" name="r_ictus" value="No"> No</label>
                     <label class="yes"><input type="radio" name="r_ictus" value="Si"> Sí</label>
                   </div>
                 </div>
@@ -337,7 +333,7 @@
                 <div class="condition-header">
                   <span class="condition-title">18.- Disfunción eréctil:</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="r_disfunc" value="No" checked> No</label>
+                    <label><input type="radio" name="r_disfunc" value="No"> No</label>
                     <label class="yes"><input type="radio" name="r_disfunc" value="Si"> Sí</label>
                   </div>
                 </div>
@@ -347,7 +343,7 @@
                 <div class="condition-header">
                   <span class="condition-title">19.- Hígado graso:</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="r_higado" value="No" checked> No</label>
+                    <label><input type="radio" name="r_higado" value="No"> No</label>
                     <label class="yes"><input type="radio" name="r_higado" value="Si"> Sí</label>
                   </div>
                 </div>
@@ -357,7 +353,7 @@
                 <div class="condition-header">
                   <span class="condition-title">20.- Apnea del sueño:</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="r_apnea" value="No" checked> No</label>
+                    <label><input type="radio" name="r_apnea" value="No"> No</label>
                     <label class="yes"><input type="radio" name="r_apnea" value="Si"> Sí</label>
                   </div>
                 </div>
@@ -369,7 +365,7 @@
               <div class="condition-header">
                 <span class="condition-title">21.- Otros:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="r_otros" value="No" checked onchange="toggleCondition('row_otros', false)"> No</label>
+                  <label><input type="radio" name="r_otros" value="No" onchange="toggleCondition('row_otros', false)"> No</label>
                   <label class="yes"><input type="radio" name="r_otros" value="Si" onchange="toggleCondition('row_otros', true)"> Sí</label>
                 </div>
               </div>
@@ -419,7 +415,7 @@
                 <div class="condition-header">
                   <span class="condition-title">3.- Trabaja con tóxicos:</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="em_toxicos" value="No" checked onchange="toggleCondition('row_toxicos', false)"> No</label>
+                    <label><input type="radio" name="em_toxicos" value="No" onchange="toggleCondition('row_toxicos', false)"> No</label>
                     <label class="yes"><input type="radio" name="em_toxicos" value="Si" onchange="toggleCondition('row_toxicos', true)"> Sí</label>
                   </div>
                 </div>
@@ -435,7 +431,7 @@
                 <div class="condition-header">
                   <span class="condition-title">4. – Niveles bajos de estrógenos en la mujer:</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="em_estrogenos" value="No" checked onchange="toggleCondition('row_estrogenos', false)"> No</label>
+                    <label><input type="radio" name="em_estrogenos" value="No" onchange="toggleCondition('row_estrogenos', false)"> No</label>
                     <label class="yes"><input type="radio" name="em_estrogenos" value="Si" onchange="toggleCondition('row_estrogenos', true)"> Si</label>
                   </div>
                 </div>
@@ -449,7 +445,7 @@
                 <div class="condition-header">
                   <span class="condition-title">5.- Usa anticonceptivo &gt;35 años</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="em_anticonceptivos" value="No" checked> No</label>
+                    <label><input type="radio" name="em_anticonceptivos" value="No"> No</label>
                     <label class="yes"><input type="radio" name="em_anticonceptivos" value="Si"> Si</label>
                   </div>
                 </div>
@@ -461,7 +457,7 @@
                 <div class="condition-header">
                   <span class="condition-title">6.— Tiene estrés en el trabajo</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="em_estres_trab" value="No" checked> No</label>
+                    <label><input type="radio" name="em_estres_trab" value="No"> No</label>
                     <label class="yes"><input type="radio" name="em_estres_trab" value="Si"> Si</label>
                   </div>
                 </div>
@@ -471,7 +467,7 @@
                 <div class="condition-header">
                   <span class="condition-title">7.— Tiene estrés en la vida familiar</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="em_estres_fam" value="No" checked> No</label>
+                    <label><input type="radio" name="em_estres_fam" value="No"> No</label>
                     <label class="yes"><input type="radio" name="em_estres_fam" value="Si"> Si</label>
                   </div>
                 </div>
@@ -483,7 +479,7 @@
                 <div class="condition-header">
                   <span class="condition-title">8.- Mal ambiente laboral</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="em_mal_amb" value="No" checked> No</label>
+                    <label><input type="radio" name="em_mal_amb" value="No"> No</label>
                     <label class="yes"><input type="radio" name="em_mal_amb" value="Si"> Si</label>
                   </div>
                 </div>
@@ -498,7 +494,7 @@
                 <div class="condition-header">
                   <span class="condition-title">9.- Personalidad tipo A</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="em_pers_a" value="No" checked onchange="toggleCondition('row_pers_a', false)"> No</label>
+                    <label><input type="radio" name="em_pers_a" value="No" onchange="toggleCondition('row_pers_a', false)"> No</label>
                     <label class="yes"><input type="radio" name="em_pers_a" value="Si" onchange="toggleCondition('row_pers_a', true)"> Si</label>
                   </div>
                 </div>
@@ -531,7 +527,7 @@
                 <div class="condition-header">
                   <span class="condition-title">1. Antecedentes familiares de cardiopatía Isquémica <small>(Angina, infarto, muerte súbita)</small></span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="nm_cardiopatia" value="No" checked> No</label>
+                    <label><input type="radio" name="nm_cardiopatia" value="No"> No</label>
                     <label class="yes"><input type="radio" name="nm_cardiopatia" value="Si"> S i</label>
                   </div>
                 </div>
@@ -541,7 +537,7 @@
                 <div class="condition-header">
                   <span class="condition-title">2.- Algún familiar directo ha fallecido cardiopatía Isquémica <small>(&lt;55v / &lt;65m)</small></span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="nm_fallecido" value="No" checked> No</label>
+                    <label><input type="radio" name="nm_fallecido" value="No"> No</label>
                     <label class="yes"><input type="radio" name="nm_fallecido" value="Si"> Sí</label>
                   </div>
                 </div>
@@ -561,19 +557,19 @@
             <div class="grid form-grid-3">
               <div class="condition-row">
                 <div class="condition-header"><span class="condition-title">1.- Padre con:</span></div>
-                <div style="display:flex; gap:12px; margin-top:4px;">
-                  <label class="field-label"><input type="checkbox" id="ant_padre_hta" name="ant_padre_hta" value="Si"> HTA</label>
-                  <label class="field-label"><input type="checkbox" id="ant_padre_dm" name="ant_padre_dm" value="Si"> Diabetes</label>
-                  <label class="field-label"><input type="checkbox" id="ant_padre_dislip" name="ant_padre_dislip" value="Si"> Dislipemia:</label>
+                <div class="family-history-items">
+                  <div class="family-item-row"><span class="family-item-label">HTA</span><input type="checkbox" id="ant_padre_hta" name="ant_padre_hta" value="Si"></div>
+                  <div class="family-item-row"><span class="family-item-label">Diabetes</span><input type="checkbox" id="ant_padre_dm" name="ant_padre_dm" value="Si"></div>
+                  <div class="family-item-row"><span class="family-item-label">Dislipemia</span><input type="checkbox" id="ant_padre_dislip" name="ant_padre_dislip" value="Si"></div>
                 </div>
               </div>
 
               <div class="condition-row">
                 <div class="condition-header"><span class="condition-title">2.- Madre con:</span></div>
-                <div style="display:flex; gap:12px; margin-top:4px;">
-                  <label class="field-label"><input type="checkbox" id="ant_madre_hta" name="ant_madre_hta" value="Si"> HTA</label>
-                  <label class="field-label"><input type="checkbox" id="ant_madre_dm" name="ant_madre_dm" value="Si"> Diabetes</label>
-                  <label class="field-label"><input type="checkbox" id="ant_madre_dislip" name="ant_madre_dislip" value="Si"> Dislipemia</label>
+                <div class="family-history-items">
+                  <div class="family-item-row"><span class="family-item-label">HTA</span><input type="checkbox" id="ant_madre_hta" name="ant_madre_hta" value="Si"></div>
+                  <div class="family-item-row"><span class="family-item-label">Diabetes</span><input type="checkbox" id="ant_madre_dm" name="ant_madre_dm" value="Si"></div>
+                  <div class="family-item-row"><span class="family-item-label">Dislipemia</span><input type="checkbox" id="ant_madre_dislip" name="ant_madre_dislip" value="Si"></div>
                 </div>
               </div>
 
@@ -581,7 +577,7 @@
                 <div class="condition-header">
                   <span class="condition-title">3. Otras enfermedades:</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="ant_otras_tog" value="No" checked onchange="toggleCondition('row_ant_otras', false)"> No</label>
+                    <label><input type="radio" name="ant_otras_tog" value="No" onchange="toggleCondition('row_ant_otras', false)"> No</label>
                     <label class="yes"><input type="radio" name="ant_otras_tog" value="Si" onchange="toggleCondition('row_ant_otras', true)"> Si</label>
                   </div>
                 </div>
@@ -606,7 +602,7 @@
               <div class="condition-header">
                 <span class="condition-title">1.- Historia de cualquier problema del corazón:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="hc_prob" value="No" checked onchange="toggleCondition('row_hc_prob', false)"> No</label>
+                  <label><input type="radio" name="hc_prob" value="No" onchange="toggleCondition('row_hc_prob', false)"> No</label>
                   <label class="yes"><input type="radio" name="hc_prob" value="Si" onchange="toggleCondition('row_hc_prob', true)"> Sí</label>
                 </div>
               </div>
@@ -621,7 +617,7 @@
               <div class="condition-header">
                 <span class="condition-title">2.- Cardiopatía isquémica:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="hc_isquemica" value="No" checked onchange="toggleCondition('row_hc_isquemica', false)"> No</label>
+                  <label><input type="radio" name="hc_isquemica" value="No" onchange="toggleCondition('row_hc_isquemica', false)"> No</label>
                   <label class="yes"><input type="radio" name="hc_isquemica" value="Si" onchange="toggleCondition('row_hc_isquemica', true)"> Sí</label>
                 </div>
               </div>
@@ -636,7 +632,7 @@
               <div class="condition-header">
                 <span class="condition-title">3.- Revascularización coronaria:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="hc_revasc" value="No" checked onchange="toggleCondition('row_hc_revasc', false)"> No</label>
+                  <label><input type="radio" name="hc_revasc" value="No" onchange="toggleCondition('row_hc_revasc', false)"> No</label>
                   <label class="yes"><input type="radio" name="hc_revasc" value="Si" onchange="toggleCondition('row_hc_revasc', true)"> Sí</label>
                 </div>
               </div>
@@ -652,7 +648,7 @@
               <div class="condition-header">
                 <span class="condition-title">4.- Historia de Insuficiencia cardiaca:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="hc_insuf_cardiaca" value="No" checked> No</label>
+                  <label><input type="radio" name="hc_insuf_cardiaca" value="No"> No</label>
                   <label class="yes"><input type="radio" name="hc_insuf_cardiaca" value="Si"> Sí</label>
                 </div>
               </div>
@@ -663,7 +659,7 @@
               <div class="condition-header">
                 <span class="condition-title">5.- Historia de valvulopatía:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="hc_valvulopatia" value="No" checked onchange="toggleCondition('row_hc_valvulopatia', false)"> No</label>
+                  <label><input type="radio" name="hc_valvulopatia" value="No" onchange="toggleCondition('row_hc_valvulopatia', false)"> No</label>
                   <label class="yes"><input type="radio" name="hc_valvulopatia" value="Si" onchange="toggleCondition('row_hc_valvulopatia', true)"> Sí</label>
                 </div>
               </div>
@@ -672,7 +668,7 @@
                 <input type="text" class="form-input" id="hc_valvulopatia_cuales" name="hc_valvulopatia_cuales" style="flex: 1; min-width: 160px;" placeholder="Válvula o afección...">
                 <span class="field-label" style="margin-left: 10px;">Operado por este motivo:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="hc_valvulopatia_operado" value="No" checked> No</label>
+                  <label><input type="radio" name="hc_valvulopatia_operado" value="No"> No</label>
                   <label class="yes"><input type="radio" name="hc_valvulopatia_operado" value="Si"> Sí</label>
                 </div>
               </div>
@@ -683,7 +679,7 @@
               <div class="condition-header">
                 <span class="condition-title">6.- Ha estado ingresado en el hospital por algún problema cardiaco:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="hc_ingresado" value="No" checked onchange="toggleCondition('row_hc_ingresado', false)"> No</label>
+                  <label><input type="radio" name="hc_ingresado" value="No" onchange="toggleCondition('row_hc_ingresado', false)"> No</label>
                   <label class="yes"><input type="radio" name="hc_ingresado" value="Si" onchange="toggleCondition('row_hc_ingresado', true)"> Sí</label>
                 </div>
               </div>

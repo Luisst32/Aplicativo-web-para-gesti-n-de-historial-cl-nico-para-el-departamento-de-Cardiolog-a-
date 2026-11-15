@@ -41,12 +41,12 @@ function renderTabResumenGeneral() {
   }
 
   // 2. Factores Modificables Globales (Barra horizontal)
-  const htaPct = n > 0 ? (filteredRecords.filter(r => r.hipertension).length / n * 100) : 0;
-  const dlPct = n > 0 ? (filteredRecords.filter(r => r.dislipemia).length / n * 100) : 0;
-  const obPct = n > 0 ? (filteredRecords.filter(r => r.obesidad).length / n * 100) : 0;
-  const dmPct = n > 0 ? (filteredRecords.filter(r => r.diabetes).length / n * 100) : 0;
-  const tabPct = n > 0 ? (filteredRecords.filter(r => r.fumador_activo).length / n * 100) : 0;
-  const sedPct = n > 0 ? (filteredRecords.filter(r => !r.actividad_fisica).length / n * 100) : 0;
+  const htaPct = Number(formatPct(threeStateCounts('hipertension').yes, threeStateCounts('hipertension').answered).replace(',', '.'));
+  const dlPct = Number(formatPct(threeStateCounts('dislipemia').yes, threeStateCounts('dislipemia').answered).replace(',', '.'));
+  const obPct = Number(formatPct(threeStateCounts('obesidad').yes, threeStateCounts('obesidad').answered).replace(',', '.'));
+  const dmPct = Number(formatPct(threeStateCounts('diabetes').yes, threeStateCounts('diabetes').answered).replace(',', '.'));
+  const tabPct = Number(formatPct(threeStateCounts('fumador_activo').yes, threeStateCounts('fumador_activo').answered).replace(',', '.'));
+  const sedPct = Number(formatPct(threeStateCounts('actividad_fisica').no, threeStateCounts('actividad_fisica').answered).replace(',', '.'));
 
   const fLabels = ['Hipertensión', 'Dislipemia', 'Obesidad', 'Diabetes', 'Tabaquismo', 'Sedentarismo'];
   const fData = [htaPct.toFixed(1), dlPct.toFixed(1), obPct.toFixed(1), dmPct.toFixed(1), tabPct.toFixed(1), sedPct.toFixed(1)];
@@ -59,10 +59,10 @@ function renderTabResumenGeneral() {
       });
     } else {
       charts.factores = createDashboardApexChart(elFactores, {
-        chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false }, fontFamily: 'inherit', foreColor: '#1e293b', fontSize: '12px' },
+        chart: { type: 'bar', height: 350, toolbar: { show: false }, animations: { enabled: false }, fontFamily: 'inherit', foreColor: '#1e293b', fontSize: '12px' },
         grid: { borderColor: '#e8eef5', strokeDashArray: 4, padding: { right: 16 } },
         fill: { type: 'solid', opacity: 1 },
-        plotOptions: { bar: { horizontal: true, distributed: true, borderRadius: 6, barHeight: '78%', dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
+        plotOptions: { bar: { horizontal: true, distributed: true, borderRadius: 6, barHeight: '82%', dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
         colors: [PALETTE.emergencyRed, PALETTE.yellow, PALETTE.yellow, PALETTE.primaryBlue, PALETTE.green, PALETTE.purple],
         series: [{ name: 'Prevalencia (%)', data: fData }],
         xaxis: { categories: fLabels, min: 0, max: 100, tickAmount: 4, axisBorder: { show: false }, axisTicks: { show: false }, labels: { formatter: val => `${Math.round(val)} %` } },
@@ -71,14 +71,17 @@ function renderTabResumenGeneral() {
           enabled: true,
           formatter: (val) => {
             const total = filteredRecords.length || 1;
-            const casos = Math.round((parseFloat(val) * total) / 100);
-            return `${casos} (${val}%)`;
+            const num = parseFloat(val);
+            if (!num || num <= 0) return '';
+            const casos = Math.round((num * total) / 100);
+            const pStr = num.toFixed(1).replace('.', ',');
+            return `${casos} (${pStr}%)`;
           },
           style: {
             fontSize: '11px', fontWeight: 700,
-            colors: [({ w, seriesIndex, dataPointIndex }) =>
-              Number(w.config.series[seriesIndex].data[dataPointIndex]) === 0 ? '#0f172a' : '#ffffff']
+            colors: ['#ffffff']
           },
+          dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow,
           background: { enabled: false }
         },
         tooltip: apexPctTooltip()
@@ -184,6 +187,171 @@ function renderTabResumenGeneral() {
           }
         }
       });
+    }
+  }
+
+  // 5. FASE 3: Forest Plot de Prevalencias Clave con IC 95% Wilson
+  const forestItems = [
+    { label: 'Infección COVID-19', cases: filteredRecords.filter(r => r.covid_infeccion === true).length, valid: filteredRecords.filter(r => typeof r.covid_infeccion === 'boolean').length },
+    { label: 'Hígado Graso', cases: filteredRecords.filter(r => r.higado_graso === true).length, valid: filteredRecords.filter(r => typeof r.higado_graso === 'boolean').length },
+    { label: 'Dislipemia', cases: threeStateCounts('dislipemia').yes, valid: threeStateCounts('dislipemia').answered },
+    { label: 'Hipertensión', cases: threeStateCounts('hipertension').yes, valid: threeStateCounts('hipertension').answered },
+    { label: 'Obesidad (IMC ≥ 30)', cases: filteredRecords.filter(r => r.imc >= 30).length, valid: filteredRecords.filter(r => r.imc !== null && r.imc !== undefined).length },
+    { label: 'Tabaquismo Activo', cases: threeStateCounts('fumador_activo').yes, valid: threeStateCounts('fumador_activo').answered },
+    { label: 'Salud Mental (Ans/Dep)', cases: filteredRecords.filter(r => r.ansiedad === true || r.depresion === true).length, valid: filteredRecords.filter(r => typeof r.ansiedad === 'boolean' || typeof r.depresion === 'boolean').length }
+  ].filter(item => item.valid > 0);
+
+  const forestData = forestItems.map(item => {
+    const ci = wilsonScoreInterval(item.cases, item.valid);
+    const pPct = Number((ci.p * 100).toFixed(1));
+    const low = Number(ci.lower.toFixed(1));
+    const up = Number(ci.upper.toFixed(1));
+    return {
+      x: item.label,
+      y: [low, up],
+      goals: [{
+        name: 'Prevalencia Puntual',
+        value: pPct,
+        strokeHeight: 12,
+        strokeColor: PALETTE.navy,
+        strokeWidth: 4
+      }],
+      cases: item.cases,
+      valid: item.valid,
+      pPct: pPct,
+      low: low,
+      up: up
+    };
+  });
+
+  const elForest = document.getElementById('chart-rg-forest-prevalencias');
+  if (elForest && dashboardHasChartData('chart-rg-forest-prevalencias', 'rgForest', forestItems.length)) {
+    if (charts.rgForest) {
+      charts.rgForest.updateOptions({
+        series: [{ name: 'IC 95% Wilson', data: forestData }]
+      });
+    } else {
+      charts.rgForest = createDashboardApexChart(elForest, {
+        chart: { type: 'rangeBar', height: 480, toolbar: { show: false }, animations: { enabled: false } },
+        plotOptions: {
+          bar: {
+            horizontal: true,
+            barHeight: '68%',
+            borderRadius: 6,
+            isDumbbell: false,
+            dataLabels: {
+              position: 'center',
+              hideOverflowingLabels: false
+            }
+          }
+        },
+        colors: [PALETTE.primaryBlue],
+        series: [{ name: 'IC 95% Wilson', data: forestData }],
+        xaxis: {
+          min: 0,
+          max: 100,
+          tickAmount: 10,
+          labels: { formatter: val => `${Math.round(val)}%` },
+          title: { text: 'Prevalencia (%) e Intervalo de Confianza al 95% (Wilson)', style: { fontSize: '11px', fontWeight: 700 } }
+        },
+        yaxis: {
+          labels: {
+            maxWidth: 200,
+            style: { fontSize: '11.5px', fontWeight: 600 }
+          }
+        },
+        dataLabels: {
+          enabled: true,
+          formatter: (val, opt) => {
+            const d = forestData[opt.dataPointIndex];
+            if (!d) return '';
+            const pStr = d.pPct.toFixed(1).replace('.', ',');
+            const lowStr = d.low.toFixed(1).replace('.', ',');
+            const upStr = d.up.toFixed(1).replace('.', ',');
+            return [
+              `${d.cases} de ${d.valid} · ${pStr}%`,
+              `IC 95%: ${lowStr}–${upStr}%`
+            ];
+          },
+          style: { fontSize: '11px', fontWeight: 700, fontFamily: 'inherit', colors: ['#ffffff'] },
+          dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow,
+          background: { enabled: false },
+          offsetX: 0
+        },
+        tooltip: {
+          custom: function({ seriesIndex, dataPointIndex, w }) {
+            const d = forestData[dataPointIndex];
+            if (!d) return '';
+            return `<div style="padding: 8px 12px; font-size: 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+              <strong style="color: #0f172a;">${d.x}</strong><br/>
+              <span style="color: #3b82f6;">Prevalencia:</span> <strong>${d.cases} de ${d.valid} · ${d.pPct.toFixed(1).replace('.', ',')}%</strong><br/>
+              <span style="color: #64748b;">IC 95% Wilson:</span> [${d.low.toFixed(1).replace('.', ',')}%, ${d.up.toFixed(1).replace('.', ',')}%]
+            </div>`;
+          }
+        }
+      });
+      charts.rgForest.render();
+    }
+  }
+
+  // 6. FASE 3: Histograma de Factores de Riesgo por Persona
+  const riskCounts = [0, 0, 0, 0, 0, 0]; // 0, 1, 2, 3, 4, 5+
+  filteredRecords.forEach(r => {
+    let fCount = 0;
+    if (r.hipertension === true) fCount++;
+    if (r.dislipemia === true) fCount++;
+    if (r.imc >= 30) fCount++;
+    if (r.fumador_activo === true) fCount++;
+    if (r.actividad_fisica === false) fCount++;
+    if (r.higado_graso === true) fCount++;
+    if (r.estres === 'Alto') fCount++;
+    const idx = Math.min(fCount, 5);
+    riskCounts[idx]++;
+  });
+
+  const histLabels = ['0 Factores', '1 Factor', '2 Factores', '3 Factores', '4 Factores', '≥ 5 Factores'];
+  const elHist = document.getElementById('chart-rg-hist-factores');
+  if (elHist && dashboardHasChartData('chart-rg-hist-factores', 'rgHist', filteredRecords.length)) {
+    if (charts.rgHist) {
+      charts.rgHist.updateOptions({
+        series: [{ name: 'Evaluados', data: riskCounts }]
+      });
+    } else {
+      charts.rgHist = createDashboardApexChart(elHist, {
+        chart: { type: 'bar', height: 340, toolbar: { show: false }, animations: { enabled: false } },
+        plotOptions: {
+          bar: {
+            horizontal: false,
+            columnWidth: '58%',
+            borderRadius: 6,
+            distributed: true,
+            dataLabels: { position: 'center' }
+          }
+        },
+        colors: [PALETTE.green, PALETTE.teal, PALETTE.yellow, PALETTE.yellow, PALETTE.emergencyRed, PALETTE.emergencyRed],
+        series: [{ name: 'Evaluados', data: riskCounts }],
+        xaxis: {
+          categories: histLabels,
+          labels: { style: { fontSize: '11.5px', fontWeight: 600 } }
+        },
+        yaxis: {
+          title: { text: 'Número de Pacientes (n)', style: { fontSize: '11px', fontWeight: 700 } },
+          min: 0,
+          max: Math.max(...riskCounts) + 4,
+          forceNiceScale: true,
+          labels: { formatter: val => Math.round(val) }
+        },
+        legend: { show: false },
+        dataLabels: {
+          enabled: true,
+          formatter: val => val > 0 ? [`${val}`, `${formatPct(val, filteredRecords.length)}%`] : '',
+          style: { fontSize: '11px', fontWeight: 700, fontFamily: 'inherit', colors: ['#ffffff'] },
+          dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow,
+          background: { enabled: false }
+        },
+        tooltip: apexCountTooltip()
+      });
+      charts.rgHist.render();
     }
   }
 }

@@ -5,7 +5,7 @@ class VisitAnswer(models.Model):
     """
     Questionnaire Responses per Visit Encounter (VisitaRespuesta).
     Records an answer to a specific parametric survey question for a given clinical visit.
-    Enforces exactly one response value (selected option, numeric, or free text).
+    Allows no response (all NULL), otherwise exactly one response value (selected option, numeric, or free text).
     """
     answer_id = models.BigAutoField(primary_key=True, db_column='answer_id')
     visit = models.ForeignKey(
@@ -51,6 +51,7 @@ class VisitAnswer(models.Model):
             ),
             models.CheckConstraint(
                 condition=(
+                    (models.Q(selected_option__isnull=True) & models.Q(numeric_value__isnull=True) & models.Q(text_value__isnull=True)) |
                     (models.Q(selected_option__isnull=False) & models.Q(numeric_value__isnull=True) & models.Q(text_value__isnull=True)) |
                     (models.Q(selected_option__isnull=True) & models.Q(numeric_value__isnull=False) & models.Q(text_value__isnull=True)) |
                     (models.Q(selected_option__isnull=True) & models.Q(numeric_value__isnull=True) & models.Q(text_value__isnull=False))

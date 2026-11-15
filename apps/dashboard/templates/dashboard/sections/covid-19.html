@@ -43,6 +43,31 @@
             <div class="chart-container"><canvas id="chart-cov-por-genero"></canvas></div>
           </div>
         </div>
+
+        <!-- FASE 3: Prevalencia con IC 95% a Fila Completa -->
+        <div class="grid grid-row" style="margin-top: 1.25rem;">
+          <div class="card card-visual">
+            <div class="visual-header">
+              <div class="visual-title"><h3>Prevalencia de Infección COVID-19 con IC 95% por Categoría de Personal</h3></div>
+            </div>
+            <div id="chart-covid-prevalencia-ic" class="chart-container" style="min-height: 340px;">
+              <div class="skeleton-shimmer skeleton-box chart-skeleton-placeholder" style="width: 100%; height: 340px; border-radius: 8px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FASE 3: Long-COVID a Fila Completa -->
+        <div class="grid grid-row" style="margin-top: 1.25rem;">
+          <div class="card card-visual">
+            <div class="visual-header" style="display: flex; justify-content: space-between; align-items: center;">
+              <div class="visual-title"><h3>Espectro de Secuelas Persistentes (Long-COVID)</h3></div>
+              <span class="badge-alert-small" style="background: #fef3c7; color: #92400e; font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; font-weight: 700; border: 1px solid #fde68a;">Aviso: Muestra pequeña (n &lt; 10)</span>
+            </div>
+            <div id="chart-covid-long-covid" class="chart-container" style="min-height: 320px;">
+              <div class="skeleton-shimmer skeleton-box chart-skeleton-placeholder" style="width: 100%; height: 320px; border-radius: 8px;"></div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- ============================================== -->

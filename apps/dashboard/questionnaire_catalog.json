@@ -594,14 +594,6 @@
         "on": "Exfumador > 10 años"
       }
     },
-    "chk_nunca_fumo": {
-      "label": "Frecuencia",
-      "section": "Factores de Riesgo Modificables",
-      "kind": "category",
-      "options": {
-        "on": "nunca fumó"
-      }
-    },
     "r_alcohol": {
       "label": "Alcohol",
       "section": "Factores de Riesgo Modificables",
@@ -2293,12 +2285,6 @@
     },
     "res_vi_hipertrofico_tipo": {
       "label": "Tipo de hipertrofia ventricular izquierda",
-      "section": "Resultados",
-      "kind": "text",
-      "options": {}
-    },
-    "ip_tipo_especificar": {
-      "label": "Tipo de insuficiencia pulmonar",
       "section": "Resultados",
       "kind": "text",
       "options": {}

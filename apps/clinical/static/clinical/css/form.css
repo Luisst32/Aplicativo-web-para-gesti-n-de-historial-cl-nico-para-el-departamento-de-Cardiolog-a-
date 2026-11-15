@@ -514,15 +514,20 @@ body {
   color: var(--color-navy);
 }
 
-/* TOGGLE PILLS NO / SI */
+/* TOGGLE PILLS NO / SI / NULL (SIN RESPONDER) */
 .toggle-pills {
   display: inline-flex;
+  align-items: center;
   background: var(--slate-200);
   border-radius: var(--radius-sm);
   padding: 2px;
   gap: 2px;
+  vertical-align: middle;
 }
 .toggle-pills label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 4px 12px;
   font-size: 0.8rem;
   font-weight: 600;
@@ -531,9 +536,13 @@ body {
   cursor: pointer;
   user-select: none;
   transition: all 0.12s ease;
+  line-height: 1.25;
 }
 .toggle-pills input {
   display: none;
+}
+.toggle-pills label:hover {
+  color: var(--color-navy);
 }
 .toggle-pills label:has(input:checked) {
   background: var(--color-white);
@@ -544,6 +553,40 @@ body {
 .toggle-pills label.yes:has(input:checked) {
   color: var(--color-primary-blue-hover);
   background: var(--color-white);
+}
+
+/* 3-State segmented control: integrated null / unanswered pill segment */
+.toggle-pills .clear-clinical-answer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  min-width: 26px;
+  height: 24px;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  user-select: none;
+  margin: 0;
+  transition: all 0.12s ease;
+}
+.toggle-pills .clear-clinical-answer:hover {
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--color-navy);
+}
+.toggle-pills:has(input[value=""]:checked) .clear-clinical-answer,
+.toggle-pills .clear-clinical-answer.is-active {
+  background: var(--color-white);
+  color: #475569;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* CONDITIONAL DETAILS BOX (se muestra ÚNICAMENTE si Sí) */
@@ -573,7 +616,7 @@ body {
   gap: 16px;
   align-items: center;
 }
-.condition-row:not(.active-yes) .condition-details:not(#details_tabaco) {
+.condition-row:not(.active-yes) .condition-details {
   display: none !important;
 }
 .condition-details.is-blocked,
@@ -581,10 +624,6 @@ body {
   opacity: 0.45 !important;
   pointer-events: none !important;
   cursor: not-allowed !important;
-}
-#row_tabaco .condition-details {
-  display: flex !important;
-  transition: opacity 0.2s ease;
 }
 
 @keyframes fadeIn {
@@ -758,4 +797,187 @@ body {
   body {
     background: var(--color-white) !important;
   }
+}
+
+
+/* Explicit reset to the unanswered clinical state (standalone fallback). */
+.clear-clinical-answer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-inline-start: 4px;
+  padding: 0;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-xs);
+  background: #f8fafc;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: all 0.12s ease;
+}
+.clear-clinical-answer:hover {
+  background: #ffffff;
+  color: var(--color-navy);
+  border-color: #cbd5e1;
+}
+.clear-clinical-answer.is-active {
+  background: #ffffff;
+  color: #475569;
+  font-weight: 700;
+  border-color: #94a3b8;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.clear-clinical-answer:focus-visible {
+  outline: 2px solid var(--color-primary-blue);
+  outline-offset: 1px;
+}
+
+/* ==========================================================================
+   CUESTIONARIO DE ROSE (LOCALIZACIÓN DE DOLOR TORÁCICO - ZONAS 1-9)
+   ========================================================================== */
+.rose-zones-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(130px, 1fr));
+  gap: 10px 14px;
+  flex: 1;
+  min-width: 320px;
+}
+.rose-zone-card {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--color-white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0 !important;
+  transition: all 0.15s ease;
+  user-select: none;
+  box-sizing: border-box;
+}
+.rose-zone-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.rose-zone-card.selected-yes {
+  background: var(--color-ice-blue) !important;
+  border-color: var(--color-primary-blue) !important;
+}
+.rose-zone-card.selected-yes .rose-zone-name {
+  color: var(--color-primary-blue);
+  font-weight: 700;
+}
+.rose-zone-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-navy);
+  white-space: nowrap;
+}
+.rose-zona-select {
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 2px 24px 2px 8px !important;
+  font-size: 0.78rem !important;
+  font-weight: 500;
+  border-radius: var(--radius-xs) !important;
+  border: 1px solid var(--slate-200) !important;
+  background-color: var(--color-white) !important;
+  color: var(--color-navy) !important;
+  width: auto !important;
+  min-width: 95px !important;
+  max-width: 105px !important;
+  cursor: pointer;
+  line-height: normal;
+}
+.rose-zona-select:focus {
+  border-color: var(--color-primary-blue) !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(58, 160, 255, 0.2) !important;
+}
+
+/* GENERAL CHECKBOX THREE-STATE SELECTS */
+.form-select-sm {
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 2px 20px 2px 6px !important;
+  font-size: 0.78rem !important;
+  border-radius: var(--radius-xs) !important;
+  width: auto !important;
+  min-width: 90px !important;
+  vertical-align: middle;
+}
+
+/* ==========================================================================
+   ANTECEDENTES FAMILIARES (PADRE Y MADRE)
+   ========================================================================== */
+.family-history-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.family-item-row {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px;
+  background: var(--color-white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0 !important;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+.family-item-row:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.family-item-row.selected-yes {
+  background: var(--color-ice-blue) !important;
+  border-color: var(--color-primary-blue) !important;
+}
+.family-item-row.selected-yes .family-item-label {
+  color: var(--color-primary-blue);
+  font-weight: 700;
+}
+.family-item-row.selected-no {
+  background: #f8fafc !important;
+  border-color: var(--slate-200) !important;
+}
+.family-item-row.selected-no .family-item-label {
+  color: var(--color-text-muted);
+}
+.family-item-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-navy);
+  white-space: nowrap;
+}
+.family-select {
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 3px 24px 3px 10px !important;
+  font-size: 0.82rem !important;
+  font-weight: 500;
+  border-radius: var(--radius-xs) !important;
+  border: 1px solid var(--slate-200) !important;
+  background-color: var(--color-white) !important;
+  color: var(--color-navy) !important;
+  width: auto !important;
+  min-width: 110px !important;
+  max-width: 120px !important;
+  cursor: pointer;
+  line-height: normal;
+}
+.family-select:focus {
+  border-color: var(--color-primary-blue) !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(58, 160, 255, 0.2) !important;
 }

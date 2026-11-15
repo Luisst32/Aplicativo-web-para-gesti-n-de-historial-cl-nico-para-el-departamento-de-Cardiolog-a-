@@ -130,7 +130,7 @@ def _patient_to_dict(patient, visit=None):
     phone_val = patient.phone or ""
     email_val = patient.email or ""
     if visit and (not phone_val or not email_val):
-        for ans in visit.answers.filter(question__code__in=['telefono', 'f_telefono', 'correo', 'f_correo', 'email']):
+        for ans in visit.answers.all():
             if not phone_val and ans.question.code in ('telefono', 'f_telefono') and ans.text_value:
                 phone_val = ans.text_value.strip()
             if not email_val and ans.question.code in ('correo', 'f_correo', 'email') and ans.text_value:
@@ -275,7 +275,7 @@ def patient_list_api(request):
         'visit__anthropometry', 'visit__vital_signs', 'visit__marital_status',
         'visit__living_situation', 'visit__education_level', 'visit__work_schedule',
         'visit__professional_category', 'visit__housing_type', 'visit__income_range'
-    )
+    ).prefetch_related('visit__answers__question')
 
     q = request.GET.get('q', '').strip()
     if q:
@@ -813,6 +813,9 @@ def _normalize_clinical_form_data(datos, ans_dict, vs=None):
                 datos['pred_yogurt_tipo'] = 'Entero'
 
 
+from .services.yes_no import yes_no, any_known, RADIO_FIELDS, CHECKBOX_FIELDS, CHOICE_FIELDS
+
+
 def _build_form_datos(patient, visit):
     """
     Constructs a dictionary of all field values matching HTML input/select/radio/checkbox
@@ -847,7 +850,7 @@ def _build_form_datos(patient, visit):
     phone_val = patient.phone or ""
     email_val = patient.email or ""
     if visit and (not phone_val or not email_val):
-        for ans in visit.answers.filter(question__code__in=['telefono', 'f_telefono', 'correo', 'f_correo', 'email']):
+        for ans in visit.answers.all():
             if not phone_val and ans.question.code in ('telefono', 'f_telefono') and ans.text_value:
                 phone_val = ans.text_value.strip()
             if not email_val and ans.question.code in ('correo', 'f_correo', 'email') and ans.text_value:
@@ -889,23 +892,23 @@ def _build_form_datos(patient, visit):
         "f_tsi": str(vs.diastolic_bp) if (vs and vs.diastolic_bp) else "",
         "f_sat_o2": str(vs.oxygen_saturation) if (vs and vs.oxygen_saturation) else "",
         "f_fc": str(vs.heart_rate) if (vs and vs.heart_rate) else "",
-        "soplos": "Si" if (vs and (vs.systolic_murmur or vs.diastolic_murmur)) else "No",
+        "soplos": yes_no(any_known(getattr(vs, "systolic_murmur", None), getattr(vs, "diastolic_murmur", None))),
         "soplo_grado": str(vs.murmur_grade) if (vs and vs.murmur_grade) else "",
         "soplo_tipo": "Sistólico" if (vs and vs.systolic_murmur) else ("Diastólico" if (vs and vs.diastolic_murmur) else ""),
-        "pulsos_palp": "Si" if (vs and vs.pedal_pulses_symmetric is not None) else "Si",
-        "pulsos_sim": "Si" if (vs and vs.pedal_pulses_symmetric) else ("No" if (vs and vs.pedal_pulses_symmetric is False) else "Si"),
-        "resp_norm": "Si" if (vs and vs.pulmonary_auscultation_normal) else ("No" if (vs and vs.pulmonary_auscultation_normal is False) else "Si"),
-        "abdom_norm": "Si" if (vs and vs.abdominal_auscultation_normal) else ("No" if (vs and vs.abdominal_auscultation_normal is False) else "Si"),
-        "f_soplo_sistolico": "Si" if (vs and vs.systolic_murmur) else "No",
-        "f_soplo_diastolico": "Si" if (vs and vs.diastolic_murmur) else "No",
+        "pulsos_palp": None,
+        "pulsos_sim": yes_no(getattr(vs, "pedal_pulses_symmetric", None)),
+        "resp_norm": yes_no(getattr(vs, "pulmonary_auscultation_normal", None)),
+        "abdom_norm": yes_no(getattr(vs, "abdominal_auscultation_normal", None)),
+        "f_soplo_sistolico": yes_no(getattr(vs, "systolic_murmur", None)),
+        "f_soplo_diastolico": yes_no(getattr(vs, "diastolic_murmur", None)),
         "f_grado_soplo": str(vs.murmur_grade) if (vs and vs.murmur_grade) else "",
-        "f_pulsos_pedios": "Si" if (vs and vs.pedal_pulses_symmetric) else "No",
-        "f_auscultacion_pulmonar": "Normal" if (vs and vs.pulmonary_auscultation_normal) else "Alterada",
-        "f_auscultacion_abdominal": "Normal" if (vs and vs.abdominal_auscultation_normal) else "Alterada",
+        "f_pulsos_pedios": yes_no(getattr(vs, "pedal_pulses_symmetric", None)),
+        "f_auscultacion_pulmonar": yes_no(getattr(vs, "pulmonary_auscultation_normal", None), "Normal", "Alterada"),
+        "f_auscultacion_abdominal": yes_no(getattr(vs, "abdominal_auscultation_normal", None), "Normal", "Alterada"),
 
         # Modulo 5: ECG Completo (27 ítems del Cuestionario UNEMI 2026 + normal + comentarios)
         "ecg_ritmo": ecg_ritmo_val,
-        "ecg_normal": "Si" if (ecg and ecg.is_normal) else ("No" if ecg else "Si"),
+        "ecg_normal": yes_no(getattr(ecg, "is_normal", None)),
         "ecg_fc": str(ecg.heart_rate) if (ecg and ecg.heart_rate is not None) else "",
         "ecg_eje": str(ecg.qrs_axis_degrees) if (ecg and ecg.qrs_axis_degrees is not None) else "",
         "ecg_rr": str(ecg.rr_interval_sec) if (ecg and ecg.rr_interval_sec is not None) else "",
@@ -914,45 +917,45 @@ def _build_form_datos(patient, visit):
         "ecg_qrs": str(ecg.qrs_duration_ms) if (ecg and ecg.qrs_duration_ms is not None) else "",
         "ecg_qt": str(ecg.qt_interval_ms) if (ecg and ecg.qt_interval_ms is not None) else "",
         "ecg_qtc": str(ecg.qtc_bazett_ms) if (ecg and ecg.qtc_bazett_ms is not None) else "",
-        "ecg_p_mitral": "Si" if (ecg and ecg.p_mitrale) else "No",
-        "ecg_bloqueo_av": "Si" if (ecg and ecg.av_block) else "No",
+        "ecg_p_mitral": yes_no(getattr(ecg, "p_mitrale", None)),
+        "ecg_bloqueo_av": yes_no(getattr(ecg, "av_block", None)),
         "ecg_bloqueo_av_grado": ecg.av_block_grade if (ecg and ecg.av_block_grade) else "",
-        "ecg_bloqueo_sa": "Si" if (ecg and ecg.sa_block) else "No",
-        "ecg_bloqueo_ia": "Si" if (ecg and ecg.interatrial_block) else "No",
-        "ecg_hemibloqueo": "Si" if (ecg and ecg.hemiblock) else "No",
+        "ecg_bloqueo_sa": yes_no(getattr(ecg, "sa_block", None)),
+        "ecg_bloqueo_ia": yes_no(getattr(ecg, "interatrial_block", None)),
+        "ecg_hemibloqueo": yes_no(getattr(ecg, "hemiblock", None)),
         "ecg_hemibloqueo_cual": ecg.hemiblock_detail if (ecg and ecg.hemiblock_detail) else "",
-        "ecg_bloqueo_rama_sn": "Si" if (ecg and (ecg.has_bundle_branch_block or ecg.bundle_branch_block)) else "No",
+        "ecg_bloqueo_rama_sn": yes_no(getattr(ecg, "has_bundle_branch_block", None)),
         "ecg_bloqueo_rama": ecg.bundle_branch_block if (ecg and ecg.bundle_branch_block) else "",
-        "ecg_brugada": "Si" if (ecg and ecg.brugada_pattern) else "No",
-        "ecg_repolarizacion_precoz": "Si" if (ecg and ecg.early_repolarization) else "No",
-        "ecg_hvi": "Si" if (ecg and ecg.left_ventricular_hypertrophy) else "No",
-        "ecg_sobrecarga_sistolica": "Si" if (ecg and ecg.systolic_overload) else "No",
+        "ecg_brugada": yes_no(getattr(ecg, "brugada_pattern", None)),
+        "ecg_repolarizacion_precoz": yes_no(getattr(ecg, "early_repolarization", None)),
+        "ecg_hvi": yes_no(getattr(ecg, "left_ventricular_hypertrophy", None)),
+        "ecg_sobrecarga_sistolica": yes_no(getattr(ecg, "systolic_overload", None)),
         "ecg_sobrecarga_complejos": ecg.systolic_overload_complexes if (ecg and ecg.systolic_overload_complexes) else "",
         "ecg_deflexion_intrinsicoide": str(ecg.intrinsicoid_deflection_sec) if (ecg and ecg.intrinsicoid_deflection_sec is not None) else "",
-        "ecg_hvd": "Si" if (ecg and ecg.right_ventricular_hypertrophy) else "No",
-        "ecg_onda_delta": "Si" if (ecg and ecg.delta_wave) else "No",
-        "ecg_cubeta_digitalica": "Si" if (ecg and ecg.digitalis_effect) else "No",
-        "ecg_onda_q": "Si" if (ecg and ecg.pathological_q_wave) else "No",
+        "ecg_hvd": yes_no(getattr(ecg, "right_ventricular_hypertrophy", None)),
+        "ecg_onda_delta": yes_no(getattr(ecg, "delta_wave", None)),
+        "ecg_cubeta_digitalica": yes_no(getattr(ecg, "digitalis_effect", None)),
+        "ecg_onda_q": yes_no(getattr(ecg, "pathological_q_wave", None)),
         "ecg_onda_q_amplitud": ecg.q_wave_amplitude if (ecg and ecg.q_wave_amplitude) else "",
         "ecg_onda_q_voltaje": str(ecg.q_wave_voltage_mv) if (ecg and ecg.q_wave_voltage_mv is not None) else "",
         "ecg_onda_q_complejos": ecg.q_wave_complexes if (ecg and ecg.q_wave_complexes) else "",
-        "ecg_t_negativa": "Si" if (ecg and ecg.negative_t_wave) else "No",
+        "ecg_t_negativa": yes_no(getattr(ecg, "negative_t_wave", None)),
         "ecg_t_negativa_complejos": ecg.negative_t_complexes if (ecg and ecg.negative_t_complexes) else "",
-        "ecg_t_simetrica": "Si" if (ecg and ecg.negative_t_symmetric) else "No",
-        "ecg_t_asimetrica": "Si" if (ecg and ecg.negative_t_asymmetric) else "No",
-        "ecg_st_ascenso": "Si" if (ecg and ecg.st_elevation_pathological) else "No",
+        "ecg_t_simetrica": yes_no(getattr(ecg, "negative_t_symmetric", None)),
+        "ecg_t_asimetrica": yes_no(getattr(ecg, "negative_t_asymmetric", None)),
+        "ecg_st_ascenso": yes_no(getattr(ecg, "st_elevation_pathological", None)),
         "ecg_st_ascenso_mm": str(ecg.st_elevation_mm) if (ecg and ecg.st_elevation_mm is not None) else "",
         "ecg_st_ascenso_complejos": ecg.st_elevation_complexes if (ecg and ecg.st_elevation_complexes) else "",
-        "ecg_st_descenso": "Si" if (ecg and ecg.st_depression) else "No",
+        "ecg_st_descenso": yes_no(getattr(ecg, "st_depression", None)),
         "ecg_st_descenso_mm": str(ecg.st_depression_mm) if (ecg and ecg.st_depression_mm is not None) else "",
         "ecg_st_descenso_complejos": ecg.st_depression_complexes if (ecg and ecg.st_depression_complexes) else "",
-        "ecg_alt_repolarizacion": "Si" if (ecg and (ecg.repolarization_abnormalities or ecg.early_repolarization)) else "No",
+        "ecg_alt_repolarizacion": yes_no(getattr(ecg, "repolarization_abnormalities", None)),
         "ecg_comentario": ecg.ecg_comments if (ecg and ecg.ecg_comments) else "",
 
         # Modulo 4: Ecocardiograma
-        "res_eco_normal": "No" if (echo and (echo.ventricular_hypertrophy or echo.diastolic_dysfunction or echo.aortic_valve_calcification)) else "Si",
-        "res_vi_hipertrofico": "Si" if (echo and echo.ventricular_hypertrophy) else "No",
-        "res_fdvi": "Alterada" if (echo and echo.diastolic_dysfunction) else "Normal",
+        "res_eco_normal": None,
+        "res_vi_hipertrofico": yes_no(getattr(echo, "ventricular_hypertrophy", None)),
+        "res_fdvi": yes_no(getattr(echo, "diastolic_dysfunction", None), "Alterada", "Normal"),
         "valvulopatia_tipo_detalle": echo.valvular_regurgitation_detail if (echo and echo.valvular_regurgitation_detail) else "",
         "eco_ddvi": str(echo.lv_dimension_mm) if (echo and echo.lv_dimension_mm) else "",
         "eco_fey": str(echo.lvef_percentage) if (echo and echo.lvef_percentage) else "",
@@ -1005,22 +1008,21 @@ def _build_form_datos(patient, visit):
         "emerg_acido_urico": "",
         "hepatica_fosfatasa": "",
         "hepatica_bilirrubina": "",
-        "res_vi_dilatado": "No",
+        "res_vi_dilatado": None,
         "res_vi_hipertrofico_tipo": "",
         "res_eco_comentario": "",
-        "res_eco_vascular": "Normal",
+        "res_eco_vascular": None,
         "res_eco_vascular_comentario": "",
         "ip_medida_chorro": "",
         "ip_ancho_chorro": "",
         "ip_grado": "",
-        "ip_tipo_especificar": "",
 
         # Factores modificables adicionales (Pág. 3 Cuestionario UNEMI 2026)
-        "r_mapa": "No",
-        "mapa_resultado": "Normal",
-        "r_holter": "No",
-        "holter_resultado": "Normal",
-        "r_vasc_fem": "No",
+        "r_mapa": None,
+        "mapa_resultado": None,
+        "r_holter": None,
+        "holter_resultado": None,
+        "r_vasc_fem": None,
         "hta_medicamentos": "",
         "dislip_farmacos": "",
 
@@ -1039,18 +1041,18 @@ def _build_form_datos(patient, visit):
         "chk_ex_drogas": "",
 
         # Historia Clínica Actual Cardiovascular (ítems 1 al 6 - Cuestionario UNEMI 2026)
-        "hc_prob": "No",
+        "hc_prob": None,
         "prob_corazon_detalle": "",
-        "hc_isquemica": "No",
+        "hc_isquemica": None,
         "hc_isquemica_angina": "",
         "hc_isquemica_infarto": "",
-        "hc_revasc": "No",
+        "hc_revasc": None,
         "hc_revasc_tipo": "",
-        "hc_insuf_cardiaca": "No",
-        "hc_valvulopatia": "No",
+        "hc_insuf_cardiaca": None,
+        "hc_valvulopatia": None,
         "hc_valvulopatia_cuales": "",
-        "hc_valvulopatia_operado": "No",
-        "hc_ingresado": "No",
+        "hc_valvulopatia_operado": None,
+        "hc_ingresado": None,
         "hc_ingresado_cual": "",
 
         # Historia de Cáncer y Oncología (Cuestionario UNEMI 2026)
@@ -1063,32 +1065,32 @@ def _build_form_datos(patient, visit):
         "cancer_ovario": "",
         "cancer_otro": "",
         "cancer_otro_detalle": "",
-        "cancer_qt": "No",
-        "cancer_rt": "No",
+        "cancer_qt": None,
+        "cancer_rt": None,
 
         # Estudios que se le han mandado al paciente (Pág. 19 Cuestionario UNEMI 2026)
-        "est_analisis_clinicos": "No",
-        "est_ergometria_spect": "No",
-        "est_tac_cardiaco": "No",
-        "est_rnm_cardiaco": "No",
-        "est_electrofisiologia": "No",
-        "est_ecocardiograma": "No",
-        "est_holter": "No",
-        "est_mapa": "No",
+        "est_analisis_clinicos": None,
+        "est_ergometria_spect": None,
+        "est_tac_cardiaco": None,
+        "est_rnm_cardiaco": None,
+        "est_electrofisiologia": None,
+        "est_ecocardiograma": None,
+        "est_holter": None,
+        "est_mapa": None,
         "est_otros_detalle": "",
 
         # PREDIMED Lácteos y sofrito (Cuestionario UNEMI 2026)
-        "pred_q13_consume": "No",
+        "pred_q13_consume": None,
         "pred_leche_vasos_dia": "",
         "pred_leche_vasos_sem": "",
         "pred_leche_tipo": "",
-        "pred_q14_consume": "No",
+        "pred_q14_consume": None,
         "pred_queso_veces_sem": "",
         "pred_queso_gramos": "",
-        "pred_q15_consume": "No",
+        "pred_q15_consume": None,
         "pred_yogurt_cant_sem": "",
         "pred_yogurt_tipo": "",
-        "pred_q19": "No",
+        "pred_q19": None,
     }
 
     if visit:
@@ -1117,11 +1119,11 @@ def _build_form_datos(patient, visit):
         # Cargar estudios mandados al paciente desde PostgreSQL
         ordered = getattr(visit, 'ordered_studies', None)
         if ordered:
-            datos['est_analisis_clinicos'] = "Si" if ordered.clinical_analysis else "No"
-            datos['est_ergometria_spect'] = "Si" if ordered.ergometry_spect else "No"
-            datos['est_tac_cardiaco'] = "Si" if ordered.cardiac_ct else "No"
-            datos['est_rnm_cardiaco'] = "Si" if ordered.cardiac_mri else "No"
-            datos['est_electrofisiologia'] = "Si" if ordered.electrophysiology else "No"
+            datos['est_analisis_clinicos'] = yes_no(ordered.clinical_analysis)
+            datos['est_ergometria_spect'] = yes_no(ordered.ergometry_spect)
+            datos['est_tac_cardiaco'] = yes_no(ordered.cardiac_ct)
+            datos['est_rnm_cardiaco'] = yes_no(ordered.cardiac_mri)
+            datos['est_electrofisiologia'] = yes_no(ordered.electrophysiology)
 
         # Cargar todas las respuestas guardadas en VisitAnswer
         ans_dict = {}
@@ -1137,7 +1139,7 @@ def _build_form_datos(patient, visit):
             elif ans.selected_option:
                 val = ans.selected_option.label
             else:
-                val = ""
+                val = None
             if val is not None and str(val).strip() != '':
                 ans_dict[q_code] = val
                 datos[q_code] = val
@@ -1277,15 +1279,10 @@ def _build_form_datos(patient, visit):
                 datos['drogas_frecuencia'] = drg
 
         # 7. COVID-19 y Secuelas
-        hc = ans_dict.get('historia_covid', '')
-        if hc:
-            h_up = hc.upper()
-            if 'PASÓ' in h_up or 'PASO' in h_up or h_up.startswith('S') or h_up == '1':
-                datos['covid_paso'] = 'Si'
-                datos['covid_ingreso'] = 'Si' if ('INGRESADO' in h_up or 'HOSP' in h_up) else 'No'
-            elif 'NO' in h_up or h_up == '0':
-                datos['covid_paso'] = 'No'
-                datos['covid_ingreso'] = 'No'
+        from .services.covid_answers import resolve_covid
+        covid = resolve_covid(ans_dict)
+        datos['covid_paso'] = yes_no(covid['covid_infeccion'])
+        datos['covid_ingreso'] = yes_no(covid['covid_hospitalizacion'])
         afc = ans_dict.get('afectacion_covid', '')
         if afc:
             af_up = afc.upper()
@@ -1375,15 +1372,29 @@ def _build_form_datos(patient, visit):
                 alt = True
         except Exception:
             pass
-        datos['ac_resultado'] = 'Alterada' if alt else 'Normal'
+        datos['ac_resultado'] = None
     else:
-        datos['ac_prueba'] = 'No'
-        datos['ac_resultado'] = 'Normal'
+        datos['ac_prueba'] = None
+        datos['ac_resultado'] = None
 
     if visit:
         _normalize_clinical_form_data(datos, ans_dict, vs)
 
+    # Exact answers (including an explicit NULL) beat defaults and legacy inferences.
+    exact_answers = {}
+    if visit:
+        for answer in visit.answers.select_related('question', 'selected_option').all():
+            exact_answers[answer.question.code] = (answer.selected_option.label if answer.selected_option_id
+                else answer.numeric_value if answer.numeric_value is not None else answer.text_value)
+    for key in RADIO_FIELDS | CHECKBOX_FIELDS | CHOICE_FIELDS:
+        if key in exact_answers:
+            datos[key] = exact_answers[key]
+        elif key not in datos:
+            datos[key] = None
+        if datos.get(key) == '':
+            datos[key] = None
     return datos
+
 
 
 @login_required

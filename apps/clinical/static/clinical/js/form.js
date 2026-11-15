@@ -2,6 +2,7 @@ let pacienteActual = null;
 let historialActual = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
+  inicializarRespuestasVacias();
   const urlParams = new URLSearchParams(location.search);
   const idPaciente = urlParams.get('paciente');
 
@@ -142,10 +143,10 @@ function calcPredimed() {
 }
 
 // =========================================================================
-// GESTIÓN CENTRALIZADA DE ESTADO: 4.- TABAQUISMO
 // =========================================================================
-// Estado unificado: 'nunca' | 'exfumador' | 'actual'
-let estadoTabaquismo = 'actual';
+// GESTIÓN CENTRALIZADA DE ESTADO: 5.- TABAQUISMO
+// =========================================================================
+let estadoTabaquismo = null;
 
 function setEstadoTabaquismo(origen) {
   const toggleNo = document.getElementById('tabaco_toggle_no');
@@ -153,96 +154,45 @@ function setEstadoTabaquismo(origen) {
   const selFrec = document.getElementById('tabaco_frecuencia');
   const inpCant = document.getElementById('tabaco_cantidad');
   const chkEx = document.getElementById('chk_exfumador');
-  const chkNunca = document.getElementById('chk_nunca_fumo');
-  const rowTabaco = document.getElementById('row_tabaco');
 
-  // 1. Determinar el nuevo estado según el control que originó el evento
   if (origen === 'toggle_no') {
     estadoTabaquismo = 'nunca';
+    toggleCondition('row_tabaco', false);
+    if (chkEx) { chkEx.checked = false; chkEx.disabled = true; }
+    if (selFrec) { selFrec.value = ''; selFrec.disabled = true; }
+    if (inpCant) { inpCant.value = ''; inpCant.disabled = true; }
   } else if (origen === 'toggle_si') {
     estadoTabaquismo = (chkEx && chkEx.checked) ? 'exfumador' : 'actual';
-  } else if (origen === 'chk_nunca') {
-    estadoTabaquismo = (chkNunca && chkNunca.checked) ? 'nunca' : 'actual';
+    toggleCondition('row_tabaco', true);
+    if (chkEx) { chkEx.disabled = false; }
+    if (chkEx && chkEx.checked) {
+      if (selFrec) { selFrec.value = ''; selFrec.disabled = true; selFrec.style.opacity = '0.45'; selFrec.style.pointerEvents = 'none'; }
+      if (inpCant) { inpCant.value = ''; inpCant.disabled = true; inpCant.style.opacity = '0.45'; inpCant.style.pointerEvents = 'none'; }
+    } else {
+      if (selFrec) { selFrec.disabled = false; selFrec.style.opacity = '1'; selFrec.style.pointerEvents = 'auto'; if (!selFrec.value) selFrec.value = 'Sí, menos de 5 al día'; }
+      if (inpCant) { inpCant.disabled = false; inpCant.style.opacity = '1'; inpCant.style.pointerEvents = 'auto'; if (!inpCant.value) inpCant.value = '3'; }
+    }
   } else if (origen === 'chk_exfumador') {
-    estadoTabaquismo = (chkEx && chkEx.checked) ? 'exfumador' : 'actual';
-  } else if (origen === 'nunca' || origen === 'exfumador' || origen === 'actual') {
-    estadoTabaquismo = origen;
-  }
-
-  // Asegurar que la sección conserve su altura y nunca colapse ni oculte filas
-  if (rowTabaco) {
-    rowTabaco.classList.add('active-yes');
-  }
-
-  // 2. Aplicar lógica de exclusión mutua y actualización de controles
-  if (estadoTabaquismo === 'nunca') {
-    // Al marcar 'nunca fumó' o poner toggle en 'No':
-    // - Desmarcar Exfumador > 1 año
-    if (chkEx) chkEx.checked = false;
-    // - Marcar nunca fumó
-    if (chkNunca) chkNunca.checked = true;
-    // - Poner toggle en No
-    if (toggleNo) toggleNo.checked = true;
-    if (toggleSi) toggleSi.checked = false;
-
-    // - Limpiar y deshabilitar Frecuencia y Cantidad (atenuados, no ocultos)
-    if (selFrec) {
-      selFrec.value = '';
-      selFrec.disabled = true;
-      selFrec.style.opacity = '0.45';
-      selFrec.style.pointerEvents = 'none';
+    if (chkEx && chkEx.checked) {
+      estadoTabaquismo = 'exfumador';
+      if (toggleSi) toggleSi.checked = true;
+      if (toggleNo) toggleNo.checked = false;
+      toggleCondition('row_tabaco', true);
+      if (selFrec) { selFrec.value = ''; selFrec.disabled = true; selFrec.style.opacity = '0.45'; selFrec.style.pointerEvents = 'none'; }
+      if (inpCant) { inpCant.value = ''; inpCant.disabled = true; inpCant.style.opacity = '0.45'; inpCant.style.pointerEvents = 'none'; }
+    } else {
+      estadoTabaquismo = 'actual';
+      if (toggleSi && toggleSi.checked) {
+        if (selFrec) { selFrec.disabled = false; selFrec.style.opacity = '1'; selFrec.style.pointerEvents = 'auto'; if (!selFrec.value) selFrec.value = 'Sí, menos de 5 al día'; }
+        if (inpCant) { inpCant.disabled = false; inpCant.style.opacity = '1'; inpCant.style.pointerEvents = 'auto'; if (!inpCant.value) inpCant.value = '3'; }
+      }
     }
-    if (inpCant) {
-      inpCant.value = '';
-      inpCant.disabled = true;
-      inpCant.style.opacity = '0.45';
-      inpCant.style.pointerEvents = 'none';
-    }
-
-  } else if (estadoTabaquismo === 'exfumador') {
-    // Al marcar 'Exfumador > 1 año':
-    // - Desmarcar nunca fumó
-    if (chkNunca) chkNunca.checked = false;
-    // - Marcar Exfumador
-    if (chkEx) chkEx.checked = true;
-    // - Poner toggle en Sí
-    if (toggleNo) toggleNo.checked = false;
-    if (toggleSi) toggleSi.checked = true;
-
-    // - BLOQUEAR FRECUENCIA Y CANTIDAD (Deshabilitados y atenuados)
-    if (selFrec) {
-      selFrec.disabled = true;
-      selFrec.style.opacity = '0.45';
-      selFrec.style.pointerEvents = 'none';
-    }
-    if (inpCant) {
-      inpCant.disabled = true;
-      inpCant.style.opacity = '0.45';
-      inpCant.style.pointerEvents = 'none';
-    }
-
-  } else {
-    // Estado 'actual' (fumador activo):
-    // - Desmarcar nunca fumó y Exfumador
-    if (chkNunca) chkNunca.checked = false;
-    if (chkEx) chkEx.checked = false;
-    // - Poner toggle en Sí
-    if (toggleNo) toggleNo.checked = false;
-    if (toggleSi) toggleSi.checked = true;
-
-    // - Habilitar Frecuencia y Cantidad
-    if (selFrec) {
-      selFrec.disabled = false;
-      selFrec.style.opacity = '1';
-      selFrec.style.pointerEvents = 'auto';
-      if (!selFrec.value) selFrec.value = 'Sí, menos de 5 al día';
-    }
-    if (inpCant) {
-      inpCant.disabled = false;
-      inpCant.style.opacity = '1';
-      inpCant.style.pointerEvents = 'auto';
-      if (!inpCant.value) inpCant.value = '3';
-    }
+  } else if (origen === null || origen === 'empty') {
+    estadoTabaquismo = null;
+    toggleCondition('row_tabaco', false);
+    if (chkEx) { chkEx.checked = false; chkEx.disabled = true; }
+    if (selFrec) { selFrec.value = ''; selFrec.disabled = true; }
+    if (inpCant) { inpCant.value = ''; inpCant.disabled = true; }
   }
 }
 
@@ -357,16 +307,11 @@ function setEstadoDrogas(origen) {
 // - "Exfumador hace más de un año"
 // - "Sí, menos de 5 al día" (o "Sí, X al día")
 function obtenerPayloadTabaquismo() {
-  if (estadoTabaquismo === 'nunca') {
-    return {
-      columna_w_tabaquismo: 'No fuma',
-      estado_tabaquismo: 'nunca',
-      frecuencia: null,
-      cigarrillos_dia: null
-    };
-  }
+  const toggleSi = document.getElementById('tabaco_toggle_si');
+  const toggleNo = document.getElementById('tabaco_toggle_no');
+  const chkEx = document.getElementById('chk_exfumador');
 
-  if (estadoTabaquismo === 'exfumador') {
+  if (chkEx && chkEx.checked) {
     return {
       columna_w_tabaquismo: 'Exfumador hace más de un año',
       estado_tabaquismo: 'exfumador',
@@ -375,15 +320,31 @@ function obtenerPayloadTabaquismo() {
     };
   }
 
-  // Fumador activo
-  const cant = parseInt(document.getElementById('tabaco_cantidad')?.value, 10);
-  const selFrec = document.getElementById('tabaco_frecuencia')?.value || 'Sí, menos de 5 al día';
+  if (toggleNo && toggleNo.checked) {
+    return {
+      columna_w_tabaquismo: 'No fuma',
+      estado_tabaquismo: 'nunca',
+      frecuencia: null,
+      cigarrillos_dia: null
+    };
+  }
+
+  if (toggleSi && toggleSi.checked) {
+    const cant = parseInt(document.getElementById('tabaco_cantidad')?.value, 10);
+    const selFrec = document.getElementById('tabaco_frecuencia')?.value || 'Sí, menos de 5 al día';
+    return {
+      columna_w_tabaquismo: selFrec,
+      estado_tabaquismo: 'actual',
+      frecuencia: selFrec,
+      cigarrillos_dia: isNaN(cant) ? null : cant
+    };
+  }
 
   return {
-    columna_w_tabaquismo: selFrec, // Corresponde al valor exacto de la Columna W: 'TABAQUISMO'
-    estado_tabaquismo: 'actual',
-    frecuencia: selFrec,
-    cigarrillos_dia: isNaN(cant) ? null : cant
+    columna_w_tabaquismo: '',
+    estado_tabaquismo: null,
+    frecuencia: null,
+    cigarrillos_dia: null
   };
 }
 
@@ -592,15 +553,12 @@ function toggleCondition(rowId, show) {
 
   const details = row.querySelectorAll('.condition-details');
   details.forEach(box => {
-    // Tabaco tiene su propia gestión de visibilidad y checkboxes
-    if (rowId !== 'row_tabaco') {
-      if (!show) {
-        box.style.display = 'none';
-        box.classList.add('is-blocked');
-      } else {
-        box.style.display = '';
-        box.classList.remove('is-blocked');
-      }
+    if (!show) {
+      box.style.display = 'none';
+      box.classList.add('is-blocked');
+    } else {
+      box.style.display = '';
+      box.classList.remove('is-blocked');
     }
 
     // Bloquear (disabled) o desbloquear TODOS los controles interactivos dentro de la caja condicional
@@ -610,6 +568,10 @@ function toggleCondition(rowId, show) {
       if (ctrl.name && ctrl.name.startsWith('r_') && (ctrl.value === 'No' || ctrl.value === 'Si')) return;
 
       ctrl.disabled = !show;
+      if (ctrl._answerSelect) {
+        ctrl._answerSelect.disabled = !show;
+        if (!show) { ctrl.dataset.answer = ''; ctrl._answerSelect.value = ''; }
+      }
       if (!show) {
         ctrl.style.pointerEvents = 'none';
         ctrl.style.opacity = '0.45';
@@ -641,8 +603,6 @@ function inicializarTodasLasCondiciones() {
       row.classList.remove('active-yes');
       return;
     }
-
-    if (row.id === 'row_tabaco') return;
 
     // Buscar si tiene radio principal seleccionado
     const checkedRadio = row.querySelector('.condition-header input[type="radio"]:checked') ||
@@ -970,14 +930,8 @@ async function guardarFichaCompleta() {
   // Recopilar todos los elementos del formulario mediante FormData
   const formData = new FormData(form);
 
-  // Asegurar que checkboxes desmarcados se envíen como '0' para persistir el cambio
-  form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-    if (cb.name && !cb.checked && !formData.has(cb.name)) {
-      formData.append(cb.name, '0');
-    }
-  });
+  serializarRespuestasVacias(form, formData);
 
-  // Guardar también campos de cálculo o sólo lectura
   const calculatedIds = ['f_imc', 'f_asc', 'pred_puntuacion_total'];
   calculatedIds.forEach(id => {
     const el = document.getElementById(id);
@@ -1060,6 +1014,11 @@ function restaurarFichaDesdeObjeto(datos) {
   const form = document.getElementById('ehrCleanForm');
   if (!form) return;
 
+  inicializarRespuestasVacias();
+  form.querySelectorAll('input[data-three-state]').forEach(input => {
+    input.checked = input.type === 'radio' && input.value === '';
+    if (input.type === 'checkbox') { input.dataset.answer = ''; input._answerSelect.value = ''; }
+  });
   // Inicializar selectores en cascada antes de iterar campos
   if (datos.f_universidad) {
     if (document.getElementById('f_universidad')) document.getElementById('f_universidad').value = datos.f_universidad;
@@ -1178,6 +1137,22 @@ function restaurarFichaDesdeObjeto(datos) {
       if (elements.onchange) elements.onchange();
     } else if (elements.type === 'checkbox') {
       const vLower = String(val).toLowerCase().trim();
+      if (elements.dataset.threeState !== undefined) {
+        const answered = val !== null && val !== '' && val !== undefined;
+        const yes = answered && ['1', 'true', 'si', 's\u00ed'].includes(vLower);
+        elements.dataset.answer = answered ? (yes ? elements.value : '0') : '';
+        elements._answerSelect.value = answered ? (yes ? '1' : '0') : '';
+        const card = elements.closest('.rose-zone-card');
+        if (card) {
+          card.classList.toggle('selected-yes', answered && yes);
+          card.classList.toggle('selected-no', answered && !yes);
+        }
+        const famRow = elements.closest('.family-item-row');
+        if (famRow) {
+          famRow.classList.toggle('selected-yes', answered && yes);
+          famRow.classList.toggle('selected-no', answered && !yes);
+        }
+      }
       elements.checked = (val === '1' || val === 1 || val === true || vLower === 'si' || vLower === 'sí' || vLower === elements.value.toLowerCase());
       if (elements.onchange) elements.onchange();
     } else if ('value' in elements) {
@@ -1196,6 +1171,9 @@ function restaurarFichaDesdeObjeto(datos) {
   calcPredimed();
   actualizarHeroPresion();
   aplicarProteccionPrivacidadFormulario(pacienteActual, historialActual);
+  if (typeof actualizarEstadoBotonesNull === 'function') {
+    actualizarEstadoBotonesNull(form);
+  }
 }
 
 // NOTIFICACIÓN FLOTANTE VISUAL (TOAST)
@@ -1923,9 +1901,7 @@ function construirRegistro184Columnas() {
   }
 
   // 45. TABAQUISMO
-  if (chk('chk_nunca_fumo')) {
-    reg['TABAQUISMO'] = 'No fuma';
-  } else if (chk('chk_exfumador')) {
+  if (chk('chk_exfumador')) {
     reg['TABAQUISMO'] = 'Exfumador hace más de un año';
   } else if (rad('r_tabaco') === 'No') {
     reg['TABAQUISMO'] = 'No fuma';
@@ -2833,3 +2809,153 @@ window.addEventListener('cardio_privacy_mode_changed', () => {
     seleccionarPaciente(pacienteActual, typeof historialActual !== 'undefined' ? historialActual : null);
   }
 });
+
+
+// Keep the original radio values and checkbox encoding; add an explicit empty choice.
+function inicializarRespuestasVacias() {
+  const form = document.getElementById('ehrCleanForm');
+  if (!form) return;
+  const groups = new Map();
+  form.querySelectorAll('input[type="radio"]').forEach(input => {
+    if (!groups.has(input.name)) groups.set(input.name, []);
+    groups.get(input.name).push(input);
+  });
+  groups.forEach(radios => {
+    if (radios.some(r => r.dataset.threeState !== undefined)) return;
+    radios.forEach(r => { r.dataset.threeState = ''; r.checked = false; r.defaultChecked = false; });
+    const empty = document.createElement('input');
+    empty.type = 'radio'; empty.name = radios[0].name; empty.value = '';
+    empty.dataset.threeState = ''; empty.checked = true; empty.defaultChecked = true;
+    empty.hidden = true;
+    empty.addEventListener('change', () => {
+      const row = radios[0].closest('.condition-row');
+      if (row?.id) toggleCondition(row.id, false);
+      if (radios[0].name === 'r_tabaco' && typeof setEstadoTabaquismo === 'function') {
+        setEstadoTabaquismo(null);
+      }
+      actualizarEstadoBotonesNull(form);
+    });
+    radios[0].closest('label').parentNode.append(empty);
+    const reset = crearBotonSinRespuesta(radios[0].name, () => {
+      empty.checked = true;
+      empty.dispatchEvent(new Event('change', { bubbles: true }));
+      actualizarEstadoBotonesNull(form);
+    });
+    empty.after(reset);
+  });
+  form.querySelectorAll('input[type="checkbox"][name]').forEach(input => {
+    if (input.dataset.threeState !== undefined) return;
+    if (
+      input.name.startsWith('chk_') ||
+      input.id.startsWith('chk_') ||
+      input.name === 'hepatomegalia' ||
+      input.name === 'organomegalia' ||
+      input.name.startsWith('em_') ||
+      input.name.startsWith('hc_isquemica_')
+    ) {
+      return;
+    }
+    input.dataset.threeState = ''; input.dataset.answer = ''; input.checked = false;
+    const isRoseZona = input.name.startsWith('rose_zona_');
+    const isFamily = input.name.startsWith('ant_padre_') || input.name.startsWith('ant_madre_');
+    const select = document.createElement('select');
+    if (isRoseZona) {
+      select.className = 'form-select rose-zona-select';
+    } else if (isFamily) {
+      select.className = 'form-select family-select';
+    } else {
+      select.className = 'form-select form-select-sm';
+    }
+    select.setAttribute('aria-label', (input.closest('label, .family-item-row')?.textContent.trim() || input.name) + ': respuesta');
+    [['', 'Seleccionar'], ['1', 'S\u00ed'], ['0', 'No']].forEach(([value, text]) => {
+      const option = document.createElement('option'); option.value = value; option.textContent = text; option.hidden = false; select.append(option);
+    });
+    input.hidden = true; input._answerSelect = select; input.after(select);
+    select.addEventListener('change', () => {
+      input.dataset.answer = select.value === '1' ? input.value : select.value;
+      input.checked = select.value === '1';
+      if (input.onchange) input.onchange();
+      actualizarEstadoBotonesNull(form);
+      if (isRoseZona) {
+        const card = input.closest('.rose-zone-card');
+        if (card) {
+          card.classList.toggle('selected-yes', select.value === '1');
+          card.classList.toggle('selected-no', select.value === '0');
+        }
+      } else if (isFamily) {
+        const row = input.closest('.family-item-row');
+        if (row) {
+          row.classList.toggle('selected-yes', select.value === '1');
+          row.classList.toggle('selected-no', select.value === '0');
+        }
+      }
+    });
+    // For rose_zona and family antecedents, do NOT append the null reset button
+    if (!isRoseZona && !isFamily) {
+      const reset = crearBotonSinRespuesta(input.name, () => {
+        select.value = '';
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        actualizarEstadoBotonesNull(form);
+      });
+      // Keep the button outside the checkbox label to avoid toggling it again.
+      const label = input.closest('label');
+      (label || select).after(reset);
+    }
+  });
+
+  if (!form._threeStateBound) {
+    form._threeStateBound = true;
+    form.addEventListener('change', () => {
+      actualizarEstadoBotonesNull(form);
+    });
+  }
+  actualizarEstadoBotonesNull(form);
+}
+
+function actualizarEstadoBotonesNull(form) {
+  if (!form) form = document.getElementById('ehrCleanForm');
+  if (!form) return;
+  form.querySelectorAll('.clear-clinical-answer').forEach(btn => {
+    const name = btn.dataset.clearAnswer;
+    if (!name) return;
+    const radios = form.elements[name];
+    if (radios && radios.length !== undefined) {
+      const emptyRadio = Array.from(radios).find(r => r.value === '');
+      const isActive = Boolean(emptyRadio && emptyRadio.checked);
+      btn.classList.toggle('is-active', isActive);
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    } else {
+      const input = form.elements[name];
+      if (input && input.dataset && input.dataset.threeState !== undefined) {
+        const isActive = input.dataset.answer === '' || !input.dataset.answer;
+        btn.classList.toggle('is-active', isActive);
+        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      }
+    }
+  });
+}
+
+function crearBotonSinRespuesta(name, clear) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'clear-clinical-answer';
+  button.dataset.clearAnswer = name;
+  button.textContent = '\u2205';
+  button.title = 'Sin responder / No evaluado';
+  button.setAttribute('aria-label', 'Sin responder / No evaluado');
+  button.addEventListener('click', clear);
+  return button;
+}
+
+function serializarRespuestasVacias(form, formData) {
+  // Empty multipart values mean NULL; omitted API keys remain untouched.
+  form.querySelectorAll('input[data-three-state]').forEach(input => {
+    if (input.type === 'radio') {
+      const selected = Array.from(form.elements[input.name]).find(r => r.checked && !r.disabled);
+      formData.set(input.name, selected ? selected.value : '');
+    } else {
+      formData.set(input.name, input.disabled ? '' : input.dataset.answer || '');
+    }
+  });
+
+}

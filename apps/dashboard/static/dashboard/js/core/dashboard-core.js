@@ -63,15 +63,79 @@ function setKpiCaption(el, text) {
   caption.textContent = text;
 }
 
+// Intervalo de Confianza Wilson al 95%
+function wilsonScoreInterval(x, n, z = 1.95996) {
+  if (!n || n <= 0) return { p: 0, lower: 0, upper: 0, text: '' };
+  const p = x / n;
+  const z2 = z * z;
+  const denom = 1 + z2 / n;
+  const center = (p + z2 / (2 * n)) / denom;
+  const margin = (z * Math.sqrt((p * (1 - p)) / n + z2 / (4 * n * n))) / denom;
+  const lower = Math.max(0, center - margin);
+  const upper = Math.min(1, center + margin);
+  return {
+    p,
+    lower: lower * 100,
+    upper: upper * 100,
+    text: `IC 95%: [${(lower * 100).toFixed(1).replace('.', ',')}%, ${(upper * 100).toFixed(1).replace('.', ',')}%]`
+  };
+}
+
+function formatWilsonCiLabel(cases, valid) {
+  if (!valid || valid <= 0) return '';
+  const ci = wilsonScoreInterval(cases, valid);
+  const pct = ((cases / valid) * 100).toFixed(1).replace('.', ',');
+  return `${cases} de ${valid} (${pct}%; IC 95%: ${ci.lower.toFixed(1).replace('.', ',')}-${ci.upper.toFixed(1).replace('.', ',')}%)`;
+}
+
 function setPrevalenceEl(id, cases, valid, note = '') {
   const el = document.getElementById(id);
   if (!el) return;
 
+  const card = el.closest('.kpi-card, .card, .dashboard-card') || el.parentElement;
+
+  // Regla genérica obligatoria: Si n = 0, la tarjeta se OCULTA automáticamente
+  if (!valid || valid === 0) {
+    if (card) {
+      card.style.display = 'none';
+      card.hidden = true;
+    }
+    return;
+  }
+  if (card) {
+    card.style.display = '';
+    card.hidden = false;
+  }
+
+  // Regla 8: Si n < 5 no mostrar porcentaje; si n < 10 mostrar advertencia visible
+  let mainText = '';
+  let warningNote = '';
+  if (valid < 5) {
+    mainText = `${cases} de ${valid}`;
+    warningNote = 'Muestra insuficiente (n < 5)';
+  } else {
+    mainText = `${formatPct(cases, valid)} %`;
+    if (valid < 10) {
+      warningNote = 'Muestra pequeña (n < 10)';
+    }
+  }
+
+  const ci = wilsonScoreInterval(cases, valid);
   el.classList.remove('kpi-prevalence');
-  el.textContent = valid > 0 ? `${formatPct(cases, valid)} %` : 'Sin dato';
-  el.title = `${cases} casos de ${valid} registros evaluables${note ? `; ${note}` : ''}`;
+  el.textContent = mainText;
+  el.title = `${cases} de ${valid} evaluados (${ci.text})${note ? `; ${note}` : ''}`;
   el.setAttribute('aria-label', el.title);
-  setKpiCaption(el, `${cases} de ${valid} con dato${note ? ` · ${note}` : ''}`);
+
+  let captionText = `${cases} de ${valid}`;
+  if (valid >= 5) {
+    captionText += ` · IC 95%: ${ci.lower.toFixed(1).replace('.', ',')}-${ci.upper.toFixed(1).replace('.', ',')}%`;
+  }
+  if (warningNote) {
+    captionText += ` · ⚠️ ${warningNote}`;
+  } else if (note) {
+    captionText += ` · ${note}`;
+  }
+  setKpiCaption(el, captionText);
 }
 
 // Helpers para tooltips con porcentaje (ApexCharts y Chart.js)
@@ -101,17 +165,25 @@ function apexPctTooltip() {
   };
 }
 
-// Helper para DataLabels en ApexCharts: muestra cantidad y porcentaje en color negro nítido sin fondo negro
+// Helper para DataLabels en ApexCharts: muestra cantidad y porcentaje calculados sobre denominadores válidos
 function apexCountAndPctDataLabel(customTotal, extraOptions = {}) {
   const extraStyle = extraOptions.style || {};
   return {
     enabled: true,
-    formatter: function(val) {
+    formatter: function(val, opt) {
       if (typeof val !== 'number') {
         val = parseFloat(val);
       }
       if (isNaN(val) || val <= 0) return '';
-      const total = customTotal || filteredRecords.length || 1;
+      const idx = opt?.dataPointIndex ?? 0;
+      let total = 1;
+      if (Array.isArray(customTotal)) {
+        total = customTotal[idx] || 1;
+      } else if (typeof customTotal === 'number' && customTotal > 0) {
+        total = customTotal;
+      } else {
+        total = filteredRecords.length || 1;
+      }
       const pct = ((val / total) * 100).toFixed(1).replace('.', ',');
       return `${val} (${pct}%)`;
     },
@@ -798,7 +870,7 @@ function updateAllKPIs() {
   setPrevalenceEl('kpi-fam-total', famCualquiera, recordsWithValue('ant_fam_cualquiera').length);
 
   // TAB 6: Historia No Cardiovascular
-  const respCnt = filteredRecords.filter(r => r.respiratorio_desc && r.respiratorio_desc !== 'Sin dato' && !r.respiratorio_desc.includes('Sin patología')).length;
+  const respCnt = filteredRecords.filter(r => r.asma === true || r.epoc === true).length;
   const mentalCnt = filteredRecords.filter(r => r.salud_mental_desc && r.salud_mental_desc !== 'Sin dato' && !r.salud_mental_desc.includes('Sin trastorno')).length;
   const reumaCnt = filteredRecords.filter(r => r.enfermedad_reumatologica).length;
   const alergiasCnt = filteredRecords.filter(r => r.alergias_medicamentos).length;
@@ -816,12 +888,13 @@ function updateAllKPIs() {
   const covidHosp = filteredRecords.filter(r => r.covid_hospitalizacion).length;
   const covidSec = filteredRecords.filter(r => r.covid_tiene_secuelas).length;
   const covidFatiga = filteredRecords.filter(r => r.covid_fatiga_long).length;
-  const covidRecup = covidInf > 0 ? (covidInf - covidSec) : 0;
+  const covidRecupRows = filteredRecords.filter(r => r.covid_infeccion === true && typeof r.covid_tiene_secuelas === 'boolean');
+  const covidRecup = covidRecupRows.filter(r => r.covid_tiene_secuelas === false).length;
   setPrevalenceEl('kpi-cov-infeccion', covidInf, recordsWithValue('covid_infeccion').filter(r => r['covid_infeccion'] !== 'Sin dato').length);
   setPrevalenceEl('kpi-cov-hosp', covidHosp, recordsWithValue('covid_hospitalizacion').filter(r => r['covid_hospitalizacion'] !== 'Sin dato').length);
   setPrevalenceEl('kpi-cov-secuelas', covidSec, recordsWithValue('covid_tiene_secuelas').filter(r => r['covid_tiene_secuelas'] !== 'Sin dato').length);
   setPrevalenceEl('kpi-cov-fatiga', covidFatiga, recordsWithValue('covid_fatiga_long').filter(r => r['covid_fatiga_long'] !== 'Sin dato').length);
-  setEl('kpi-cov-recuperados', `${formatPct(covidRecup, covidInf || 1)} %`);
+  setPrevalenceEl('kpi-cov-recuperados', covidRecup, covidRecupRows.length);
   setPrevalenceEl('kpi-covid-summary', covidInf, recordsWithValue('covid_infeccion').length);
 
   // TAB 8: Electrocardiograma (ECG)
@@ -877,3 +950,94 @@ function renderTabCharts(tabId) {
 // TAB 0: RESUMEN GENERAL CHARTS
 // -------------------------------------------------------------
 
+
+
+function threeStateCounts(field, rows = filteredRecords) {
+  const yes = rows.filter(r => r[field] === true).length;
+  const no = rows.filter(r => r[field] === false).length;
+  return {yes, no, missing: rows.length - yes - no, answered: yes + no};
+}
+
+function renderThreeStateChart(id, key, fields) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  // Filtrar campos que tengan al menos 1 respuesta registrada
+  const evaluableFields = fields.map(([label, field, rows]) => {
+    const counts = threeStateCounts(field, rows || filteredRecords);
+    return { label, field, rows, counts };
+  }).filter(f => f.counts.answered > 0);
+
+  const totalAnswered = evaluableFields.reduce((sum, f) => sum + f.counts.answered, 0);
+  if (!dashboardHasChartData(id, key, totalAnswered)) {
+    return;
+  }
+
+  const names = ['S\u00ed', 'No'];
+  const values = [evaluableFields.map(f => f.counts.yes), evaluableFields.map(f => f.counts.no)];
+  const label = (value, series, index) =>
+    `${value} (${evaluableFields[index].counts.answered ? formatPct(value, evaluableFields[index].counts.answered)+'%' : '0%'})`;
+  const colors = [PALETTE.green, PALETTE.primaryBlue];
+  if (el.tagName === 'CANVAS') {
+    const data = {labels: evaluableFields.map(f => f.label), datasets: names.map((name,i)=>({label:name,data:values[i],backgroundColor:colors[i]}))};
+    const options = {responsive:true, maintainAspectRatio:false,
+      scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}},
+      plugins:{legend:{position:'bottom'},datalabels:{...chartJsBarDataLabels(), formatter:(v,ctx)=>v>0?label(v,ctx.datasetIndex,ctx.dataIndex):''},
+        tooltip:{callbacks:{label:ctx=>names[ctx.datasetIndex]+': '+label(ctx.raw,ctx.datasetIndex,ctx.dataIndex)}}}};
+    if (charts[key]) {
+      charts[key].destroy();
+      delete charts[key];
+    }
+    charts[key] = createDashboardChart(el, {type:'bar', data, options});
+  } else {
+    const options={chart:{type:'bar',height:320,stacked:true,toolbar:{show:false}},
+      series:names.map((name,i)=>({name,data:values[i]})),colors,
+      xaxis:{categories:evaluableFields.map(f => f.label)},plotOptions:{bar:{horizontal:true}},legend:{position:'bottom'},
+      dataLabels:{enabled:true,formatter:(v,o)=>v ? label(v,o.seriesIndex,o.dataPointIndex) : ''},
+      tooltip:{y:{formatter:(v,o)=>label(v,o.seriesIndex,o.dataPointIndex)}}};
+    if(charts[key])charts[key].updateOptions(options);
+    else {charts[key]=createDashboardApexChart(el,options);charts[key].render();}
+  }
+}
+
+
+
+
+// Regla genérica obligatoria (Regla 5): Si n = 0, la tarjeta se OCULTA automáticamente,
+// sin ejes vacíos ni mensajes de "sin datos".
+function dashboardHasChartData(id, key, valid) {
+  const element = document.getElementById(id);
+  if (!element) return false;
+
+  let message = element.parentNode?.querySelector(`[data-empty-chart="${id}"]`);
+  if (!message) {
+    message = document.createElement('p');
+    message.dataset.emptyChart = id;
+    message.setAttribute('role', 'status');
+    message.style.cssText = 'display:none;';
+    element.after(message);
+  }
+
+  const hasData = Boolean(valid && valid > 0);
+  message.hidden = hasData;
+  element.hidden = !hasData;
+
+  const card = element.closest('.chart-card, .card, .dashboard-card, .card-visual, .col-12, .col-md-6, .col-lg-4, .grid-row');
+  if (!hasData) {
+    if (card) {
+      card.style.display = 'none';
+      card.hidden = true;
+    }
+    if (charts[key]) {
+      charts[key].destroy();
+      delete charts[key];
+    }
+    return false;
+  }
+
+  if (card) {
+    card.style.display = '';
+    card.hidden = false;
+  }
+  return true;
+}

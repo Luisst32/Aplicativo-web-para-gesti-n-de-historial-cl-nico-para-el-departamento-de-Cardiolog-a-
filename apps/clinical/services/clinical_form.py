@@ -1,5 +1,6 @@
 """Clinical form transaction, independent of HTTP request/response handling."""
 import datetime
+from collections import Counter
 from decimal import Decimal
 from django.db import transaction, connection, models
 from django.core.exceptions import ValidationError
@@ -11,9 +12,11 @@ from clinical.models import (Patient, Visit, Anthropometry, VitalSigns, Electroc
  Echocardiogram, Laboratory, OrderedStudies, VisitAnswer)
 from audit.services import register_audit_log
 from .measurements import save_measurements
+from .yes_no import nullable_bool, RADIO_FIELDS, CHECKBOX_FIELDS
 from .sav_importer import SPSS_QUESTION_ALIASES, classify_spss_question_section
 QUESTION_ALIASES = SPSS_QUESTION_ALIASES
-REVERSE_QUESTION_ALIASES = {v: k for k,v in QUESTION_ALIASES.items()}
+ALIAS_COUNTS = Counter(QUESTION_ALIASES.values())
+REVERSE_QUESTION_ALIASES = {v: k for k,v in QUESTION_ALIASES.items() if ALIAS_COUNTS[v] == 1}
 REVERSE_ALIASES = REVERSE_QUESTION_ALIASES
 
 def _resolve_canton(canton_name, province_name):
@@ -90,6 +93,9 @@ def _resolve_canton(canton_name, province_name):
 
 
 def update_clinical_record(patient, raw_data, user, client_ip):
+    for key in RADIO_FIELDS | CHECKBOX_FIELDS:
+        if key in raw_data:
+            nullable_bool(raw_data[key])
     with transaction.atomic():
         patient = Patient.objects.select_for_update().get(pk=patient.pk)
         # 1. Actualizar Paciente (Módulo 1)
@@ -253,7 +259,7 @@ def update_clinical_record(patient, raw_data, user, client_ip):
 
         ant, vs = save_measurements(visit, raw_data)
 
-        if any(key.startswith('ecg_') for key in raw_data):
+        if hasattr(visit, 'electrocardiogram') or any(key.startswith('ecg_') and value not in ('', None) for key, value in raw_data.items()):
             # 5. Electrocardiograma (Módulo 5 - HU-13 y Cuestionario UNEMI 2026 Completo)
             ecg_ritmo_nom = raw_data.get('ecg_ritmo') or (visit.electrocardiogram.rhythm.name if hasattr(visit, 'electrocardiogram') else '')
             if not ecg_ritmo_nom:
@@ -294,31 +300,31 @@ def update_clinical_record(patient, raw_data, user, client_ip):
                 except (ValueError, TypeError, ArithmeticError):
                     raise ValidationError('Valor numerico clinico invalido.')
             if any(key in raw_data for key in ('ecg_p_mitral',)):
-                ecg.p_mitrale = (raw_data.get('ecg_p_mitral') == 'Si')
+                ecg.p_mitrale = nullable_bool(raw_data.get('ecg_p_mitral'))
             if any(key in raw_data for key in ('ecg_bloqueo_av',)):
-                ecg.av_block = (raw_data.get('ecg_bloqueo_av') == 'Si')
+                ecg.av_block = nullable_bool(raw_data.get('ecg_bloqueo_av'))
             if any(key in raw_data for key in ('ecg_bloqueo_av_grado',)):
                 ecg.av_block_grade = raw_data.get('ecg_bloqueo_av_grado') or ''
             if any(key in raw_data for key in ('ecg_bloqueo_sa',)):
-                ecg.sa_block = (raw_data.get('ecg_bloqueo_sa') == 'Si')
+                ecg.sa_block = nullable_bool(raw_data.get('ecg_bloqueo_sa'))
             if any(key in raw_data for key in ('ecg_bloqueo_ia',)):
-                ecg.interatrial_block = (raw_data.get('ecg_bloqueo_ia') == 'Si')
+                ecg.interatrial_block = nullable_bool(raw_data.get('ecg_bloqueo_ia'))
             if any(key in raw_data for key in ('ecg_hemibloqueo',)):
-                ecg.hemiblock = (raw_data.get('ecg_hemibloqueo') == 'Si')
+                ecg.hemiblock = nullable_bool(raw_data.get('ecg_hemibloqueo'))
             if any(key in raw_data for key in ('ecg_hemibloqueo_cual',)):
                 ecg.hemiblock_detail = raw_data.get('ecg_hemibloqueo_cual') or ''
             if any(key in raw_data for key in ('ecg_bloqueo_rama_sn',)):
-                ecg.has_bundle_branch_block = (raw_data.get('ecg_bloqueo_rama_sn') == 'Si')
+                ecg.has_bundle_branch_block = nullable_bool(raw_data.get('ecg_bloqueo_rama_sn'))
             if any(key in raw_data for key in ('ecg_bloqueo_rama',)):
                 ecg.bundle_branch_block = raw_data.get('ecg_bloqueo_rama', '')
             if any(key in raw_data for key in ('ecg_brugada',)):
-                ecg.brugada_pattern = (raw_data.get('ecg_brugada') == 'Si')
+                ecg.brugada_pattern = nullable_bool(raw_data.get('ecg_brugada'))
             if any(key in raw_data for key in ('ecg_repolarizacion_precoz',)):
-                ecg.early_repolarization = (raw_data.get('ecg_repolarizacion_precoz') == 'Si')
+                ecg.early_repolarization = nullable_bool(raw_data.get('ecg_repolarizacion_precoz'))
             if any(key in raw_data for key in ('ecg_hvi',)):
-                ecg.left_ventricular_hypertrophy = (raw_data.get('ecg_hvi') == 'Si')
+                ecg.left_ventricular_hypertrophy = nullable_bool(raw_data.get('ecg_hvi'))
             if any(key in raw_data for key in ('ecg_sobrecarga_sistolica',)):
-                ecg.systolic_overload = (raw_data.get('ecg_sobrecarga_sistolica') == 'Si')
+                ecg.systolic_overload = nullable_bool(raw_data.get('ecg_sobrecarga_sistolica'))
             if any(key in raw_data for key in ('ecg_sobrecarga_complejos',)):
                 ecg.systolic_overload_complexes = raw_data.get('ecg_sobrecarga_complejos') or ''
             if raw_data.get('ecg_deflexion_intrinsicoide'):
@@ -330,13 +336,13 @@ def update_clinical_record(patient, raw_data, user, client_ip):
                 except (ValueError, TypeError, ArithmeticError):
                     raise ValidationError('Valor numerico clinico invalido.')
             if any(key in raw_data for key in ('ecg_hvd',)):
-                ecg.right_ventricular_hypertrophy = (raw_data.get('ecg_hvd') == 'Si')
+                ecg.right_ventricular_hypertrophy = nullable_bool(raw_data.get('ecg_hvd'))
             if any(key in raw_data for key in ('ecg_onda_delta',)):
-                ecg.delta_wave = (raw_data.get('ecg_onda_delta') == 'Si')
+                ecg.delta_wave = nullable_bool(raw_data.get('ecg_onda_delta'))
             if any(key in raw_data for key in ('ecg_cubeta_digitalica',)):
-                ecg.digitalis_effect = (raw_data.get('ecg_cubeta_digitalica') == 'Si')
+                ecg.digitalis_effect = nullable_bool(raw_data.get('ecg_cubeta_digitalica'))
             if any(key in raw_data for key in ('ecg_onda_q',)):
-                ecg.pathological_q_wave = (raw_data.get('ecg_onda_q') == 'Si')
+                ecg.pathological_q_wave = nullable_bool(raw_data.get('ecg_onda_q'))
             if any(key in raw_data for key in ('ecg_onda_q_amplitud',)):
                 ecg.q_wave_amplitude = raw_data.get('ecg_onda_q_amplitud') or ''
             if raw_data.get('ecg_onda_q_voltaje'):
@@ -346,15 +352,15 @@ def update_clinical_record(patient, raw_data, user, client_ip):
             if any(key in raw_data for key in ('ecg_onda_q_complejos',)):
                 ecg.q_wave_complexes = raw_data.get('ecg_onda_q_complejos') or ''
             if any(key in raw_data for key in ('ecg_t_negativa',)):
-                ecg.negative_t_wave = (raw_data.get('ecg_t_negativa') == 'Si')
+                ecg.negative_t_wave = nullable_bool(raw_data.get('ecg_t_negativa'))
             if any(key in raw_data for key in ('ecg_t_negativa_complejos',)):
                 ecg.negative_t_complexes = raw_data.get('ecg_t_negativa_complejos') or ''
             if any(key in raw_data for key in ('ecg_t_simetrica',)):
-                ecg.negative_t_symmetric = (raw_data.get('ecg_t_simetrica') == 'Si')
+                ecg.negative_t_symmetric = nullable_bool(raw_data.get('ecg_t_simetrica'))
             if any(key in raw_data for key in ('ecg_t_asimetrica',)):
-                ecg.negative_t_asymmetric = (raw_data.get('ecg_t_asimetrica') == 'Si')
+                ecg.negative_t_asymmetric = nullable_bool(raw_data.get('ecg_t_asimetrica'))
             if any(key in raw_data for key in ('ecg_st_ascenso',)):
-                ecg.st_elevation_pathological = (raw_data.get('ecg_st_ascenso') == 'Si')
+                ecg.st_elevation_pathological = nullable_bool(raw_data.get('ecg_st_ascenso'))
             if raw_data.get('ecg_st_ascenso_mm'):
                 try: ecg.st_elevation_mm = Decimal(str(raw_data['ecg_st_ascenso_mm']))
                 except (ValueError, TypeError, ArithmeticError):
@@ -362,7 +368,7 @@ def update_clinical_record(patient, raw_data, user, client_ip):
             if any(key in raw_data for key in ('ecg_st_ascenso_complejos',)):
                 ecg.st_elevation_complexes = raw_data.get('ecg_st_ascenso_complejos') or ''
             if any(key in raw_data for key in ('ecg_st_descenso',)):
-                ecg.st_depression = (raw_data.get('ecg_st_descenso') == 'Si')
+                ecg.st_depression = nullable_bool(raw_data.get('ecg_st_descenso'))
             if raw_data.get('ecg_st_descenso_mm'):
                 try: ecg.st_depression_mm = Decimal(str(raw_data['ecg_st_descenso_mm']))
                 except (ValueError, TypeError, ArithmeticError):
@@ -370,9 +376,9 @@ def update_clinical_record(patient, raw_data, user, client_ip):
             if any(key in raw_data for key in ('ecg_st_descenso_complejos',)):
                 ecg.st_depression_complexes = raw_data.get('ecg_st_descenso_complejos') or ''
             if any(key in raw_data for key in ('ecg_normal',)):
-                ecg.is_normal = (raw_data.get('ecg_normal') != 'No')
+                ecg.is_normal = nullable_bool(raw_data.get('ecg_normal'))
             if any(key in raw_data for key in ('ecg_alt_repolarizacion',)):
-                ecg.repolarization_abnormalities = (raw_data.get('ecg_alt_repolarizacion') == 'Si' or ecg.early_repolarization)
+                ecg.repolarization_abnormalities = nullable_bool(raw_data.get('ecg_alt_repolarizacion'))
             if any(key in raw_data for key in ('ecg_comentario',)):
                 ecg.ecg_comments = raw_data.get('ecg_comentario', '')
             ecg.save()
@@ -391,11 +397,11 @@ def update_clinical_record(patient, raw_data, user, client_ip):
                 except (ValueError, TypeError, ArithmeticError):
                     raise ValidationError('Valor numerico clinico invalido.')
             if any(key in raw_data for key in ('res_vi_hipertrofico',)):
-                echo.ventricular_hypertrophy = (raw_data.get('res_vi_hipertrofico') == 'Si')
+                echo.ventricular_hypertrophy = nullable_bool(raw_data.get('res_vi_hipertrofico'))
             if any(key in raw_data for key in ('eco_disfuncion_diastolica', 'res_fdvi')):
-                echo.diastolic_dysfunction = (raw_data.get('eco_disfuncion_diastolica') == 'Si' or raw_data.get('res_fdvi') == 'Si')
+                echo.diastolic_dysfunction = nullable_bool(raw_data['eco_disfuncion_diastolica']) if 'eco_disfuncion_diastolica' in raw_data else (None if raw_data.get('res_fdvi') in ('', None) else raw_data['res_fdvi'] in ('Si', 'Alterada'))
             if any(key in raw_data for key in ('eco_calcificacion_aortica',)):
-                echo.aortic_valve_calcification = (raw_data.get('eco_calcificacion_aortica') == 'Si')
+                echo.aortic_valve_calcification = nullable_bool(raw_data.get('eco_calcificacion_aortica'))
             if raw_data.get('valvulopatia_tipo_detalle'):
                 if any(key in raw_data for key in ('valvulopatia_tipo_detalle',)):
                     echo.valvular_regurgitation_detail = raw_data.get('valvulopatia_tipo_detalle')[:200]
@@ -441,15 +447,15 @@ def update_clinical_record(patient, raw_data, user, client_ip):
             # 7.5. Estudios Solicitados / Mandados al Paciente (Pág. 19 Cuestionario UNEMI 2026)
             ordered, _ = OrderedStudies.objects.get_or_create(visit=visit)
             if any(key in raw_data for key in ('est_analisis_clinicos',)):
-                ordered.clinical_analysis = (raw_data.get('est_analisis_clinicos') == 'Si')
+                ordered.clinical_analysis = nullable_bool(raw_data.get('est_analisis_clinicos'))
             if any(key in raw_data for key in ('est_ergometria_spect',)):
-                ordered.ergometry_spect = (raw_data.get('est_ergometria_spect') == 'Si')
+                ordered.ergometry_spect = nullable_bool(raw_data.get('est_ergometria_spect'))
             if any(key in raw_data for key in ('est_tac_cardiaco',)):
-                ordered.cardiac_ct = (raw_data.get('est_tac_cardiaco') == 'Si')
+                ordered.cardiac_ct = nullable_bool(raw_data.get('est_tac_cardiaco'))
             if any(key in raw_data for key in ('est_rnm_cardiaco',)):
-                ordered.cardiac_mri = (raw_data.get('est_rnm_cardiaco') == 'Si')
+                ordered.cardiac_mri = nullable_bool(raw_data.get('est_rnm_cardiaco'))
             if any(key in raw_data for key in ('est_electrofisiologia',)):
-                ordered.electrophysiology = (raw_data.get('est_electrofisiologia') == 'Si')
+                ordered.electrophysiology = nullable_bool(raw_data.get('est_electrofisiologia'))
             ordered.save()
 
 
@@ -461,7 +467,7 @@ def update_clinical_record(patient, raw_data, user, client_ip):
         for k, v in raw_data.items():
             if k in ignore_keys or not k.strip():
                 continue
-            val_str = str(v).strip()
+            val_str = '' if v is None else str(v).strip()
             k_clean = k.strip()
 
             target_sec_code = classify_spss_question_section(k_clean)
@@ -492,10 +498,12 @@ def update_clinical_record(patient, raw_data, user, client_ip):
                         }
                     )
                 else:
-                    VisitAnswer.objects.filter(visit=visit, question=q).delete()
+                    VisitAnswer.objects.update_or_create(visit=visit, question=q, defaults={'text_value': None, 'numeric_value': None, 'selected_option': None})
 
             # Sincronización bidireccional de alias (Formulario HTML <-> SPSS)
             alias_code = QUESTION_ALIASES.get(k_clean) or REVERSE_QUESTION_ALIASES.get(k_clean)
+            if alias_code and ALIAS_COUNTS.get(alias_code, 0) > 1:
+                alias_code = None
             if alias_code and len(alias_code) <= 30:
                 alias_sec_code = classify_spss_question_section(alias_code)
                 alias_sec = sections_by_code.get(alias_sec_code, default_section)
@@ -524,7 +532,7 @@ def update_clinical_record(patient, raw_data, user, client_ip):
                             }
                         )
                     else:
-                        VisitAnswer.objects.filter(visit=visit, question=q_alias).delete()
+                        VisitAnswer.objects.update_or_create(visit=visit, question=q_alias, defaults={'text_value': None, 'numeric_value': None, 'selected_option': None})
 
         # 9. Auditoría Automática (HU-14)
         register_audit_log(

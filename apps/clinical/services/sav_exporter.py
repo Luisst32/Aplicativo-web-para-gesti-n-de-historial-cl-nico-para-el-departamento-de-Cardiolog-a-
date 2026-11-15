@@ -1,3 +1,4 @@
+from .yes_no import any_known
 """
 apps/clinical/services/sav_exporter.py
 Servicio de exportación de base de datos a formatos oficiales:
@@ -296,7 +297,8 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
 
         for col in cols:
             clean = normalize_var_name(col)[:30]
-            val = ans.get(col) or ans.get(col.lower()) or ans.get(clean) or ans.get(clean.lower())
+            val = _first_recorded(ans, col, col.lower(), clean, clean.lower())
+            explicitly_empty = any(key in ans for key in (col, col.lower(), clean, clean.lower())) and val is None
 
             # Asignación directa prioritaria para variables sensibles identificativas del paciente
             if col == 'CEDULA':
@@ -312,7 +314,7 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
                 val = (p.email if p and p.email else '') or val
 
             # Mapeo de respaldo desde modelos relacionales de la BD y nuevos campos 2026
-            elif val is None or str(val).strip() == '':
+            elif not explicitly_empty and (val is None or str(val).strip() == ''):
                 c_up = col.upper()
                 if clean.upper() == 'CODIGO':
                     val = v.study_code
@@ -332,7 +334,7 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
                 elif col == 'FECHA_DE_NACIMIENTO':
                     val = p.birth_date if p else None
                 elif col == 'SEXO':
-                    val = 2.0 if (p and p.sex and 'M' in p.sex.name.upper() and not 'H' in p.sex.name.upper()) else 1.0
+                    val = 2.0 if (p and p.sex and 'MUJER' in p.sex.name.upper()) else (1.0 if (p and p.sex and 'HOMBRE' in p.sex.name.upper()) else np.nan)
                 elif col == 'CIUDAD':
                     val = v.residence_canton.name if v.residence_canton else (p.birth_canton.name if p and p.birth_canton else 'Milagro')
                 elif col == 'PROVINCIA':
@@ -384,13 +386,13 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
                 elif 'FRECUENCIA' in c_up and hasattr(v, 'vital_signs') and v.vital_signs and v.vital_signs.heart_rate:
                     val = float(v.vital_signs.heart_rate)
                 elif col == 'SOPLOS_CARDIACOS' and hasattr(v, 'vital_signs') and v.vital_signs:
-                    val = 1.0 if (v.vital_signs.systolic_murmur or v.vital_signs.diastolic_murmur) else 0.0
+                    val = _export_bool(any_known(v.vital_signs.systolic_murmur, v.vital_signs.diastolic_murmur))
                 elif col == 'PULSOSPEDIOS' and hasattr(v, 'vital_signs') and v.vital_signs:
-                    val = 1.0 if v.vital_signs.pedal_pulses_symmetric else 0.0
+                    val = _export_bool(v.vital_signs.pedal_pulses_symmetric)
                 elif col == 'EXPLORACION_RESPIRATORIA' and hasattr(v, 'vital_signs') and v.vital_signs:
-                    val = 1.0 if v.vital_signs.pulmonary_auscultation_normal else 0.0
+                    val = _export_bool(v.vital_signs.pulmonary_auscultation_normal)
                 elif col == 'EXPLORACION_ABDOMINAL' and hasattr(v, 'vital_signs') and v.vital_signs:
-                    val = 1.0 if v.vital_signs.abdominal_auscultation_normal else 0.0
+                    val = _export_bool(v.vital_signs.abdominal_auscultation_normal)
 
                 # ECG
                 elif col == 'ECG_RITMO' and hasattr(v, 'electrocardiogram') and v.electrocardiogram and v.electrocardiogram.rhythm:
@@ -447,13 +449,13 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
 
                 # Nuevos campos Cuestionario UNEMI 2026: Historia Cardiovascular
                 elif col == 'HC_ISQUEMICA':
-                    val = 1.0 if _is_yes(ans.get('hc_isquemica') or ans.get('cardiopatia_isquemica')) else 0.0
+                    val = _export_bool(ans.get('hc_isquemica') or ans.get('cardiopatia_isquemica'))
                 elif col == 'HC_ISQUEMICA_ANGINA':
-                    val = 1.0 if _is_yes(ans.get('hc_isquemica_angina')) else 0.0
+                    val = _export_bool(ans.get('hc_isquemica_angina'))
                 elif col == 'HC_ISQUEMICA_INFARTO':
-                    val = 1.0 if _is_yes(ans.get('hc_isquemica_infarto')) else 0.0
+                    val = _export_bool(ans.get('hc_isquemica_infarto'))
                 elif col == 'HC_REVASC':
-                    val = 1.0 if _is_yes(ans.get('hc_revasc') or ans.get('revascularizacion_coronaria')) else 0.0
+                    val = _export_bool(ans.get('hc_revasc') or ans.get('revascularizacion_coronaria'))
                 elif col == 'REVASCULARIZACION_TIPO':
                     raw_rev = str(ans.get('revascularizacion_tipo') or ans.get('hc_revasc_tipo') or '').lower()
                     if 'ambas' in raw_rev or '3' in raw_rev: val = 3.0
@@ -461,67 +463,67 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
                     elif 'angioplastia' in raw_rev or '1' in raw_rev: val = 1.0
                     else: val = np.nan
                 elif col == 'HC_INSUF_CARDIACA':
-                    val = 1.0 if _is_yes(ans.get('hc_insuf_cardiaca') or ans.get('insuficiencia_cardiaca')) else 0.0
+                    val = _export_bool(ans.get('hc_insuf_cardiaca') or ans.get('insuficiencia_cardiaca'))
                 elif col == 'HC_VALVULOPATIA':
-                    val = 1.0 if _is_yes(ans.get('hc_valvulopatia') or ans.get('valvulopatia')) else 0.0
+                    val = _export_bool(ans.get('hc_valvulopatia') or ans.get('valvulopatia'))
                 elif col == 'HC_VALVULOPATIA_CUALES':
                     val = ans.get('hc_valvulopatia_cuales') or ans.get('valvulopatia_cuales') or ''
                 elif col == 'HC_VALVULOPATIA_OPERADO':
-                    val = 1.0 if _is_yes(ans.get('hc_valvulopatia_operado') or ans.get('valvulopatia_operado')) else 0.0
+                    val = _export_bool(ans.get('hc_valvulopatia_operado') or ans.get('valvulopatia_operado'))
                 elif col == 'HC_HOSPITALIZACION':
-                    val = 1.0 if _is_yes(ans.get('hc_ingresado') or ans.get('hc_hospitalizacion') or ans.get('ingreso_hospitalario_problema_cardiaco')) else 0.0
+                    val = _export_bool(ans.get('hc_ingresado') or ans.get('hc_hospitalizacion') or ans.get('ingreso_hospitalario_problema_cardiaco'))
                 elif col == 'HC_HOSPITALIZACION_MOTIVO':
                     val = ans.get('hc_ingresado_cual') or ans.get('hc_hospitalizacion_motivo') or ''
 
                 # Nuevos campos Cuestionario UNEMI 2026: Cáncer
                 elif col == 'NC_CANCER':
-                    val = 1.0 if _is_yes(ans.get('nc_cancer') or ans.get('historia_cancer')) else 0.0
+                    val = _export_bool(ans.get('nc_cancer') or ans.get('historia_cancer'))
                 elif col == 'CANCER_PULMON':
-                    val = 1.0 if _is_yes(ans.get('cancer_pulmon')) else 0.0
+                    val = _export_bool(ans.get('cancer_pulmon'))
                 elif col == 'CANCER_PROSTATA':
-                    val = 1.0 if _is_yes(ans.get('cancer_prostata')) else 0.0
+                    val = _export_bool(ans.get('cancer_prostata'))
                 elif col == 'CANCER_COLON':
-                    val = 1.0 if _is_yes(ans.get('cancer_colon')) else 0.0
+                    val = _export_bool(ans.get('cancer_colon'))
                 elif col == 'CANCER_MAMA':
-                    val = 1.0 if _is_yes(ans.get('cancer_mama')) else 0.0
+                    val = _export_bool(ans.get('cancer_mama'))
                 elif col == 'CANCER_VEJIGA':
-                    val = 1.0 if _is_yes(ans.get('cancer_vejiga')) else 0.0
+                    val = _export_bool(ans.get('cancer_vejiga'))
                 elif col == 'CANCER_UTERO':
-                    val = 1.0 if _is_yes(ans.get('cancer_utero')) else 0.0
+                    val = _export_bool(ans.get('cancer_utero'))
                 elif col == 'CANCER_OVARIO':
-                    val = 1.0 if _is_yes(ans.get('cancer_ovario')) else 0.0
+                    val = _export_bool(ans.get('cancer_ovario'))
                 elif col == 'CANCER_OTRO':
-                    val = 1.0 if _is_yes(ans.get('cancer_otro')) else 0.0
+                    val = _export_bool(ans.get('cancer_otro'))
                 elif col == 'CANCER_OTRO_DETALLE':
                     val = ans.get('cancer_otro_detalle', '')
                 elif col == 'CANCER_QT':
-                    val = 1.0 if _is_yes(ans.get('cancer_qt') or ans.get('cancer_quimioterapia')) else 0.0
+                    val = _export_bool(ans.get('cancer_qt') or ans.get('cancer_quimioterapia'))
                 elif col == 'CANCER_RT':
-                    val = 1.0 if _is_yes(ans.get('cancer_rt') or ans.get('cancer_radioterapia')) else 0.0
+                    val = _export_bool(ans.get('cancer_rt') or ans.get('cancer_radioterapia'))
 
                 # Nuevos campos Cuestionario UNEMI 2026: Estudios Prescritos
                 elif col == 'EST_ANALISIS_CLINICOS':
-                    val = 1.0 if (studies and studies.clinical_analysis) or _is_yes(ans.get('est_analisis_clinicos')) else 0.0
+                    val = _export_bool(ans['est_analisis_clinicos'] if 'est_analisis_clinicos' in ans else getattr(studies, 'clinical_analysis', None))
                 elif col == 'EST_ERGOMETRIA_SPECT':
-                    val = 1.0 if (studies and studies.ergometry_spect) or _is_yes(ans.get('est_ergometria_spect')) else 0.0
+                    val = _export_bool(ans['est_ergometria_spect'] if 'est_ergometria_spect' in ans else getattr(studies, 'ergometry_spect', None))
                 elif col == 'EST_TAC_CARDIACO':
-                    val = 1.0 if (studies and studies.cardiac_ct) or _is_yes(ans.get('est_tac_cardiaco')) else 0.0
+                    val = _export_bool(ans['est_tac_cardiaco'] if 'est_tac_cardiaco' in ans else getattr(studies, 'cardiac_ct', None))
                 elif col == 'EST_RNM_CARDIACO':
-                    val = 1.0 if (studies and studies.cardiac_mri) or _is_yes(ans.get('est_rnm_cardiaco')) else 0.0
+                    val = _export_bool(ans['est_rnm_cardiaco'] if 'est_rnm_cardiaco' in ans else getattr(studies, 'cardiac_mri', None))
                 elif col == 'EST_ELECTROFISIOLOGIA':
-                    val = 1.0 if (studies and studies.electrophysiology) or _is_yes(ans.get('est_electrofisiologia')) else 0.0
+                    val = _export_bool(ans['est_electrofisiologia'] if 'est_electrofisiologia' in ans else getattr(studies, 'electrophysiology', None))
                 elif col == 'EST_ECOCARDIOGRAMA':
-                    val = 1.0 if _is_yes(ans.get('est_ecocardiograma') or ans.get('est_eco')) else 0.0
+                    val = _export_bool(ans.get('est_ecocardiograma') or ans.get('est_eco'))
                 elif col == 'EST_HOLTER':
-                    val = 1.0 if _is_yes(ans.get('est_holter')) else 0.0
+                    val = _export_bool(ans.get('est_holter'))
                 elif col == 'EST_MAPA':
-                    val = 1.0 if _is_yes(ans.get('est_mapa')) else 0.0
+                    val = _export_bool(ans.get('est_mapa'))
                 elif col == 'ESTUDIOS_OBSERVACIONES':
                     val = ans.get('est_otros_detalle') or ans.get('estudios_observaciones') or ''
 
                 # Nuevos campos Cuestionario UNEMI 2026: PREDIMED Lácteos y Sofrito
                 elif col == 'PRED_Q13_CONSUME':
-                    val = 1.0 if _is_yes(ans.get('pred_q13_consume')) else 0.0
+                    val = _export_bool(ans.get('pred_q13_consume'))
                 elif col == 'PRED_LECHE_VASOS_DIA':
                     val = _to_float(ans.get('pred_leche_vasos_dia'))
                 elif col == 'PRED_LECHE_VASOS_SEM':
@@ -529,19 +531,19 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
                 elif col == 'PRED_LECHE_TIPO':
                     val = ans.get('pred_leche_tipo', '')
                 elif col == 'PRED_Q14_CONSUME':
-                    val = 1.0 if _is_yes(ans.get('pred_q14_consume')) else 0.0
+                    val = _export_bool(ans.get('pred_q14_consume'))
                 elif col == 'PRED_QUESO_VECES_SEM':
                     val = _to_float(ans.get('pred_queso_veces_sem'))
                 elif col == 'PRED_QUESO_GRAMOS':
                     val = _to_float(ans.get('pred_queso_gramos'))
                 elif col == 'PRED_Q15_CONSUME':
-                    val = 1.0 if _is_yes(ans.get('pred_q15_consume')) else 0.0
+                    val = _export_bool(ans.get('pred_q15_consume'))
                 elif col == 'PRED_YOGURT_CANT_SEM':
                     val = _to_float(ans.get('pred_yogurt_cant_sem'))
                 elif col == 'PRED_YOGURT_TIPO':
                     val = ans.get('pred_yogurt_tipo', '')
                 elif col == 'PRED_Q19':
-                    val = 1.0 if _is_yes(ans.get('pred_q19')) else 0.0
+                    val = _export_bool(ans.get('pred_q19'))
 
             # 4. Formatear y convertir al tipo de dato exacto de la plantilla
             target_dtype = col_dtypes.get(col)
@@ -672,3 +674,16 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
         filename = f"CardioUNEMI_Dataset_{fecha_str}.sav"
         content_type = "application/x-spss-sav"
         return sav_bytes, filename, content_type
+
+
+def _first_recorded(values, *keys):
+    for key in keys:
+        if key in values:
+            return values[key]
+    return None
+
+
+def _export_bool(value):
+    if value is None or str(value).strip() == '':
+        return np.nan
+    return 1.0 if _is_yes(value) else 0.0

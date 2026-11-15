@@ -24,6 +24,7 @@ def index_view(request):
         'available_institutions': data['institutions'],
         'available_fichas': data['fichas'],
         'records': data['records'],
+        'boolean_fields': data['boolean_fields'],
     }
     return render(request, "dashboard/index.html", context)
 
@@ -46,4 +47,5 @@ def api_dashboard_data(request):
         'institutions': data['institutions'],
         'fichas': data['fichas'],
         'records': data['records'],
+        'boolean_fields': data['boolean_fields'],
     })

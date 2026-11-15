@@ -1,7 +1,7 @@
 {
   "private": true,
   "scripts": {
-    "test": "node --test xss.cjs"
+    "test": "node --test xss.cjs unanswered.cjs"
   },
   "devDependencies": {
     "dompurify": "3.4.17",

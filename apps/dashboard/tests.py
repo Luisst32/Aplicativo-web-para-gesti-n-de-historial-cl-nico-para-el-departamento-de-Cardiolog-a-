@@ -121,6 +121,14 @@ class DashboardServicesAndViewsTestCase(TestCase):
             triglycerides_mg_dl=Decimal("100.0")
         )
 
+        from catalog.models import Question, QuestionnaireSection
+        sec, _ = QuestionnaireSection.objects.get_or_create(name="Factores Modificables", defaults={"display_order": 1})
+        self.q_hta, _ = Question.objects.get_or_create(code="r_hta", defaults={"section": sec, "text": "Hipertensión", "response_type": "TEXTO", "display_order": 1})
+        self.q_dl, _ = Question.objects.get_or_create(code="r_dislip", defaults={"section": sec, "text": "Dislipemia", "response_type": "TEXTO", "display_order": 2})
+
+        VisitAnswer.objects.create(visit=self.visit1, question=self.q_hta, text_value="Si, y si tratada")
+        VisitAnswer.objects.create(visit=self.visit2, question=self.q_hta, text_value="No")
+
     def test_services_get_dashboard_evaluation_data(self):
         """Verifies calculation service produces accurate metrics and cohorts."""
         data = services.get_dashboard_evaluation_data()
@@ -135,9 +143,10 @@ class DashboardServicesAndViewsTestCase(TestCase):
         self.assertEqual(rec1['sexo'], 'Hombre')
         self.assertEqual(rec1['edad'], 46)
         self.assertEqual(rec1['grupo_edad'], '40-49 años')
-        self.assertTrue(rec1['hipertension'])  # Due to BP 145/95
-        self.assertTrue(rec1['obesidad'])      # BMI > 30 (95 / 1.7^2 = 32.87)
-        self.assertTrue(rec1['dislipemia'])    # Chol 220 >= 200
+        self.assertTrue(rec1['hipertension'])          # Diagnóstico clínico (Si, y si tratada)
+        self.assertTrue(rec1['pa_elevada_consulta'])  # PA elevada en consulta (145/95)
+        self.assertTrue(rec1['obesidad'])              # BMI > 30 (95 / 1.7^2 = 32.87)
+        self.assertTrue(rec1['dislipemia'])            # Lab Chol 220 >= 200
         self.assertEqual(rec1['abd_riesgo'], 'Riesgo Elevado (>102)')
         self.assertIn(rec1['riesgo_global'], ['Alto (2-3 factores)', 'Muy Alto (4+ factores)'])
 
@@ -146,7 +155,8 @@ class DashboardServicesAndViewsTestCase(TestCase):
         self.assertEqual(rec2['sexo'], 'Mujer')
         self.assertEqual(rec2['edad'], 29)
         self.assertEqual(rec2['grupo_edad'], '<40 años')
-        self.assertFalse(rec2['hipertension'])
+        self.assertFalse(rec2['hipertension'])         # Diagnóstico clínico (No)
+        self.assertFalse(rec2['pa_elevada_consulta']) # PA normal en consulta (110/70)
         self.assertFalse(rec2['obesidad'])
         self.assertFalse(rec2['dislipemia'])
         self.assertEqual(rec2['abd_riesgo'], 'Normal (<80)')
@@ -274,11 +284,11 @@ class DashboardServicesAndViewsTestCase(TestCase):
         from clinical.models import VisitAnswer, Electrocardiogram
 
         sec, _ = QuestionnaireSection.objects.get_or_create(code='SEC_TEST', defaults={'name': 'Seccion Test', 'display_order': 1})
-        q_mental = Question.objects.create(section=sec, code='salud_mental', text='Salud mental', response_type='TEXTO', display_order=1)
-        q_dl = Question.objects.create(section=sec, code='r_dislip', text='Dislipemia', response_type='TEXTO', display_order=2)
-        q_covid = Question.objects.create(section=sec, code='historia_covid', text='Historia COVID', response_type='TEXTO', display_order=3)
-        q_pers = Question.objects.create(section=sec, code='personalidad_tipo_a', text='Tipo A', response_type='TEXTO', display_order=4)
-        q_estres = Question.objects.create(section=sec, code='estres', text='Estres', response_type='TEXTO', display_order=5)
+        q_mental, _ = Question.objects.get_or_create(code='salud_mental', defaults={'section': sec, 'text': 'Salud mental', 'response_type': 'TEXTO', 'display_order': 1})
+        q_dl, _ = Question.objects.get_or_create(code='r_dislip', defaults={'section': sec, 'text': 'Dislipemia', 'response_type': 'TEXTO', 'display_order': 2})
+        q_covid, _ = Question.objects.get_or_create(code='historia_covid', defaults={'section': sec, 'text': 'Historia COVID', 'response_type': 'TEXTO', 'display_order': 3})
+        q_pers, _ = Question.objects.get_or_create(code='personalidad_tipo_a', defaults={'section': sec, 'text': 'Tipo A', 'response_type': 'TEXTO', 'display_order': 4})
+        q_estres, _ = Question.objects.get_or_create(code='estres', defaults={'section': sec, 'text': 'Estres', 'response_type': 'TEXTO', 'display_order': 5})
 
         # Visit 1 answers
         VisitAnswer.objects.create(visit=self.visit1, question=q_mental, text_value='No tiene depresión NI ansiedad')

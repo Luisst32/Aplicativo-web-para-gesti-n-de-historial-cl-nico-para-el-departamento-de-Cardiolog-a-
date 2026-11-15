@@ -582,7 +582,6 @@
       {% include 'dashboard/sections/covid-19.html' %}
 
       {% include 'dashboard/sections/electrocardiograma.html' %}
-
       </main>
 
   <!-- Widget Flotante del Chatbot Asistente -->
@@ -591,17 +590,18 @@
 
 {% block extra_js %}
   <!-- Librerías de Gráficos y Exportación (con fallback automático a CDN si staticfiles no se ha recolectado) -->
-  <script src="{% static 'dashboard/vendor/chart.umd.min.js' %}"></script>
-  <script src="{% static 'dashboard/vendor/chartjs-plugin-datalabels.min.js' %}"></script>
-  <script src="{% static 'dashboard/vendor/apexcharts.min.js' %}"></script>
-  <script src="{% static 'dashboard/vendor/html2canvas.min.js' %}"></script>
+  <script src="{% static 'dashboard/vendor/chart.umd.min.js' %}?v=20261114_null05"></script>
+  <script src="{% static 'dashboard/vendor/chartjs-plugin-datalabels.min.js' %}?v=20261114_null05"></script>
+  <script src="{% static 'dashboard/vendor/apexcharts.min.js' %}?v=20261114_null05"></script>
+  <script src="{% static 'dashboard/vendor/html2canvas.min.js' %}?v=20261114_null05"></script>
   <script>if (typeof html2canvas === 'undefined') document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>');</script>
-  <script src="{% static 'dashboard/vendor/jspdf.umd.min.js' %}"></script>
+  <script src="{% static 'dashboard/vendor/jspdf.umd.min.js' %}?v=20261114_null05"></script>
   <script>if (typeof jspdf === 'undefined' && typeof jsPDF === 'undefined') document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>');</script>
-  <script src="{% static 'dashboard/vendor/pptxgen.bundle.js' %}"></script>
+  <script src="{% static 'dashboard/vendor/pptxgen.bundle.js' %}?v=20261114_null05"></script>
   <script>if (typeof PptxGenJS === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"><\/script>');</script>
 
   <!-- Controlador e inicialización del Dashboard con los 8 bloques y motor de exportación -->
+  {{ boolean_fields|json_script:"dashboard-boolean-fields" }}
   {{ records|json_script:"dashboard-records-data" }}
   
   <script>
@@ -781,16 +781,16 @@
     };
   </script>
 
-  <script src="{% static 'dashboard/js/core/dashboard-core.js' %}?v=20261114_bar_inside01"></script>
-  <script src="{% static 'dashboard/js/core/chart-style.js' %}?v=20261114_bar_inside01"></script>
-  <script src="{% static 'dashboard/js/sections/resumen-general.js' %}?v=20261114_bar_inside01"></script>
-  <script src="{% static 'dashboard/js/sections/datos-individuo.js' %}?v=20261114_bar_inside01"></script>
-  <script src="{% static 'dashboard/js/sections/exploracion-fisica.js' %}?v=20261114_bar_inside01"></script>
-  <script src="{% static 'dashboard/js/sections/factores-modificables.js' %}?v=20261114_bar_inside01"></script>
-  <script src="{% static 'dashboard/js/sections/factores-emergentes.js' %}?v=20261114_bar_inside01"></script>
-  <script src="{% static 'dashboard/js/sections/antecedentes-familiares.js' %}?v=20261114_bar_inside01"></script>
-  <script src="{% static 'dashboard/js/sections/historia-no-cardio.js' %}?v=20261114_bar_inside01"></script>
-  <script src="{% static 'dashboard/js/sections/covid-19.js' %}?v=20261114_bar_inside01"></script>
-  <script src="{% static 'dashboard/js/sections/electrocardiograma.js' %}?v=20261114_bar_inside01"></script>
-  <script src="{% static 'dashboard/js/core/dashboard-export.js' %}?v=20261113_slicers06"></script>
+  <script src="{% static 'dashboard/js/core/dashboard-core.js' %}?v=20261114_ecg_qtc_width01"></script>
+  <script src="{% static 'dashboard/js/core/chart-style.js' %}?v=20261114_ecg_qtc_width01"></script>
+  <script src="{% static 'dashboard/js/sections/resumen-general.js' %}?v=20261114_ecg_qtc_width01"></script>
+  <script src="{% static 'dashboard/js/sections/datos-individuo.js' %}?v=20261114_ecg_qtc_width01"></script>
+  <script src="{% static 'dashboard/js/sections/exploracion-fisica.js' %}?v=20261114_ecg_qtc_width01"></script>
+  <script src="{% static 'dashboard/js/sections/factores-modificables.js' %}?v=20261114_ecg_qtc_width01"></script>
+  <script src="{% static 'dashboard/js/sections/factores-emergentes.js' %}?v=20261114_ecg_qtc_width01"></script>
+  <script src="{% static 'dashboard/js/sections/antecedentes-familiares.js' %}?v=20261114_ecg_qtc_width01"></script>
+  <script src="{% static 'dashboard/js/sections/historia-no-cardio.js' %}?v=20261114_ecg_qtc_width01"></script>
+  <script src="{% static 'dashboard/js/sections/covid-19.js' %}?v=20261114_ecg_qtc_width01"></script>
+  <script src="{% static 'dashboard/js/sections/electrocardiograma.js' %}?v=20261114_ecg_qtc_width01"></script>
+  <script src="{% static 'dashboard/js/core/dashboard-export.js' %}?v=20261114_ecg_qtc_width01"></script>
 {% endblock %}

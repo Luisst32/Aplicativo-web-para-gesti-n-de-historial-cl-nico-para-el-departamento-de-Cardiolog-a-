@@ -26,7 +26,7 @@
               <div class="condition-header">
                 <span class="condition-title">1.- Enfermedad reumatológica/inmunológica:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="nc_reuma" value="No" checked onchange="toggleCondition('row_nc_reuma', false)"> No</label>
+                  <label><input type="radio" name="nc_reuma" value="No" onchange="toggleCondition('row_nc_reuma', false)"> No</label>
                   <label class="yes"><input type="radio" name="nc_reuma" value="Si" onchange="toggleCondition('row_nc_reuma', true)"> Sí</label>
                 </div>
               </div>
@@ -41,7 +41,7 @@
               <div class="condition-header">
                 <span class="condition-title">2.- Historia de cáncer:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="nc_cancer" value="No" checked onchange="toggleCondition('row_nc_cancer', false)"> No</label>
+                  <label><input type="radio" name="nc_cancer" value="No" onchange="toggleCondition('row_nc_cancer', false)"> No</label>
                   <label class="yes"><input type="radio" name="nc_cancer" value="Si" onchange="toggleCondition('row_nc_cancer', true)"> Sí</label>
                 </div>
               </div>
@@ -62,14 +62,14 @@
                   <div style="display: flex; gap: 10px; align-items: center;">
                     <span class="field-label">¿Recibió Qt (Quimioterapia)?:</span>
                     <div class="toggle-pills">
-                      <label><input type="radio" name="cancer_qt" value="No" checked> No</label>
+                      <label><input type="radio" name="cancer_qt" value="No"> No</label>
                       <label class="yes"><input type="radio" name="cancer_qt" value="Si"> Sí</label>
                     </div>
                   </div>
                   <div style="display: flex; gap: 10px; align-items: center;">
                     <span class="field-label">¿Recibió RT (Radioterapia)?:</span>
                     <div class="toggle-pills">
-                      <label><input type="radio" name="cancer_rt" value="No" checked> No</label>
+                      <label><input type="radio" name="cancer_rt" value="No"> No</label>
                       <label class="yes"><input type="radio" name="cancer_rt" value="Si"> Sí</label>
                     </div>
                   </div>
@@ -83,7 +83,7 @@
                 <div class="condition-header">
                   <span class="condition-title">3.- EPOC:</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="nc_epoc" value="No" checked> No</label>
+                    <label><input type="radio" name="nc_epoc" value="No"> No</label>
                     <label class="yes"><input type="radio" name="nc_epoc" value="Si"> Sí</label>
                   </div>
                 </div>
@@ -93,7 +93,7 @@
                 <div class="condition-header">
                   <span class="condition-title">4.- Asma:</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="nc_asma" value="No" checked> No</label>
+                    <label><input type="radio" name="nc_asma" value="No"> No</label>
                     <label class="yes"><input type="radio" name="nc_asma" value="Si"> Sí</label>
                   </div>
                 </div>
@@ -103,7 +103,7 @@
                 <div class="condition-header">
                   <span class="condition-title">5.- Depresión:</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="nc_depresion" value="No" checked> No</label>
+                    <label><input type="radio" name="nc_depresion" value="No"> No</label>
                     <label class="yes"><input type="radio" name="nc_depresion" value="Si"> Sí</label>
                   </div>
                 </div>
@@ -113,7 +113,7 @@
                 <div class="condition-header">
                   <span class="condition-title">6.- Ansiedad:</span>
                   <div class="toggle-pills">
-                    <label><input type="radio" name="nc_ansiedad" value="No" checked> No</label>
+                    <label><input type="radio" name="nc_ansiedad" value="No"> No</label>
                     <label class="yes"><input type="radio" name="nc_ansiedad" value="Si"> Sí</label>
                   </div>
                 </div>
@@ -125,7 +125,7 @@
               <div class="condition-header">
                 <span class="condition-title">7.- Alergia a medicamentos:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="nc_alergia" value="No" checked onchange="toggleCondition('row_nc_alergia', false)"> No</label>
+                  <label><input type="radio" name="nc_alergia" value="No" onchange="toggleCondition('row_nc_alergia', false)"> No</label>
                   <label class="yes"><input type="radio" name="nc_alergia" value="Si" onchange="toggleCondition('row_nc_alergia', true)"> Sí</label>
                 </div>
               </div>
@@ -140,7 +140,7 @@
               <div class="condition-header">
                 <span class="condition-title">8.- Otras:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="nc_otras" value="No" checked onchange="toggleCondition('row_nc_otras', false)"> No</label>
+                  <label><input type="radio" name="nc_otras" value="No" onchange="toggleCondition('row_nc_otras', false)"> No</label>
                   <label class="yes"><input type="radio" name="nc_otras" value="Si" onchange="toggleCondition('row_nc_otras', true)"> Sí</label>
                 </div>
               </div>
@@ -164,7 +164,7 @@
               <div class="condition-header">
                 <span class="condition-title">1.- Ha pasado el COVID-19:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="covid_paso" value="No" checked> No</label>
+                  <label><input type="radio" name="covid_paso" value="No"> No</label>
                   <label class="yes"><input type="radio" name="covid_paso" value="Si"> Sí</label>
                 </div>
               </div>
@@ -174,7 +174,7 @@
               <div class="condition-header">
                 <span class="condition-title">2.- ¿Estuvo ingresado en el hospital?</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="covid_ingreso" value="No" checked> No</label>
+                  <label><input type="radio" name="covid_ingreso" value="No"> No</label>
                   <label class="yes"><input type="radio" name="covid_ingreso" value="Si"> Sí</label>
                 </div>
               </div>
@@ -184,7 +184,7 @@
               <div class="condition-header">
                 <span class="condition-title">3.- Le detectaron alguna afectación cardiovascular debida al COVID-19:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="covid_cv" value="No" checked onchange="toggleCondition('row_covid_cv', false)"> No</label>
+                  <label><input type="radio" name="covid_cv" value="No" onchange="toggleCondition('row_covid_cv', false)"> No</label>
                   <label class="yes"><input type="radio" name="covid_cv" value="Si" onchange="toggleCondition('row_covid_cv', true)"> Sí</label>
                 </div>
               </div>
@@ -198,7 +198,7 @@
               <div class="condition-header">
                 <span class="condition-title">4.- Le detectaron alguna afectación pulmonar debida al COVID-19:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="covid_pulm" value="No" checked onchange="toggleCondition('row_covid_pulm', false)"> No</label>
+                  <label><input type="radio" name="covid_pulm" value="No" onchange="toggleCondition('row_covid_pulm', false)"> No</label>
                   <label class="yes"><input type="radio" name="covid_pulm" value="Si" onchange="toggleCondition('row_covid_pulm', true)"> Sí</label>
                 </div>
               </div>
@@ -212,7 +212,7 @@
               <div class="condition-header">
                 <span class="condition-title">5.- Otras:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="covid_otras" value="No" checked onchange="toggleCondition('row_covid_otras', false)"> No</label>
+                  <label><input type="radio" name="covid_otras" value="No" onchange="toggleCondition('row_covid_otras', false)"> No</label>
                   <label class="yes"><input type="radio" name="covid_otras" value="Si" onchange="toggleCondition('row_covid_otras', true)"> Sí</label>
                 </div>
               </div>
@@ -236,7 +236,7 @@
               <div class="condition-header">
                 <span class="condition-title">1.- Ha presentado después del COVID, algún síntoma que antes no tenía:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="longcovid" value="No" checked onchange="toggleCondition('row_longcovid', false)"> No</label>
+                  <label><input type="radio" name="longcovid" value="No" onchange="toggleCondition('row_longcovid', false)"> No</label>
                   <label class="yes"><input type="radio" name="longcovid" value="Si" onchange="toggleCondition('row_longcovid', true)"> Sí</label>
                 </div>
               </div>
@@ -260,7 +260,7 @@
               <div class="condition-header">
                 <span class="condition-title">1.- ¿A veces tiene algún dolor o molestia en el pecho?</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="rose_1" value="No" checked> No</label>
+                  <label><input type="radio" name="rose_1" value="No"> No</label>
                   <label class="yes"><input type="radio" name="rose_1" value="Si"> Sí</label>
                 </div>
               </div>
@@ -318,16 +318,16 @@
                   <text x="382" y="350">9</text>
                 </g>
               </svg>
-              <div class="grid" style="grid-template-columns: repeat(3, minmax(0, 1fr)); gap:8px 16px;">
-                <label class="field-label"><input type="checkbox" name="rose_zona_1"> Zona 1</label>
-                <label class="field-label"><input type="checkbox" name="rose_zona_2"> Zona 2</label>
-                <label class="field-label"><input type="checkbox" name="rose_zona_3"> Zona 3</label>
-                <label class="field-label"><input type="checkbox" name="rose_zona_4"> Zona 4</label>
-                <label class="field-label"><input type="checkbox" name="rose_zona_5"> Zona 5</label>
-                <label class="field-label"><input type="checkbox" name="rose_zona_6"> Zona 6</label>
-                <label class="field-label"><input type="checkbox" name="rose_zona_7"> Zona 7</label>
-                <label class="field-label"><input type="checkbox" name="rose_zona_8"> Zona 8</label>
-                <label class="field-label"><input type="checkbox" name="rose_zona_9"> Zona 9</label>
+              <div class="rose-zones-grid" id="rose_zones_grid">
+                <label class="field-label rose-zone-card" id="card_rose_zona_1"><span class="rose-zone-name">Zona 1</span><input type="checkbox" name="rose_zona_1"></label>
+                <label class="field-label rose-zone-card" id="card_rose_zona_2"><span class="rose-zone-name">Zona 2</span><input type="checkbox" name="rose_zona_2"></label>
+                <label class="field-label rose-zone-card" id="card_rose_zona_3"><span class="rose-zone-name">Zona 3</span><input type="checkbox" name="rose_zona_3"></label>
+                <label class="field-label rose-zone-card" id="card_rose_zona_4"><span class="rose-zone-name">Zona 4</span><input type="checkbox" name="rose_zona_4"></label>
+                <label class="field-label rose-zone-card" id="card_rose_zona_5"><span class="rose-zone-name">Zona 5</span><input type="checkbox" name="rose_zona_5"></label>
+                <label class="field-label rose-zone-card" id="card_rose_zona_6"><span class="rose-zone-name">Zona 6</span><input type="checkbox" name="rose_zona_6"></label>
+                <label class="field-label rose-zone-card" id="card_rose_zona_7"><span class="rose-zone-name">Zona 7</span><input type="checkbox" name="rose_zona_7"></label>
+                <label class="field-label rose-zone-card" id="card_rose_zona_8"><span class="rose-zone-name">Zona 8</span><input type="checkbox" name="rose_zona_8"></label>
+                <label class="field-label rose-zone-card" id="card_rose_zona_9"><span class="rose-zone-name">Zona 9</span><input type="checkbox" name="rose_zona_9"></label>
               </div>
             </div>
 
@@ -335,7 +335,7 @@
               <div class="condition-header">
                 <span class="condition-title">3.- ¿Cuándo camina a paso habitual, esto le produce la molestia?</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="rose_3" value="No" checked> No</label>
+                  <label><input type="radio" name="rose_3" value="No"> No</label>
                   <label class="yes"><input type="radio" name="rose_3" value="Si"> Sí</label>
                 </div>
               </div>
@@ -345,7 +345,7 @@
               <div class="condition-header">
                 <span class="condition-title">4.- ¿Cuándo camina cuesta arriba o apurado, esto le produce la molestia?</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="rose_4" value="No" checked> No</label>
+                  <label><input type="radio" name="rose_4" value="No"> No</label>
                   <label class="yes"><input type="radio" name="rose_4" value="Si"> Sí</label>
                 </div>
               </div>
@@ -375,7 +375,7 @@
               <div class="condition-header">
                 <span class="condition-title">6.- ¿Desaparece el dolor o molestia en el pecho si se queda quieto?</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="rose_6" value="No" checked> No</label>
+                  <label><input type="radio" name="rose_6" value="No"> No</label>
                   <label class="yes"><input type="radio" name="rose_6" value="Si"> Sí</label>
                 </div>
               </div>
@@ -385,7 +385,7 @@
               <div class="condition-header">
                 <span class="condition-title" style="color:var(--color-link-hover); font-weight:700;">8.- Cuestionario de dolor de pecho de G. Rose</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="rose_8" value="Negativo" checked> Negativo</label>
+                  <label><input type="radio" name="rose_8" value="Negativo"> Negativo</label>
                   <label class="yes"><input type="radio" name="rose_8" value="Positivo"> Positivo</label>
                 </div>
               </div>

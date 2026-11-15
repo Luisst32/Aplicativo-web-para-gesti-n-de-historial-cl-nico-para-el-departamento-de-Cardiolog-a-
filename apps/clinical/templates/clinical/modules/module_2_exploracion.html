@@ -65,7 +65,7 @@
               <div class="condition-header">
                 <span class="condition-title">8.- Soplos cardiacos:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="soplos" value="No" checked onchange="toggleCondition('row_soplos', false)"> No</label>
+                  <label><input type="radio" name="soplos" value="No" onchange="toggleCondition('row_soplos', false)"> No</label>
                   <label class="yes"><input type="radio" name="soplos" value="Si" onchange="toggleCondition('row_soplos', true)"> Si</label>
                 </div>
               </div>
@@ -82,7 +82,7 @@
               <div class="condition-header">
                 <span class="condition-title">10.- Extra-tonos:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="extratonos" value="No" checked onchange="toggleCondition('row_extratonos', false)"> No</label>
+                  <label><input type="radio" name="extratonos" value="No" onchange="toggleCondition('row_extratonos', false)"> No</label>
                   <label class="yes"><input type="radio" name="extratonos" value="Si" onchange="toggleCondition('row_extratonos', true)"> Si</label>
                 </div>
               </div>
@@ -99,12 +99,12 @@
                 <div style="display:flex; gap:16px; align-items:center;">
                   <div class="toggle-pills">
                     <label><input type="radio" name="pulsos_palp" value="No"> No</label>
-                    <label class="yes"><input type="radio" name="pulsos_palp" value="Si" checked> Sí</label>
+                    <label class="yes"><input type="radio" name="pulsos_palp" value="Si"> Sí</label>
                   </div>
                   <span style="font-size:0.8rem; font-weight:600; color:#486581;">simétricos:</span>
                   <div class="toggle-pills">
                     <label><input type="radio" name="pulsos_sim" value="No"> No</label>
-                    <label class="yes"><input type="radio" name="pulsos_sim" value="Si" checked> Si</label>
+                    <label class="yes"><input type="radio" name="pulsos_sim" value="Si"> Si</label>
                   </div>
                 </div>
               </div>
@@ -116,18 +116,18 @@
                 <span class="condition-title">12.- Exploración respiratoria normal:</span>
                 <div class="toggle-pills">
                   <label><input type="radio" name="resp_norm" value="No"> No</label>
-                  <label class="yes"><input type="radio" name="resp_norm" value="Si" checked> Si</label>
+                  <label class="yes"><input type="radio" name="resp_norm" value="Si"> Si</label>
                 </div>
               </div>
               <div style="display:flex; gap:16px; align-items:center; margin-top:6px; flex-wrap:wrap;">
                 <span class="field-label">Existe Estertores:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="estert" value="No" checked> No</label>
+                  <label><input type="radio" name="estert" value="No"> No</label>
                   <label class="yes"><input type="radio" name="estert" value="Si"> Si</label>
                 </div>
                 <span class="field-label" style="margin-left: 10px;">sibilancias:</span>
                 <div class="toggle-pills">
-                  <label><input type="radio" name="sibil" value="No" checked> No</label>
+                  <label><input type="radio" name="sibil" value="No"> No</label>
                   <label class="yes"><input type="radio" name="sibil" value="Si"> Si</label>
                 </div>
               </div>
@@ -139,7 +139,7 @@
                 <span class="condition-title">13.- Exploración abdominal normal:</span>
                 <div class="toggle-pills">
                   <label><input type="radio" name="abdom_norm" value="No" onchange="toggleCondition('row_abdomen', true)"> No</label>
-                  <label class="yes"><input type="radio" name="abdom_norm" value="Si" checked onchange="toggleCondition('row_abdomen', false)"> Sí</label>
+                  <label class="yes"><input type="radio" name="abdom_norm" value="Si" onchange="toggleCondition('row_abdomen', false)"> Sí</label>
                 </div>
               </div>
               <!-- Si NO es normal, aparecen los hallazgos patológicos -->

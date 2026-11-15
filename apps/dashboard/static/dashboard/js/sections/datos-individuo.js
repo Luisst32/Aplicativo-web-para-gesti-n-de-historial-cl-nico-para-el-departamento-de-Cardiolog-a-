@@ -8,60 +8,50 @@ function renderTabDatosIndividuo() {
   const edadMaximo = Math.max(5, Math.ceil(Math.max(...hEdadPorcentajes, ...mEdadPorcentajes, 0) / 5) * 5);
 
   const elPiramide = document.getElementById('chart-ind-edad-sexo');
-  if (elPiramide) {
-    const edadBarOptions = {
-      bar: {
-        horizontal: true,
-        barHeight: '78%',
-        borderRadius: 6,
-        dataLabels: { position: 'center' },
-        colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 }
-      }
-    };
-    const edadDataLabels = {
-      enabled: true,
-      formatter: (_, { seriesIndex, dataPointIndex }) => {
-        const conteo = (seriesIndex === 0 ? hEdad : mEdad)[dataPointIndex] || 0;
-        return `${conteo} (${formatPct(conteo, n)}%)`;
+  if (elPiramide && dashboardHasChartData('chart-ind-edad-sexo', 'indEdad', n)) {
+    const hEdadNeg = hEdad.map(v => -v);
+    const maxVal = Math.max(1, ...hEdad, ...mEdad);
+    const piramideOptions = {
+      chart: { type: 'bar', height: 320, stacked: true, toolbar: { show: false }, animations: { enabled: false }, fontFamily: 'inherit' },
+      colors: [PALETTE.primaryBlue, PALETTE.purple],
+      plotOptions: {
+        bar: {
+          horizontal: true,
+          barHeight: '75%',
+          borderRadius: 4
+        }
       },
-      style: {
-        fontSize: '11px',
-        fontWeight: 'bold',
-        colors: [({ seriesIndex, dataPointIndex }) => {
-          const porcentaje = (seriesIndex === 0 ? hEdadPorcentajes : mEdadPorcentajes)[dataPointIndex] || 0;
-          return porcentaje / edadMaximo < 0.15 ? '#0f172a' : '#ffffff';
-        }]
+      dataLabels: {
+        enabled: true,
+        formatter: (val) => {
+          const abs = Math.abs(val);
+          return abs > 0 ? `${abs} (${formatPct(abs, n)}%)` : '';
+        },
+        style: { fontSize: '11px', fontWeight: 'bold', colors: ['#ffffff'] }
       },
-      background: { enabled: false }
+      grid: { borderColor: '#e8eef5', strokeDashArray: 4 },
+      series: [
+        { name: 'Hombres', data: hEdadNeg },
+        { name: 'Mujeres', data: mEdad }
+      ],
+      xaxis: {
+        categories: grupos,
+        min: -maxVal - 2,
+        max: maxVal + 2,
+        tickAmount: 6,
+        labels: { formatter: val => `${Math.abs(Math.round(val))}` },
+        title: { text: '← Hombres | Mujeres →' }
+      },
+      yaxis: { labels: { style: { fontWeight: 600, colors: '#0f172a' } } },
+      tooltip: {
+        y: { formatter: (val) => `${Math.abs(val)} de ${n} (${formatPct(Math.abs(val), n)}%)` }
+      },
+      legend: { position: 'top', horizontalAlign: 'center' }
     };
     if (charts.indEdad) {
-      charts.indEdad.updateOptions({
-        plotOptions: { bar: edadBarOptions.bar },
-        colors: [PALETTE.primaryBlue, PALETTE.purple],
-        xaxis: { categories: grupos, min: 0, max: edadMaximo, tickAmount: 4, axisBorder: { show: false }, axisTicks: { show: false }, labels: { formatter: val => `${Math.round(val)} %` } },
-        series: [{ name: 'Hombres', data: hEdadPorcentajes }, { name: 'Mujeres', data: mEdadPorcentajes }],
-        dataLabels: edadDataLabels
-      });
+      charts.indEdad.updateOptions(piramideOptions);
     } else {
-      charts.indEdad = createDashboardApexChart(elPiramide, {
-        chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false }, fontFamily: 'inherit', foreColor: '#1e293b', fontSize: '12px' },
-        grid: { borderColor: '#e8eef5', strokeDashArray: 4, padding: { right: 16 } },
-        fill: { type: 'solid', opacity: 1 },
-        colors: [PALETTE.primaryBlue, PALETTE.purple],
-        plotOptions: edadBarOptions,
-        series: [{ name: 'Hombres', data: hEdadPorcentajes }, { name: 'Mujeres', data: mEdadPorcentajes }],
-        xaxis: { categories: grupos, min: 0, max: edadMaximo, tickAmount: 4, axisBorder: { show: false }, axisTicks: { show: false }, labels: { formatter: val => `${Math.round(val)} %` } },
-        legend: { position: 'top', horizontalAlign: 'center' },
-        dataLabels: edadDataLabels,
-        tooltip: {
-          y: {
-            formatter: (_, { seriesIndex, dataPointIndex }) => {
-              const conteo = (seriesIndex === 0 ? hEdad : mEdad)[dataPointIndex] || 0;
-              return `${conteo} de ${n} casos (${formatPct(conteo, n)}%)`;
-            }
-          }
-        }
-      });
+      charts.indEdad = createDashboardApexChart(elPiramide, piramideOptions);
       charts.indEdad.render();
     }
   }
@@ -218,6 +208,116 @@ function renderTabDatosIndividuo() {
         tooltip: apexCountTooltip()
       });
       charts.indViv.render();
+    }
+  }
+
+  // 5. FASE 3: Gradiente de Riesgo según Nivel Educativo
+  const eduLevels = ['Secundaria', 'Superior', 'Postgrado'];
+  const eduData = eduLevels.map(lvl => {
+    const inLvl = filteredRecords.filter(r => r.nivel_estudios === lvl);
+    const count = inLvl.length;
+    const highRisk = inLvl.filter(r => (r.factores_riesgo_count || 0) >= 2 || (r.riesgo_global && r.riesgo_global.includes('Alto'))).length;
+    return {
+      lvl,
+      count,
+      highRisk,
+      pct: count > 0 ? Number(((highRisk / count) * 100).toFixed(1)) : 0
+    };
+  }).filter(d => d.count > 0);
+
+  const elEduGrad = document.getElementById('chart-di-gradiente-educacion');
+  if (elEduGrad && dashboardHasChartData('chart-di-gradiente-educacion', 'diEduGrad', eduData.length)) {
+    const seriesData = eduData.map(d => d.pct);
+    const categories = eduData.map(d => d.lvl);
+    if (charts.diEduGrad) {
+      charts.diEduGrad.updateOptions({
+        xaxis: { categories },
+        series: [{ name: '% Riesgo Alto (≥2 Factores)', data: seriesData }]
+      });
+    } else {
+      charts.diEduGrad = createDashboardApexChart(elEduGrad, {
+        chart: { type: 'bar', height: 300, toolbar: { show: false }, animations: { enabled: false } },
+        plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 6, distributed: true, dataLabels: { position: 'center' } } },
+        colors: [PALETTE.green, PALETTE.primaryBlue, PALETTE.emergencyRed],
+        series: [{ name: '% Riesgo Alto (≥2 Factores)', data: seriesData }],
+        xaxis: { categories },
+        yaxis: { min: 0, max: 100, labels: { formatter: val => `${Math.round(val)}%` }, title: { text: '% Prevalencia Riesgo Alto' } },
+        legend: { show: false },
+        dataLabels: {
+          enabled: true,
+          formatter: (val, opt) => {
+            const d = eduData[opt.dataPointIndex];
+            return d ? `${d.highRisk} de ${d.count} (${val}%)` : `${val}%`;
+          },
+          style: { fontSize: '11px', fontWeight: 700, fontFamily: 'inherit', colors: ['#ffffff'] },
+          dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow,
+          background: { enabled: false }
+        },
+        tooltip: {
+          y: {
+            formatter: (val, opt) => {
+              const d = eduData[opt.dataPointIndex];
+              return d ? formatWilsonCiLabel(d.highRisk, d.count) : `${val}%`;
+            }
+          }
+        }
+      });
+      charts.diEduGrad.render();
+    }
+  }
+
+  // 6. FASE 3: Gradiente de Riesgo según Rango de Ingresos
+  const incLevels = ['Menos de $500', '$1001 - $2000'];
+  const incData = incLevels.map(rng => {
+    const inRng = filteredRecords.filter(r => r.rango_ingresos === rng);
+    const count = inRng.length;
+    const highRisk = inRng.filter(r => (r.factores_riesgo_count || 0) >= 2 || (r.riesgo_global && r.riesgo_global.includes('Alto'))).length;
+    return {
+      rng,
+      count,
+      highRisk,
+      pct: count > 0 ? Number(((highRisk / count) * 100).toFixed(1)) : 0
+    };
+  }).filter(d => d.count > 0);
+
+  const elIncGrad = document.getElementById('chart-di-gradiente-ingresos');
+  if (elIncGrad && dashboardHasChartData('chart-di-gradiente-ingresos', 'diIncGrad', incData.length)) {
+    const seriesData = incData.map(d => d.pct);
+    const categories = incData.map(d => d.rng);
+    if (charts.diIncGrad) {
+      charts.diIncGrad.updateOptions({
+        xaxis: { categories },
+        series: [{ name: '% Riesgo Alto (≥2 Factores)', data: seriesData }]
+      });
+    } else {
+      charts.diIncGrad = createDashboardApexChart(elIncGrad, {
+        chart: { type: 'bar', height: 300, toolbar: { show: false }, animations: { enabled: false } },
+        plotOptions: { bar: { horizontal: false, columnWidth: '45%', borderRadius: 6, distributed: true, dataLabels: { position: 'center' } } },
+        colors: [PALETTE.yellow, PALETTE.primaryBlue],
+        series: [{ name: '% Riesgo Alto (≥2 Factores)', data: seriesData }],
+        xaxis: { categories },
+        yaxis: { min: 0, max: 100, labels: { formatter: val => `${Math.round(val)}%` }, title: { text: '% Prevalencia Riesgo Alto' } },
+        legend: { show: false },
+        dataLabels: {
+          enabled: true,
+          formatter: (val, opt) => {
+            const d = incData[opt.dataPointIndex];
+            return d ? `${d.highRisk} de ${d.count} (${val}%)` : `${val}%`;
+          },
+          style: { fontSize: '11px', fontWeight: 700, fontFamily: 'inherit', colors: ['#ffffff'] },
+          dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow,
+          background: { enabled: false }
+        },
+        tooltip: {
+          y: {
+            formatter: (val, opt) => {
+              const d = incData[opt.dataPointIndex];
+              return d ? formatWilsonCiLabel(d.highRisk, d.count) : `${val}%`;
+            }
+          }
+        }
+      });
+      charts.diIncGrad.render();
     }
   }
 }

@@ -9,17 +9,48 @@ function dashboardMergeStyle(base, extra) {
   return result;
 }
 
+// ============================================================================
+// REGLA INFALTABLE: ESTILO ÚNICO CENTRALIZADO DE ETIQUETAS DE VALOR
+// Tomado exactamente de la dona de referencia: "Distribución por Categoría de Personal"
+// Color blanco (#ffffff), tipografía inherit, negrita (700), tamaño base 11px
+// con sombra oscura sutil (dropShadow / textStroke) para contraste universal.
+// ============================================================================
+var UNIVERSAL_VALUE_LABEL_STYLE = {
+  color: '#ffffff',
+  fontFamily: 'inherit',
+  fontWeight: 'bold',
+  baseSize: 11,
+  minSize: 9.5,
+  maxSize: 12,
+  textStrokeColor: 'rgba(15, 23, 42, 0.50)',
+  textStrokeWidth: 2,
+  textShadowBlur: 3,
+  textShadowColor: 'rgba(0, 0, 0, 0.35)',
+  apexDropShadow: {
+    enabled: true,
+    top: 1,
+    left: 1,
+    blur: 2,
+    color: '#0f172a',
+    opacity: 0.6
+  }
+};
+
 function dashboardLabelLines(formatted, horizontal = false) {
   if (formatted === '' || formatted === null || formatted === undefined) return '';
-  const text = Array.isArray(formatted) ? formatted.join(' ') : String(formatted);
+  if (Array.isArray(formatted)) return formatted;
+  const text = String(formatted);
+  if (text.includes('·') || text.includes('IC 95%:') || text.includes('IC:')) return text;
   const match = text.match(/^(.*?)\s*\(?([\d.,]+\s*%)\)?\s*$/);
   if (!match) return text;
   return `${match[1].trim()} (${match[2]})`;
 }
 
 function dashboardVerticalLabel(formatted) {
+  if (Array.isArray(formatted)) return formatted;
   const label = dashboardLabelLines(formatted);
   if (typeof label !== 'string') return label;
+  if (label.includes('·') || label.includes('IC 95%:')) return label;
   const parts = label.match(/^(.*?)\s+(\([\d.,]+\s*%\))$/);
   return parts ? [parts[1], parts[2]] : label;
 }
@@ -78,31 +109,87 @@ function dashboardHorizontalStyle() {
       axisBorder: { show: false }, axisTicks: { show: false },
       labels: { style: { colors: '#1e293b', fontSize: '12px', fontWeight: 600 } }
     },
-    yaxis: { labels: { style: { colors: '#1e293b', fontSize: '12px', fontWeight: 600 } } },
+    yaxis: { labels: { maxWidth: 280, style: { colors: '#1e293b', fontSize: '12px', fontWeight: 600 } } },
     dataLabels: { enabled: true, offsetX: 0, offsetY: 0,
-      style: { fontSize: '11px', fontWeight: 700, colors: ['#ffffff'] },
-      background: { enabled: false }, dropShadow: { enabled: false }
+      style: { fontSize: '11px', fontWeight: 700, fontFamily: 'inherit', colors: ['#ffffff'] },
+      background: { enabled: false }, dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow
     }
   };
+}
+
+// Rediseño defensivo del marcador puntual del Forest Plot:
+// En vez de una línea vertical completa que cruza y solapa el texto,
+// dibuja marcas cortas (notches) en los bordes superior e inferior y un rombo (diamond).
+// Las marcas se ubican en los bordes exteriormente para que jamás crucen el texto interior.
+function redesignForestPlotGoals(root) {
+  const goalMarkers = root.querySelectorAll('.apexcharts-bar-goals-groups line, .apexcharts-goals-markers line, line.apexcharts-goal-marker');
+  goalMarkers.forEach(line => {
+    if (line.getAttribute('data-redesigned') === 'true') return;
+    const y1 = parseFloat(line.getAttribute('y1'));
+    const y2 = parseFloat(line.getAttribute('y2'));
+    const x1 = parseFloat(line.getAttribute('x1'));
+    if (isNaN(y1) || isNaN(y2) || isNaN(x1)) return;
+
+    const barHeight = Math.abs(y2 - y1);
+    if (barHeight < 15) return;
+
+    const topY = Math.min(y1, y2);
+    const bottomY = Math.max(y1, y2);
+
+    // 1. Marca corta en el borde superior (hacia arriba en el borde): de topY - 7 a topY
+    line.setAttribute('y1', String(topY - 7));
+    line.setAttribute('y2', String(topY));
+    line.setAttribute('stroke', '#0f172a');
+    line.setAttribute('stroke-width', '3');
+    line.setAttribute('stroke-linecap', 'round');
+    line.setAttribute('data-redesigned', 'true');
+
+    // 2. Marca corta en el borde inferior (hacia abajo en el borde): de bottomY a bottomY + 7
+    const bottomTick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    bottomTick.setAttribute('x1', String(x1));
+    bottomTick.setAttribute('y1', String(bottomY));
+    bottomTick.setAttribute('x2', String(x1));
+    bottomTick.setAttribute('y2', String(bottomY + 7));
+    bottomTick.setAttribute('stroke', '#0f172a');
+    bottomTick.setAttribute('stroke-width', '3');
+    bottomTick.setAttribute('stroke-linecap', 'round');
+    bottomTick.setAttribute('class', 'forest-goal-bottom-tick');
+    line.parentElement.appendChild(bottomTick);
+
+    // 3. Rombo (diamond) en el borde superior apuntando exactamente a la prevalencia puntual
+    const diamond = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    const dSize = 4;
+    const pts = `${x1},${topY - dSize * 2} ${x1 + dSize},${topY - dSize} ${x1},${topY} ${x1 - dSize},${topY - dSize}`;
+    diamond.setAttribute('points', pts);
+    diamond.setAttribute('fill', '#0f172a');
+    diamond.setAttribute('class', 'forest-goal-diamond');
+    line.parentElement.appendChild(diamond);
+  });
 }
 
 // Apex does not expose a per-point anchor callback. Position SVG labels from
 // their actual measured bar/text dimensions after each render and update.
 function dashboardPlaceApexLabels(chart) {
   const root = chart.w?.dom?.baseEl || chart.w?.globals?.dom?.baseEl;
-  if (!root || chart.w.config.chart.type !== 'bar') return;
-  const horizontal = chart.w.config.plotOptions.bar.horizontal;
-  const series = root.querySelectorAll('.apexcharts-bar-series .apexcharts-series');
+  if (!root || !['bar', 'rangeBar'].includes(chart.w.config.chart.type)) return;
+  const chartId = root.closest('[id]')?.id || '';
+  const horizontal = chart.w.config.plotOptions?.bar?.horizontal;
+
+  if (chartId === 'chart-rg-forest-prevalencias') {
+    redesignForestPlotGoals(root);
+  }
+
+  const series = root.querySelectorAll('.apexcharts-bar-series .apexcharts-series, .apexcharts-rangebar-series .apexcharts-series, .apexcharts-series');
   const labels = root.querySelectorAll('.apexcharts-datalabels');
   const stackEdges = new Map();
   series.forEach((group, seriesIndex) => {
     const realIndex = Number(group.getAttribute('data:realIndex') ?? seriesIndex);
-    const bars = group.querySelectorAll('.apexcharts-bar-area');
+    const bars = group.querySelectorAll('.apexcharts-bar-area, .apexcharts-rangebar-area');
     bars.forEach((bar, index) => {
       const pointIndex = Number(bar.getAttribute('j') ?? index);
       const raw = chart.w.config.series[realIndex]?.data[pointIndex];
-      const value = Number(raw && typeof raw === 'object' ? raw.y : raw);
-      bar.style.display = value > 0 ? '' : 'none';
+      const value = Number(raw && typeof raw === 'object' ? (raw.y !== undefined ? (Array.isArray(raw.y) ? raw.y[1] - raw.y[0] : raw.y) : raw) : raw);
+      bar.style.display = Math.abs(value) > 0 || Array.isArray(raw?.y) ? '' : 'none';
       bar.removeAttribute('transform');
     });
     const labelGroup = Array.from(labels).find(item => Number(item.getAttribute('data:realIndex')) === realIndex)
@@ -119,50 +206,184 @@ function dashboardPlaceApexLabels(chart) {
         return;
       }
       text.removeAttribute('transform');
-      text.setAttribute('font-size', '11');
       bar.removeAttribute('transform');
       let barRect = bar.getBoundingClientRect();
-      const textRect = text.getBoundingClientRect();
+      let textRect = text.getBoundingClientRect();
       if (!textRect.width || !textRect.height) return;
       if (barRect.width < 1 || barRect.height < 1) {
         text.style.visibility = 'hidden';
         return;
       }
       text.style.visibility = 'visible';
-      // Keep the same 11px label everywhere; give small fills a visual minimum.
-      const scaleX = Math.max(1, (textRect.width + 12) / barRect.width);
-      const scaleY = Math.max(1, (textRect.height + 8) / barRect.height);
-      const box = bar.getBBox();
-      let tx = (horizontal ? box.x : box.x + box.width / 2) * (1 - scaleX);
-      let ty = (horizontal ? box.y + box.height / 2 : box.y + box.height) * (1 - scaleY);
-      bar.setAttribute('transform', `matrix(${scaleX},0,0,${scaleY},${tx},${ty})`);
+
+      // Escalar geometría de barras apiladas (stacked) para garantizar que quepan las etiquetas
+      // Aplica tanto a horizontal (100% stacked o conteo) como a vertical apilado (stacked: true).
+      // En pirámides poblacionales o gráficos agrupados, no escalar ni encadenar stacks.
+      const isPyramid = chartId === 'chart-ind-edad-sexo';
+      const isStacked = Boolean(chart.w.config.chart.stacked && !isPyramid);
+      const canScaleBar = isStacked;
+      const minTextW = Math.max(48, (textRect.width || 0) + 12);
+      const minTextH = Math.max(42, (textRect.height || 0) + 14);
+      const scaleX = (canScaleBar && horizontal) ? Math.max(1, minTextW / barRect.width) : 1;
+      const scaleY = (canScaleBar && !horizontal) ? Math.max(1, minTextH / barRect.height) : 1;
+      if (canScaleBar && (scaleX > 1 || scaleY > 1 || stackEdges.has(pointIndex))) {
+        const box = bar.getBBox();
+        let tx = (horizontal ? box.x : box.x + box.width / 2) * (1 - scaleX);
+        let ty = (horizontal ? box.y + box.height / 2 : box.y + box.height) * (1 - scaleY);
+        bar.setAttribute('transform', `matrix(${scaleX},0,0,${scaleY},${tx},${ty})`);
+        barRect = bar.getBoundingClientRect();
+        if (chart.w.config.chart.stacked) {
+          const edge = stackEdges.get(pointIndex);
+          if (edge !== undefined) {
+            const dx = horizontal ? edge - barRect.left : 0;
+            const dy = horizontal ? 0 : edge - barRect.bottom;
+            const matrix = group.getScreenCTM();
+            if (matrix) {
+              const inverse = matrix.inverse();
+              tx += inverse.a * dx + inverse.c * dy;
+              ty += inverse.b * dx + inverse.d * dy;
+              bar.setAttribute('transform', `matrix(${scaleX},0,0,${scaleY},${tx},${ty})`);
+              barRect = bar.getBoundingClientRect();
+            }
+          }
+          stackEdges.set(pointIndex, horizontal ? barRect.right : barRect.top);
+        }
+      } else {
+        bar.removeAttribute('transform');
+        if (isStacked) {
+          stackEdges.set(pointIndex, horizontal ? barRect.right : barRect.top);
+        }
+      }
       barRect = bar.getBoundingClientRect();
-      if (chart.w.config.chart.stacked) {
-        const edge = stackEdges.get(pointIndex);
-        if (edge !== undefined) {
-          const dx = horizontal ? edge - barRect.left : 0;
-          const dy = horizontal ? 0 : edge - barRect.bottom;
-          const matrix = group.getScreenCTM();
-          if (matrix) {
-            const inverse = matrix.inverse();
-            tx += inverse.a * dx + inverse.c * dy;
-            ty += inverse.b * dx + inverse.d * dy;
-            bar.setAttribute('transform', `matrix(${scaleX},0,0,${scaleY},${tx},${ty})`);
-            barRect = bar.getBoundingClientRect();
+      textRect = text.getBoundingClientRect();
+
+      // Escalera de ajuste para texto en barras:
+      // Medir tamaño real del texto y el espacio disponible de la forma
+      let fontSize = 11;
+      text.setAttribute('font-size', String(fontSize));
+      text.querySelectorAll('tspan').forEach(ts => ts.setAttribute('font-size', String(fontSize)));
+      textRect = text.getBoundingClientRect();
+
+      let fitsInside = horizontal
+        ? (barRect.width >= textRect.width + 14)
+        : (barRect.height >= textRect.height + 6 && barRect.width >= textRect.width + 4);
+
+      // Paso 3b: Si no cabe cómodamente, reducir fuente responsivamente (9.5px o 9px)
+      if (!fitsInside) {
+        fontSize = 9.5;
+        text.setAttribute('font-size', String(fontSize));
+        text.querySelectorAll('tspan').forEach(ts => ts.setAttribute('font-size', String(fontSize)));
+        textRect = text.getBoundingClientRect();
+        fitsInside = horizontal
+          ? (barRect.width >= textRect.width + 12)
+          : (barRect.height >= textRect.height + 4 && barRect.width >= textRect.width + 2);
+        if (!fitsInside && !horizontal) {
+          fontSize = 8.5;
+          text.setAttribute('font-size', String(fontSize));
+          text.querySelectorAll('tspan').forEach(ts => ts.setAttribute('font-size', String(fontSize)));
+          textRect = text.getBoundingClientRect();
+          fitsInside = (barRect.height >= textRect.height + 2 && barRect.width >= textRect.width);
+        }
+      }
+
+      // Paso 3c/3d: En barras verticales con 2 líneas, optimizar texto para ganar espacio horizontal
+      if (!fitsInside && !horizontal && text.querySelectorAll('tspan').length > 1) {
+        text.querySelectorAll('tspan').forEach(ts => {
+          const t = ts.textContent.trim();
+          if (t.startsWith('(') && t.endsWith(')')) {
+            ts.textContent = t.slice(1, -1);
+          }
+        });
+        textRect = text.getBoundingClientRect();
+        fitsInside = (barRect.height >= textRect.height + 2 && barRect.width >= textRect.width);
+        // Si aún no cabe el ancho, recortar a valor esencial (Paso 3d)
+        if (!fitsInside && barRect.width < textRect.width) {
+          const tspans = text.querySelectorAll('tspan');
+          const countVal = tspans[0].textContent.trim();
+          while (text.firstChild) text.removeChild(text.firstChild);
+          text.textContent = countVal;
+          text.setAttribute('font-size', '9.5');
+          textRect = text.getBoundingClientRect();
+          fitsInside = (barRect.height >= textRect.height + 2 && barRect.width >= textRect.width);
+        }
+      }
+
+      // Paso 3c: Si aún no cabe en una sola línea horizontal y la altura lo permite, partir en 2 líneas
+      if (!fitsInside && horizontal && barRect.height >= 22 && text.querySelectorAll('tspan').length <= 1) {
+        const fullContent = text.textContent.trim();
+        const splitMatch = fullContent.match(/^(.*?)\s*[\(·]\s*([\d.,]+\s*%)\)?$/);
+        if (splitMatch) {
+          const l1 = splitMatch[1].trim();
+          const l2 = splitMatch[2].trim().replace(/\)$/, '');
+          while (text.firstChild) text.removeChild(text.firstChild);
+          const ts1 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          ts1.setAttribute('x', '0');
+          ts1.setAttribute('dy', '-0.55em');
+          ts1.setAttribute('font-size', String(fontSize));
+          ts1.textContent = l1;
+          const ts2 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          ts2.setAttribute('x', '0');
+          ts2.setAttribute('dy', '1.15em');
+          ts2.setAttribute('font-size', String(fontSize));
+          ts2.textContent = l2.startsWith('(') ? l2 : (l2.endsWith('%') ? `(${l2})` : `(${l2}%)`);
+          text.appendChild(ts1);
+          text.appendChild(ts2);
+          textRect = text.getBoundingClientRect();
+          fitsInside = (barRect.width >= textRect.width + 6);
+
+          if (!fitsInside) {
+            // Si ni en 2 líneas cabe cómodamente dentro de la barra, restaurar para Paso 3e
+            text.textContent = fullContent;
+            textRect = text.getBoundingClientRect();
           }
         }
-        stackEdges.set(pointIndex, horizontal ? barRect.right : barRect.top);
       }
-      barRect = bar.getBoundingClientRect();
-      const fittedRect = text.getBoundingClientRect();
-      const dx = barRect.left + barRect.width / 2 - (fittedRect.left + fittedRect.width / 2);
-      const dy = barRect.top + barRect.height / 2 - (fittedRect.top + fittedRect.height / 2);
-      const matrix = text.getScreenCTM();
-      if (matrix) {
-        const inverse = matrix.inverse();
-        text.setAttribute('transform', `translate(${inverse.a * dx + inverse.c * dy},${inverse.b * dx + inverse.d * dy})`);
+
+      // Paso 3e (Último recurso): si la dimensión que codifica el dato no permite contener el texto
+      if (!fitsInside) {
+        // La etiqueta sale junto a la forma con color de texto normal del dashboard (#0f172a, nunca blanco sobre fondo blanco)
+        text.setAttribute('fill', '#0f172a');
+        text.style.filter = 'none';
+        text.querySelectorAll('tspan').forEach(ts => {
+          ts.setAttribute('fill', '#0f172a');
+          ts.style.fill = '#0f172a';
+          const t = ts.textContent.trim();
+          if (t.endsWith('%') && !t.startsWith('(')) {
+            ts.textContent = `(${t})`;
+          }
+        });
+        const matrix = text.getScreenCTM();
+        if (matrix) {
+          const inverse = matrix.inverse();
+          if (horizontal) {
+            const isNegativeVal = isPyramid && realIndex === 0;
+            const dx = isNegativeVal ? ((barRect.left - 6) - textRect.right) : ((barRect.right + 6) - textRect.left);
+            const dy = (barRect.top + barRect.height / 2) - (textRect.top + textRect.height / 2);
+            text.setAttribute('transform', `translate(${inverse.a * dx + inverse.c * dy},${inverse.b * dx + inverse.d * dy})`);
+          } else {
+            const dx = (barRect.left + barRect.width / 2) - (textRect.left + textRect.width / 2);
+            const dy = (barRect.top - 6) - textRect.bottom;
+            text.setAttribute('transform', `translate(${inverse.a * dx + inverse.c * dy},${inverse.b * dx + inverse.d * dy})`);
+          }
+        }
+      } else {
+        // Dentro de la forma: siempre blanco (#ffffff) con sombra de referencia
+        const dx = barRect.left + barRect.width / 2 - (textRect.left + textRect.width / 2);
+        const dy = barRect.top + barRect.height / 2 - (textRect.top + textRect.height / 2);
+        const matrix = text.getScreenCTM();
+        if (matrix) {
+          const inverse = matrix.inverse();
+          text.setAttribute('transform', `translate(${inverse.a * dx + inverse.c * dy},${inverse.b * dx + inverse.d * dy})`);
+        }
+        text.setAttribute('fill', '#ffffff');
+        text.style.filter = 'drop-shadow(1px 1px 1.5px rgba(15, 23, 42, 0.65))';
+        text.style.fontFamily = 'inherit';
+        text.style.fontWeight = '700';
+        text.querySelectorAll('tspan').forEach(ts => {
+          ts.setAttribute('fill', '#ffffff');
+          ts.style.fill = '#ffffff';
+        });
       }
-      text.setAttribute('fill', '#ffffff');
     });
   });
 }
@@ -184,24 +405,43 @@ function dashboardApexBarStyle(options, id) {
       },
       dataLabels: {
         ...options.dataLabels,
-        style: { fontSize: '11px', fontWeight: 700, colors: ['#ffffff'] },
-        dropShadow: { enabled: true, top: 1, left: 1, blur: 2, color: '#0f172a', opacity: 0.6 }
+        style: { fontSize: '11px', fontWeight: 700, fontFamily: 'inherit', colors: ['#ffffff'] },
+        dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow
       }
     };
   }
-  if (options.chart?.type !== 'bar') return {
+  if (options.chart?.type === 'heatmap') {
+    return {
+      ...options,
+      dataLabels: {
+        ...options.dataLabels,
+        style: {
+          fontSize: '11px',
+          fontWeight: 700,
+          fontFamily: 'inherit',
+          colors: [({ value }) => (Number(value) > 0 ? '#ffffff' : '#0f172a')]
+        },
+        dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow
+      }
+    };
+  }
+  if (!['bar', 'rangeBar'].includes(options.chart?.type)) return {
     ...options,
     dataLabels: { ...options.dataLabels,
       background: { enabled: false },
+      style: { ...options.dataLabels?.style, colors: ['#ffffff'], fontWeight: 700, fontFamily: 'inherit' },
+      dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow,
       formatter: (value, ctx) => dashboardLabelLines(originalFormatter ? originalFormatter(value, ctx) : value)
     }
   };
   // Keep the original horizontal/vertical distinction, rather than rotating all charts.
   const horizontal = ['chart-factores-modificables', 'chart-ind-edad-sexo', 'chart-ind-vivienda',
-    'chart-fam-padres-madres', 'chart-fam-por-edad', 'chart-cov-por-categoria', 'chart-nc-comorbilidades'].includes(id)
+    'chart-fam-padres-madres', 'chart-fam-por-edad', 'chart-cov-por-categoria', 'chart-nc-comorbilidades',
+    'chart-rg-forest-prevalencias', 'chart-covid-prevalencia-ic', 'chart-em-hormonas-ambiente',
+    'chart-nc-sexo-categoria'].includes(id)
     || (options.plotOptions?.bar?.horizontal === true && ![
       'chart-exp-imc-cat', 'chart-exp-auscultacion', 'chart-mod-control-tto',
-      'chart-mod-actividad-cat', 'chart-em-sueno', 'chart-em-hormonas-ambiente',
+      'chart-mod-actividad-cat', 'chart-em-sueno',
       'chart-cov-historia', 'chart-ecg-anomalias', 'chart-nc-reuma-alergia',
       'chart-mod-obligatorios', 'chart-mod-vasculopatia'].includes(id));
   const bar = options.plotOptions?.bar || {};
@@ -215,9 +455,13 @@ function dashboardApexBarStyle(options, id) {
   });
   const yaxis = Array.isArray(options.yaxis) ? options.yaxis : { ...options.yaxis };
   const xaxis = { ...options.xaxis };
-  if (horizontal && !['chart-factores-modificables', 'chart-ind-edad-sexo'].includes(id)) {
-    delete xaxis.max;
-    xaxis.min = 0;
+  if (horizontal && !['chart-factores-modificables', 'chart-ind-edad-sexo', 'chart-covid-prevalencia-ic', 'chart-rg-forest-prevalencias'].includes(id)) {
+    if (options.xaxis?.max === undefined) {
+      delete xaxis.max;
+    }
+    if (xaxis.min === undefined) {
+      xaxis.min = 0;
+    }
   }
   if (!Array.isArray(yaxis)) {
     delete yaxis.max;
@@ -227,28 +471,34 @@ function dashboardApexBarStyle(options, id) {
   const styled = {
     ...options,
     chart: { ...options.chart, events: { ...events, ...labelEvents }, fontFamily: 'inherit', foreColor: '#1e293b', fontSize: '12px',
-      height: Math.max(320, (options.xaxis?.categories?.length || 1) * (options.series?.length > 1 && !options.chart.stacked ? 76 : 48) + 90) },
-    grid: { borderColor: '#e8eef5', strokeDashArray: 4, padding: { right: 90, left: 8, top: 36 } },
+      height: options.chart?.height || Math.max(320, (options.xaxis?.categories?.length || 1) * (options.series?.length > 1 && !options.chart.stacked ? 76 : 48) + 90) },
+    grid: { borderColor: '#e8eef5', strokeDashArray: 4, padding: id === 'chart-ind-edad-sexo' ? { right: 24, left: 24, top: 24 } : (horizontal ? { right: 90, left: 8, top: 36 } : { right: 20, left: 16, top: 20, bottom: 25 }) },
     fill: { type: 'solid', opacity: 1 },
     plotOptions: { ...options.plotOptions, bar: {
-      ...bar, horizontal, borderRadius: 6, barHeight: '78%', columnWidth: '80%',
-      dataLabels: { position: 'center', hideOverflowingLabels: false },
-      colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 }
+      borderRadius: 6, barHeight: bar.barHeight || '78%', columnWidth: bar.columnWidth || '72%',
+      ...bar, horizontal,
+      dataLabels: { position: 'center', hideOverflowingLabels: false, ...bar.dataLabels },
+      colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6, ...bar.colors }
     } },
     xaxis: { ...xaxis, axisBorder: { show: false }, axisTicks: { show: false } },
     yaxis,
     dataLabels: { ...options.dataLabels, enabled: true, offsetX: 0, offsetY: 0,
       formatter: (value, ctx) => {
+        if (originalFormatter) {
+          const res = originalFormatter(value, ctx);
+          if (Array.isArray(res)) return res;
+          if (String(res).includes('·') || String(res).includes('IC 95%:')) return res;
+          return horizontal ? dashboardLabelLines(res, true) : dashboardVerticalLabel(res);
+        }
         if (!(Number(value) > 0)) return '';
-        const label = dashboardLabelLines(originalFormatter ? originalFormatter(value, ctx) : value, horizontal);
-        return horizontal ? label : dashboardVerticalLabel(label);
+        return horizontal ? dashboardLabelLines(value, true) : dashboardVerticalLabel(value);
       },
       style: { fontSize: '11px', fontWeight: 700, fontFamily: 'inherit', colors: ['#ffffff'] },
       background: { enabled: false },
-      dropShadow: { enabled: true, top: 1, left: 1, blur: 2, color: '#0f172a', opacity: 0.6 }
+      dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow
     }
   };
-  return horizontal ? dashboardMergeStyle(styled, dashboardHorizontalStyle()) : styled;
+  return horizontal ? dashboardMergeStyle(dashboardHorizontalStyle(), styled) : styled;
 }
 
 function createDashboardApexChart(element, options) {
@@ -358,7 +608,7 @@ function dashboardChartJsStyle(config) {
   const oldLabels = options.plugins.datalabels || {};
   options.plugins.datalabels = {
     ...oldLabels,
-    display: ctx => Number(ctx.dataset.data[ctx.dataIndex]) > 0,
+    display: ctx => Boolean(ctx?.dataset?.data && Number(ctx.dataset.data[ctx.dataIndex]) > 0),
     color: '#ffffff',
     textStrokeColor: 'rgba(15, 23, 42, 0.50)',
     textStrokeWidth: 2,

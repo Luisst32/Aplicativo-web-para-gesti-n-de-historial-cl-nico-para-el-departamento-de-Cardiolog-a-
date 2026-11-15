@@ -785,20 +785,20 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                         v_sop = df_dict[field_to_col['soplos']][i]
                         _, sop_lbl = _get_val_and_label(v_sop, meta.variable_value_labels.get(field_to_col['soplos'], {}))
                         sop_str = sop_lbl.lower()
-                        vs.systolic_murmur = 'sist' in sop_str
-                        vs.diastolic_murmur = 'diast' in sop_str
+                        vs.systolic_murmur = None if _is_empty_or_nan(v_sop) else 'sist' in sop_str
+                        vs.diastolic_murmur = None if _is_empty_or_nan(v_sop) else 'diast' in sop_str
                         m_grade = re.search(r'grado\s*([1-4])', sop_str)
                         if m_grade: vs.murmur_grade = int(m_grade.group(1))
 
                     if 'resp_normal' in field_to_col:
                         v_rn = df_dict[field_to_col['resp_normal']][i]
-                        vs.pulmonary_auscultation_normal = (v_rn == 1.0 or v_rn is None)
+                        vs.pulmonary_auscultation_normal = None if _is_empty_or_nan(v_rn) else (v_rn == 1.0 or v_rn is None)
                     if 'abdom_normal' in field_to_col:
                         v_an = df_dict[field_to_col['abdom_normal']][i]
-                        vs.abdominal_auscultation_normal = (v_an == 1.0 or v_an is None)
+                        vs.abdominal_auscultation_normal = None if _is_empty_or_nan(v_an) else (v_an == 1.0 or v_an is None)
                     if 'pulsos' in field_to_col:
                         v_pu = df_dict[field_to_col['pulsos']][i]
-                        vs.pedal_pulses_symmetric = (v_pu == 1.0 or v_pu is None)
+                        vs.pedal_pulses_symmetric = None if _is_empty_or_nan(v_pu) else (v_pu == 1.0 or v_pu is None)
                     vs.save()
                     visit.vital_signs = vs
 
@@ -853,7 +853,7 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
 
                     if 'ecg_hvi' in field_to_col:
                         v_hvi = df_dict[field_to_col['ecg_hvi']][i]
-                        ecg.left_ventricular_hypertrophy = (v_hvi == 1.0)
+                        ecg.left_ventricular_hypertrophy = None if _is_empty_or_nan(v_hvi) else (v_hvi == 1.0)
 
                     if 'ecg_bloqueo' in field_to_col:
                         v_bl = df_dict[field_to_col['ecg_bloqueo']][i]
@@ -903,31 +903,31 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
 
                     if 'ecg_onda_delta' in field_to_col:
                         v_od = df_dict[field_to_col['ecg_onda_delta']][i]
-                        ecg.delta_wave = (v_od == 1.0 or v_od == '1')
+                        ecg.delta_wave = None if _is_empty_or_nan(v_od) else (v_od == 1.0 or v_od == '1')
 
                     if 'ecg_cubeta' in field_to_col:
                         v_cub = df_dict[field_to_col['ecg_cubeta']][i]
-                        ecg.digitalis_effect = (v_cub == 1.0 or v_cub == '1')
+                        ecg.digitalis_effect = None if _is_empty_or_nan(v_cub) else (v_cub == 1.0 or v_cub == '1')
 
                     if 'ecg_onda_q' in field_to_col:
                         v_oq = df_dict[field_to_col['ecg_onda_q']][i]
-                        ecg.pathological_q_wave = (v_oq == 1.0 or v_oq == '1' or str(v_oq).strip().upper() == 'SI')
+                        ecg.pathological_q_wave = None if _is_empty_or_nan(v_oq) else (v_oq == 1.0 or v_oq == '1' or str(v_oq).strip().upper() == 'SI')
 
                     if 'ecg_t_negativa' in field_to_col:
                         v_tn = df_dict[field_to_col['ecg_t_negativa']][i]
-                        ecg.negative_t_wave = (v_tn == 1.0 or v_tn == '1' or str(v_tn).strip().upper() == 'SI')
+                        ecg.negative_t_wave = None if _is_empty_or_nan(v_tn) else (v_tn == 1.0 or v_tn == '1' or str(v_tn).strip().upper() == 'SI')
 
                     if 'ecg_st_ascenso' in field_to_col:
                         v_sta = df_dict[field_to_col['ecg_st_ascenso']][i]
-                        ecg.st_elevation_pathological = (v_sta == 1.0 or v_sta == '1' or str(v_sta).strip().upper() == 'SI')
+                        ecg.st_elevation_pathological = None if _is_empty_or_nan(v_sta) else (v_sta == 1.0 or v_sta == '1' or str(v_sta).strip().upper() == 'SI')
 
                     if 'ecg_st_descenso' in field_to_col:
                         v_std = df_dict[field_to_col['ecg_st_descenso']][i]
-                        ecg.st_depression = (v_std == 1.0 or v_std == '1' or str(v_std).strip().upper() == 'SI')
+                        ecg.st_depression = None if _is_empty_or_nan(v_std) else (v_std == 1.0 or v_std == '1' or str(v_std).strip().upper() == 'SI')
 
                     if 'ecg_normal' in field_to_col:
                         v_norm = df_dict[field_to_col['ecg_normal']][i]
-                        ecg.is_normal = (v_norm == 1.0 or v_norm == '1')
+                        ecg.is_normal = None if _is_empty_or_nan(v_norm) else (v_norm == 1.0 or v_norm == '1')
 
                     ecg.save()
                     visit.electrocardiogram = ecg
@@ -1005,13 +1005,13 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                                 echo.lvef_percentage = fy_clean
                     if 'eco_hvi' in field_to_col:
                         v_ehvi = df_dict[field_to_col['eco_hvi']][i]
-                        echo.ventricular_hypertrophy = (v_ehvi == 1.0)
+                        echo.ventricular_hypertrophy = None if _is_empty_or_nan(v_ehvi) else (v_ehvi == 1.0)
                     if 'eco_disfuncion' in field_to_col:
                         v_dis = df_dict[field_to_col['eco_disfuncion']][i]
-                        echo.diastolic_dysfunction = (v_dis == 1.0)
+                        echo.diastolic_dysfunction = None if _is_empty_or_nan(v_dis) else (v_dis == 1.0)
                     if 'eco_calcificacion' in field_to_col:
                         v_calc = df_dict[field_to_col['eco_calcificacion']][i]
-                        echo.aortic_valve_calcification = (v_calc == 1.0)
+                        echo.aortic_valve_calcification = None if _is_empty_or_nan(v_calc) else (v_calc == 1.0)
                     echo.save()
                     visit.echocardiogram = echo
 
@@ -1023,9 +1023,9 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                     def _eval_bool_val(field_key):
                         if field_key in field_to_col:
                             val = df_dict[field_to_col[field_key]][i]
-                            if val is not None and str(val).strip() != '':
+                            if not _is_empty_or_nan(val):
                                 return val in [1.0, 1, '1', '1.0', 'Si', 'SI', 'Sí', True]
-                        return False
+                        return None
 
                     ordered.clinical_analysis = _eval_bool_val('est_analisis_clinicos')
                     ordered.ergometry_spect = _eval_bool_val('est_ergometria_spect')
@@ -1134,12 +1134,16 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                         _set_ans('ant_madre_iam', 'Si' if ('INFARTO' in madre_raw or 'IAM' in madre_raw) else 'No')
                         _set_ans('ant_madre_ictus', 'Si' if ('ICTUS' in madre_raw or 'ACV' in madre_raw) else 'No')
 
-                    covid_raw = str(df_dict.get('HISTORIA_COVID', [None]*total_rows)[i] or '').upper()
-                    if covid_raw: _set_ans('covid_paso', 'Si' if ('SI' in covid_raw or covid_raw == '1.0') else 'No')
-                    hosp_raw = str(df_dict.get('AFECTACION_COVID', [None]*total_rows)[i] or '').upper()
-                    if 'HOSPITAL' in hosp_raw or 'INGRESO' in hosp_raw: _set_ans('covid_ingreso', 'Si')
-                    long_raw = str(df_dict.get('LONG_COVID', [None]*total_rows)[i] or '').upper()
-                    if long_raw: _set_ans('longcovid', 'Si' if ('SI' in long_raw or long_raw == '1.0') else 'No')
+                    from clinical.services.covid_answers import resolve_covid
+                    covid_source = {}
+                    for source, code in [('HISTORIA_COVID','historia_covid'), ('LONG_COVID','longcovid')]:
+                        raw = df_dict.get(source, [None]*total_rows)[i]
+                        if not _is_empty_or_nan(raw):
+                            covid_source[code] = raw
+                    covid = resolve_covid(covid_source)
+                    for code, metric in [('covid_paso','covid_infeccion'), ('covid_ingreso','covid_hospitalizacion'), ('longcovid','covid_fatiga_long')]:
+                        if covid[metric] is not None:
+                            _set_ans(code, 'Si' if covid[metric] else 'No')
 
                     oliva_raw = str(df_dict.get('USA_USTED_ACEITE_DE_OLIVA', [None]*total_rows)[i] or '').upper()
                     if oliva_raw:

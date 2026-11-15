@@ -24,7 +24,7 @@
 
         <div class="grid grid-row grid-2-cols">
           <div class="card card-visual">
-            <div class="visual-header"><div class="visual-title"><h3>Distribución por Grupos Etarios y Género</h3></div></div>
+            <div class="visual-header"><div class="visual-title"><h3>Pirámide Poblacional: Distribución por Edad y Sexo</h3></div></div>
             <div id="chart-ind-edad-sexo" class="chart-container"></div>
           </div>
           <div class="card card-visual">
@@ -41,6 +41,22 @@
           <div class="card card-visual">
             <div class="visual-header"><div class="visual-title"><h3>Régimen de Vivienda y Convivencia</h3></div></div>
             <div id="chart-ind-vivienda" class="chart-container"></div>
+          </div>
+        </div>
+
+        <!-- FASE 3: Gradiente de Factores de Riesgo por Educación e Ingresos -->
+        <div class="grid grid-row grid-2-cols" style="margin-top: 1.25rem;">
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Gradiente de Carga de Riesgo según Nivel Educativo</h3></div></div>
+            <div id="chart-di-gradiente-educacion" class="chart-container">
+              <div class="skeleton-shimmer skeleton-box chart-skeleton-placeholder" style="width: 100%; height: 300px; border-radius: 8px;"></div>
+            </div>
+          </div>
+          <div class="card card-visual">
+            <div class="visual-header"><div class="visual-title"><h3>Gradiente de Carga de Riesgo según Nivel de Ingresos</h3></div></div>
+            <div id="chart-di-gradiente-ingresos" class="chart-container">
+              <div class="skeleton-shimmer skeleton-box chart-skeleton-placeholder" style="width: 100%; height: 300px; border-radius: 8px;"></div>
+            </div>
           </div>
         </div>
       </section>

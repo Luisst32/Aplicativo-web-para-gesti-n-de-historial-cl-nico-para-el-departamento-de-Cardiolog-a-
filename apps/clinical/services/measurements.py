@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from clinical.models import Anthropometry, VitalSigns
+from .yes_no import nullable_bool
 
 
 @transaction.atomic
@@ -35,16 +36,18 @@ def save_measurements(visit, data):
                 except Exception:
                     raise ValidationError('Medida numerica invalida: ' + key)
         if model is VitalSigns:
+            if 'extratonos' in data:
+                values['extra_heart_sounds'] = nullable_bool(data['extratonos'])
             if 'soplos' in data:
-                values['systolic_murmur'] = data['soplos'] in ('1','Si','sistolico')
-                values['diastolic_murmur'] = data['soplos'] in ('2','diastolico')
+                values['systolic_murmur'] = None if data['soplos'] in ('', None) else data['soplos'] in ('1','Si','sistolico')
+                values['diastolic_murmur'] = None if data['soplos'] in ('', None) else data['soplos'] in ('2','diastolico')
             for key, field, negative in (
                 ('resp_norm','pulmonary_auscultation_normal','No'),
                 ('abdom_norm','abdominal_auscultation_normal','No'),
                 ('pulsos_sim','pedal_pulses_symmetric','No'),
             ):
-                if key in data and data[key] not in ('',None):
-                    values[field] = data[key] != negative
+                if key in data:
+                    values[field] = nullable_bool(data[key])
             for key, field, truth in (
                 ('f_soplo_sistolico','systolic_murmur','Si'),
                 ('f_soplo_diastolico','diastolic_murmur','Si'),
@@ -52,8 +55,8 @@ def save_measurements(visit, data):
                 ('f_auscultacion_abdominal','abdominal_auscultation_normal','Normal'),
                 ('f_pulsos_pedios','pedal_pulses_symmetric','Si'),
             ):
-                if key in data and data[key] not in ('',None):
-                    values[field] = data[key] == truth
+                if key in data:
+                    values[field] = None if data[key] in ('', None) else data[key] == truth
             tiene_soplos = values.get('systolic_murmur') or values.get('diastolic_murmur') or (data.get('soplos') in ('1', 'Si', 'si', 'sistolico', 'diastolico'))
             for key in ('soplo_grado','f_grado_soplo'):
                 if key in data:
@@ -78,10 +81,12 @@ def save_measurements(visit, data):
                         if value is not None and not 1 <= value <= 6:
                             raise ValidationError('Grado de soplo fuera de rango.')
                     values['murmur_grade'] = value
+        if obj is None and values and all(value is None for value in values.values()):
+            values = {}
         if values:
             if obj is None:
                 required = [f.name for f in model._meta.fields if not f.null and not f.has_default()
-                            and not f.primary_key and not getattr(f,'generated',False)]
+                            and not f.primary_key and f.name != 'visit' and not getattr(f,'generated',False)]
                 if any(field not in values for field in required):
                     raise ValidationError('Complete las medidas obligatorias antes de crear la evaluacion.')
                 obj = model(visit=visit, **values)

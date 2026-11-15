@@ -11,36 +11,41 @@ function renderTabAntecedentesFamiliares() {
 
   const elPadres = document.getElementById('chart-fam-padres-madres');
   if (elPadres) {
+    const famPadresOptions = {
+      chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
+      fill: { type: 'solid', opacity: 1 },
+      colors: [PALETTE.primaryBlue, PALETTE.purple],
+      plotOptions: {
+        bar: {
+          horizontal: true,
+          barHeight: '78%',
+          borderRadius: 6,
+          dataLabels: { position: 'center' },
+          colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 }
+        }
+      },
+      series: [
+        { name: 'Rama Paterna', data: [padreHta, padreDm, padreDlp, padreIam] },
+        { name: 'Rama Materna', data: [madreHta, madreDm, madreDlp, madreIam] }
+      ],
+      xaxis: { categories: ['Hipertensión', 'Diabetes', 'Dislipemia', 'Infarto / Ictus'] },
+      legend: { position: 'top' },
+      dataLabels: apexCountAndPctDataLabel(),
+      tooltip: apexCountTooltip()
+    };
     if (charts.famPadres) {
-      charts.famPadres.updateOptions({
-        series: [
-          { name: 'Rama Paterna', data: [padreHta, padreDm, padreDlp, padreIam] },
-          { name: 'Rama Materna', data: [madreHta, madreDm, madreDlp, madreIam] }
-        ],
-        dataLabels: apexCountAndPctDataLabel()
-      });
+      charts.famPadres.updateOptions(famPadresOptions);
     } else {
-      charts.famPadres = createDashboardApexChart(elPadres, {
-        chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
-        fill: { type: 'solid', opacity: 1 },
-        colors: [PALETTE.primaryBlue, PALETTE.purple],
-        plotOptions: { bar: { horizontal: true, barHeight: '78%', borderRadius: 6, dataLabels: { position: 'center' }, colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 } } },
-        series: [
-          { name: 'Rama Paterna', data: [padreHta, padreDm, padreDlp, padreIam] },
-          { name: 'Rama Materna', data: [madreHta, madreDm, madreDlp, madreIam] }
-        ],
-        xaxis: { categories: ['Hipertensión', 'Diabetes', 'Dislipemia', 'Infarto / Ictus'] },
-        legend: { position: 'top' },
-        dataLabels: apexCountAndPctDataLabel(),
-        tooltip: apexCountTooltip()
-      });
+      charts.famPadres = createDashboardApexChart(elPadres, famPadresOptions);
       charts.famPadres.render();
     }
   }
 
   // Agregación de Carga Familiar
   let c0 = 0, c1 = 0, c2 = 0, c3 = 0;
-  filteredRecords.forEach(r => {
+  const familyFields = ['ant_fam_hta','ant_fam_dm','ant_fam_dlp','ant_fam_cv_mayor'];
+  const familyRows = filteredRecords.filter(r => familyFields.some(field => typeof r[field] === 'boolean'));
+  familyRows.forEach(r => {
     let fCount = (r.ant_fam_hta ? 1 : 0) + (r.ant_fam_dm ? 1 : 0) + (r.ant_fam_dlp ? 1 : 0) + (r.ant_fam_cv_mayor ? 1 : 0);
     if (fCount === 0) c0++;
     else if (fCount === 1) c1++;
@@ -49,14 +54,14 @@ function renderTabAntecedentesFamiliares() {
   });
 
   const cargaLabels = [
-    `Sin Antecedentes: ${c0} (${formatPct(c0, n)}%)`,
-    `1 Antecedente: ${c1} (${formatPct(c1, n)}%)`,
-    `2 Antecedentes: ${c2} (${formatPct(c2, n)}%)`,
-    `≥3 Antecedentes: ${c3} (${formatPct(c3, n)}%)`
+    `Sin Antecedentes: ${c0} (${formatPct(c0, familyRows.length)}%)`,
+    `1 Antecedente: ${c1} (${formatPct(c1, familyRows.length)}%)`,
+    `2 Antecedentes: ${c2} (${formatPct(c2, familyRows.length)}%)`,
+    `≥3 Antecedentes: ${c3} (${formatPct(c3, familyRows.length)}%)`
   ];
 
   const ctxCarga = document.getElementById('chart-fam-carga-global');
-  if (ctxCarga) {
+  if (dashboardHasChartData('chart-fam-carga-global', 'famCarga', familyRows.length)) {
     if (charts.famCarga) {
       charts.famCarga.data.labels = cargaLabels;
       charts.famCarga.data.datasets[0].data = [c0, c1, c2, c3];
@@ -118,7 +123,7 @@ function renderTabAntecedentesFamiliares() {
   const soloHta = filteredRecords.filter(r => r.ant_fam_hta && !r.ant_fam_dm).length;
   const soloDm = filteredRecords.filter(r => !r.ant_fam_hta && r.ant_fam_dm).length;
   const ambos = filteredRecords.filter(r => r.ant_fam_hta && r.ant_fam_dm).length;
-  const ninguno = filteredRecords.filter(r => !r.ant_fam_hta && !r.ant_fam_dm).length;
+  const ninguno = filteredRecords.filter(r => (r.ant_fam_hta === false) && (r.ant_fam_dm === false)).length;
 
   const ctxCoex = document.getElementById('chart-fam-coexistencia');
   if (ctxCoex) {
@@ -150,6 +155,71 @@ function renderTabAntecedentesFamiliares() {
         }
       });
     }
+  }
+
+  // 5. FASE 3: Antecedente Familiar vs Diagnóstico Propio
+  const htaResp = filteredRecords.filter(r => (typeof r.hipertension === 'boolean' || r.hipertension === 'Si' || r.hipertension === 'No') && (typeof r.ant_fam_hta === 'boolean' || r.ant_padre_hta || r.ant_madre_hta));
+  const htaConFam = htaResp.filter(r => r.ant_fam_hta === true || r.ant_padre_hta || r.ant_madre_hta);
+  const htaConFamCasos = htaConFam.filter(r => r.hipertension === true || r.hipertension === 'Si').length;
+  const htaConFamPct = htaConFam.length > 0 ? Number(((htaConFamCasos / htaConFam.length) * 100).toFixed(1)) : 0;
+
+  const htaSinFam = htaResp.filter(r => r.ant_fam_hta === false && !r.ant_padre_hta && !r.ant_madre_hta);
+  const htaSinFamCasos = htaSinFam.filter(r => r.hipertension === true || r.hipertension === 'Si').length;
+  const htaSinFamPct = htaSinFam.length > 0 ? Number(((htaSinFamCasos / htaSinFam.length) * 100).toFixed(1)) : 0;
+
+  const dlpResp = filteredRecords.filter(r => (typeof r.dislipemia === 'boolean' || r.dislipemia === 'Si' || r.dislipemia === 'No') && (typeof r.ant_fam_dlp === 'boolean' || r.ant_padre_dlp || r.ant_madre_dlp));
+  const dlpConFam = dlpResp.filter(r => r.ant_fam_dlp === true || r.ant_padre_dlp || r.ant_madre_dlp);
+  const dlpConFamCasos = dlpConFam.filter(r => r.dislipemia === true || r.dislipemia === 'Si').length;
+  const dlpConFamPct = dlpConFam.length > 0 ? Number(((dlpConFamCasos / dlpConFam.length) * 100).toFixed(1)) : 0;
+
+  const dlpSinFam = dlpResp.filter(r => r.ant_fam_dlp === false && !r.ant_padre_dlp && !r.ant_madre_dlp);
+  const dlpSinFamCasos = dlpSinFam.filter(r => r.dislipemia === true || r.dislipemia === 'Si').length;
+  const dlpSinFamPct = dlpSinFam.length > 0 ? Number(((dlpSinFamCasos / dlpSinFam.length) * 100).toFixed(1)) : 0;
+
+  const elFamPropio = document.getElementById('chart-af-familiar-vs-propio');
+  if (elFamPropio && dashboardHasChartData('chart-af-familiar-vs-propio', 'afFamPropio', htaResp.length + dlpResp.length)) {
+    const famPropioOptions = {
+      chart: { type: 'bar', height: 320, toolbar: { show: false }, animations: { enabled: false } },
+      plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 5, dataLabels: { position: 'center' } } },
+      colors: [PALETTE.emergencyRed, PALETTE.primaryBlue],
+      series: [
+        { name: 'Con Antecedente Familiar', data: [htaConFamPct, dlpConFamPct] },
+        { name: 'Sin Antecedente Familiar', data: [htaSinFamPct, dlpSinFamPct] }
+      ],
+      xaxis: { categories: ['Hipertensión Arterial (HTA)', 'Dislipemia'] },
+      yaxis: { min: 0, max: 100, labels: { formatter: val => `${Math.round(val)}%` }, title: { text: '% Prevalencia Diagnóstico Propio' } },
+      legend: { position: 'top', horizontalAlign: 'center' },
+      dataLabels: {
+        enabled: true,
+        formatter: (val, opt) => {
+          const sIdx = opt.seriesIndex;
+          const dIdx = opt.dataPointIndex;
+          if (dIdx === 0) {
+            return sIdx === 0 ? `${htaConFamCasos}/${htaConFam.length} (${val}%)` : `${htaSinFamCasos}/${htaSinFam.length} (${val}%)`;
+          } else {
+            return sIdx === 0 ? `${dlpConFamCasos}/${dlpConFam.length} (${val}%)` : `${dlpSinFamCasos}/${dlpSinFam.length} (${val}%)`;
+          }
+        },
+        style: { fontSize: '11px', fontWeight: 'bold', fontFamily: 'inherit', colors: ['#ffffff'] },
+        dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow,
+        background: { enabled: false }
+      },
+      tooltip: {
+        y: {
+          formatter: (val, opt) => {
+            const sIdx = opt.seriesIndex;
+            const dIdx = opt.dataPointIndex;
+            if (dIdx === 0) {
+              return sIdx === 0 ? formatWilsonCiLabel(htaConFamCasos, htaConFam.length) : formatWilsonCiLabel(htaSinFamCasos, htaSinFam.length);
+            } else {
+              return sIdx === 0 ? formatWilsonCiLabel(dlpConFamCasos, dlpConFam.length) : formatWilsonCiLabel(dlpSinFamCasos, dlpSinFam.length);
+            }
+          }
+        }
+      }
+    };
+    if (charts.afFamPropio) charts.afFamPropio.updateOptions(famPropioOptions);
+    else { charts.afFamPropio = createDashboardApexChart(elFamPropio, famPropioOptions); charts.afFamPropio.render(); }
   }
 }
 
