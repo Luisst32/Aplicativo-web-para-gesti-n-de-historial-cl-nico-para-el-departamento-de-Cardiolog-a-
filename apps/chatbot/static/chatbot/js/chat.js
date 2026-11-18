@@ -78,9 +78,11 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
     'Estratificación de riesgo cardiovascular'
   ];
 
-  document.addEventListener('DOMContentLoaded', () => {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarChat);
+  } else {
     inicializarChat();
-  });
+  }
 
   function inicializarChat() {
     // Contenedores
@@ -983,6 +985,7 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
 
   // Objeto global para control de apertura/cierre y utilidades
   window.CardioUnemiChat = {
+    version: '20261118_vosk_opt03',
     abrirWidget: () => {
       const v = document.getElementById('contenedor-chat');
       const b = document.getElementById('btn-flotante-chat');
