@@ -220,19 +220,38 @@ def get_dashboard_evaluation_data():
         else:
             sexo = None
 
-        edad = get_age(p.birth_date, v_date)
-        grupo_edad = get_age_group(edad) if edad else 'Sin dato'
-
         cat_raw = v.staff_category.name if v.staff_category else ''
         categoria = map_category_label(cat_raw)
         available_categories.add(categoria)
 
         # Respuestas del cuestionario asociadas
         answers_dict = {}
+        numeric_answers = {}
         for a in v.answers.all():
             q_code = a.question.code.lower()
             val = a.selected_option.label if a.selected_option else (a.text_value if a.text_value is not None else a.numeric_value)
             answers_dict[q_code] = str(val).strip() if val is not None else ''
+            if a.numeric_value is not None:
+                try:
+                    numeric_answers[q_code] = float(a.numeric_value)
+                except (ValueError, TypeError):
+                    pass
+
+        # Resolución de edad con validación de plausibilidad biológica (15 - 110 años)
+        # y fallback automático a la edad numérica reportada en el cuestionario clínico
+        edad_calc = get_age(p.birth_date, v_date)
+        edad_ans = numeric_answers.get('edad') or numeric_answers.get('f_edad')
+        if edad_calc and 15 <= edad_calc <= 110:
+            edad = int(edad_calc)
+        elif edad_ans and 15 <= edad_ans <= 110:
+            edad = int(edad_ans)
+        elif edad_calc > 110 and edad_ans:
+            edad = int(edad_ans)
+        elif edad_calc:
+            edad = int(edad_calc)
+        else:
+            edad = int(edad_ans) if edad_ans else 0
+        grupo_edad = get_age_group(edad) if edad else 'Sin dato'
 
         # Estado civil
         estado_civil_val = v.marital_status.name if v.marital_status else answers_dict.get('f_estado_civil', 'No especificado')

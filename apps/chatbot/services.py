@@ -433,17 +433,36 @@ def build_chart_json_if_requested(question: str, raw_response: Optional[str] = N
         name_x, lbl_x, fn_x = num_map[var_x_key]
         name_y, lbl_y, fn_y = num_map[var_y_key]
 
+        def es_valido_fisiologico(key: str, val: float) -> bool:
+            if key == 'edad':
+                return 15.0 <= val <= 110.0
+            if key in ('tas', 'tad'):
+                return 40.0 <= val <= 280.0
+            if key == 'imc':
+                return 10.0 <= val <= 75.0
+            if key == 'peso':
+                return 25.0 <= val <= 300.0
+            if key == 'talla':
+                return 100.0 <= val <= 230.0
+            if key == 'fc':
+                return 35.0 <= val <= 220.0
+            if key == 'perimetro':
+                return 40.0 <= val <= 200.0
+            return True
+
         points = []
         for i, r in enumerate(records):
             vx, vy = fn_x(r), fn_y(r)
             try:
-                if vx is not None and vy is not None and float(vx) > 0 and float(vy) > 0:
-                    p_code = r.get('study_code') or r.get('codigo_estudio') or r.get('id') or f"{i+1}"
-                    points.append({
-                        "x": round(float(vx), 1),
-                        "y": round(float(vy), 1),
-                        "name": f"Caso {p_code}"
-                    })
+                if vx is not None and vy is not None:
+                    fx, fy = float(vx), float(vy)
+                    if fx > 0 and fy > 0 and es_valido_fisiologico(var_x_key, fx) and es_valido_fisiologico(var_y_key, fy):
+                        p_code = r.get('study_code') or r.get('codigo_estudio') or r.get('id') or f"{i+1}"
+                        points.append({
+                            "x": round(fx, 1),
+                            "y": round(fy, 1),
+                            "name": f"Caso {p_code}"
+                        })
             except (ValueError, TypeError):
                 continue
 
