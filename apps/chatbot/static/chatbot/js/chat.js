@@ -628,10 +628,38 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
   }
 
   // ==========================================================================
-  // GESTOR DE ENTRADA POR VOZ NATIVO (WEB SPEECH API)
-  // Rápido, ligero, sin descargas pesadas ni consumo de CPU/RAM
+  // GESTOR DE ENTRADA POR VOZ CON VOSK WEBASSEMBLY (FRONTEND)
+  // Transcripción local y privada vía WebAssembly optimizada a 16 kHz:
+  // - Restricción estricta de audio a 16 kHz (evita sobrecarga de CPU y bucles)
+  // - Supresión de ruido y eco acústico en getUserMedia
+  // - Prevención de duplicación de frases y palabras repetidas
+  // - Liberación limpia de recursos (AudioContext, ScriptProcessor, MediaStream)
+  // - Mensajes breves e interfaz minimalista
   // ==========================================================================
+  let voskModeloInstancia = null;
+  let voskPromesaCarga = null;
   let sesionVozActiva = null; // { btnEl, inputEl, detener: Function }
+
+  const VOSK_MODELO_URL = (typeof window !== 'undefined' && window.CARDIOUNEMI_VOSK_MODEL_URL)
+    ? window.CARDIOUNEMI_VOSK_MODEL_URL
+    : 'https://ccoreilly.github.io/vosk-browser/models/vosk-model-small-es-0.3.tar.gz';
+
+  async function obtenerModeloVosk() {
+    if (voskModeloInstancia) return voskModeloInstancia;
+    if (!voskPromesaCarga) {
+      if (typeof Vosk === 'undefined' || typeof Vosk.createModel !== 'function') {
+        throw new Error('Librería Vosk no disponible.');
+      }
+      voskPromesaCarga = Vosk.createModel(VOSK_MODELO_URL).then((m) => {
+        voskModeloInstancia = m;
+        return m;
+      }).catch((err) => {
+        voskPromesaCarga = null;
+        throw err;
+      });
+    }
+    return voskPromesaCarga;
+  }
 
   function inicializarEntradaVoz() {
     configurarControladorVoz({
@@ -700,7 +728,7 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
       });
     }
 
-    btnVoz.addEventListener('click', (e) => {
+    btnVoz.addEventListener('click', async (e) => {
       e.preventDefault();
 
       // Si ya está grabando con este mismo botón, detener
@@ -714,101 +742,242 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
         detenerSesionVoz();
       }
 
+      // 1. Motor Principal: Vosk WebAssembly en Frontend
+      if (typeof Vosk !== 'undefined') {
+        let mediaStream = null;
+        let audioCtx = null;
+        let recognizer = null;
+        let recognizerNode = null;
+        let gainNode = null;
+        let sourceNode = null;
+
+        try {
+          if (!voskModeloInstancia) {
+            btnVoz.classList.add('is-loading');
+            actualizarEstadoUI('Cargando motor de voz...');
+          }
+
+          const model = await obtenerModeloVosk();
+
+          // Restricción estricta a 16 kHz monoaural con cancelación de ruido
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: false,
+            audio: {
+              channelCount: 1,
+              sampleRate: 16000,
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
+            }
+          });
+
+          const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioCtxClass({ sampleRate: 16000 });
+          if (audioCtx.state === 'suspended') {
+            await audioCtx.resume();
+          }
+
+          recognizer = new model.KaldiRecognizer();
+
+          let textoInicial = (inputEl.value || '').trim();
+          let frasesConfirmadas = [];
+
+          const renderizarTexto = (parcial = '') => {
+            const trozos = [];
+            if (textoInicial) trozos.push(textoInicial);
+            if (frasesConfirmadas.length > 0) trozos.push(...frasesConfirmadas);
+            if (parcial && parcial.trim()) trozos.push(parcial.trim());
+
+            const resultado = trozos.join(' ').replace(/\s+/g, ' ').trim();
+            if (inputEl) {
+              inputEl.value = resultado;
+              inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+              inputEl.scrollLeft = inputEl.scrollWidth;
+            }
+          };
+
+          recognizer.on('result', (msg) => {
+            const t = (msg && msg.result && msg.result.text) ? msg.result.text.trim() : '';
+            if (t) {
+              // Prevenir repeticiones de la misma palabra/frase
+              if (frasesConfirmadas.length === 0 || frasesConfirmadas[frasesConfirmadas.length - 1] !== t) {
+                frasesConfirmadas.push(t);
+              }
+              renderizarTexto('');
+            }
+          });
+
+          recognizer.on('partialresult', (msg) => {
+            const p = (msg && msg.result && msg.result.partial) ? msg.result.partial.trim() : '';
+            renderizarTexto(p);
+          });
+
+          sourceNode = audioCtx.createMediaStreamSource(mediaStream);
+          recognizerNode = audioCtx.createScriptProcessor(4096, 1, 1);
+
+          recognizerNode.onaudioprocess = (evt) => {
+            try {
+              if (sesionVozActiva && recognizer) {
+                recognizer.acceptWaveform(evt.inputBuffer);
+              }
+            } catch (errWf) {
+              console.warn('Error acceptWaveform Vosk:', errWf);
+            }
+          };
+
+          // Ganancia cero para no retroalimentar audio en los altavoces
+          gainNode = audioCtx.createGain();
+          gainNode.gain.value = 0;
+
+          sourceNode.connect(recognizerNode);
+          recognizerNode.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+
+          btnVoz.classList.remove('is-loading');
+          btnVoz.classList.add('is-recording');
+          actualizarEstadoUI('Escuchando...');
+
+          sesionVozActiva = {
+            btnEl: btnVoz,
+            inputEl: inputEl,
+            detener: () => {
+              try {
+                if (recognizerNode) {
+                  recognizerNode.onaudioprocess = null;
+                  recognizerNode.disconnect();
+                }
+                if (gainNode) gainNode.disconnect();
+                if (sourceNode) sourceNode.disconnect();
+                if (mediaStream) {
+                  mediaStream.getTracks().forEach((track) => track.stop());
+                }
+                if (recognizer) {
+                  recognizer.remove();
+                }
+                if (audioCtx && audioCtx.state !== 'closed') {
+                  audioCtx.close();
+                }
+              } catch (eStop) {
+                console.warn('Error al liberar recursos Vosk:', eStop);
+              }
+            }
+          };
+          return;
+
+        } catch (errVosk) {
+          console.warn('Vosk Wasm no disponible o cancelado:', errVosk);
+          if (recognizerNode) {
+            recognizerNode.onaudioprocess = null;
+            try { recognizerNode.disconnect(); } catch (e) {}
+          }
+          if (gainNode) { try { gainNode.disconnect(); } catch (e) {} }
+          if (sourceNode) { try { sourceNode.disconnect(); } catch (e) {} }
+          if (mediaStream) {
+            mediaStream.getTracks().forEach((track) => track.stop());
+          }
+          if (recognizer) {
+            try { recognizer.remove(); } catch (e) {}
+          }
+          if (audioCtx && audioCtx.state !== 'closed') {
+            try { audioCtx.close(); } catch (e) {}
+          }
+        }
+      }
+
+      // 2. Motor de Respaldo: Web Speech API (Nativo de navegador)
       const SpeechRecognitionClass = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
 
-      if (!SpeechRecognitionClass) {
-        actualizarEstadoUI('Dictado no compatible en este navegador');
-        setTimeout(limpiarEstadoUI, 3000);
-        return;
-      }
+      if (SpeechRecognitionClass) {
+        try {
+          let textoBase = (inputEl.value || '').trim();
+          let sesionActiva = true;
 
-      let textoBase = (inputEl.value || '').trim();
-      let sesionActiva = true;
+          const rec = new SpeechRecognitionClass();
+          rec.lang = (typeof navigator !== 'undefined' && navigator.language && navigator.language.startsWith('es'))
+            ? navigator.language
+            : 'es-ES';
+          rec.continuous = true;
+          rec.interimResults = true;
+          rec.maxAlternatives = 1;
 
-      try {
-        const rec = new SpeechRecognitionClass();
-        rec.lang = (typeof navigator !== 'undefined' && navigator.language && navigator.language.startsWith('es'))
-          ? navigator.language
-          : 'es-ES';
-        rec.continuous = true;
-        rec.interimResults = true;
-        rec.maxAlternatives = 1;
+          rec.onresult = (evt) => {
+            let finalChunk = '';
+            let interimChunk = '';
 
-        rec.onresult = (evt) => {
-          let finalChunk = '';
-          let interimChunk = '';
-
-          for (let i = 0; i < evt.results.length; ++i) {
-            const res = evt.results[i];
-            const transcript = (res[0] && res[0].transcript) ? res[0].transcript : '';
-            if (res.isFinal) {
-              const clean = transcript.trim();
-              if (clean) {
-                finalChunk += (finalChunk ? ' ' : '') + clean;
+            for (let i = 0; i < evt.results.length; ++i) {
+              const res = evt.results[i];
+              const transcript = (res[0] && res[0].transcript) ? res[0].transcript : '';
+              if (res.isFinal) {
+                const clean = transcript.trim();
+                if (clean) {
+                  finalChunk += (finalChunk ? ' ' : '') + clean;
+                }
+              } else {
+                interimChunk += transcript;
               }
-            } else {
-              interimChunk += transcript;
             }
-          }
 
-          const partes = [];
-          if (textoBase) partes.push(textoBase);
-          if (finalChunk) partes.push(finalChunk);
-          if (interimChunk.trim()) partes.push(interimChunk.trim());
+            const partes = [];
+            if (textoBase) partes.push(textoBase);
+            if (finalChunk) partes.push(finalChunk);
+            if (interimChunk.trim()) partes.push(interimChunk.trim());
 
-          const resultado = partes.join(' ').replace(/\s+/g, ' ').trim();
-          if (inputEl) {
-            inputEl.value = resultado;
-            inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-          }
-        };
-
-        rec.onerror = (evtErr) => {
-          console.warn('SpeechRecognition error:', evtErr.error);
-          if (evtErr.error === 'not-allowed' || evtErr.error === 'service-not-allowed') {
-            actualizarEstadoUI('Permiso de micrófono denegado');
-            setTimeout(detenerSesionVoz, 3000);
-          } else if (evtErr.error === 'no-speech') {
-            // Silencio normal
-          }
-        };
-
-        rec.onend = () => {
-          if (sesionActiva) {
-            // El navegador pausó por silencio: actualizar base y continuar
-            textoBase = (inputEl.value || '').trim();
-            try {
-              rec.start();
-              return;
-            } catch (errRestart) {}
-          }
-          detenerSesionVoz();
-        };
-
-        rec.start();
-
-        btnVoz.classList.remove('is-loading');
-        btnVoz.classList.add('is-recording');
-        actualizarEstadoUI('Escuchando...');
-
-        sesionVozActiva = {
-          btnEl: btnVoz,
-          inputEl: inputEl,
-          detener: () => {
-            sesionActiva = false;
-            try {
-              rec.stop();
-            } catch (eStop) {
-              try { rec.abort(); } catch (eAbort) {}
+            const resultado = partes.join(' ').replace(/\s+/g, ' ').trim();
+            if (inputEl) {
+              inputEl.value = resultado;
+              inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+              inputEl.scrollLeft = inputEl.scrollWidth;
             }
-          }
-        };
+          };
 
-      } catch (errInit) {
-        console.error('Error al inicializar reconocimiento de voz:', errInit);
-        actualizarEstadoUI('Error al activar micrófono');
-        setTimeout(limpiarEstadoUI, 3000);
+          rec.onerror = (evtErr) => {
+            console.warn('SpeechRecognition error:', evtErr.error);
+            if (evtErr.error === 'not-allowed' || evtErr.error === 'service-not-allowed') {
+              actualizarEstadoUI('Permiso de micrófono denegado');
+              setTimeout(detenerSesionVoz, 3000);
+            }
+          };
+
+          rec.onend = () => {
+            if (sesionActiva) {
+              textoBase = (inputEl.value || '').trim();
+              try {
+                rec.start();
+                return;
+              } catch (errRestart) {}
+            }
+            detenerSesionVoz();
+          };
+
+          rec.start();
+
+          btnVoz.classList.remove('is-loading');
+          btnVoz.classList.add('is-recording');
+          actualizarEstadoUI('Escuchando...');
+
+          sesionVozActiva = {
+            btnEl: btnVoz,
+            inputEl: inputEl,
+            detener: () => {
+              sesionActiva = false;
+              try {
+                rec.stop();
+              } catch (eStop) {
+                try { rec.abort(); } catch (eAbort) {}
+              }
+            }
+          };
+          return;
+
+        } catch (errNat) {
+          console.error('Error al inicializar reconocimiento nativo:', errNat);
+        }
       }
+
+      // 3. Si ningún motor pudo activarse
+      btnVoz.classList.remove('is-loading', 'is-recording');
+      actualizarEstadoUI('Error al activar micrófono');
+      setTimeout(limpiarEstadoUI, 3000);
     });
   }
 
