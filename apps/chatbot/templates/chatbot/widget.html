@@ -63,10 +63,9 @@
         <span class="voice-wave-bar"></span>
         <span class="voice-wave-bar"></span>
       </div>
-      <span id="voice-status-text-widget" class="voice-status-text">Inicializando Vosk Wasm...</span>
+      <span id="voice-status-text-widget" class="voice-status-text">Escuchando...</span>
     </div>
     <div class="voice-status-actions">
-      <span id="voice-engine-badge-widget" class="voice-engine-badge">Vosk Wasm</span>
       <button type="button" id="btn-detener-voz-widget" class="btn-voice-stop" title="Detener">✕</button>
     </div>
   </div>
@@ -86,7 +85,7 @@
           type="button"
           id="btn-voz-widget"
           class="btn-voice-main btn-voice-widget"
-          title="Dictar consulta por voz con Vosk (WebAssembly)"
+          title="Dictar consulta por voz"
           aria-label="Dictar consulta por voz"
         >
           <svg viewBox="0 0 24 24" class="icon-mic" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -109,6 +108,4 @@
 <script src="{% static 'chatbot/vendor/katex/katex.min.js' %}"></script>
 <script src="{% static 'chatbot/vendor/katex/auto-render.min.js' %}"></script>
 <script src="{% static 'dashboard/vendor/chart.umd.min.js' %}"></script>
-<!-- Vosk-Browser: Reconocimiento de voz local vía WebAssembly en el frontend -->
-<script src="https://cdn.jsdelivr.net/npm/vosk-browser@0.0.5/dist/vosk.js"></script>
-<script src="{% static 'chatbot/js/chat.js' %}?v=20261118_vosk03"></script>
+<script src="{% static 'chatbot/js/chat.js' %}?v=20261118_mic_v01"></script>

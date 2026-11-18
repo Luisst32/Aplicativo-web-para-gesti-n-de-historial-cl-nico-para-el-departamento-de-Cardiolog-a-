@@ -475,6 +475,10 @@ body {
   animation: slideDownVoice 0.22s ease-out;
 }
 
+.voice-status-bar.oculto {
+  display: none !important;
+}
+
 @keyframes slideDownVoice {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
@@ -530,33 +534,25 @@ body {
   flex-shrink: 0;
 }
 
-.voice-engine-badge {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: #eff6ff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
-}
-
 .btn-voice-stop {
-  background: #fee2e2;
-  color: #b91c1c;
-  border: 1px solid #fca5a5;
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 600;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  line-height: 1;
   transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-voice-stop:hover {
-  background: #fecaca;
-  border-color: #f87171;
-  color: #991b1b;
+  background: #f1f5f9;
+  color: #475569;
 }
 
 /* Responsividad */
