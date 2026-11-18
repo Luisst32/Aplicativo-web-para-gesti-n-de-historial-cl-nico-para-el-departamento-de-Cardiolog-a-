@@ -2830,10 +2830,33 @@ function solicitarEliminarFichaActual() {
 // EXPORTACIÓN Y VISUALIZACIÓN OFICIAL DE CUESTIONARIO UNEMI EN FORMATO PDF (HU-17)
 // =============================================================================
 
+function actualizarOpcionesMenuPdfSegunPrivacidad() {
+  const isPriv = (typeof esModoPrivacidadActivo === 'function' ? esModoPrivacidadActivo() : false) ||
+                 (localStorage.getItem('cardio_privacy_mode') === 'true');
+  const opcVer = document.getElementById('pdfOpcionVerActual');
+  const opcDesc = document.getElementById('pdfOpcionDescargarActual');
+  const opcVerBlanco = document.getElementById('pdfOpcionVerBlanco');
+  const opcDescBlanco = document.getElementById('pdfOpcionDescargarBlanco');
+
+  if (opcVer) opcVer.style.display = isPriv ? 'none' : 'flex';
+  if (opcDesc) opcDesc.style.display = isPriv ? 'none' : 'flex';
+  if (opcVerBlanco) {
+    opcVerBlanco.style.display = 'flex';
+    opcVerBlanco.style.borderTop = isPriv ? 'none' : '1px solid #f1f5f9';
+    opcVerBlanco.style.fontWeight = isPriv ? '700' : '600';
+    opcVerBlanco.style.color = isPriv ? '#0f172a' : '#475569';
+    opcVerBlanco.style.background = isPriv ? '#f8fafc' : 'transparent';
+  }
+  if (opcDescBlanco) {
+    opcDescBlanco.style.display = 'flex';
+  }
+}
+
 function togglePdfMenu(event) {
   if (event) {
     event.stopPropagation();
   }
+  actualizarOpcionesMenuPdfSegunPrivacidad();
   const menu = document.getElementById('pdfDropdownMenu');
   if (menu) {
     const isShown = menu.style.display === 'block';
@@ -2888,6 +2911,17 @@ function exportarFormularioPDF(isBlank = false) {
   const menu = document.getElementById('pdfDropdownMenu');
   if (menu) menu.style.display = 'none';
 
+  const isPriv = (typeof esModoPrivacidadActivo === 'function' ? esModoPrivacidadActivo() : false) ||
+                 (localStorage.getItem('cardio_privacy_mode') === 'true');
+  if (isPriv && !isBlank) {
+    if (typeof mostrarToast === 'function') {
+      mostrarToast('Modo de Privacidad Activo: la exportación de fichas con datos del paciente está restringida.', 'warning');
+    } else {
+      alert('Modo de Privacidad Activo: la exportación de fichas con datos del paciente está restringida.');
+    }
+    return;
+  }
+
   const downloadUrl = _construirUrlPdf(isBlank, true);
   descargarPdfDirecto(downloadUrl);
 }
@@ -2895,6 +2929,17 @@ function exportarFormularioPDF(isBlank = false) {
 function abrirModalVisualizadorPdf(isBlank = false) {
   const menu = document.getElementById('pdfDropdownMenu');
   if (menu) menu.style.display = 'none';
+
+  const isPriv = (typeof esModoPrivacidadActivo === 'function' ? esModoPrivacidadActivo() : false) ||
+                 (localStorage.getItem('cardio_privacy_mode') === 'true');
+  if (isPriv && !isBlank) {
+    if (typeof mostrarToast === 'function') {
+      mostrarToast('Modo de Privacidad Activo: la visualización de fichas con datos del paciente está restringida.', 'warning');
+    } else {
+      alert('Modo de Privacidad Activo: la visualización de fichas con datos del paciente está restringida.');
+    }
+    return;
+  }
 
   const modal = document.getElementById('modalVisualizadorPdf');
   const iframe = document.getElementById('pdfModalIframe');
@@ -2949,6 +2994,7 @@ function cerrarModalVisualizadorPdf() {
   if (iframe) iframe.src = 'about:blank';
 }
 
+window.actualizarOpcionesMenuPdfSegunPrivacidad = actualizarOpcionesMenuPdfSegunPrivacidad;
 window.descargarPdfDirecto = descargarPdfDirecto;
 window._construirUrlPdf = _construirUrlPdf;
 window.exportarFormularioPDF = exportarFormularioPDF;
@@ -2961,7 +3007,14 @@ window.addEventListener('cardio_privacy_mode_changed', () => {
   if (typeof pacienteActual !== 'undefined' && pacienteActual) {
     seleccionarPaciente(pacienteActual, typeof historialActual !== 'undefined' ? historialActual : null);
   }
+  actualizarOpcionesMenuPdfSegunPrivacidad();
 });
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', actualizarOpcionesMenuPdfSegunPrivacidad);
+} else {
+  actualizarOpcionesMenuPdfSegunPrivacidad();
+}
 
 
 // Keep the original radio values and checkbox encoding; add an explicit empty choice.
