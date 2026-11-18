@@ -173,6 +173,9 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
         mostrarBienvenida();
       });
     });
+
+    // Inicializar entrada por voz (Vosk WebAssembly & Fallback Nativo)
+    inicializarEntradaVoz();
   }
 
   function mostrarBienvenida() {
@@ -624,7 +627,284 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
     }, 60);
   }
 
-  // Objeto global para control de apertura/cierre
+  // ==========================================================================
+  // GESTOR DE ENTRADA POR VOZ CON VOSK WEBASSEMBLY (FRONTEND)
+  // ==========================================================================
+  let voskModeloInstancia = null;
+  let voskPromesaCarga = null;
+  let sesionVozActiva = null; // { tipo: 'vosk'|'nativo', btnEl, inputEl, detener: Function }
+
+  const VOSK_MODELO_URL = (typeof window !== 'undefined' && window.CARDIOUNEMI_VOSK_MODEL_URL)
+    ? window.CARDIOUNEMI_VOSK_MODEL_URL
+    : 'https://ccoreilly.github.io/vosk-browser/models/vosk-model-small-es-0.3.tar.gz';
+
+  function inicializarEntradaVoz() {
+    configurarControladorVoz({
+      btnId: 'btn-voz-chat-page',
+      inputId: 'chat-page-input',
+      statusBarId: 'voice-status-bar-page',
+      statusTextId: 'voice-status-text-page',
+      badgeId: 'voice-engine-badge-page',
+      btnStopId: 'btn-detener-voz-page'
+    });
+
+    configurarControladorVoz({
+      btnId: 'btn-voz-widget',
+      inputId: 'chat-input',
+      statusBarId: 'voice-status-bar-widget',
+      statusTextId: 'voice-status-text-widget',
+      badgeId: 'voice-engine-badge-widget',
+      btnStopId: 'btn-detener-voz-widget'
+    });
+  }
+
+  function configurarControladorVoz(cfg) {
+    if (typeof document === 'undefined') return;
+
+    const btnVoz = document.getElementById(cfg.btnId);
+    const inputEl = document.getElementById(cfg.inputId);
+    const statusBar = document.getElementById(cfg.statusBarId);
+    const statusText = document.getElementById(cfg.statusTextId);
+    const badge = document.getElementById(cfg.badgeId);
+    const btnStop = document.getElementById(cfg.btnStopId);
+
+    if (!btnVoz || !inputEl) return;
+
+    const actualizarEstadoUI = (texto, tipoMotor = 'Vosk Wasm') => {
+      if (statusBar) statusBar.classList.remove('oculto');
+      if (statusText) statusText.textContent = texto;
+      if (badge) badge.textContent = tipoMotor;
+    };
+
+    const limpiarEstadoUI = () => {
+      if (statusBar) statusBar.classList.add('oculto');
+      if (btnVoz) {
+        btnVoz.classList.remove('is-recording', 'is-loading');
+      }
+    };
+
+    const detenerSesionVoz = () => {
+      if (sesionVozActiva) {
+        try {
+          if (typeof sesionVozActiva.detener === 'function') {
+            sesionVozActiva.detener();
+          }
+        } catch (e) {
+          console.warn('Error al detener sesión de voz:', e);
+        }
+        sesionVozActiva = null;
+      }
+      limpiarEstadoUI();
+      if (inputEl) inputEl.focus();
+    };
+
+    if (btnStop) {
+      btnStop.addEventListener('click', (e) => {
+        e.preventDefault();
+        detenerSesionVoz();
+      });
+    }
+
+    btnVoz.addEventListener('click', async (e) => {
+      e.preventDefault();
+
+      // Si ya está grabando con este mismo botón, detenerlo
+      if (sesionVozActiva && sesionVozActiva.btnEl === btnVoz) {
+        detenerSesionVoz();
+        return;
+      }
+
+      // Si había otra sesión activa en otro input, limpiarla
+      if (sesionVozActiva) {
+        detenerSesionVoz();
+      }
+
+      let textoBase = (inputEl.value || '').trim();
+      btnVoz.classList.add('is-loading');
+      actualizarEstadoUI('Iniciando reconocimiento de voz...', 'Vosk Wasm');
+
+      // 1. Probar primeramente motor Vosk WebAssembly en navegador
+      const soportaVosk = typeof Vosk !== 'undefined' && typeof Vosk.createModel === 'function';
+      const AudioCtxClass = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
+      const soportaMedia = typeof navigator !== 'undefined' && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
+
+      if (soportaVosk && AudioCtxClass && soportaMedia) {
+        try {
+          if (!voskModeloInstancia) {
+            actualizarEstadoUI('Descargando modelo Vosk Wasm (Español, 34 MB)... Solo la primera vez', 'Vosk Wasm');
+            if (!voskPromesaCarga) {
+              voskPromesaCarga = Vosk.createModel(VOSK_MODELO_URL)
+                .then(m => {
+                  voskModeloInstancia = m;
+                  return m;
+                })
+                .catch(err => {
+                  voskPromesaCarga = null;
+                  throw err;
+                });
+            }
+            await voskPromesaCarga;
+          }
+
+          actualizarEstadoUI('Solicitando permiso de micrófono...', 'Vosk Wasm');
+          const mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: false,
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              channelCount: 1,
+              sampleRate: 16000
+            }
+          });
+
+          const audioCtx = new AudioCtxClass();
+          if (audioCtx.state === 'suspended') {
+            await audioCtx.resume();
+          }
+
+          const recognizer = new voskModeloInstancia.KaldiRecognizer(audioCtx.sampleRate);
+
+          recognizer.on('partialresult', (msg) => {
+            const partial = msg?.result?.partial ? msg.result.partial.trim() : '';
+            if (partial && inputEl) {
+              inputEl.value = (textoBase ? (textoBase + ' ' + partial) : partial);
+            }
+          });
+
+          recognizer.on('result', (msg) => {
+            const txt = msg?.result?.text ? msg.result.text.trim() : '';
+            if (txt && inputEl) {
+              textoBase = (textoBase ? (textoBase + ' ' + txt) : txt).trim();
+              inputEl.value = textoBase;
+            }
+          });
+
+          const sourceNode = audioCtx.createMediaStreamSource(mediaStream);
+          const recognizerNode = audioCtx.createScriptProcessor(4096, 1, 1);
+          recognizerNode.onaudioprocess = (evt) => {
+            try {
+              if (sesionVozActiva && sesionVozActiva.tipo === 'vosk' && recognizer) {
+                recognizer.acceptWaveform(evt.inputBuffer);
+              }
+            } catch (errWf) {
+              console.error('Error acceptWaveform en Vosk:', errWf);
+            }
+          };
+
+          // Ganancia cero para no reproducir el audio del micrófono en los altavoces
+          const gainNode = audioCtx.createGain();
+          gainNode.gain.value = 0;
+
+          sourceNode.connect(recognizerNode);
+          recognizerNode.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+
+          btnVoz.classList.remove('is-loading');
+          btnVoz.classList.add('is-recording');
+          actualizarEstadoUI('🎙️ Escuchando con Vosk Wasm... hable con claridad', 'Vosk Wasm');
+
+          sesionVozActiva = {
+            tipo: 'vosk',
+            btnEl: btnVoz,
+            inputEl: inputEl,
+            detener: () => {
+              try {
+                if (recognizerNode) {
+                  recognizerNode.disconnect();
+                  recognizerNode.onaudioprocess = null;
+                }
+                if (gainNode) gainNode.disconnect();
+                if (sourceNode) sourceNode.disconnect();
+                if (mediaStream) {
+                  mediaStream.getTracks().forEach(t => t.stop());
+                }
+                if (recognizer) {
+                  recognizer.remove();
+                }
+                if (audioCtx && audioCtx.state !== 'closed') {
+                  audioCtx.close();
+                }
+              } catch (eStop) {
+                console.warn('Error al liberar recursos Vosk:', eStop);
+              }
+            }
+          };
+          return;
+
+        } catch (errVosk) {
+          console.warn('Vosk Wasm no disponible o denegado, probando fallback nativo:', errVosk);
+        }
+      }
+
+      // 2. Motor de Respaldo: Web Speech API (Nativo de navegador)
+      const SpeechRecognitionClass = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+      if (SpeechRecognitionClass) {
+        try {
+          const rec = new SpeechRecognitionClass();
+          rec.lang = 'es-EC';
+          rec.continuous = true;
+          rec.interimResults = true;
+
+          rec.onresult = (evt) => {
+            let interim = '';
+            for (let i = evt.resultIndex; i < evt.results.length; ++i) {
+              const res = evt.results[i];
+              if (res.isFinal) {
+                const f = res[0].transcript.trim();
+                textoBase = (textoBase ? (textoBase + ' ' + f) : f).trim();
+              } else {
+                interim += res[0].transcript;
+              }
+            }
+            if (inputEl) {
+              const parcialCompleto = (textoBase ? (textoBase + ' ' + interim) : interim).trim();
+              inputEl.value = parcialCompleto;
+            }
+          };
+
+          rec.onerror = (evtErr) => {
+            console.warn('Error en SpeechRecognition nativo:', evtErr);
+            detenerSesionVoz();
+          };
+
+          rec.onend = () => {
+            if (sesionVozActiva && sesionVozActiva.tipo === 'nativo') {
+              detenerSesionVoz();
+            }
+          };
+
+          rec.start();
+
+          btnVoz.classList.remove('is-loading');
+          btnVoz.classList.add('is-recording');
+          actualizarEstadoUI('🎙️ Escuchando con reconocimiento nativo...', 'Nativo');
+
+          sesionVozActiva = {
+            tipo: 'nativo',
+            btnEl: btnVoz,
+            inputEl: inputEl,
+            detener: () => {
+              try {
+                rec.stop();
+              } catch (eRec) {
+                console.warn('Error al detener rec nativo:', eRec);
+              }
+            }
+          };
+          return;
+        } catch (errNat) {
+          console.error('Error al inicializar reconocimiento nativo:', errNat);
+        }
+      }
+
+      // 3. Si ningún motor pudo activarse
+      btnVoz.classList.remove('is-loading', 'is-recording');
+      actualizarEstadoUI('⚠️ No se pudo acceder al micrófono o motor de voz.', 'Error');
+      setTimeout(limpiarEstadoUI, 3500);
+    });
+  }
+
+  // Objeto global para control de apertura/cierre y utilidades
   window.CardioUnemiChat = {
     abrirWidget: () => {
       const v = document.getElementById('contenedor-chat');
@@ -640,6 +920,18 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
     },
     enviarMensaje: (texto) => {
       enviarConsulta(texto);
+    },
+    iniciarVoz: (tipo = 'pagina') => {
+      const btn = (tipo === 'widget')
+        ? document.getElementById('btn-voz-widget')
+        : document.getElementById('btn-voz-chat-page');
+      if (btn) btn.click();
+    },
+    detenerVoz: () => {
+      if (sesionVozActiva && typeof sesionVozActiva.detener === 'function') {
+        sesionVozActiva.detener();
+        sesionVozActiva = null;
+      }
     }
   };
 

@@ -90,6 +90,25 @@
         <span class="texto-procesando">CARDIOUNEMI está procesando los registros clínicos...</span>
       </div>
 
+      <!-- Barra de Estado / Indicador de Reconocimiento por Voz (Vosk WebAssembly) -->
+      <div id="voice-status-bar-page" class="voice-status-bar oculto" role="status" aria-live="polite">
+        <div class="voice-status-content">
+          <div class="voice-indicator-pulse">
+            <span class="voice-wave-bar"></span>
+            <span class="voice-wave-bar"></span>
+            <span class="voice-wave-bar"></span>
+            <span class="voice-wave-bar"></span>
+          </div>
+          <span id="voice-status-text-page" class="voice-status-text">Inicializando Vosk WebAssembly...</span>
+        </div>
+        <div class="voice-status-actions">
+          <span id="voice-engine-badge-page" class="voice-engine-badge" title="Motor activo de voz">Vosk Wasm</span>
+          <button type="button" id="btn-detener-voz-page" class="btn-voice-stop" title="Detener dictado">
+            Detener
+          </button>
+        </div>
+      </div>
+
       <!-- Barra de Entrada de Consulta -->
       <footer class="chat-page-input-area">
         <form id="chat-page-form" onsubmit="return false;">
@@ -102,6 +121,20 @@
               autocomplete="off"
               required
             />
+            <button
+              type="button"
+              id="btn-voz-chat-page"
+              class="btn-voice-main"
+              title="Dictar consulta por voz con Vosk (WebAssembly)"
+              aria-label="Dictar consulta por voz"
+            >
+              <svg viewBox="0 0 24 24" class="icon-mic" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </button>
             <button type="submit" id="btn-enviar-chat-page" class="btn-send-main" title="Enviar consulta">
               <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
@@ -120,6 +153,8 @@
   <script src="{% static 'chatbot/vendor/katex/katex.min.js' %}"></script>
   <script src="{% static 'chatbot/vendor/katex/auto-render.min.js' %}"></script>
   <script src="{% static 'dashboard/vendor/chart.umd.min.js' %}"></script>
+  <!-- Vosk-Browser: Reconocimiento de voz local vía WebAssembly en el frontend -->
+  <script src="https://cdn.jsdelivr.net/npm/vosk-browser@0.0.5/dist/vosk.js"></script>
   <!-- Controlador del Chatbot -->
-  <script src="{% static 'chatbot/js/chat.js' %}?v=20261113_a03"></script>
+  <script src="{% static 'chatbot/js/chat.js' %}?v=20261118_vosk01"></script>
 {% endblock %}

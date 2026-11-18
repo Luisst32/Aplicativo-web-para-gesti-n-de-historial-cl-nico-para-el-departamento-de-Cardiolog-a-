@@ -498,6 +498,35 @@
   stroke-width: 2.2;
 }
 
+/* ==========================================================================
+   BOTÓN Y ESTADO DE VOZ PARA EL WIDGET FLOTANTE (VOSK WEBASSEMBLY)
+   ========================================================================== */
+.btn-voice-widget {
+  width: 34px !important;
+  height: 34px !important;
+}
+
+.btn-voice-widget svg.icon-mic {
+  width: 15px !important;
+  height: 15px !important;
+}
+
+.voice-status-bar-widget {
+  margin: 0 14px 8px 14px !important;
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+}
+
+.voice-status-bar-widget .voice-indicator-pulse {
+  height: 13px !important;
+}
+
+.voice-status-bar-widget .voice-engine-badge {
+  font-size: 10px !important;
+  padding: 1px 5px !important;
+}
+
 /* Adaptación para pantallas pequeñas */
 @media (max-width: 600px) {
   .ventana-chat-flotante {
