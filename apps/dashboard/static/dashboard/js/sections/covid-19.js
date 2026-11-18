@@ -194,6 +194,9 @@ function renderTabCovid19() {
     });
 
     const totalSymCount = symData.reduce((acc, s) => acc + s.count, 0);
+    const maxSymCount = Math.max(...symData.map(s => s.count), 0);
+    // Escala dinámica con margen holgado para que las barras no topen el borde derecho
+    const covLongMax = Math.max(10, Math.ceil((maxSymCount + 4) / 5) * 5);
 
     if (dashboardHasChartData('chart-covid-long-covid', 'covLong', nInf > 0 ? nInf : 0)) {
       const covLongOptions = {
@@ -214,9 +217,9 @@ function renderTabCovid19() {
         }],
         xaxis: {
           categories: symData.map(s => s.label),
-          title: { text: 'Casos en Cohorte Infectada (n=50)' },
+          title: { text: `Casos en Cohorte Infectada (n=${nInf})` },
           min: 0,
-          max: Math.max(5, ...symData.map(s => s.count) + 2),
+          max: covLongMax,
           tickAmount: 5,
           labels: { formatter: v => `${Math.round(v)}` }
         },

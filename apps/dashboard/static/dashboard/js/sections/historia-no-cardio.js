@@ -121,6 +121,11 @@ function renderTabHistoriaNoCardio() {
     });
 
     const hasAny = groupCounts.some(g => g.total > 0 && (g.mental > 0 || g.resp > 0 || g.inmune > 0));
+    const allCounts = groupCounts.flatMap(g => [g.mental, g.resp, g.inmune]);
+    const maxCount = Math.max(...allCounts, 0);
+    // Escala dinámica con holgura para que ninguna barra llegue al borde derecho
+    const ncMax = Math.max(10, Math.ceil((maxCount + 4) / 5) * 5);
+
     if (dashboardHasChartData('chart-nc-sexo-categoria', 'ncSexoCat', hasAny ? filteredRecords.length : 0)) {
       const ncSexoCatOptions = {
         chart: { type: 'bar', height: 480, toolbar: { show: false }, animations: { enabled: false } },
@@ -139,8 +144,12 @@ function renderTabHistoriaNoCardio() {
         ],
         xaxis: {
           categories: groups.map((g, i) => `${g.label} (n=${groupCounts[i].total})`),
+          title: {
+            text: 'Número de Casos Reportados',
+            style: { fontSize: '11.5px', fontWeight: 600, color: '#475569' }
+          },
           min: 0,
-          max: 5,
+          max: ncMax,
           tickAmount: 5,
           labels: { formatter: val => Math.round(val), style: { fontSize: '11.5px', fontWeight: 600 } }
         },
