@@ -2830,9 +2830,19 @@ function solicitarEliminarFichaActual() {
 // EXPORTACIÓN Y VISUALIZACIÓN OFICIAL DE CUESTIONARIO UNEMI EN FORMATO PDF (HU-17)
 // =============================================================================
 
+function _esModoPrivacidadActivoSeguro() {
+  try {
+    if (typeof esModoPrivacidadActivo === 'function') {
+      return esModoPrivacidadActivo();
+    }
+    return typeof localStorage !== 'undefined' && localStorage !== null && localStorage.getItem('cardio_privacy_mode') === 'true';
+  } catch (e) {
+    return false;
+  }
+}
+
 function actualizarOpcionesMenuPdfSegunPrivacidad() {
-  const isPriv = (typeof esModoPrivacidadActivo === 'function' ? esModoPrivacidadActivo() : false) ||
-                 (localStorage.getItem('cardio_privacy_mode') === 'true');
+  const isPriv = _esModoPrivacidadActivoSeguro();
   const opcVer = document.getElementById('pdfOpcionVerActual');
   const opcDesc = document.getElementById('pdfOpcionDescargarActual');
   const opcVerBlanco = document.getElementById('pdfOpcionVerBlanco');
@@ -2911,8 +2921,7 @@ function exportarFormularioPDF(isBlank = false) {
   const menu = document.getElementById('pdfDropdownMenu');
   if (menu) menu.style.display = 'none';
 
-  const isPriv = (typeof esModoPrivacidadActivo === 'function' ? esModoPrivacidadActivo() : false) ||
-                 (localStorage.getItem('cardio_privacy_mode') === 'true');
+  const isPriv = _esModoPrivacidadActivoSeguro();
   if (isPriv && !isBlank) {
     if (typeof mostrarToast === 'function') {
       mostrarToast('Modo de Privacidad Activo: la exportación de fichas con datos del paciente está restringida.', 'warning');
@@ -2930,8 +2939,7 @@ function abrirModalVisualizadorPdf(isBlank = false) {
   const menu = document.getElementById('pdfDropdownMenu');
   if (menu) menu.style.display = 'none';
 
-  const isPriv = (typeof esModoPrivacidadActivo === 'function' ? esModoPrivacidadActivo() : false) ||
-                 (localStorage.getItem('cardio_privacy_mode') === 'true');
+  const isPriv = _esModoPrivacidadActivoSeguro();
   if (isPriv && !isBlank) {
     if (typeof mostrarToast === 'function') {
       mostrarToast('Modo de Privacidad Activo: la visualización de fichas con datos del paciente está restringida.', 'warning');
