@@ -131,7 +131,22 @@ function redesignForestPlotGoals(root) {
     if (isNaN(y1) || isNaN(y2) || isNaN(x1)) return;
 
     const barHeight = Math.abs(y2 - y1);
-    if (barHeight < 15) return;
+    if (barHeight <= 18) {
+      // 2. Líneas de confianza delgadas con punto central prominente para Forest Plot
+      line.setAttribute('data-redesigned', 'true');
+      line.setAttribute('stroke', 'transparent');
+      const midY = (y1 + y2) / 2;
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', String(x1));
+      circle.setAttribute('cy', String(midY));
+      circle.setAttribute('r', '5.5');
+      circle.setAttribute('fill', '#1B2A41');
+      circle.setAttribute('stroke', '#3AA0FF');
+      circle.setAttribute('stroke-width', '2.5');
+      circle.setAttribute('class', 'forest-goal-circle-point');
+      line.parentElement.appendChild(circle);
+      return;
+    }
 
     const topY = Math.min(y1, y2);
     const bottomY = Math.max(y1, y2);
@@ -177,6 +192,39 @@ function dashboardPlaceApexLabels(chart) {
 
   if (chartId === 'chart-rg-forest-prevalencias') {
     redesignForestPlotGoals(root);
+    // Dibujar whiskers (líneas terminales verticales) en los extremos de cada intervalo de confianza
+    const forestBars = root.querySelectorAll('.apexcharts-rangebar-area, .apexcharts-bar-area');
+    forestBars.forEach((bar, idx) => {
+      const pGroup = bar.parentElement;
+      if (!pGroup) return;
+      pGroup.querySelectorAll(`.forest-whisker-${idx}`).forEach(el => el.remove());
+      const bBox = bar.getBBox();
+      if (!bBox || bBox.width <= 0) return;
+      const midY = bBox.y + bBox.height / 2;
+      const whiskerH = 6;
+
+      const leftW = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      leftW.setAttribute('x1', String(bBox.x));
+      leftW.setAttribute('y1', String(midY - whiskerH));
+      leftW.setAttribute('x2', String(bBox.x));
+      leftW.setAttribute('y2', String(midY + whiskerH));
+      leftW.setAttribute('stroke', '#2563EB');
+      leftW.setAttribute('stroke-width', '2.5');
+      leftW.setAttribute('stroke-linecap', 'round');
+      leftW.setAttribute('class', `forest-whisker-${idx} forest-whisker-left`);
+      pGroup.appendChild(leftW);
+
+      const rightW = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      rightW.setAttribute('x1', String(bBox.x + bBox.width));
+      rightW.setAttribute('y1', String(midY - whiskerH));
+      rightW.setAttribute('x2', String(bBox.x + bBox.width));
+      rightW.setAttribute('y2', String(midY + whiskerH));
+      rightW.setAttribute('stroke', '#2563EB');
+      rightW.setAttribute('stroke-width', '2.5');
+      rightW.setAttribute('stroke-linecap', 'round');
+      rightW.setAttribute('class', `forest-whisker-${idx} forest-whisker-right`);
+      pGroup.appendChild(rightW);
+    });
   }
 
   const series = root.querySelectorAll('.apexcharts-bar-series .apexcharts-series, .apexcharts-rangebar-series .apexcharts-series, .apexcharts-series');
@@ -259,17 +307,19 @@ function dashboardPlaceApexLabels(chart) {
 
       // Escalera de ajuste para texto en barras:
       // Medir tamaño real del texto y el espacio disponible de la forma
-      let fontSize = 11;
+      let fontSize = chartId === 'chart-rg-forest-prevalencias' ? 12 : 11;
       text.setAttribute('font-size', String(fontSize));
       text.querySelectorAll('tspan').forEach(ts => ts.setAttribute('font-size', String(fontSize)));
       textRect = text.getBoundingClientRect();
 
-      let fitsInside = horizontal
-        ? (barRect.width >= textRect.width + 14)
-        : (barRect.height >= textRect.height + 6 && barRect.width >= textRect.width + 4);
+      let fitsInside = chartId === 'chart-rg-forest-prevalencias'
+        ? false
+        : (horizontal
+            ? (barRect.width >= textRect.width + 14)
+            : (barRect.height >= textRect.height + 6 && barRect.width >= textRect.width + 4));
 
       // Paso 3b: Si no cabe cómodamente, reducir fuente responsivamente (9.5px o 9px)
-      if (!fitsInside) {
+      if (!fitsInside && chartId !== 'chart-rg-forest-prevalencias') {
         fontSize = 9.5;
         text.setAttribute('font-size', String(fontSize));
         text.querySelectorAll('tspan').forEach(ts => ts.setAttribute('font-size', String(fontSize)));
@@ -347,9 +397,11 @@ function dashboardPlaceApexLabels(chart) {
         text.querySelectorAll('tspan').forEach(ts => {
           ts.setAttribute('fill', '#0f172a');
           ts.style.fill = '#0f172a';
-          const t = ts.textContent.trim();
-          if (t.endsWith('%') && !t.startsWith('(')) {
-            ts.textContent = `(${t})`;
+          if (chartId !== 'chart-rg-forest-prevalencias') {
+            const t = ts.textContent.trim();
+            if (t.endsWith('%') && !t.startsWith('(')) {
+              ts.textContent = `(${t})`;
+            }
           }
         });
         const matrix = text.getScreenCTM();
@@ -357,7 +409,8 @@ function dashboardPlaceApexLabels(chart) {
           const inverse = matrix.inverse();
           if (horizontal) {
             const isNegativeVal = isPyramid && realIndex === 0;
-            const dx = isNegativeVal ? ((barRect.left - 6) - textRect.right) : ((barRect.right + 6) - textRect.left);
+            const offsetRight = chartId === 'chart-rg-forest-prevalencias' ? 14 : 6;
+            const dx = isNegativeVal ? ((barRect.left - 6) - textRect.right) : ((barRect.right + offsetRight) - textRect.left);
             const dy = (barRect.top + barRect.height / 2) - (textRect.top + textRect.height / 2);
             text.setAttribute('transform', `translate(${inverse.a * dx + inverse.c * dy},${inverse.b * dx + inverse.d * dy})`);
           } else {
@@ -475,12 +528,13 @@ function dashboardApexBarStyle(options, id) {
     grid: { borderColor: '#e8eef5', strokeDashArray: 4, padding: id === 'chart-ind-edad-sexo' ? { right: 24, left: 24, top: 24 } : (horizontal ? { right: 90, left: 8, top: 36 } : { right: 20, left: 16, top: 20, bottom: 25 }) },
     fill: { type: 'solid', opacity: 1 },
     plotOptions: { ...options.plotOptions, bar: {
-      borderRadius: 6, barHeight: bar.barHeight || '78%', columnWidth: bar.columnWidth || '72%',
+      borderRadius: id === 'chart-rg-forest-prevalencias' ? 2 : 6,
+      barHeight: bar.barHeight || '78%', columnWidth: bar.columnWidth || '72%',
       ...bar, horizontal,
       dataLabels: { position: 'center', hideOverflowingLabels: false, ...bar.dataLabels },
       colors: {
         backgroundBarRadius: 6,
-        backgroundBarColors: (id === 'chart-ecg-hist-qtc' || (bar.colors && Array.isArray(bar.colors.backgroundBarColors)))
+        backgroundBarColors: (id === 'chart-ecg-hist-qtc' || id === 'chart-rg-forest-prevalencias' || (bar.colors && Array.isArray(bar.colors.backgroundBarColors)))
           ? (bar.colors?.backgroundBarColors || [])
           : ['#f1f5f9'],
         ...bar.colors

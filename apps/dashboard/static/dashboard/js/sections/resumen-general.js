@@ -191,105 +191,195 @@ function renderTabResumenGeneral() {
   }
 
   // 5. FASE 3: Forest Plot de Prevalencias Clave con IC 95% Wilson
-  const forestItems = [
-    { label: 'Infección COVID-19', cases: filteredRecords.filter(r => r.covid_infeccion === true).length, valid: filteredRecords.filter(r => typeof r.covid_infeccion === 'boolean').length },
-    { label: 'Hígado Graso', cases: filteredRecords.filter(r => r.higado_graso === true).length, valid: filteredRecords.filter(r => typeof r.higado_graso === 'boolean').length },
-    { label: 'Dislipemia', cases: threeStateCounts('dislipemia').yes, valid: threeStateCounts('dislipemia').answered },
-    { label: 'Hipertensión', cases: threeStateCounts('hipertension').yes, valid: threeStateCounts('hipertension').answered },
-    { label: 'Obesidad (IMC ≥ 30)', cases: filteredRecords.filter(r => r.imc >= 30).length, valid: filteredRecords.filter(r => r.imc !== null && r.imc !== undefined).length },
-    { label: 'Tabaquismo Activo', cases: threeStateCounts('fumador_activo').yes, valid: threeStateCounts('fumador_activo').answered },
-    { label: 'Salud Mental (Ans/Dep)', cases: filteredRecords.filter(r => r.ansiedad === true || r.depresion === true).length, valid: filteredRecords.filter(r => typeof r.ansiedad === 'boolean' || typeof r.depresion === 'boolean').length }
+  const totalSample = filteredRecords.length;
+
+  const rawConditions = [
+    {
+      conditionName: 'Antecedente de COVID-19',
+      cases: filteredRecords.filter(r => r.covid_infeccion === true).length,
+      valid: filteredRecords.filter(r => typeof r.covid_infeccion === 'boolean').length
+    },
+    {
+      conditionName: 'Hígado Graso',
+      cases: filteredRecords.filter(r => r.higado_graso === true).length,
+      valid: filteredRecords.filter(r => typeof r.higado_graso === 'boolean').length
+    },
+    {
+      conditionName: 'Dislipemia',
+      cases: threeStateCounts('dislipemia').yes,
+      valid: threeStateCounts('dislipemia').answered
+    },
+    {
+      conditionName: 'Hipertensión',
+      cases: threeStateCounts('hipertension').yes,
+      valid: threeStateCounts('hipertension').answered
+    },
+    {
+      conditionName: 'Obesidad (IMC ≥ 30)',
+      cases: filteredRecords.filter(r => r.imc !== null && r.imc !== undefined && !isNaN(Number(r.imc)) && Number(r.imc) >= 30).length,
+      valid: filteredRecords.filter(r => r.imc !== null && r.imc !== undefined && !isNaN(Number(r.imc))).length
+    },
+    {
+      conditionName: 'Tabaquismo Activo',
+      cases: threeStateCounts('fumador_activo').yes,
+      valid: threeStateCounts('fumador_activo').answered
+    },
+    {
+      conditionName: 'Salud Mental (Ans/Dep)',
+      cases: filteredRecords.filter(r => r.ansiedad === true || r.depresion === true).length,
+      valid: filteredRecords.filter(r => typeof r.ansiedad === 'boolean' || typeof r.depresion === 'boolean').length
+    }
   ].filter(item => item.valid > 0);
 
-  const forestData = forestItems.map(item => {
+  // 1. Ordenar las condiciones de mayor a menor prevalencia
+  rawConditions.sort((a, b) => {
+    const pA = a.valid > 0 ? (a.cases / a.valid) : 0;
+    const pB = b.valid > 0 ? (b.cases / b.valid) : 0;
+    return pB - pA;
+  });
+
+  const forestData = rawConditions.map(item => {
     const ci = wilsonScoreInterval(item.cases, item.valid);
     const pPct = Number((ci.p * 100).toFixed(1));
     const low = Number(ci.lower.toFixed(1));
     const up = Number(ci.upper.toFixed(1));
+    const negatives = Math.max(0, item.valid - item.cases);
+    const missing = Math.max(0, totalSample - item.valid);
+    const negPct = item.valid > 0 ? Number(((negatives / item.valid) * 100).toFixed(1)) : 0;
+    const missingPct = totalSample > 0 ? Number(((missing / totalSample) * 100).toFixed(1)) : 0;
+
     return {
-      x: item.label,
+      // 4 & 6. Mostrar número de pacientes evaluados por condición y diferenciar "Antecedente de COVID-19"
+      x: `${item.conditionName} (n = ${item.valid})`,
       y: [low, up],
       goals: [{
         name: 'Prevalencia Puntual',
         value: pPct,
-        strokeHeight: 12,
+        strokeHeight: 14,
         strokeColor: PALETTE.navy,
         strokeWidth: 4
       }],
+      conditionName: item.conditionName,
       cases: item.cases,
       valid: item.valid,
+      negatives: negatives,
+      missing: missing,
       pPct: pPct,
+      negPct: negPct,
+      missingPct: missingPct,
       low: low,
       up: up
     };
   });
 
   const elForest = document.getElementById('chart-rg-forest-prevalencias');
-  if (elForest && dashboardHasChartData('chart-rg-forest-prevalencias', 'rgForest', forestItems.length)) {
-    if (charts.rgForest) {
-      charts.rgForest.updateOptions({
-        series: [{ name: 'IC 95% Wilson', data: forestData }]
-      });
-    } else {
-      charts.rgForest = createDashboardApexChart(elForest, {
-        chart: { type: 'rangeBar', height: 480, toolbar: { show: false }, animations: { enabled: false } },
-        plotOptions: {
-          bar: {
-            horizontal: true,
-            barHeight: '68%',
-            borderRadius: 6,
-            isDumbbell: false,
-            dataLabels: {
-              position: 'center',
-              hideOverflowingLabels: false
-            }
-          }
-        },
-        colors: [PALETTE.primaryBlue],
-        series: [{ name: 'IC 95% Wilson', data: forestData }],
-        xaxis: {
-          min: 0,
-          max: 100,
-          tickAmount: 10,
-          labels: { formatter: val => `${Math.round(val)}%` },
-          title: { text: 'Prevalencia (%) e Intervalo de Confianza al 95% (Wilson)', style: { fontSize: '11px', fontWeight: 700 } }
-        },
-        yaxis: {
-          labels: {
-            maxWidth: 200,
-            style: { fontSize: '11.5px', fontWeight: 600 }
-          }
-        },
-        dataLabels: {
-          enabled: true,
-          formatter: (val, opt) => {
-            const d = forestData[opt.dataPointIndex];
-            if (!d) return '';
-            const pStr = d.pPct.toFixed(1).replace('.', ',');
-            const lowStr = d.low.toFixed(1).replace('.', ',');
-            const upStr = d.up.toFixed(1).replace('.', ',');
-            return [
-              `${d.cases} de ${d.valid} · ${pStr}%`,
-              `IC 95%: ${lowStr}–${upStr}%`
-            ];
-          },
-          style: { fontSize: '11px', fontWeight: 700, fontFamily: 'inherit', colors: ['#ffffff'] },
-          dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow,
-          background: { enabled: false },
-          offsetX: 0
-        },
-        tooltip: {
-          custom: function({ seriesIndex, dataPointIndex, w }) {
-            const d = forestData[dataPointIndex];
-            if (!d) return '';
-            return `<div style="padding: 8px 12px; font-size: 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-              <strong style="color: #0f172a;">${d.x}</strong><br/>
-              <span style="color: #3b82f6;">Prevalencia:</span> <strong>${d.cases} de ${d.valid} · ${d.pPct.toFixed(1).replace('.', ',')}%</strong><br/>
-              <span style="color: #64748b;">IC 95% Wilson:</span> [${d.low.toFixed(1).replace('.', ',')}%, ${d.up.toFixed(1).replace('.', ',')}%]
-            </div>`;
+  if (elForest && dashboardHasChartData('chart-rg-forest-prevalencias', 'rgForest', rawConditions.length)) {
+    const forestChartOptions = {
+      chart: { type: 'rangeBar', height: 460, toolbar: { show: false }, animations: { enabled: false } },
+      plotOptions: {
+        bar: {
+          horizontal: true,
+          barHeight: '10%', // 2. Sustituir rectángulos por líneas delgadas de confianza
+          borderRadius: 2,
+          isDumbbell: false,
+          dataLabels: {
+            position: 'top',
+            hideOverflowingLabels: false
           }
         }
-      });
+      },
+      colors: ['#2563EB'],
+      series: [{ name: 'IC 95% Wilson', data: forestData }],
+      xaxis: {
+        min: 0,
+        max: 100,
+        tickAmount: 10,
+        labels: {
+          formatter: val => `${Math.round(val)}%`,
+          style: { fontSize: '12px', fontWeight: 600, colors: '#64748B' }
+        },
+        title: {
+          text: 'Prevalencia (%) e Intervalo de Confianza al 95% (Método de Wilson)',
+          style: { fontSize: '12.5px', fontWeight: 700, color: '#1E293B' }
+        }
+      },
+      yaxis: {
+        labels: {
+          maxWidth: 280,
+          style: {
+            fontSize: '12.5px', // 3. Aumentar ligeramente tamaño de etiquetas
+            fontWeight: 700,
+            colors: '#1E293B',
+            fontFamily: 'Inter, system-ui, sans-serif'
+          }
+        }
+      },
+      dataLabels: {
+        enabled: true,
+        formatter: (val, opt) => {
+          const d = forestData[opt.dataPointIndex];
+          if (!d) return '';
+          const pStr = d.pPct.toFixed(1).replace('.', ',');
+          const lowStr = d.low.toFixed(1).replace('.', ',');
+          const upStr = d.up.toFixed(1).replace('.', ',');
+          return [
+            `${pStr}% (IC 95%: ${lowStr}–${upStr}%)`,
+            `${d.cases} de ${d.valid} pacientes`
+          ];
+        },
+        style: {
+          fontSize: '12px', // 3. Aumentar tamaño de etiqueta de datos
+          fontWeight: 700,
+          fontFamily: 'Inter, system-ui, sans-serif',
+          colors: ['#0F172A']
+        },
+        dropShadow: { enabled: false },
+        background: { enabled: false },
+        offsetX: 14
+      },
+      tooltip: {
+        custom: function({ seriesIndex, dataPointIndex, w }) {
+          const d = forestData[dataPointIndex];
+          if (!d) return '';
+          const posPctStr = d.pPct.toFixed(1).replace('.', ',');
+          const negPctStr = d.negPct.toFixed(1).replace('.', ',');
+          const missPctStr = d.missingPct.toFixed(1).replace('.', ',');
+          const lowStr = d.low.toFixed(1).replace('.', ',');
+          const upStr = d.up.toFixed(1).replace('.', ',');
+
+          // 5. Tooltip con casos positivos, negativos y datos faltantes
+          return `<div style="padding: 12px 14px; font-size: 12px; font-family: Inter, system-ui, -apple-system, sans-serif; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15); min-width: 250px; color: #1E293B; line-height: 1.5;">
+            <div style="font-weight: 700; color: #0F172A; font-size: 13.5px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1.5px solid #E2E8F0;">
+              ${d.conditionName}
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="color: #475569;">Muestra evaluada:</span>
+              <strong style="color: #0F172A;">${d.valid} de ${totalSample} (${totalSample > 0 ? Math.round((d.valid / totalSample) * 100) : 0}%)</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="color: #16A34A; font-weight: 600;">● Casos positivos:</span>
+              <strong style="color: #16A34A;">${d.cases} (${posPctStr}%)</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="color: #2563EB; font-weight: 600;">● Casos negativos:</span>
+              <strong style="color: #2563EB;">${d.negatives} (${negPctStr}%)</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+              <span style="color: #94A3B8; font-weight: 600;">○ Datos faltantes:</span>
+              <strong style="color: #64748B;">${d.missing} (${missPctStr}%)</strong>
+            </div>
+            <div style="border-top: 1px dashed #CBD5E1; padding-top: 6px; margin-top: 6px; font-size: 11.5px; color: #334155; background: #F8FAFC; margin-left: -14px; margin-right: -14px; margin-bottom: -12px; padding-left: 14px; padding-right: 14px; padding-bottom: 8px; border-radius: 0 0 7px 7px;">
+              <strong>IC 95% Wilson:</strong> [${lowStr}%, ${upStr}%]
+            </div>
+          </div>`;
+        }
+      }
+    };
+
+    if (charts.rgForest) {
+      charts.rgForest.updateOptions(forestChartOptions);
+    } else {
+      charts.rgForest = createDashboardApexChart(elForest, forestChartOptions);
       charts.rgForest.render();
     }
   }
