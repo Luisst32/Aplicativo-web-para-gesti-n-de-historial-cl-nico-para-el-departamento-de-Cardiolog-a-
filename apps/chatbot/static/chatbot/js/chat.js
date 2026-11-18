@@ -670,7 +670,7 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
 
     if (!btnVoz || !inputEl) return;
 
-    const actualizarEstadoUI = (texto, tipoMotor = 'Vosk Wasm') => {
+    const actualizarEstadoUI = (texto, tipoMotor = 'Voz') => {
       if (statusBar) statusBar.classList.remove('oculto');
       if (statusText) statusText.textContent = texto;
       if (badge) badge.textContent = tipoMotor;
@@ -719,189 +719,238 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
         detenerSesionVoz();
       }
 
-      let textoBase = (inputEl.value || '').trim();
+      const textoInicial = (inputEl.value || '').trim();
       btnVoz.classList.add('is-loading');
-      actualizarEstadoUI('Iniciando reconocimiento de voz...', 'Vosk Wasm');
+      actualizarEstadoUI('Activando micrófono...', 'Voz');
 
-      // 1. Probar primeramente motor Vosk WebAssembly en navegador
-      const soportaVosk = typeof Vosk !== 'undefined' && typeof Vosk.createModel === 'function';
-      const AudioCtxClass = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
-      const soportaMedia = typeof navigator !== 'undefined' && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
-
-      if (soportaVosk && AudioCtxClass && soportaMedia) {
-        try {
-          if (!voskModeloInstancia) {
-            actualizarEstadoUI('Descargando modelo Vosk Wasm (Español, 34 MB)... Solo la primera vez', 'Vosk Wasm');
-            if (!voskPromesaCarga) {
-              voskPromesaCarga = Vosk.createModel(VOSK_MODELO_URL)
-                .then(m => {
-                  voskModeloInstancia = m;
-                  return m;
-                })
-                .catch(err => {
-                  voskPromesaCarga = null;
-                  throw err;
-                });
-            }
-            await voskPromesaCarga;
-          }
-
-          actualizarEstadoUI('Solicitando permiso de micrófono...', 'Vosk Wasm');
-          const mediaStream = await navigator.mediaDevices.getUserMedia({
-            video: false,
-            audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              channelCount: 1,
-              sampleRate: 16000
-            }
-          });
-
-          const audioCtx = new AudioCtxClass();
-          if (audioCtx.state === 'suspended') {
-            await audioCtx.resume();
-          }
-
-          const recognizer = new voskModeloInstancia.KaldiRecognizer(audioCtx.sampleRate);
-
-          recognizer.on('partialresult', (msg) => {
-            const partial = msg?.result?.partial ? msg.result.partial.trim() : '';
-            if (partial && inputEl) {
-              inputEl.value = (textoBase ? (textoBase + ' ' + partial) : partial);
-            }
-          });
-
-          recognizer.on('result', (msg) => {
-            const txt = msg?.result?.text ? msg.result.text.trim() : '';
-            if (txt && inputEl) {
-              textoBase = (textoBase ? (textoBase + ' ' + txt) : txt).trim();
-              inputEl.value = textoBase;
-            }
-          });
-
-          const sourceNode = audioCtx.createMediaStreamSource(mediaStream);
-          const recognizerNode = audioCtx.createScriptProcessor(4096, 1, 1);
-          recognizerNode.onaudioprocess = (evt) => {
-            try {
-              if (sesionVozActiva && sesionVozActiva.tipo === 'vosk' && recognizer) {
-                recognizer.acceptWaveform(evt.inputBuffer);
-              }
-            } catch (errWf) {
-              console.error('Error acceptWaveform en Vosk:', errWf);
-            }
-          };
-
-          // Ganancia cero para no reproducir el audio del micrófono en los altavoces
-          const gainNode = audioCtx.createGain();
-          gainNode.gain.value = 0;
-
-          sourceNode.connect(recognizerNode);
-          recognizerNode.connect(gainNode);
-          gainNode.connect(audioCtx.destination);
-
-          btnVoz.classList.remove('is-loading');
-          btnVoz.classList.add('is-recording');
-          actualizarEstadoUI('🎙️ Escuchando con Vosk Wasm... hable con claridad', 'Vosk Wasm');
-
-          sesionVozActiva = {
-            tipo: 'vosk',
-            btnEl: btnVoz,
-            inputEl: inputEl,
-            detener: () => {
-              try {
-                if (recognizerNode) {
-                  recognizerNode.disconnect();
-                  recognizerNode.onaudioprocess = null;
-                }
-                if (gainNode) gainNode.disconnect();
-                if (sourceNode) sourceNode.disconnect();
-                if (mediaStream) {
-                  mediaStream.getTracks().forEach(t => t.stop());
-                }
-                if (recognizer) {
-                  recognizer.remove();
-                }
-                if (audioCtx && audioCtx.state !== 'closed') {
-                  audioCtx.close();
-                }
-              } catch (eStop) {
-                console.warn('Error al liberar recursos Vosk:', eStop);
-              }
-            }
-          };
-          return;
-
-        } catch (errVosk) {
-          console.warn('Vosk Wasm no disponible o denegado, probando fallback nativo:', errVosk);
-        }
-      }
-
-      // 2. Motor de Respaldo: Web Speech API (Nativo de navegador)
+      // 1. Motor Principal: Reconocimiento nativo de alta velocidad (0 ms de espera, sin descargas pesadas)
       const SpeechRecognitionClass = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+
       if (SpeechRecognitionClass) {
         try {
           const rec = new SpeechRecognitionClass();
-          rec.lang = 'es-EC';
+          rec.lang = (typeof navigator !== 'undefined' && navigator.language && navigator.language.startsWith('es'))
+            ? navigator.language
+            : 'es-ES';
           rec.continuous = true;
           rec.interimResults = true;
+          rec.maxAlternatives = 1;
+
+          let frasesFinales = [];
 
           rec.onresult = (evt) => {
             let interim = '';
             for (let i = evt.resultIndex; i < evt.results.length; ++i) {
               const res = evt.results[i];
+              const transcript = res[0] ? res[0].transcript : '';
               if (res.isFinal) {
-                const f = res[0].transcript.trim();
-                textoBase = (textoBase ? (textoBase + ' ' + f) : f).trim();
+                if (transcript.trim()) frasesFinales.push(transcript.trim());
               } else {
-                interim += res[0].transcript;
+                interim += transcript;
               }
             }
+
+            const acumulado = frasesFinales.join(' ').trim();
+            const partes = [];
+            if (textoInicial) partes.push(textoInicial);
+            if (acumulado) partes.push(acumulado);
+            if (interim.trim()) partes.push(interim.trim());
+
+            const resFinal = partes.join(' ').trim();
             if (inputEl) {
-              const parcialCompleto = (textoBase ? (textoBase + ' ' + interim) : interim).trim();
-              inputEl.value = parcialCompleto;
+              inputEl.value = resFinal;
+              inputEl.dispatchEvent(new Event('input', { bubbles: true }));
             }
           };
 
           rec.onerror = (evtErr) => {
-            console.warn('Error en SpeechRecognition nativo:', evtErr);
-            detenerSesionVoz();
+            console.warn('SpeechRecognition error:', evtErr.error);
+            if (evtErr.error === 'not-allowed' || evtErr.error === 'service-not-allowed') {
+              actualizarEstadoUI('⚠️ Permiso de micrófono denegado en el navegador.', 'Error');
+              setTimeout(detenerSesionVoz, 3000);
+            } else if (evtErr.error === 'network') {
+              iniciarConVosk(btnVoz, inputEl, textoInicial, actualizarEstadoUI, limpiarEstadoUI, detenerSesionVoz);
+            }
           };
 
           rec.onend = () => {
-            if (sesionVozActiva && sesionVozActiva.tipo === 'nativo') {
-              detenerSesionVoz();
+            if (sesionVozActiva && sesionVozActiva.tipo === 'nativo' && sesionVozActiva.continuar) {
+              try {
+                rec.start();
+                return;
+              } catch (eStart) {}
             }
+            detenerSesionVoz();
           };
 
           rec.start();
 
           btnVoz.classList.remove('is-loading');
           btnVoz.classList.add('is-recording');
-          actualizarEstadoUI('🎙️ Escuchando con reconocimiento nativo...', 'Nativo');
+          actualizarEstadoUI('🎙️ Escuchando... hable ahora (clic para terminar)', 'Voz');
 
           sesionVozActiva = {
             tipo: 'nativo',
             btnEl: btnVoz,
             inputEl: inputEl,
+            continuar: true,
             detener: () => {
-              try {
-                rec.stop();
-              } catch (eRec) {
-                console.warn('Error al detener rec nativo:', eRec);
-              }
+              if (sesionVozActiva) sesionVozActiva.continuar = false;
+              try { rec.stop(); } catch (e) {}
             }
           };
           return;
+
         } catch (errNat) {
-          console.error('Error al inicializar reconocimiento nativo:', errNat);
+          console.warn('No se pudo iniciar SpeechRecognition nativo, intentando Vosk Wasm:', errNat);
         }
       }
 
-      // 3. Si ningún motor pudo activarse
-      btnVoz.classList.remove('is-loading', 'is-recording');
-      actualizarEstadoUI('⚠️ No se pudo acceder al micrófono o motor de voz.', 'Error');
-      setTimeout(limpiarEstadoUI, 3500);
+      // 2. Motor Secundario: Vosk WebAssembly en el frontend
+      await iniciarConVosk(btnVoz, inputEl, textoInicial, actualizarEstadoUI, limpiarEstadoUI, detenerSesionVoz);
     });
+  }
+
+  // Controlador de reconocimiento con Vosk WebAssembly
+  async function iniciarConVosk(btnVoz, inputEl, textoInicial, actualizarEstadoUI, limpiarEstadoUI, detenerSesionVoz) {
+    const soportaVosk = typeof Vosk !== 'undefined' && typeof Vosk.createModel === 'function';
+    const AudioCtxClass = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
+    const soportaMedia = typeof navigator !== 'undefined' && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
+
+    if (!soportaMedia || !AudioCtxClass) {
+      btnVoz.classList.remove('is-loading', 'is-recording');
+      actualizarEstadoUI('⚠️ Su navegador no admite grabación de audio.', 'Error');
+      setTimeout(limpiarEstadoUI, 3500);
+      return;
+    }
+
+    let mediaStream;
+    try {
+      actualizarEstadoUI('Solicitando permiso de micrófono...', 'Vosk Wasm');
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          channelCount: 1
+        }
+      });
+    } catch (errMic) {
+      console.warn('Permiso de micrófono denegado:', errMic);
+      btnVoz.classList.remove('is-loading', 'is-recording');
+      actualizarEstadoUI('⚠️ Permiso de micrófono denegado.', 'Error');
+      setTimeout(limpiarEstadoUI, 3500);
+      return;
+    }
+
+    if (!soportaVosk) {
+      btnVoz.classList.remove('is-loading', 'is-recording');
+      actualizarEstadoUI('⚠️ Motor de voz no compatible en este navegador.', 'Error');
+      if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+      setTimeout(limpiarEstadoUI, 3500);
+      return;
+    }
+
+    try {
+      if (!voskModeloInstancia) {
+        actualizarEstadoUI('Cargando motor de voz en español...', 'Vosk Wasm');
+        if (!voskPromesaCarga) {
+          voskPromesaCarga = Vosk.createModel(VOSK_MODELO_URL)
+            .then(m => {
+              voskModeloInstancia = m;
+              return m;
+            })
+            .catch(err => {
+              voskPromesaCarga = null;
+              throw err;
+            });
+        }
+        await voskPromesaCarga;
+      }
+
+      const audioCtx = new AudioCtxClass();
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
+
+      const sampleRate = audioCtx.sampleRate || 16000;
+      const recognizer = new voskModeloInstancia.KaldiRecognizer(sampleRate);
+
+      let textoBase = textoInicial;
+      recognizer.on('partialresult', (msg) => {
+        const partial = msg?.result?.partial ? msg.result.partial.trim() : '';
+        if (partial && inputEl) {
+          inputEl.value = (textoBase ? (textoBase + ' ' + partial) : partial);
+          inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      });
+
+      recognizer.on('result', (msg) => {
+        const txt = msg?.result?.text ? msg.result.text.trim() : '';
+        if (txt && inputEl) {
+          textoBase = (textoBase ? (textoBase + ' ' + txt) : txt).trim();
+          inputEl.value = textoBase;
+          inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      });
+
+      const sourceNode = audioCtx.createMediaStreamSource(mediaStream);
+      const recognizerNode = audioCtx.createScriptProcessor(4096, 1, 1);
+      recognizerNode.onaudioprocess = (evt) => {
+        try {
+          if (sesionVozActiva && sesionVozActiva.tipo === 'vosk' && recognizer) {
+            recognizer.acceptWaveform(evt.inputBuffer);
+          }
+        } catch (errWf) {
+          console.error('Error acceptWaveform en Vosk:', errWf);
+        }
+      };
+
+      const gainNode = audioCtx.createGain();
+      gainNode.gain.value = 0;
+
+      sourceNode.connect(recognizerNode);
+      recognizerNode.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      btnVoz.classList.remove('is-loading');
+      btnVoz.classList.add('is-recording');
+      actualizarEstadoUI('🎙️ Escuchando... hable con claridad', 'Vosk Wasm');
+
+      sesionVozActiva = {
+        tipo: 'vosk',
+        btnEl: btnVoz,
+        inputEl: inputEl,
+        detener: () => {
+          try {
+            if (recognizerNode) {
+              recognizerNode.disconnect();
+              recognizerNode.onaudioprocess = null;
+            }
+            if (gainNode) gainNode.disconnect();
+            if (sourceNode) sourceNode.disconnect();
+            if (mediaStream) {
+              mediaStream.getTracks().forEach(t => t.stop());
+            }
+            if (recognizer) {
+              recognizer.remove();
+            }
+            if (audioCtx && audioCtx.state !== 'closed') {
+              audioCtx.close();
+            }
+          } catch (eStop) {
+            console.warn('Error al liberar recursos Vosk:', eStop);
+          }
+        }
+      };
+
+    } catch (errVosk) {
+      console.error('Error al iniciar Vosk Wasm:', errVosk);
+      if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+      btnVoz.classList.remove('is-loading', 'is-recording');
+      actualizarEstadoUI('⚠️ No se pudo iniciar el reconocimiento de voz.', 'Error');
+      setTimeout(limpiarEstadoUI, 3500);
+    }
   }
 
   // Objeto global para control de apertura/cierre y utilidades
