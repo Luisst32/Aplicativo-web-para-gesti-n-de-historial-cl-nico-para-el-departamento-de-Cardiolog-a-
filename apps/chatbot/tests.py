@@ -22,6 +22,7 @@ from chatbot.services import (
     _question_matches_query,
     normalize_clinical_query,
     build_chart_json_if_requested,
+    generate_fallback_clinical_answer,
 )
 
 User = get_user_model()
@@ -243,6 +244,26 @@ class ChatbotSecurityAndPrivacyTests(TestCase):
         self.assertIsNotNone(chart)
         self.assertIn('"type": "scatter"', chart)
         self.assertIn('Dispersión Edad vs TAS', chart)
+
+    @patch('chatbot.services.get_dashboard_evaluation_data')
+    def test_age_and_advanced_age_queries(self, mock_data):
+        mock_data.return_value = {
+            'records': [
+                {'edad': 25, 'sexo': 'Hombre', 'categoria': 'PAS', 'study_code': 'P01'},
+                {'edad': 45, 'sexo': 'Mujer', 'categoria': 'PDI', 'study_code': 'P02'},
+                {'edad': 62, 'sexo': 'Hombre', 'categoria': 'Docente', 'study_code': 'P03'},
+                {'edad': 75, 'sexo': 'Mujer', 'categoria': 'Servicio', 'study_code': 'P04'},
+            ]
+        }
+        res_max = generate_fallback_clinical_answer('la edad mas alta que existea')
+        self.assertIn('**Edad más alta (máxima):** **75 años**', res_max)
+        self.assertIn('**Edad más baja (mínima):** **25 años**', res_max)
+        self.assertIn('Pacientes con edad avanzada ($\\ge 60$ años)', res_max)
+        self.assertIn('Caso P04 (75 años', res_max)
+
+        res_adv = generate_fallback_clinical_answer('dime los pacientes con edad avanzada')
+        self.assertIn('Caso P04 (75 años', res_adv)
+        self.assertIn('Caso P03 (62 años', res_adv)
 
     def test_bulk_or_update_cache_invalidation(self):
         """Verifica que invalidate_cohort_cache elimine las claves del caché compartido."""

@@ -194,10 +194,33 @@ def is_modification_attempt(question: str) -> bool:
 def is_direct_cohort_metric_question(question: str) -> bool:
     """Return whether a question must use its exact local cohort calculation."""
     q = normalize_clinical_query(question)
-    return bool(re.search(
-        r'\b(depresion|depresiv[oa]s?|ansiedad|salud\s+mental|trastorno\s+mental)\b',
-        q,
-    ))
+    direct_patterns = [
+        # Salud mental
+        r'\b(depresion|depresiv[oa]s?|ansiedad|salud\s+mental|trastorno\s+mental|psico|animo)\b',
+        # Edad, longevidad y grupos etarios
+        r'\b(edad|edades|a[ñn]os?|ancian[oa]s?|vejez|mayor|mayores|avanzad[oa]s?|longev[oa]s?|m[aá]xima?|m[ií]nima?|promedio\s+de\s+edad|tercera\s+edad|adulto\s+mayor|envejecimiento|fecha\s+de\s+nacimiento|m[aá]s\s+(alta|baja|grande|joven|viejo|anciano|longevo))\b',
+        # Hipertensión arterial y cifras tensionales
+        r'\b(hipertension|hta|hipertenso|hipertensas?|hipertensos?|presion|tensi[oó]n|tas|tad|sistolica|diastolica)\b',
+        # Nutrición, IMC y antropometría
+        r'\b(imc|sobrepeso|obesidad|obeso|obesa|peso|talla|nutricion|antropometria|cintura|perimetro)\b',
+        # Diabetes y glucosa
+        r'\b(diabetes|diabetic[oa]s?|glucosa|glicemia)\b',
+        # Dislipemia y lípidos
+        r'\b(dislipemia|dislipidemia|colesterol|trigliceridos?|lipidos?|ldl|hdl)\b',
+        # Estilo de vida y hábitos
+        r'\b(tabaquismo|fumador|fuma|cigarro|cigarrillo|alcohol|bebedor|sedentarismo|sedentario|actividad\s+fisica)\b',
+        # Electrocardiograma
+        r'\b(ecg|electrocardiograma|ritmo|sinusal|arritmias?|qt|qtc|hvi|bloqueo)\b',
+        # Riesgo cardiovascular global
+        r'\b(riesgo|global|estratificacion|factores\s+de\s+riesgo)\b',
+        # Hígado graso
+        r'\b(higado\s+graso|esteatosis|esteatohepatitis|higado)\b',
+        # COVID-19 y secuelas
+        r'\b(covid|coronavirus|sars-cov-2|secuelas?|long\s*covid)\b',
+        # Totales y demografía
+        r'\b(total|evaluados?|pacientes?|muestra|poblacion|cuantos?|cuantas?|hombres?|mujeres?|sexo|genero|personal|docentes?|pdi|administrativos?|pas|servicios?)\b',
+    ]
+    return any(bool(re.search(pat, q)) for pat in direct_patterns)
 
 
 SENSITIVE_VARIABLE_PATTERN = re.compile(
@@ -265,16 +288,29 @@ def get_live_questionnaire_metric(question: str) -> Optional[str]:
     chart_obj = None
     for item in candidates:
         answers = VisitAnswer.objects.filter(question=item).select_related('selected_option')
-        if item.response_type == Question.ResponseType.NUMERICO:
-            values = [float(answer.numeric_value) for answer in answers if answer.numeric_value is not None]
-            if not values:
-                summaries.append(f'- **{item.text}:** sin respuestas numéricas registradas.')
-                continue
-            values.sort()
-            middle = len(values) // 2
-            median = values[middle] if len(values) % 2 else (values[middle - 1] + values[middle]) / 2
+
+        # Soporte para respuestas numéricas almacenadas tanto en numeric_value como text_value
+        num_values = []
+        for answer in answers:
+            if answer.numeric_value is not None:
+                try:
+                    num_values.append(float(answer.numeric_value))
+                except (ValueError, TypeError):
+                    pass
+            elif answer.text_value:
+                try:
+                    num_values.append(float(answer.text_value))
+                except (ValueError, TypeError):
+                    pass
+
+        if num_values and (item.response_type == Question.ResponseType.NUMERICO or len(num_values) >= len(answers) * 0.4):
+            num_values.sort()
+            min_v = min(num_values)
+            max_v = max(num_values)
+            middle = len(num_values) // 2
+            median = num_values[middle] if len(num_values) % 2 else (num_values[middle - 1] + num_values[middle]) / 2
             summaries.append(
-                f'- **{item.text}:** N válido={len(values)}, promedio={sum(values) / len(values):.1f}, mediana={median:.1f}.'
+                f'- **{item.text}:** N válido={len(num_values)}, mínimo={min_v:.1f}, máximo={max_v:.1f}, promedio={sum(num_values) / len(num_values):.1f}, mediana={median:.1f}.'
             )
             continue
 
@@ -330,6 +366,18 @@ def get_anonymized_cohort_context() -> str:
     if total < 10:
         return 'COHORTE: estadisticas no divulgables por tamano reducido.'
     lines = [f'COHORTE N={total}']
+
+    # Estadísticas etarias y demográficas seguras agregadas (Zero PII)
+    edades = [float(r.get('edad')) for r in records if r.get('edad') and float(r.get('edad')) > 0]
+    if edades:
+        min_e = int(min(edades))
+        max_e = int(max(edades))
+        prom_e = round(sum(edades) / len(edades), 1)
+        med_e = round(sorted(edades)[len(edades) // 2], 1)
+        cnt_60 = sum(1 for e in edades if e >= 60)
+        lines.append(f'Edad: rango {min_e} a {max_e} anos, promedio {prom_e} anos, mediana {med_e} anos.')
+        lines.append(f'Pacientes con 60 anos o mas (edad avanzada): {cnt_60} de {total}.')
+
     for label, predicate in (
         ('HTA', lambda r: bool(r.get('hipertension'))),
         ('Diabetes', lambda r: bool(r.get('diabetes'))),
@@ -893,7 +941,56 @@ def generate_fallback_clinical_answer(question: str) -> str:
             f"- **Prevalencia global de afección mental:** {afectados_display}."
         )
 
-    # 2. HIPERTENSIÓN ARTERIAL (Desambiguación médica estricta y límites \b)
+    # 2. EDAD, LONGEVIDAD Y DISTRIBUCIÓN ETARIA
+    elif (
+        re.search(r'\b(edad|edades|a[ñn]os?|ancian[oa]s?|vejez|mayor|mayores|avanzad[oa]s?|longev[oa]s?|m[aá]xima?|m[ií]nima?|promedio\s+de\s+edad|tercera\s+edad|adulto\s+mayor|envejecimiento|fecha\s+de\s+nacimiento)\b', q) or
+        (re.search(r'\bm[aá]s\s+(alta|baja|grande|joven|viejo|anciano|longevo)\b', q) and not re.search(r'\b(presion|tension|tas|tad|sistolica|diastolica)\b', q))
+    ):
+        edades = [float(r.get('edad')) for r in records if r.get('edad') and float(r.get('edad')) > 0]
+        if not edades:
+            base_answer = "No se registran datos válidos de edad en las fichas clínicas actuales."
+        else:
+            edades.sort()
+            min_e = int(min(edades))
+            max_e = int(max(edades))
+            prom_e = round(sum(edades) / len(edades), 1)
+            med_e = round(edades[len(edades) // 2], 1)
+
+            # Pacientes de edad avanzada (>= 60 años)
+            mayores_60 = [r for r in records if r.get('edad') and float(r.get('edad')) >= 60]
+            cnt_60 = len(mayores_60)
+
+            # Estratificación por rangos etarios
+            g_menor_30 = sum(1 for e in edades if e < 30)
+            g_30_39 = sum(1 for e in edades if 30 <= e < 40)
+            g_40_49 = sum(1 for e in edades if 40 <= e < 50)
+            g_50_59 = sum(1 for e in edades if 50 <= e < 60)
+            g_60_mas = sum(1 for e in edades if e >= 60)
+
+            # Casos de mayor edad en la cohorte (Zero PII: código de estudio, edad, sexo, estamento)
+            mayores_sorted = sorted(mayores_60, key=lambda x: float(x.get('edad', 0)), reverse=True)
+            top_longevos = []
+            for r in mayores_sorted[:6]:
+                p_code = r.get('study_code') or r.get('codigo_estudio') or r.get('id')
+                top_longevos.append(f"Caso {p_code} ({int(r.get('edad'))} años, {r.get('sexo')}, {r.get('categoria')})")
+            longevos_str = "; ".join(top_longevos) if top_longevos else "No se registran casos $\\ge 60$ años."
+
+            base_answer = (
+                f"**Perfil de Edad y Pacientes de Edad Avanzada en la Cohorte ($N = {total}$ evaluados):**\n"
+                f"- **Edad más alta (máxima):** **{max_e} años**.\n"
+                f"- **Edad más baja (mínima):** **{min_e} años**.\n"
+                f"- **Edad promedio:** **{prom_e} años** (Mediana: **{med_e} años**).\n"
+                f"- **Pacientes con edad avanzada ($\\ge 60$ años):** **{pct(cnt_60)} %** ({cnt_60} de {total} pacientes evaluados).\n"
+                f"- **Pacientes más longevos registrados:** {longevos_str}.\n"
+                f"- **Estratificación por rangos de edad:**\n"
+                f"  * **Menores de 30 años:** {pct(g_menor_30)} % ({g_menor_30} casos)\n"
+                f"  * **30 a 39 años:** {pct(g_30_39)} % ({g_30_39} casos)\n"
+                f"  * **40 a 49 años:** {pct(g_40_49)} % ({g_40_49} casos)\n"
+                f"  * **50 a 59 años:** {pct(g_50_59)} % ({g_50_59} casos)\n"
+                f"  * **60 años o más:** {pct(g_60_mas)} % ({g_60_mas} casos)."
+            )
+
+    # 3. HIPERTENSIÓN ARTERIAL (Desambiguación médica estricta y límites \b)
     # Detecta 'hipertensión', 'hta', 'presión arterial', etc.
     # Excluye 'depresión' y 'tensión emocional/nerviosa/muscular/psicológica'
     elif (
@@ -1011,7 +1108,26 @@ def generate_fallback_clinical_answer(question: str) -> str:
             f"- **Tabaquismo activo:** **{pct(fum_cnt)} %** ({fum_cnt} casos)."
         )
 
-    # 9. TOTALES Y POBLACIÓN GENERAL
+    # 9. HÍGADO GRASO Y ESTEATOSIS HEPÁTICA
+    elif re.search(r'\b(higado\s+graso|esteatosis|esteatohepatitis|higado)\b', q):
+        hg_cnt = sum(1 for r in records if r.get('higado_graso'))
+        base_answer = (
+            f"**Hígado Graso (Esteatosis Hepática):**\n"
+            f"- **Prevalencia:** **{pct(hg_cnt)} %** ({hg_cnt} de {total} casos evaluados).\n"
+            f"- **Relevancia clínica:** Es uno de los principales factores de riesgo metabólico emergente evaluados en la cohorte."
+        )
+
+    # 10. ANTECEDENTES DE COVID-19 Y SECUELAS LONG-COVID
+    elif re.search(r'\b(covid|coronavirus|sars-cov-2|long\s*covid|secuelas?)\b', q):
+        cov_inf = sum(1 for r in records if r.get('covid_infeccion'))
+        cov_sec = sum(1 for r in records if r.get('covid_secuelas'))
+        base_answer = (
+            f"**Infección por COVID-19 y Secuelas:**\n"
+            f"- **Antecedente de COVID-19 previo:** **{pct(cov_inf)} %** ({cov_inf} de {total} casos evaluados).\n"
+            f"- **Secuelas persistentes (Long-COVID):** **{pct(cov_sec)} %** ({cov_sec} de {total} casos evaluados)."
+        )
+
+    # 11. TOTALES Y POBLACIÓN GENERAL
     elif re.search(r'\b(total|evaluados?|pacientes?|muestra|poblaci[oó]n|cu[aá]ntos?)\b', q):
         hombres = sum(1 for r in records if r.get('sexo') == 'Hombre')
         mujeres = sum(1 for r in records if r.get('sexo') == 'Mujer')
