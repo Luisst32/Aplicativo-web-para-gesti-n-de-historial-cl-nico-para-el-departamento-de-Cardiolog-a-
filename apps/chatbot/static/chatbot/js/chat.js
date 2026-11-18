@@ -78,11 +78,9 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
     'Estratificación de riesgo cardiovascular'
   ];
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', inicializarChat);
-  } else {
+  document.addEventListener('DOMContentLoaded', () => {
     inicializarChat();
-  }
+  });
 
   function inicializarChat() {
     // Contenedores
