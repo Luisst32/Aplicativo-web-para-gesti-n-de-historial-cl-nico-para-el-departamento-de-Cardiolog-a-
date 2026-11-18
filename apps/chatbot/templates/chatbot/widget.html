@@ -8,7 +8,7 @@
 
 <!-- Estilos del Widget y KaTeX (Autosuficiente) -->
 <link rel="stylesheet" href="{% static 'chatbot/vendor/katex/katex.min.css' %}">
-<link rel="stylesheet" href="{% static 'chatbot/css/chat-widget.css' %}?v=20261118_vosk02">
+<link rel="stylesheet" href="{% static 'chatbot/css/chat-widget.css' %}?v=20261118_v05">
 
 <!-- Telón de fondo para modo centrado/expandido -->
 <div id="chat-backdrop-widget" class="chat-backdrop-widget"></div>
@@ -56,7 +56,7 @@
   </div>
 
   <!-- Barra de Estado de Dictado por Voz en Widget -->
-  <div id="voice-status-bar-widget" class="voice-status-bar voice-status-bar-widget oculto" role="status" aria-live="polite">
+  <div id="voice-status-bar-widget" class="voice-status-bar voice-status-bar-widget oculto" style="display: none;" role="status" aria-live="polite">
     <div class="voice-status-content">
       <div class="voice-indicator-pulse">
         <span class="voice-wave-bar"></span>
@@ -110,4 +110,4 @@
 <script src="{% static 'dashboard/vendor/chart.umd.min.js' %}"></script>
 <!-- Vosk-Browser: Reconocimiento de voz local vía WebAssembly en el frontend -->
 <script src="https://cdn.jsdelivr.net/npm/vosk-browser@0.0.5/dist/vosk.js"></script>
-<script src="{% static 'chatbot/js/chat.js' %}?v=20261118_vosk_opt04"></script>
+<script src="{% static 'chatbot/js/chat.js' %}?v=20261118_v05"></script>

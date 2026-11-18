@@ -110,6 +110,7 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
     if (formPagina && inputPagina) {
       formPagina.addEventListener('submit', (e) => {
         e.preventDefault();
+        detenerSesionVoz(false);
         const texto = inputPagina.value.trim();
         if (!texto) return;
         inputPagina.value = '';
@@ -120,6 +121,7 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
     if (formWidget && inputWidget) {
       formWidget.addEventListener('submit', (e) => {
         e.preventDefault();
+        detenerSesionVoz(false);
         const texto = inputWidget.value.trim();
         if (!texto) return;
         inputWidget.value = '';
@@ -132,6 +134,12 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
       btnFlotante.addEventListener('click', () => {
         ventanaWidget.classList.remove('oculta');
         btnFlotante.classList.add('oculto');
+        // Asegurar que la barra de dictado no aparezca activa si no se está usando
+        const barW = document.getElementById('voice-status-bar-widget');
+        if (barW && (!sesionVozActiva || sesionVozActiva.btnEl !== document.getElementById('btn-voz-widget'))) {
+          barW.classList.add('oculto');
+          barW.style.display = 'none';
+        }
         if (inputWidget) setTimeout(() => inputWidget.focus(), 150);
         hacerScrollAlFinal();
       });
@@ -140,6 +148,7 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
     // Cierre del widget flotante
     if (btnCerrar && ventanaWidget && btnFlotante) {
       btnCerrar.addEventListener('click', () => {
+        detenerSesionVoz(false);
         ventanaWidget.classList.add('oculta');
         ventanaWidget.classList.remove('modo-centrado');
         if (backdropWidget) backdropWidget.classList.remove('activo');
@@ -578,6 +587,15 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
     const q = (pregunta || '').trim();
     if (!q) return;
 
+    // Asegurar detención inmediata del dictado por voz y cierre del micrófono
+    detenerSesionVoz(false);
+
+    // Limpiar campos de texto para evitar que el texto vuelva a aparecer
+    const inputP = document.getElementById('chat-page-input');
+    const inputW = document.getElementById('chat-input');
+    if (inputP) inputP.value = '';
+    if (inputW) inputW.value = '';
+
     // Mostrar mensaje del usuario
     agregarBurbujaUsuario(q);
 
@@ -638,7 +656,43 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
   // ==========================================================================
   let voskModeloInstancia = null;
   let voskPromesaCarga = null;
-  let sesionVozActiva = null; // { btnEl, inputEl, detener: Function }
+  let sesionVozActiva = null; // { btnEl, inputEl, statusBar, detener: Function }
+
+  function detenerSesionVoz(enfocar = true) {
+    if (sesionVozActiva) {
+      const sesion = sesionVozActiva;
+      sesionVozActiva = null;
+      try {
+        if (typeof sesion.detener === 'function') {
+          sesion.detener();
+        }
+      } catch (e) {
+        console.warn('Error al detener dictado por voz:', e);
+      }
+      if (sesion.statusBar) {
+        sesion.statusBar.classList.add('oculto');
+        sesion.statusBar.style.display = 'none';
+      }
+      if (sesion.btnEl) {
+        sesion.btnEl.classList.remove('is-recording', 'is-loading');
+      }
+      if (enfocar && sesion.inputEl) {
+        sesion.inputEl.focus();
+      }
+    }
+    // Asegurar que ambas barras queden cerradas visualmente
+    ['voice-status-bar-widget', 'voice-status-bar-page'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add('oculto');
+        el.style.display = 'none';
+      }
+    });
+    ['btn-voz-widget', 'btn-voz-chat-page'].forEach((id) => {
+      const b = document.getElementById(id);
+      if (b) b.classList.remove('is-recording', 'is-loading');
+    });
+  }
 
   const VOSK_MODELO_URL = (typeof window !== 'undefined' && window.CARDIOUNEMI_VOSK_MODEL_URL)
     ? window.CARDIOUNEMI_VOSK_MODEL_URL
@@ -690,41 +744,34 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
 
     if (!btnVoz || !inputEl) return;
 
-    // Asegurar que inicie oculto por defecto
-    if (statusBar) statusBar.classList.add('oculto');
+    // Iniciar siempre oculto tanto por clase como por estilo inline
+    if (statusBar) {
+      statusBar.classList.add('oculto');
+      statusBar.style.display = 'none';
+    }
 
     const actualizarEstadoUI = (texto = 'Escuchando...') => {
-      if (statusBar) statusBar.classList.remove('oculto');
+      if (statusBar) {
+        statusBar.classList.remove('oculto');
+        statusBar.style.display = 'flex';
+      }
       if (statusText) statusText.textContent = texto;
     };
 
     const limpiarEstadoUI = () => {
-      if (statusBar) statusBar.classList.add('oculto');
+      if (statusBar) {
+        statusBar.classList.add('oculto');
+        statusBar.style.display = 'none';
+      }
       if (btnVoz) {
         btnVoz.classList.remove('is-recording', 'is-loading');
       }
     };
 
-    const detenerSesionVoz = () => {
-      if (sesionVozActiva) {
-        const sesion = sesionVozActiva;
-        sesionVozActiva = null;
-        try {
-          if (typeof sesion.detener === 'function') {
-            sesion.detener();
-          }
-        } catch (e) {
-          console.warn('Error al detener dictado por voz:', e);
-        }
-      }
-      limpiarEstadoUI();
-      if (inputEl) inputEl.focus();
-    };
-
     if (btnStop) {
       btnStop.addEventListener('click', (e) => {
         e.preventDefault();
-        detenerSesionVoz();
+        detenerSesionVoz(true);
       });
     }
 
@@ -733,13 +780,13 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
 
       // Si ya está grabando con este mismo botón, detener
       if (sesionVozActiva && sesionVozActiva.btnEl === btnVoz) {
-        detenerSesionVoz();
+        detenerSesionVoz(true);
         return;
       }
 
       // Si había otra sesión activa en otro input, limpiarla
       if (sesionVozActiva) {
-        detenerSesionVoz();
+        detenerSesionVoz(false);
       }
 
       // 1. Motor Principal: Vosk WebAssembly en Frontend
@@ -846,6 +893,7 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
           sesionVozActiva = {
             btnEl: btnVoz,
             inputEl: inputEl,
+            statusBar: statusBar,
             detener: () => {
               sesionVozEnCurso = false;
               try {
@@ -965,6 +1013,7 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
           sesionVozActiva = {
             btnEl: btnVoz,
             inputEl: inputEl,
+            statusBar: statusBar,
             detener: () => {
               sesionActiva = false;
               try {
@@ -990,20 +1039,27 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
 
   // Objeto global para control de apertura/cierre y utilidades
   window.CardioUnemiChat = {
-    version: '20261118_vosk_opt03',
+    version: '20261118_v05',
     abrirWidget: () => {
       const v = document.getElementById('contenedor-chat');
       const b = document.getElementById('btn-flotante-chat');
       if (v) v.classList.remove('oculta');
       if (b) b.classList.add('oculto');
+      const barW = document.getElementById('voice-status-bar-widget');
+      if (barW && (!sesionVozActiva || sesionVozActiva.btnEl !== document.getElementById('btn-voz-widget'))) {
+        barW.classList.add('oculto');
+        barW.style.display = 'none';
+      }
     },
     cerrarWidget: () => {
+      detenerSesionVoz(false);
       const v = document.getElementById('contenedor-chat');
       const b = document.getElementById('btn-flotante-chat');
       if (v) v.classList.add('oculta');
       if (b) b.classList.remove('oculto');
     },
     enviarMensaje: (texto) => {
+      detenerSesionVoz(false);
       enviarConsulta(texto);
     },
     iniciarVoz: (tipo = 'pagina') => {
@@ -1013,10 +1069,7 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
       if (btn) btn.click();
     },
     detenerVoz: () => {
-      if (sesionVozActiva && typeof sesionVozActiva.detener === 'function') {
-        sesionVozActiva.detener();
-        sesionVozActiva = null;
-      }
+      detenerSesionVoz(false);
     }
   };
 

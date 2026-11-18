@@ -7,7 +7,7 @@
   <!-- KaTeX CSS para renderizado de fórmulas médicas y estadísticas -->
   <link rel="stylesheet" href="{% static 'chatbot/vendor/katex/katex.min.css' %}">
   <!-- Estilos de la página completa de Asistente IA -->
-  <link rel="stylesheet" href="{% static 'chatbot/css/chat.css' %}?v=20261118_vosk03">
+  <link rel="stylesheet" href="{% static 'chatbot/css/chat.css' %}?v=20261118_v05">
 {% endblock %}
 
 {% block content %}
@@ -91,7 +91,7 @@
       </div>
 
       <!-- Barra de Estado / Indicador de Reconocimiento por Voz -->
-      <div id="voice-status-bar-page" class="voice-status-bar oculto" role="status" aria-live="polite">
+      <div id="voice-status-bar-page" class="voice-status-bar oculto" style="display: none;" role="status" aria-live="polite">
         <div class="voice-status-content">
           <div class="voice-indicator-pulse">
             <span class="voice-wave-bar"></span>
@@ -152,5 +152,5 @@
   <!-- Vosk-Browser: Reconocimiento de voz local vía WebAssembly en el frontend -->
   <script src="https://cdn.jsdelivr.net/npm/vosk-browser@0.0.5/dist/vosk.js"></script>
   <!-- Controlador del Chatbot -->
-  <script src="{% static 'chatbot/js/chat.js' %}?v=20261118_vosk_opt04"></script>
+  <script src="{% static 'chatbot/js/chat.js' %}?v=20261118_v05"></script>
 {% endblock %}
