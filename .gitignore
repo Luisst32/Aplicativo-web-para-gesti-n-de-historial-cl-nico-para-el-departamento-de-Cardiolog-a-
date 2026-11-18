@@ -66,3 +66,4 @@ PROGRESS.md
 .cache/
 .private_imports/
 node_modules/
+**/node_modules/

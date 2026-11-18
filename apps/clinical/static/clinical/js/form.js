@@ -13,19 +13,22 @@ function activarRastreoDeCambiosFormulario() {
   formularioTieneCambios = false;
   actualizarIndicadorCambios();
 
-  const form = document.getElementById('ehrCleanForm');
-  if (form) {
-    form.addEventListener('input', () => {
+  const onUserChange = (ev) => {
+    if (!escuchandoCambiosFormulario) return;
+    const target = ev.target;
+    if (!target) return;
+    if (target.closest('#modalConfirmarSalida') || target.closest('#modalVisualizadorPdf')) return;
+    if (target.closest('#ehrCleanForm') || target.matches('input, select, textarea, [contenteditable]')) {
       marcarFormularioModificado();
-    });
-    form.addEventListener('change', () => {
-      marcarFormularioModificado();
-    });
-  }
+    }
+  };
+
+  document.addEventListener('input', onUserChange, true);
+  document.addEventListener('change', onUserChange, true);
 
   // Prevenir que atrás en el navegador salga directamente sin advertencia
   try {
-    history.pushState({ page: 'ficha_clinica' }, '', location.href);
+    window.history.pushState({ page: 'ficha_clinica' }, '', window.location.href);
   } catch (e) {
     // Si el navegador no permite manipular historial se omite
   }
@@ -102,8 +105,8 @@ function configurarInterceptoresSalida() {
   window.addEventListener('beforeunload', (ev) => {
     if (formularioTieneCambios) {
       ev.preventDefault();
-      ev.returnValue = '';
-      return '';
+      ev.returnValue = 'Tiene cambios sin guardar en la ficha clínica.';
+      return 'Tiene cambios sin guardar en la ficha clínica.';
     }
   });
 
@@ -111,12 +114,14 @@ function configurarInterceptoresSalida() {
   window.addEventListener('popstate', () => {
     if (formularioTieneCambios) {
       try {
-        history.pushState({ page: 'ficha_clinica' }, '', location.href);
+        window.history.pushState({ page: 'ficha_clinica' }, '', window.location.href);
       } catch (e) {}
       abrirModalConfirmarSalida(() => {
         formularioTieneCambios = false;
-        history.back();
+        window.location.href = '/clinical/listado/';
       });
+    } else {
+      window.location.href = '/clinical/listado/';
     }
   });
 
@@ -129,8 +134,9 @@ function configurarInterceptoresSalida() {
     if (!href || href.startsWith('#') || href.startsWith('javascript:') || enlace.target === '_blank') return;
 
     ev.preventDefault();
+    ev.stopPropagation();
     abrirModalConfirmarSalida(href);
-  });
+  }, true);
 }
 
 // Hacer funciones disponibles globalmente para onclick del HTML

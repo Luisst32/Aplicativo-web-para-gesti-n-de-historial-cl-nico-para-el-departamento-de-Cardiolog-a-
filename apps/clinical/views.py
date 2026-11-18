@@ -191,6 +191,7 @@ def _patient_to_dict(patient, visit=None):
 
 @login_required
 @clinical_access_required('read')
+@never_cache
 def form_view(request):
     """
     Renders the clinical evaluation form template.
