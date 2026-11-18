@@ -11,8 +11,34 @@
 <link rel="shortcut icon" href="{% static 'assets/images/favicon.ico' %}?v=20261114_01">
 <style>
 :root{--navy:#121D2D;--muted:#53657a;--border:#b8c4d2;--white:#fff;--patch:#b8c5d2}
-*{box-sizing:border-box}body{margin:0;background:var(--white);color:var(--navy);font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;-webkit-font-smoothing:antialiased}
-.error-page{min-height:100vh;min-height:100svh;display:grid;place-items:center;padding:40px 24px;text-align:center}.error-content{width:min(100%,850px);margin:auto}.illustration{display:block;width:min(100%,680px);height:auto;margin:0 auto 18px;overflow:visible}.error-title{font-size:clamp(28px,4.4vw,48px);font-weight:750;line-height:1.16;letter-spacing:-.045em;margin:0 0 16px}.error-description{color:var(--muted);font-size:clamp(15px,2vw,19px);line-height:1.6;margin:0 auto;max-width:620px}.home-button{display:inline-flex;align-items:center;justify-content:center;gap:9px;margin-top:34px;padding:12px 21px;border:1px solid var(--border);border-radius:12px;color:#42566d;text-decoration:none;background:#fff;font-size:15px;font-weight:600;transition:background .18s,border-color .18s,color .18s,transform .18s;min-height:44px}.home-button:hover{background:#f4f7fa;border-color:#8295a9;color:var(--navy);transform:translateY(-1px)}.home-button:focus-visible{outline:3px solid #389bfa;outline-offset:4px}.home-button:active{transform:translateY(0)}.home-button svg{width:19px;height:19px;flex-shrink:0}.cat-body{transform-box:fill-box;transform-origin:center bottom;animation:breathe 4s ease-in-out infinite}.tail{transform-origin:280px 302px;animation:tail 5s ease-in-out infinite}.sleep-z{animation:float 3.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}.sleep-z:nth-child(2){animation-delay:.55s}.sleep-z:nth-child(3){animation-delay:1.1s}@keyframes breathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.035)}}@keyframes tail{0%,100%{transform:rotate(0)}50%{transform:rotate(-3deg)}}@keyframes float{0%,100%{transform:translateY(0);opacity:.65}50%{transform:translateY(-6px);opacity:1}}@media(max-width:480px){.error-page{padding:32px 20px}.illustration{margin-bottom:12px}.home-button{margin-top:26px}}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;padding:0;overflow:hidden;background:var(--white);color:var(--navy);font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.error-page{height:100vh;height:100dvh;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 20px;box-sizing:border-box;text-align:center}
+.error-content{width:min(100%,720px);max-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.illustration{display:block;width:min(100%,540px);max-height:min(44vh,310px);height:auto;margin:0 auto 14px;overflow:visible}
+.error-title{font-size:clamp(24px,3.6vw,38px);font-weight:750;line-height:1.18;letter-spacing:-.035em;margin:0 0 10px}
+.error-description{color:var(--muted);font-size:clamp(14px,1.8vw,17px);line-height:1.5;margin:0 auto;max-width:580px}
+.home-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:22px;padding:11px 22px;border:1px solid var(--border);border-radius:10px;color:#42566d;text-decoration:none;background:#fff;font-size:14.5px;font-weight:600;transition:background .18s,border-color .18s,color .18s,transform .18s;min-height:42px}
+.home-button:hover{background:#f4f7fa;border-color:#8295a9;color:var(--navy);transform:translateY(-1px)}
+.home-button:focus-visible{outline:3px solid #389bfa;outline-offset:4px}
+.home-button:active{transform:translateY(0)}
+.home-button svg{width:18px;height:18px;flex-shrink:0}
+.cat-body{transform-box:fill-box;transform-origin:center bottom;animation:breathe 4s ease-in-out infinite}
+.tail{transform-origin:280px 302px;animation:tail 5s ease-in-out infinite}
+.sleep-z{animation:float 3.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.sleep-z:nth-child(2){animation-delay:.55s}
+.sleep-z:nth-child(3){animation-delay:1.1s}
+@keyframes breathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.035)}}
+@keyframes tail{0%,100%{transform:rotate(0)}50%{transform:rotate(-3deg)}}
+@keyframes float{0%,100%{transform:translateY(0);opacity:.65}50%{transform:translateY(-6px);opacity:1}}
+@media(max-height:560px){
+  .error-page{padding:10px 16px}
+  .illustration{max-height:min(34vh,210px);margin-bottom:8px}
+  .error-title{font-size:22px;margin-bottom:6px}
+  .error-description{font-size:13px;line-height:1.35}
+  .home-button{margin-top:14px;padding:8px 18px;min-height:36px;font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
