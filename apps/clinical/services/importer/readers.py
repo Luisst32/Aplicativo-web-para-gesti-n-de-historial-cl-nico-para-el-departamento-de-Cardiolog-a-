@@ -148,7 +148,72 @@ def _read_dataset_file(temp_path: Path, filename: str):
     elif ext == '.csv':
         try:
             import pandas as pd
-            df = pd.read_csv(str(temp_path))
+            import csv
+
+            encodings = ['utf-8-sig', 'utf-8', 'latin-1', 'cp1252']
+            sample_bytes = b''
+            try:
+                with open(str(temp_path), 'rb') as f_sample:
+                    sample_bytes = f_sample.read(16384)
+            except Exception:
+                pass
+
+            # Detectar delimitador adecuado (, ; \t |)
+            detected_sep = None
+            if sample_bytes:
+                sample_text = ""
+                for enc in encodings:
+                    try:
+                        sample_text = sample_bytes.decode(enc)
+                        break
+                    except UnicodeDecodeError:
+                        continue
+
+                if sample_text:
+                    try:
+                        dialect = csv.Sniffer().sniff(sample_text[:4096], delimiters=',;\t|')
+                        detected_sep = dialect.delimiter
+                    except Exception:
+                        first_line = sample_text.splitlines()[0] if sample_text.splitlines() else ""
+                        c_semi = first_line.count(';')
+                        c_comma = first_line.count(',')
+                        c_tab = first_line.count('\t')
+                        if c_semi > c_comma and c_semi > c_tab:
+                            detected_sep = ';'
+                        elif c_tab > c_comma and c_tab > c_semi:
+                            detected_sep = '\t'
+                        else:
+                            detected_sep = ','
+
+            df = None
+            last_err = None
+            for enc in encodings:
+                try:
+                    if detected_sep:
+                        df = pd.read_csv(str(temp_path), sep=detected_sep, encoding=enc)
+                    else:
+                        df = pd.read_csv(str(temp_path), sep=None, engine='python', encoding=enc)
+
+                    # Si sólo leyó 1 columna pero hay delimitadores comunes en el encabezado, reintentar
+                    if len(df.columns) == 1 and (';' in str(df.columns[0]) or ',' in str(df.columns[0])):
+                        for alt_sep in (';', ','):
+                            if alt_sep in str(df.columns[0]):
+                                df = pd.read_csv(str(temp_path), sep=alt_sep, encoding=enc)
+                                break
+                    break
+                except UnicodeDecodeError as ue:
+                    last_err = ue
+                    continue
+                except Exception as e:
+                    last_err = e
+                    continue
+
+            if df is None:
+                raise last_err or ValueError("No se pudo leer el archivo CSV.")
+
+            # Limpiar espacios en blanco y caracteres de control en nombres de columnas
+            df.columns = [str(col).strip() for col in df.columns]
+
             df_clean = df.astype(object).where(pd.notnull(df), None)
             df_dict = {str(col): df_clean[col].tolist() for col in df_clean.columns}
             df_dict = _sanitize_dataset_dict(df_dict)

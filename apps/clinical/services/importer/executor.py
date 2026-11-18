@@ -50,6 +50,8 @@ from .normalizers import (
     _resolve_canton_safe,
     _is_empty_or_nan,
     _clean_decimal,
+    _clean_int,
+    _parse_date_safe,
     _get_val_and_label,
 )
 from .readers import _read_dataset_file
@@ -337,8 +339,16 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
         id_c = None
         if 'cedula' in field_to_col:
             v_ced = df_dict[field_to_col['cedula']][i]
-            if v_ced and str(v_ced).strip():
-                id_c = str(v_ced).strip()
+            if v_ced is not None and str(v_ced).strip():
+                s_ced = str(v_ced).strip()
+                if '.' in s_ced and s_ced.replace('.', '').isdigit():
+                    try:
+                        s_ced = str(int(float(s_ced)))
+                    except Exception:
+                        pass
+                if len(s_ced) == 9 and s_ced.isdigit():
+                    s_ced = s_ced.zfill(10)
+                id_c = s_ced
         if not id_c:
             numeric_num = int(re.sub(r'[^0-9]', '', sc)) if any(c.isdigit() for c in sc) else (i + 1)
             inst_pfx = "08" if row_inst == inst_espol else "09"
@@ -405,18 +415,12 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                     edad_val = None
                     if 'edad' in field_to_col:
                         raw_edad = df_dict[field_to_col['edad']][i]
-                        if raw_edad is not None:
-                            try: edad_val = int(float(raw_edad))
-                            except Exception: pass
+                        edad_val = _clean_int(raw_edad)
 
                     birth_date = None
                     if 'fecha_nac' in field_to_col:
                         raw_dob = df_dict[field_to_col['fecha_nac']][i]
-                        if hasattr(raw_dob, 'year'):
-                            birth_date = raw_dob.date() if hasattr(raw_dob, 'date') else raw_dob
-                        elif isinstance(raw_dob, str) and raw_dob.strip():
-                            try: birth_date = datetime.date.fromisoformat(raw_dob.strip())
-                            except Exception: pass
+                        birth_date = _parse_date_safe(raw_dob)
 
                     if not birth_date:
                         birth_year = (current_year - edad_val) if edad_val else 1980
@@ -510,11 +514,9 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                     visit_date = datetime.date.today()
                     if 'fecha_visita' in field_to_col:
                         raw_fv = df_dict[field_to_col['fecha_visita']][i]
-                        if hasattr(raw_fv, 'year'):
-                            visit_date = raw_fv
-                        elif isinstance(raw_fv, str) and raw_fv.strip():
-                            try: visit_date = datetime.date.fromisoformat(raw_fv.strip())
-                            except Exception: pass
+                        parsed_fv = _parse_date_safe(raw_fv)
+                        if parsed_fv:
+                            visit_date = parsed_fv
                     visit.visit_date = visit_date
 
                     if 'estamento' in field_to_col:
@@ -754,24 +756,20 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                     fc_val = 72
                     if 'tas' in field_to_col:
                         v_tas = df_dict[field_to_col['tas']][i]
-                        if v_tas:
-                            try: tas_val = int(float(v_tas))
-                            except Exception: pass
+                        c_tas = _clean_int(v_tas)
+                        if c_tas is not None: tas_val = c_tas
                     if 'tad' in field_to_col:
                         v_tad = df_dict[field_to_col['tad']][i]
-                        if v_tad:
-                            try: tad_val = int(float(v_tad))
-                            except Exception: pass
+                        c_tad = _clean_int(v_tad)
+                        if c_tad is not None: tad_val = c_tad
                     if 'sat_o2' in field_to_col:
                         v_sat = df_dict[field_to_col['sat_o2']][i]
-                        if v_sat:
-                            try: sat_val = int(float(v_sat))
-                            except Exception: pass
+                        c_sat = _clean_int(v_sat)
+                        if c_sat is not None: sat_val = c_sat
                     if 'fc' in field_to_col:
                         v_fc = df_dict[field_to_col['fc']][i]
-                        if v_fc:
-                            try: fc_val = int(float(v_fc))
-                            except Exception: pass
+                        c_fc = _clean_int(v_fc)
+                        if c_fc is not None: fc_val = c_fc
 
                     vs = getattr(visit, 'vital_signs', None)
                     if not vs:
@@ -1054,19 +1052,21 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                             continue
 
                         num_val = None
-                        if isinstance(val_raw, (int, float)) and not text_lbl:
+                        if clean_code in ['cedula', 'id_card', 'identificacion', 'telefono', 'celular', 'codigo']:
+                            ans_text = val_str[:250]
+                        elif isinstance(val_raw, (int, float)) and not text_lbl:
                             try:
                                 import math
                                 f_val = float(val_raw)
-                                if not (math.isnan(f_val) or math.isinf(f_val)):
+                                if not (math.isnan(f_val) or math.isinf(f_val)) and abs(f_val) < 1e9:
                                     d_val = Decimal(str(round(f_val, 3)))
-                                    if not d_val.is_nan() and not d_val.is_infinite():
+                                    if not d_val.is_nan() and not d_val.is_infinite() and abs(d_val) < Decimal("1000000000"):
                                         num_val = d_val
                                         ans_text = None
                                     else:
                                         ans_text = val_str[:250]
                                 else:
-                                    ans_text = None
+                                    ans_text = val_str[:250]
                             except Exception:
                                 num_val = None
                                 ans_text = val_str[:250]

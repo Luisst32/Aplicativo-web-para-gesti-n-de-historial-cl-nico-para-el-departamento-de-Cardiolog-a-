@@ -66,7 +66,7 @@ function abrirModalImportarSav() {
   if (arrow) arrow.style.transform = 'rotate(0deg)';
 
   // Resetear barra de progreso
-  updateSavProgress(0, 'Importando archivo SPSS...', 'Procesando y guardando datos automáticamente en la base de datos...', 'Progreso de importación');
+  updateSavProgress(0, 'Importando archivo...', 'Procesando y guardando datos automáticamente en la base de datos...', 'Progreso de importación');
 
   modal.style.display = 'flex';
 }
@@ -130,7 +130,7 @@ async function onSavFileSelected(file) {
   const fname = file.name.toLowerCase();
   const validExts = ['.sav', '.zsav', '.rds', '.rdata', '.rda', '.r', '.csv'];
   if (!validExts.some(ext => fname.endsWith(ext))) {
-    alert('Por favor selecciona un archivo SPSS (.sav, .zsav), RStudio (.rds, .RData, .R) o CSV.');
+    alert('Por favor selecciona un archivo soportado: SPSS (.sav, .zsav), CSV (.csv) o RStudio (.rds, .RData).');
     return;
   }
 
@@ -152,7 +152,7 @@ async function onSavFileSelected(file) {
   const progressTimer = setInterval(() => {
     if (currentPct < 45) {
       currentPct += 5;
-      updateSavProgress(currentPct, `Diagnosticando ${file.name}...`, 'Detectando columnas clínicas, tipografías y reglas de validación...', 'Analizando variables SPSS');
+      updateSavProgress(currentPct, `Diagnosticando ${file.name}...`, 'Detectando columnas clínicas, tipografías y reglas de validación...', 'Analizando variables del dataset');
     }
   }, 180);
 
@@ -173,7 +173,7 @@ async function onSavFileSelected(file) {
 
     const analyzeData = await analyzeRes.json();
     if (!analyzeRes.ok || !analyzeData.success) {
-      throw new Error(analyzeData.error || 'Error al analizar el archivo SPSS.');
+      throw new Error(analyzeData.error || 'Error al analizar el archivo de datos.');
     }
 
     const tempToken = analyzeData.temp_token;
@@ -363,7 +363,7 @@ async function onSavFileSelected(file) {
     if (btnSuccessOk) btnSuccessOk.style.display = 'inline-flex';
 
   } catch (err) {
-    alert('Error al importar archivo SPSS: ' + err.message);
+    alert('Error al importar archivo: ' + err.message);
     if (phaseLoading) phaseLoading.style.display = 'none';
     if (phaseUpload) phaseUpload.style.display = 'block';
     if (modalFooter) modalFooter.style.display = 'flex';

@@ -289,7 +289,16 @@ def _clean_decimal(val, max_digits=5, decimal_places=2):
         return None
     try:
         import math
-        f = float(val)
+        s = str(val).strip()
+        # Soporte para decimales con coma (estándar en CSV en español y hojas de cálculo Excel)
+        if ',' in s and '.' in s:
+            if s.rfind(',') > s.rfind('.'):
+                s = s.replace('.', '').replace(',', '.')
+            else:
+                s = s.replace(',', '')
+        elif ',' in s:
+            s = s.replace(',', '.')
+        f = float(s)
         if math.isnan(f) or math.isinf(f):
             return None
         max_int = max_digits - decimal_places
@@ -301,6 +310,77 @@ def _clean_decimal(val, max_digits=5, decimal_places=2):
         return None
     except Exception:
         return None
+
+
+def _clean_int(val):
+    """Convierte con seguridad un valor (entero, flotante, cadena con comas o decimales) a int."""
+    if val is None or str(val).strip() == '' or str(val).strip().lower() in ('nan', 'none', 'null', 'na', '<na>'):
+        return None
+    try:
+        s = str(val).strip()
+        if ',' in s and '.' in s:
+            if s.rfind(',') > s.rfind('.'):
+                s = s.replace('.', '').replace(',', '.')
+            else:
+                s = s.replace(',', '')
+        elif ',' in s:
+            s = s.replace(',', '.')
+        f = float(s)
+        import math
+        if math.isnan(f) or math.isinf(f):
+            return None
+        return int(round(f))
+    except Exception:
+        return None
+
+
+def _parse_date_safe(val):
+    """
+    Parsea con seguridad una fecha proveniente de SPSS, RStudio, Excel o CSV en formato:
+    - datetime.date o datetime.datetime
+    - pandas.Timestamp
+    - Cadenas ISO: YYYY-MM-DD, YYYY/MM/DD
+    - Cadenas latinoamericanas / europeas: DD/MM/YYYY, DD-MM-YYYY
+    - Cadenas anglosajonas: MM/DD/YYYY, MM-DD-YYYY
+    """
+    if val is None:
+        return None
+    if hasattr(val, 'date') and callable(val.date):
+        return val.date()
+    if hasattr(val, 'year') and hasattr(val, 'month') and hasattr(val, 'day'):
+        import datetime
+        return datetime.date(val.year, val.month, val.day)
+
+    s = str(val).strip()
+    if not s or s.lower() in ('nan', 'none', 'null', 'na', '<na>'):
+        return None
+
+    # Cortar hora si viene como timestamp (ej: "1985-04-12 00:00:00")
+    if ' ' in s:
+        s = s.split(' ')[0].strip()
+    if 'T' in s:
+        s = s.split('T')[0].strip()
+
+    import datetime
+    # 1. Probar ISO YYYY-MM-DD
+    try:
+        return datetime.date.fromisoformat(s)
+    except Exception:
+        pass
+
+    # 2. Probar formatos comunes de fecha
+    formats = [
+        '%d/%m/%Y', '%d-%m-%Y', '%d/%m/%y', '%d-%m-%y',
+        '%Y/%m/%d', '%Y-%m-%d',
+        '%m/%d/%Y', '%m-%d-%Y'
+    ]
+    for fmt in formats:
+        try:
+            return datetime.datetime.strptime(s, fmt).date()
+        except Exception:
+            continue
+
+    return None
 
 
 # -----------------------------------------------------------------------------

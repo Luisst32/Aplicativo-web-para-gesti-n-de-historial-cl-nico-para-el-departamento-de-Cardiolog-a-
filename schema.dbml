@@ -1,495 +1,521 @@
 // ============================================================================
-// Cardiovascular Clinical Health System (CardioUNEMI / ESPOL)
+// Cardiovascular Clinical Health System (CardioUNEMI)
 // Database Architecture Definition in DBML (Database Markup Language)
-// Designed for https://dbdiagram.io and PostgreSQL / Supabase
+// Designed for https://dbdiagram.io, dbdocs.io and PostgreSQL / Supabase
 //
 // Naming Convention:
-//   m_ = Master / Catalog Tables (Reference, Taxonomy, Lookup)
-//   t_ = Transactional Tables (Encounters, Clinical Records, Audit Logs)
+//   m_ = Master / Reference Catalog Tables (Taxonomy, Lookup, Dimension)
+//   t_ = Transactional / Operational Tables (Encounters, Clinical Records, Audits)
 // ============================================================================
 
 Project cardiounemi_ehr {
   database_type: 'PostgreSQL'
   Note: '''
     # Comprehensive Cardiovascular Clinical History System
-    Integrated database architecture for epidemiological research and
-    cardiovascular health assessment across university cohorts (UNEMI & ESPOL).
+    Integrated relational database architecture for epidemiological research and
+    cardiovascular health surveillance across university cohorts (UNEMI & ESPOL).
   '''
 }
 
 // ============================================================================
-// 1. SECURITY & INTEGRATION APIS (m_ & t_)
+// 1. GEOGRAPHICAL & INSTITUTIONAL MASTER TAXONOMY (m_)
 // ============================================================================
 
-Table m_users {
-  id uuid [pk, note: 'Supabase Auth UUID or internal identifier']
-  username varchar(150) [unique, not null, note: 'Unique login handle']
-  email varchar(254) [unique, not null, note: 'Electronic mail address']
-  password_hash varchar(128) [not null, note: 'Salted cryptographic hash']
-  first_name varchar(150) [note: 'Given names']
-  last_name varchar(150) [note: 'Family surnames']
-  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | SUSPENDED']
-  is_staff boolean [not null, default: false, note: 'Backoffice admin privilege']
-  is_active boolean [not null, default: true, note: 'Authentication validity']
-  created_at timestamptz [default: `now()`, note: 'User provisioning timestamp']
+Table m_country {
+  country_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  iso_alpha3 varchar(3) [unique, not null, note: 'ISO 3166-1 alpha-3 code (e.g. ECU)']
+  name varchar(100) [unique, not null, note: 'Full national country name']
 
-  Note: 'Master user accounts for clinicians, specialists and administrative staff'
+  Note: 'Master country catalog'
 }
 
-Table m_roles {
-  id int [pk, increment, note: 'Serial identifier']
-  code varchar(50) [unique, not null, note: 'Role code: Administrador | Medico']
-  name varchar(100) [not null, note: 'Display title of security role']
-  description text [note: 'Functional permissions boundary']
+Table m_province {
+  province_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  country_id int [not null, ref: > m_country.country_id, note: 'Parent country']
+  iso_code varchar(6) [not null, note: 'ISO 3166-2 code (e.g. EC-G)']
+  name varchar(100) [not null, note: 'Province territory name']
+
+  Note: 'Master provincial territorial catalog'
+}
+
+Table m_canton {
+  canton_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  province_id int [not null, ref: > m_province.province_id, note: 'Parent province']
+  dpa_code varchar(4) [not null, note: 'INEC DPA municipality code (e.g. 0901)']
+  name varchar(100) [not null, note: 'Canton / municipality name']
+
+  Note: 'Master municipality and canton catalog'
+}
+
+Table m_institution {
+  institution_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  acronym varchar(20) [unique, not null, note: 'Institution acronym: UNEMI | ESPOL']
+  name varchar(150) [unique, not null, note: 'University / Healthcare Institution Name']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master academic research cohort institution catalog'
+}
+
+// ============================================================================
+// 2. DEMOGRAPHIC & SOCIOECONOMIC MASTER CATALOGS (m_)
+// ============================================================================
+
+Table m_sex {
+  sex_id smallint [pk, note: 'Biological sex numeric code (0-9)']
+  name varchar(20) [unique, not null, note: 'Hombre | Mujer']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master biological sex classification'
+}
+
+Table m_ethnicity {
+  ethnicity_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  name varchar(50) [unique, not null, note: 'Mestizo | Afroecuatoriano | Blanco | Montubio | Indigena']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master ethnic identification catalog'
+}
+
+Table m_staff_category {
+  staff_category_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  name varchar(50) [unique, not null, note: 'PDI | PAS | Trabajador | Estudiantes']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master university staff and student category'
+}
+
+Table m_professional_category {
+  professional_category_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  name varchar(80) [unique, not null, note: 'Docente Titular | Auxiliar | Servidor Publico']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master professional rank and academic level'
+}
+
+Table m_education_level {
+  education_level_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  name varchar(80) [unique, not null, note: 'Primaria | Secundaria | Superior | Postgrado']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master educational attainment level'
+}
+
+Table m_income_range {
+  income_range_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  name varchar(80) [unique, not null, note: 'Monthly household income bracket in USD']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master income bracket taxonomy'
+}
+
+Table m_marital_status {
+  marital_status_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  name varchar(40) [unique, not null, note: 'Soltero | Casado | Divorciado | Viudo | Union de hecho']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master marital status catalog'
+}
+
+Table m_living_situation {
+  living_situation_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  name varchar(80) [unique, not null, note: 'Solo | Pareja | Pareja e hijos | Familiares']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master cohabitation and household arrangement'
+}
+
+Table m_housing_type {
+  housing_type_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  name varchar(80) [unique, not null, note: 'Propia | Arrendada | Familiar | Prestada']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master residential dwelling housing type'
+}
+
+Table m_work_schedule {
+  work_schedule_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  name varchar(60) [unique, not null, note: 'Tiempo Completo | Parcial | Turnos']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master work schedule and shift modality'
+}
+
+Table m_ecg_rhythm {
+  ecg_rhythm_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  name varchar(80) [unique, not null, note: 'Sinusal | Fibrilacion Auricular | Flutter | Bloqueo AV']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master electrocardiogram baseline cardiac rhythm'
+}
+
+// ============================================================================
+// 3. DYNAMIC QUESTIONNAIRE MASTER REPOSITORY (m_)
+// ============================================================================
+
+Table m_questionnaire_section {
+  section_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  code varchar(30) [unique, not null, note: 'Section code (e.g. SEC-01, PREDIMED)']
+  name varchar(100) [not null, note: 'Section clinical heading title']
+  display_order smallint [not null, note: 'Sequential visual sorting order']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master questionnaire module chapters'
+}
+
+Table m_question {
+  question_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  section_id int [not null, ref: > m_questionnaire_section.section_id, note: 'Parent questionnaire chapter']
+  code varchar(30) [unique, not null, note: 'Standard variable code (e.g. Q-01, MED-01)']
+  text varchar(300) [not null, note: 'Clinical question label verbatim']
+  response_type varchar(20) [not null, note: 'OPCION | NUMERICO | TEXTO | BOOLEANO']
+  display_order smallint [not null, note: 'Display sequence order']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master items and parametric survey questions'
+}
+
+Table m_answer_option {
+  option_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  question_id int [not null, ref: > m_question.question_id, note: 'Parent survey question']
+  label varchar(150) [not null, note: 'Display option label']
+  display_order smallint [not null, note: 'Option display order']
+  scores_predimed boolean [not null, default: false, note: 'Scores 1 point for PREDIMED adherence']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Master discrete options for questionnaire items'
+}
+
+// ============================================================================
+// 4. SECURITY, RBAC & SYSTEM SETTINGS (m_ & t_)
+// ============================================================================
+
+Table m_role {
+  role_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  name varchar(50) [unique, not null, note: 'Role name: Administrador | Cardiologo | Evaluador']
+  description varchar(200) [note: 'Access scope and boundary description']
   status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
 
   Note: 'Master role-based access control roles'
 }
 
-Table t_user_roles {
-  id uuid [pk, note: 'Assignment UUID']
-  user_id uuid [not null, ref: > m_users.id, note: 'Associated user']
-  role_id int [not null, ref: > m_roles.id, note: 'Assigned role']
-  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
-  assigned_at timestamptz [default: `now()`, note: 'Authorization timestamp']
-  assigned_by_id uuid [ref: > m_users.id, note: 'Authorizing administrator']
+Table t_user {
+  user_id int [pk, increment, note: 'Primary Key (Compatible with Supabase Auth uid / UUID)']
+  institution_id int [ref: > m_institution.institution_id, note: 'Affiliated institution (nullable for superadmin)']
+  username varchar(60) [unique, not null, note: 'Unique login identifier']
+  email varchar(150) [unique, not null, note: 'Institutional electronic mail address']
+  first_name varchar(100) [not null, note: 'Given names']
+  last_name varchar(60) [not null, note: 'Primary paternal surname']
+  second_last_name varchar(60) [note: 'Secondary maternal surname']
+  last_login timestamptz [note: 'Last successful authentication UTC timestamp']
+  created_at_utc timestamptz [default: `now()`, note: 'User provisioning UTC timestamp']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE | SUSPENDED']
+  is_active boolean [not null, default: true, note: 'Authentication validity flag']
+  is_staff boolean [not null, default: false, note: 'Administrative backoffice staff flag']
+  is_superuser boolean [not null, default: false, note: 'Superuser permission flag']
 
-  Note: 'Transactional mapping linking user accounts to operational roles'
+  Note: 'Transactional user accounts for clinicians, specialists and administrative personnel'
 }
 
-Table t_system_settings {
-  id uuid [pk, note: 'Configuration row UUID']
-  authorized_role_id int [unique, not null, ref: - m_roles.id, note: 'Restricted strictly to Administrador']
+Table t_user_role {
+  user_role_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  user_id int [not null, ref: > t_user.user_id, note: 'Associated user']
+  role_id int [not null, ref: > m_role.role_id, note: 'Assigned role']
+  assigned_at_utc timestamptz [default: `now()`, note: 'Authorization UTC timestamp']
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
+
+  Note: 'Transactional associative mapping linking users to operational roles'
+}
+
+Table t_system_setting {
+  setting_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  role_id int [unique, not null, ref: - m_role.role_id, note: 'Restricted strictly to Administrador (1:1)']
   
   // General System AI Assistant
-  chatbot_enabled boolean [not null, default: true, note: 'Global AI clinical assistant toggle']
-  active_llm_provider varchar(30) [not null, default: 'gemini', note: 'Active engine: gemini | openai | claude']
+  chatbot_enabled boolean [not null, default: true, note: 'Global AI clinical assistant master switch']
+  active_llm_provider varchar(30) [not null, default: 'gemini', note: 'Active provider: gemini | openai | claude']
 
   // 1. Google Gemini Generative AI Configuration
-  gemini_api_key_encrypted text [note: 'Multi-Fernet encrypted Gemini API secret key']
-  gemini_model varchar(100) [not null, default: 'gemini-2.5-flash', note: 'Active Gemini model version']
-  gemini_enabled boolean [not null, default: true, note: 'Gemini integration toggle']
+  gemini_api_key_encrypted text [note: 'Multi-Fernet encrypted Gemini API key']
+  gemini_model varchar(60) [not null, default: 'gemini-2.5-flash', note: 'Active Gemini model']
+  gemini_enabled boolean [not null, default: true, note: 'Gemini integration switch']
 
   // 2. OpenAI / ChatGPT Configuration
   openai_api_key_encrypted text [note: 'Multi-Fernet encrypted OpenAI secret key']
-  openai_model varchar(100) [not null, default: 'gpt-4o-mini', note: 'Active OpenAI model version']
-  openai_enabled boolean [not null, default: false, note: 'OpenAI integration toggle']
+  openai_model varchar(60) [not null, default: 'gpt-4o-mini', note: 'Active OpenAI model']
+  openai_enabled boolean [not null, default: false, note: 'OpenAI integration switch']
 
   // 3. Anthropic Claude Configuration
   claude_api_key_encrypted text [note: 'Multi-Fernet encrypted Claude secret key']
-  claude_model varchar(100) [not null, default: 'claude-3-5-sonnet-20241022', note: 'Active Claude model version']
-  claude_enabled boolean [not null, default: false, note: 'Claude integration toggle']
+  claude_model varchar(60) [not null, default: 'claude-3-5-sonnet-20241022', note: 'Active Claude model']
+  claude_enabled boolean [not null, default: false, note: 'Claude integration switch']
 
   // 4. Google Gmail REST API Configuration
   gmail_client_id varchar(255) [note: 'Google Cloud Platform OAuth2 Client ID']
   gmail_client_secret_encrypted text [note: 'Multi-Fernet encrypted OAuth2 Client Secret']
   gmail_refresh_token_encrypted text [note: 'Multi-Fernet encrypted offline refresh token']
-  gmail_sender_email varchar(254) [note: 'Authorized outbound notifications email']
-  gmail_api_enabled boolean [not null, default: false, note: 'Gmail dispatch integration toggle']
-  gmail_redirect_uri varchar(255) [note: 'OAuth2 authorized redirect URI callback']
-  last_token_refresh timestamptz [note: 'Timestamp of last successful token renewal']
+  gmail_sender_email varchar(254) [note: 'Authorized institutional sender email']
+  gmail_api_enabled boolean [not null, default: false, note: 'Gmail dispatch service switch']
+  gmail_redirect_uri varchar(255) [note: 'OAuth2 authorized callback redirect URI']
+  last_token_refresh timestamptz [note: 'Timestamp of last access token refresh']
 
-  updated_by_id uuid [ref: > m_users.id, note: 'Admin who last saved credentials']
-  updated_at timestamptz [default: `now()`, note: 'Last modification timestamp']
+  updated_at_utc timestamptz [default: `now()`, note: 'Configuration modification timestamp']
+  updated_by_id int [ref: > t_user.user_id, note: 'Administrator who last modified credentials']
 
-  Note: 'Secure configuration table storing encrypted credentials for Gemini, OpenAI, Claude and Gmail APIs'
+  Note: 'Secure configuration table storing encrypted credentials for Gemini, OpenAI, Claude and Gmail'
 }
 
-Table t_audit_change_logs {
-  change_log_id bigint [pk, increment, note: 'Audit sequence identifier']
-  timestamp timestamptz [default: `now()`, note: 'UTC moment of mutation']
+Table t_request_quota {
+  key varchar(64) [pk, note: 'Rate limiting bucket key / client signature']
+  window bigint [not null, note: 'Rate limiting sliding window in seconds']
+  count int [not null, note: 'Current request execution counter']
+
+  Note: 'Transactional sliding rate limiting counter'
+}
+
+Table t_change_log {
+  change_log_id bigint [pk, increment, note: 'Audit sequence identifier (Compatible with Supabase serial id / uuid)']
+  timestamp timestamptz [default: `now()`, note: 'UTC timestamp of data mutation']
   schema_name varchar(50) [not null, note: 'Target PostgreSQL schema']
-  table_name varchar(100) [not null, note: 'Mutated table name']
+  table_name varchar(100) [not null, note: 'Target database table name']
   record_key varchar(100) [not null, note: 'Primary key of modified row']
   action varchar(10) [not null, note: 'INSERT | UPDATE | DELETE']
-  column_name varchar(100) [note: 'Modified attribute name']
+  column_name varchar(100) [note: 'Modified column name']
   old_value text [note: 'Pre-mutation serialized value']
   new_value text [note: 'Post-mutation serialized value']
   status varchar(20) [not null, default: 'RECORDED', note: 'RECORDED | VERIFIED | FLAGGED']
-  user_id uuid [ref: > m_users.id, note: 'Accountable user']
-  db_login varchar(100) [note: 'PostgreSQL session user role']
+  user_id int [ref: > t_user.user_id, note: 'Accountable user']
+  db_login varchar(100) [note: 'Database session user / role']
   machine_name varchar(100) [note: 'Client host machine IP or name']
 
-  Note: 'Row-level and column-level forensic audit trail for institutional review boards'
+  Note: 'Row-level and column-level forensic audit trail for institutional compliance'
 }
 
-Table t_bot_queries {
-  bot_query_id bigint [pk, increment, note: 'Interaction sequence identifier']
-  user_id uuid [not null, ref: > m_users.id, note: 'Clinician submitting question']
+Table t_bot_query {
+  bot_query_id bigint [pk, increment, note: 'Interaction sequence identifier (Compatible with Supabase serial id / uuid)']
+  user_id int [not null, ref: > t_user.user_id, note: 'Clinician submitting clinical question']
   user_question text [not null, note: 'Clinical question in natural language']
   generated_sql text [note: 'Synthesized read-only analytics SQL query']
-  bot_response text [not null, note: 'AI Assistant synthesized response']
+  bot_response text [not null, note: 'AI Assistant synthesized clinical response']
   tokens_used int [note: 'Total LLM tokens consumed']
-  execution_time_ms int [note: 'Processing latency in ms']
+  execution_time_ms int [note: 'Processing latency in milliseconds']
   status varchar(20) [not null, default: 'SUCCESS', note: 'SUCCESS | ERROR | PENDING']
-  created_at timestamptz [default: `now()`, note: 'Interaction timestamp']
+  created_at timestamptz [default: `now()`, note: 'Query reception timestamp']
 
   Note: 'Audit log of clinical AI queries, synthesized SQL and token usage'
 }
 
 // ============================================================================
-// 2. GEOGRAPHICAL & INSTITUTIONAL TAXONOMY (m_)
+// 5. PATIENT & CLINICAL ENCOUNTER (t_)
 // ============================================================================
 
-Table m_countries {
-  id int [pk, increment]
-  code varchar(3) [unique, not null, note: 'ISO 3166-1 alpha-3 code (e.g. ECU)']
-  name varchar(100) [not null, note: 'Full national country name']
-
-  Note: 'Master country catalog'
-}
-
-Table m_provinces {
-  id int [pk, increment]
-  code varchar(10) [unique, not null, note: 'INEC provincial geographic code']
-  name varchar(100) [not null, note: 'Province territory name']
-  country_id int [not null, ref: > m_countries.id, note: 'Parent country']
-
-  Note: 'Master provincial territorial catalog'
-}
-
-Table m_cantons {
-  id int [pk, increment]
-  code varchar(10) [unique, not null, note: 'INEC canton municipality code']
-  name varchar(100) [not null, note: 'Canton / municipality name']
-  province_id int [not null, ref: > m_provinces.id, note: 'Parent province']
-
-  Note: 'Master municipality and canton catalog'
-}
-
-Table m_institutions {
-  id int [pk, increment]
-  code varchar(50) [unique, not null, note: 'UNEMI | ESPOL']
-  name varchar(150) [not null, note: 'University / Healthcare Institution Name']
-  canton_id int [ref: > m_cantons.id, note: 'Location canton']
-  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
-
-  Note: 'Master academic research cohorte institution catalog'
-}
-
-// ============================================================================
-// 3. DEMOGRAPHIC & SOCIOECONOMIC CATALOGS (m_)
-// ============================================================================
-
-Table m_sexes {
-  id int [pk, increment]
-  code varchar(10) [unique, not null, note: 'H | M']
-  name varchar(50) [not null, note: 'Hombre | Mujer']
-}
-
-Table m_ethnicities {
-  id int [pk, increment]
-  code varchar(50) [unique, not null]
-  name varchar(100) [not null, note: 'Mestizo | Afroecuatoriano | Blanco | Montubio | Indigena']
-}
-
-Table m_staff_categories {
-  id int [pk, increment]
-  code varchar(50) [unique, not null, note: 'PDI | AD | PAS | SERVICIO | ESTUDIANTES']
-  name varchar(150) [not null]
-}
-
-Table m_professional_categories {
-  id int [pk, increment]
-  code varchar(50) [unique, not null]
-  name varchar(150) [not null, note: 'Docente Titular | Auxiliar | Servidor Publico']
-}
-
-Table m_education_levels {
-  id int [pk, increment]
-  code varchar(50) [unique, not null]
-  name varchar(100) [not null, note: 'Primaria | Secundaria | Superior | Postgrado']
-}
-
-Table m_income_ranges {
-  id int [pk, increment]
-  code varchar(50) [unique, not null]
-  name varchar(100) [not null, note: 'Monthly income range in USD']
-}
-
-Table m_marital_statuses {
-  id int [pk, increment]
-  code varchar(50) [unique, not null]
-  name varchar(100) [not null, note: 'Soltero | Casado | Divorciado | Viudo | Union de hecho']
-}
-
-Table m_living_situations {
-  id int [pk, increment]
-  code varchar(50) [unique, not null]
-  name varchar(100) [not null, note: 'Solo | Pareja | Pareja e hijos | Familiares']
-}
-
-Table m_housing_types {
-  id int [pk, increment]
-  code varchar(50) [unique, not null]
-  name varchar(100) [not null, note: 'Propia | Arrendada | Familiar | Prestada']
-}
-
-Table m_work_schedules {
-  id int [pk, increment]
-  code varchar(50) [unique, not null]
-  name varchar(100) [not null, note: 'Jornada Partida | Continua | Turnos']
-}
-
-Table m_ecg_rhythms {
-  id int [pk, increment]
-  code varchar(50) [unique, not null, note: 'RS | RL | SIUNSAL | ACXFA | OTRO']
-  name varchar(100) [not null, note: 'Clinical diagnosis of heart rhythm']
-}
-
-// ============================================================================
-// 4. PATIENT & CLINICAL ENCOUNTER (t_)
-// ============================================================================
-
-Table t_patients {
-  patient_id uuid [pk, note: 'Surrogate UUID primary key']
-  institution_id int [not null, ref: > m_institutions.id, note: 'Affiliated institution (UNEMI / ESPOL)']
-  id_card varchar(13) [unique, not null, note: 'National identity card (Cedula)']
+Table t_patient {
+  patient_id int [pk, increment, note: 'Primary Key (Compatible with Supabase uid / UUID)']
+  institution_id int [not null, ref: > m_institution.institution_id, note: 'Affiliated institution (UNEMI / ESPOL)']
+  id_card varchar(13) [unique, not null, note: 'National identity card number (Cedula)']
   first_names varchar(100) [not null, note: 'Given names']
   last_name1 varchar(50) [not null, note: 'Paternal surname']
-  last_name2 varchar(50) [note: 'Maternal surname']
+  last_name2 varchar(50) [note: 'Maternal surname (nullable)']
   birth_date date [not null, note: 'Date of birth']
-  sex_id int [not null, ref: > m_sexes.id, note: 'Biological sex']
-  ethnicity_id int [not null, ref: > m_ethnicities.id, note: 'Ethnic background']
-  birth_canton_id int [ref: > m_cantons.id, note: 'Domestic birth municipality']
-  birth_country_id int [ref: > m_countries.id, note: 'Foreign birth country (if abroad)']
-  foreign_birth_place varchar(80) [note: 'Foreign city/state if born abroad']
-  email varchar(100) [note: 'Patient contact email']
-  phone varchar(20) [note: 'Patient phone number with country prefix']
+  sex_id smallint [not null, ref: > m_sex.sex_id, note: 'Biological sex']
+  ethnicity_id int [not null, ref: > m_ethnicity.ethnicity_id, note: 'Self-identified ethnicity']
+  birth_canton_id int [ref: > m_canton.canton_id, note: 'Birth municipality if born in Ecuador']
+  birth_country_id int [ref: > m_country.country_id, note: 'Birth country if born abroad']
+  foreign_birth_place varchar(80) [note: 'Foreign city / state if born abroad']
+  email varchar(100) [note: 'Patient contact electronic mail']
+  phone varchar(20) [note: 'Contact telephone or mobile number']
   status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE | INACTIVE']
-  created_at timestamptz [default: `now()`, note: 'Registration date']
-  created_by_id uuid [not null, ref: > m_users.id, note: 'Clinician who created record']
+  created_at timestamptz [default: `now()`, note: 'Registration timestamp']
+  created_by_id int [not null, ref: > t_user.user_id, note: 'Attending user who registered patient']
 
-  Note: 'Master demographic identity for all patients and participants'
+  Note: 'Master demographic identity registry for all cohort participants'
 }
 
-Table t_visits {
-  visit_id uuid [pk, note: 'Unique clinical encounter UUID']
-  patient_id uuid [unique, not null, ref: - t_patients.patient_id, note: '1:1 relation to Patient']
-  evaluator_id uuid [not null, ref: > m_users.id, note: 'Attending physician']
+Table t_visit {
+  visit_id int [pk, increment, note: 'Primary Key (Compatible with Supabase uid / UUID)']
+  patient_id int [unique, not null, ref: - t_patient.patient_id, note: '1:1 relation to Patient encounter']
+  evaluator_id int [not null, ref: > t_user.user_id, note: 'Attending physician / specialist']
   visit_number smallint [not null, default: 1, note: 'Encounter sequence number']
-  study_code varchar(30) [unique, not null, note: 'Protocol code: e.g. 0499/2026']
-  visit_date date [not null, note: 'Encounter examination date']
-  study_year int [note: 'Annual cohort year']
+  study_code varchar(30) [not null, note: 'Protocol cohort code (e.g. 1, 2, CUN-2024-001)']
+  visit_date date [not null, note: 'Clinical examination date']
+  study_year int [note: 'Generated stored evaluation year']
   status varchar(20) [not null, default: 'COMPLETED', note: 'COMPLETED | PENDING | CANCELLED']
-  staff_category_id int [ref: > m_staff_categories.id]
-  professional_category_id int [ref: > m_professional_categories.id]
-  education_level_id int [ref: > m_education_levels.id]
-  income_range_id int [ref: > m_income_ranges.id]
-  marital_status_id int [ref: > m_marital_statuses.id]
-  living_situation_id int [ref: > m_living_situations.id]
-  housing_type_id int [ref: > m_housing_types.id]
-  work_schedule_id int [ref: > m_work_schedules.id]
-  residence_canton_id int [ref: > m_cantons.id]
-  faculty varchar(100) [note: 'Academic university faculty']
+  staff_category_id int [ref: > m_staff_category.staff_category_id]
+  professional_category_id int [ref: > m_professional_category.professional_category_id]
+  education_level_id int [ref: > m_education_level.education_level_id]
+  income_range_id int [ref: > m_income_range.income_range_id]
+  marital_status_id int [ref: > m_marital_status.marital_status_id]
+  living_situation_id int [ref: > m_living_situation.living_situation_id]
+  housing_type_id int [ref: > m_housing_type.housing_type_id]
+  work_schedule_id int [ref: > m_work_schedule.work_schedule_id]
+  residence_canton_id int [not null, ref: > m_canton.canton_id, note: 'Current residence municipality']
+  faculty varchar(150) [note: 'Academic university faculty or department unit']
+  num_children smallint [note: 'Total number of children']
+  num_cohabitants smallint [note: 'Total household cohabitants count']
   created_at timestamptz [default: `now()`, note: 'Encounter creation timestamp']
 
-  Note: 'Core clinical encounter connecting all specialized medical modules'
+  Note: 'Core clinical encounter connecting all specialized medical modules (1:1 with Patient)'
 }
 
 // ============================================================================
-// 5. SPECIALIZED CARDIOVASCULAR CLINICAL MODULES (t_)
+// 6. SPECIALIZED CARDIOVASCULAR CLINICAL SATELLITES (t_)
 // ============================================================================
 
-Table t_anthropometries {
-  anthropometry_id uuid [pk]
-  visit_id uuid [unique, not null, ref: - t_visits.visit_id]
-  weight_kg decimal(5,2) [note: 'Body weight in kilograms']
-  height_m decimal(4,2) [note: 'Height in meters']
-  bmi decimal(5,2) [note: 'Computed Body Mass Index (kg/m2)']
-  body_surface_area decimal(4,2) [note: 'DuBois Body Surface Area (m2)']
-  abdominal_circumference_cm decimal(5,2) [note: 'Waist perimeter (cm)']
-  hip_circumference_cm decimal(5,2) [note: 'Hip perimeter (cm)']
-  waist_hip_ratio decimal(4,2) [note: 'WHR ratio']
-  created_at timestamptz [default: `now()`]
+Table t_anthropometry {
+  visit_id int [pk, ref: - t_visit.visit_id, note: '1:1 primary/foreign key to t_visit (Compatible with Supabase uid / UUID)']
+  weight_kg decimal(5,2) [not null, note: 'Body weight in kilograms (20.00 - 350.00)']
+  height_cm decimal(4,1) [not null, note: 'Body height in centimeters (50.0 - 250.0)']
+  waist_circumference_cm decimal(4,1) [note: 'Abdominal perimeter in cm (35.0 - 220.0)']
+  bmi decimal(5,2) [note: 'Generated stored Body Mass Index (kg/m2)']
+  body_surface_area decimal(4,2) [note: 'Generated stored DuBois Body Surface Area (m2)']
 
-  Note: 'Biometric and anthropometric evaluation parameters'
+  Note: 'Biometric and anthropometric evaluation parameters (1:1 with t_visit)'
 }
 
 Table t_vital_signs {
-  vital_signs_id uuid [pk]
-  visit_id uuid [unique, not null, ref: - t_visits.visit_id]
-  systolic_bp smallint [note: 'Systolic Blood Pressure (mmHg)']
-  diastolic_bp smallint [note: 'Diastolic Blood Pressure (mmHg)']
-  heart_rate smallint [note: 'Heart rate / pulse (bpm)']
-  oxygen_saturation decimal(4,1) [note: 'Peripheral SpO2 (%)']
-  temperature_c decimal(3,1) [note: 'Body temperature (°C)']
-  created_at timestamptz [default: `now()`]
+  visit_id int [pk, ref: - t_visit.visit_id, note: '1:1 primary/foreign key to t_visit (Compatible with Supabase uid / UUID)']
+  systolic_bp smallint [not null, note: 'Systolic Blood Pressure (50 - 300 mmHg)']
+  diastolic_bp smallint [not null, note: 'Diastolic Blood Pressure (30 - 200 mmHg)']
+  oxygen_saturation smallint [note: 'Peripheral SpO2 % (40 - 100)']
+  heart_rate smallint [note: 'Resting pulse rate (30 - 250 bpm)']
+  systolic_murmur boolean [note: 'Presence of systolic heart murmur']
+  diastolic_murmur boolean [note: 'Presence of diastolic heart murmur']
+  murmur_grade smallint [note: 'Levine murmur intensity grade (1 - 6)']
+  extra_heart_sounds boolean [note: 'Abnormal heart gallops / extra sounds']
+  pedal_pulses_symmetric boolean [note: 'Symmetric lower limb pedal pulses']
+  pulmonary_auscultation_normal boolean [note: 'Normal bilateral breath sounds']
+  abdominal_auscultation_normal boolean [note: 'Normal abdominal bowel sounds']
+  physical_findings_detail varchar(300) [note: 'Qualitative physical examination remarks']
 
-  Note: 'Hemodynamic vital signs recorded during encounter'
+  Note: 'Hemodynamic vital signs and auscultation findings (1:1 with t_visit)'
 }
 
-Table t_electrocardiograms {
-  ecg_id uuid [pk]
-  visit_id uuid [unique, not null, ref: - t_visits.visit_id]
-  
-  // 27 Comprehensive ECG items from Definitive Protocol
-  rhythm_id int [ref: > m_ecg_rhythms.id, note: 'Item 1: ECG Rhythm']
-  heart_rate smallint [note: 'Item 2: Heart rate (bpm)']
-  qrs_axis_degrees smallint [note: 'Item 3: Frontal plane QRS electric axis (degrees)']
-  rr_interval_sec decimal(4,2) [note: 'Item 4: Mean RR interval in seconds']
+Table t_electrocardiogram {
+  visit_id int [pk, ref: - t_visit.visit_id, note: '1:1 primary/foreign key to t_visit (Compatible with Supabase uid / UUID)']
+  rhythm_id int [not null, ref: > m_ecg_rhythm.ecg_rhythm_id, note: 'Baseline ECG cardiac rhythm']
+  heart_rate smallint [note: 'ECG heart rate in bpm']
+  qrs_axis_degrees smallint [note: 'Frontal plane QRS electric axis in degrees']
+  rr_interval_sec decimal(5,3) [note: 'Item 4: Mean RR interval in seconds']
   p_wave_mm decimal(4,2) [note: 'Item 5: P wave amplitude in mm']
   pr_interval_ms smallint [note: 'Item 6: PR interval duration in ms']
   qrs_duration_ms smallint [note: 'Item 7: QRS complex duration in ms']
   qt_interval_ms smallint [note: 'Item 8: Raw QT interval duration in ms']
-  qtc_bazett_ms smallint [note: 'Item 9: Heart rate corrected QT interval (Bazett)']
+  qtc_bazett_ms smallint [note: 'Item 9: Heart rate corrected QTc Bazett formula in ms']
   p_mitrale boolean [note: 'Item 10: Left atrial P mitrale morphology']
   av_block boolean [note: 'Item 11: Atrioventricular block flag']
   av_block_grade varchar(50) [note: 'Item 11: AV block grade (Degree I, II, III)']
   sa_block boolean [note: 'Item 12: Sinoatrial exit block flag']
   interatrial_block boolean [note: 'Item 13: Interatrial Bachmann bundle block']
   hemiblock boolean [note: 'Item 14: Fascicular hemiblock flag']
-  hemiblock_detail varchar(100) [note: 'Item 14: Anterior vs Posterior hemiblock']
-  has_bundle_branch_block boolean [note: 'Item 15: Bundle branch delay flag']
-  bundle_branch_block varchar(100) [note: 'Item 15: RBBB or LBBB classification']
+  hemiblock_detail varchar(100) [note: 'Item 14: Anterior vs Posterior hemiblock details']
+  bundle_branch_block varchar(50) [note: 'Item 15: RBBB or LBBB classification']
+  has_bundle_branch_block boolean [note: 'Item 15: Bundle branch block delay confirmed']
   brugada_pattern boolean [note: 'Item 16: Brugada syndrome pattern']
-  early_repolarization boolean [note: 'Item 17: Benign early repolarization J-wave']
-  left_ventricular_hypertrophy boolean [note: 'Item 18: LVH voltage criteria (Sokolow/Cornell)']
+  early_repolarization boolean [note: 'Item 17: Benign early repolarization pattern']
+  left_ventricular_hypertrophy boolean [note: 'Item 18: Sokolow-Lyon LVH voltage criteria']
   systolic_overload boolean [note: 'Item 19: Systolic strain overload pattern']
   systolic_overload_complexes varchar(100) [note: 'Item 19: Leads exhibiting strain']
-  intrinsicoid_deflection_sec decimal(5,3) [note: 'Item 20: V5-V6 activation time (sec)']
+  intrinsicoid_deflection_sec decimal(5,3) [note: 'Item 20: V5-V6 activation time in seconds']
   right_ventricular_hypertrophy boolean [note: 'Item 21: RVH voltage criteria']
   delta_wave boolean [note: 'Item 22: Pre-excitation delta wave (WPW)']
   digitalis_effect boolean [note: 'Item 23: Digitalis scoop ST effect']
   pathological_q_wave boolean [note: 'Item 24: Necrosis pathological Q wave']
   q_wave_amplitude varchar(50) [note: 'Item 24: Q wave amplitude description']
-  q_wave_voltage_mv decimal(4,2) [note: 'Item 24: Q wave voltage in mV']
+  q_wave_voltage_mv decimal(5,2) [note: 'Item 24: Q wave voltage in mV']
   q_wave_complexes varchar(100) [note: 'Item 24: Leads with Q waves']
   negative_t_wave boolean [note: 'Item 25: Negative inverted T waves']
   negative_t_complexes varchar(100) [note: 'Item 25: Leads with negative T waves']
   negative_t_symmetric boolean [note: 'Item 25: Symmetric ischemic inversion']
   negative_t_asymmetric boolean [note: 'Item 25: Asymmetric strain inversion']
   st_elevation_pathological boolean [note: 'Item 26: Acute injury ST elevation (STEMI)']
-  st_elevation_mm decimal(4,1) [note: 'Item 26: ST elevation magnitude in mm']
+  st_elevation_mm decimal(4,2) [note: 'Item 26: ST elevation magnitude in mm']
   st_elevation_complexes varchar(100) [note: 'Item 26: Leads with ST elevation']
   st_depression boolean [note: 'Item 27: Subendocardial ST depression']
-  st_depression_mm decimal(4,1) [note: 'Item 27: ST depression magnitude in mm']
+  st_depression_mm decimal(4,2) [note: 'Item 27: ST depression magnitude in mm']
   st_depression_complexes varchar(100) [note: 'Item 27: Leads with ST depression']
-
-  is_normal boolean [default: true, note: 'Overall normal ECG assessment']
   repolarization_abnormalities boolean [note: 'Non-specific repolarization changes']
-  ecg_comments text [note: 'Specialist narrative diagnosis and remarks']
-  created_at timestamptz [default: `now()`]
+  is_normal boolean [note: 'Item 28: Overall normal 12-lead ECG assessment']
+  ecg_comments varchar(300) [note: 'Specialist narrative diagnosis and remarks']
 
-  Note: 'Comprehensive 12-lead Electrocardiogram evaluation with all 27 protocol items'
+  Note: 'Comprehensive 12-lead Electrocardiogram evaluation with all 27 protocol items (1:1 with t_visit)'
 }
 
-Table t_echocardiograms {
-  echo_id uuid [pk]
-  visit_id uuid [unique, not null, ref: - t_visits.visit_id]
-  lv_diastolic_diameter_mm decimal(5,2) [note: 'LVEDD in mm']
-  lv_systolic_diameter_mm decimal(5,2) [note: 'LVESD in mm']
-  ivs_thickness_mm decimal(4,2) [note: 'IVSd thickness in mm']
-  posterior_wall_thickness_mm decimal(4,2) [note: 'LVPWd thickness in mm']
-  la_diameter_mm decimal(5,2) [note: 'Left Atrium diameter in mm']
-  aortic_root_diameter_mm decimal(5,2) [note: 'Aortic root dimension in mm']
-  lvef_percentage decimal(4,1) [note: 'Left Ventricular Ejection Fraction (%)']
-  ventricular_hypertrophy boolean [note: 'Ventricular hypertrophy flag']
-  diastolic_dysfunction boolean [note: 'Diastolic filling dysfunction']
-  aortic_valve_calcification boolean [note: 'Aortic valve sclerosis']
-  valvular_regurgitation_detail varchar(200) [note: 'Valvulopathy description']
-  echo_comments text [note: 'Narrative echocardiography remarks']
-  created_at timestamptz [default: `now()`]
+Table t_echocardiogram {
+  visit_id int [pk, ref: - t_visit.visit_id, note: '1:1 primary/foreign key to t_visit (Compatible with Supabase uid / UUID)']
+  lv_dimension_mm decimal(4,1) [note: 'Left Ventricle end-diastolic internal diameter in mm']
+  rv_dimension_mm decimal(4,1) [note: 'Right Ventricle internal dimension in mm']
+  ventricular_hypertrophy boolean [note: 'Ventricular wall hypertrophy flag']
+  lvef_percentage decimal(4,1) [note: 'Left Ventricular Ejection Fraction % (10.0 - 90.0)']
+  diastolic_dysfunction boolean [note: 'Impaired LV diastolic relaxation']
+  aortic_valve_calcification boolean [note: 'Aortic valve sclerosis / calcification']
+  aortic_gradient_max_mmhg decimal(5,1) [note: 'Maximum peak transaortic gradient in mmHg']
+  aortic_gradient_mean_mmhg decimal(5,1) [note: 'Mean transaortic gradient in mmHg']
+  valvular_regurgitation_detail varchar(200) [note: 'Valvulopathy regurgitation description']
 
-  Note: 'Transthoracic 2D and Doppler Echocardiography measurements'
+  Note: 'Transthoracic 2D and Doppler Echocardiography measurements (1:1 with t_visit)'
 }
 
-Table t_laboratories {
-  lab_id uuid [pk]
-  visit_id uuid [unique, not null, ref: - t_visits.visit_id]
-  
-  // Blood Chemistry & Renal Function
-  glucose_mg_dl decimal(6,2) [note: 'Fasting glucose (mg/dL)']
-  urea_mg_dl decimal(6,2) [note: 'Blood urea (mg/dL)']
-  creatinine_mg_dl decimal(5,2) [note: 'Serum creatinine (mg/dL)']
-  
-  // Lipid Profile
-  total_cholesterol_mg_dl decimal(6,2) [note: 'Total cholesterol (mg/dL)']
-  hdl_mg_dl decimal(5,2) [note: 'HDL cholesterol (mg/dL)']
-  ldl_mg_dl decimal(6,2) [note: 'LDL cholesterol (mg/dL)']
+Table t_laboratory {
+  visit_id int [pk, ref: - t_visit.visit_id, note: '1:1 primary/foreign key to t_visit (Compatible with Supabase uid / UUID)']
+  rbc_millions decimal(4,2) [note: 'Red blood cell count (millions/uL)']
+  hemoglobin_g_dl decimal(4,2) [note: 'Hemoglobin concentration (g/dL)']
+  hematocrit_percentage decimal(4,1) [note: 'Hematocrit volume percentage (%)']
+  mcv_fl decimal(5,2) [note: 'Mean corpuscular volume (fL)']
+  wbc_thousands decimal(6,2) [note: 'White blood cell count (thousands/uL)']
+  platelets_thousands decimal(6,1) [note: 'Platelet count (thousands/uL)']
+  prothrombin_time_sec decimal(4,1) [note: 'Prothrombin time in seconds']
+  glucose_mg_dl decimal(5,2) [note: 'Fasting blood glucose (mg/dL)']
+  urea_mg_dl decimal(5,2) [note: 'Blood urea nitrogen (mg/dL)']
+  creatinine_mg_dl decimal(4,2) [note: 'Serum creatinine (mg/dL)']
+  total_cholesterol_mg_dl decimal(5,2) [note: 'Total serum cholesterol (mg/dL)']
+  hdl_mg_dl decimal(5,2) [note: 'High-density lipoprotein cholesterol (mg/dL)']
+  ldl_mg_dl decimal(5,2) [note: 'Low-density lipoprotein cholesterol (mg/dL)']
   triglycerides_mg_dl decimal(6,2) [note: 'Serum triglycerides (mg/dL)']
-  
-  // Liver Function & Enzymes
-  ast_got_u_l decimal(6,2) [note: 'AST / GOT (U/L)']
-  alt_gpt_u_l decimal(6,2) [note: 'ALT / GPT (U/L)']
-  ggt_u_l decimal(6,2) [note: 'GGT (U/L)']
-  
-  // Thyroid & Hematology
-  tsh_u_iu_ml decimal(6,3) [note: 'TSH (uIU/mL)']
-  hemoglobin_g_dl decimal(4,2) [note: 'Hemoglobin (g/dL)']
-  hematocrit_percentage decimal(4,2) [note: 'Hematocrit (%)']
-  rbc_millions decimal(4,2) [note: 'RBC count (millions/uL)']
-  wbc_thousands decimal(5,2) [note: 'WBC count (thousands/uL)']
-  platelets_thousands decimal(6,2) [note: 'Platelets (thousands/uL)']
-  mcv_fl decimal(5,2) [note: 'MCV (fL)']
-  prothrombin_time_sec decimal(5,2) [note: 'Prothrombin time / INR (sec)']
-  created_at timestamptz [default: `now()`]
+  ast_got_u_l decimal(5,1) [note: 'Aspartate aminotransferase (U/L)']
+  alt_gpt_u_l decimal(5,1) [note: 'Alanine aminotransferase (U/L)']
+  ggt_u_l decimal(5,1) [note: 'Gamma-glutamyl transferase (U/L)']
+  tsh_u_iu_ml decimal(5,2) [note: 'Thyroid stimulating hormone (uIU/mL)']
 
-  Note: 'Clinical laboratory blood panel and biomarkers'
+  Note: 'Clinical laboratory blood panel and biomarkers (1:1 with t_visit)'
 }
 
 Table t_ordered_studies {
-  study_id uuid [pk, note: 'Prescription surrogate UUID']
-  visit_id uuid [unique, not null, ref: - t_visits.visit_id, note: '1:1 relation to Visit']
-  
-  // 8 Studies Prescribed from Protocol Page 19
+  visit_id int [pk, ref: - t_visit.visit_id, note: '1:1 primary/foreign key to t_visit (Compatible with Supabase uid / UUID)']
   clinical_analysis boolean [note: '1- Clinical laboratory tests ordered']
   ergometry_spect boolean [note: '2- SPECT treadmill stress ergometry']
   cardiac_ct boolean [note: '3- Coronary Computed Tomography Angiography']
   cardiac_mri boolean [note: '4- Cardiac Magnetic Resonance Imaging']
-  electrophysiology boolean [note: '5- Invasive / diagnostic electrophysiology']
-  echocardiogram_ordered boolean [note: 'Doppler Echocardiography']
-  holter_ordered boolean [note: 'Ambulatory 24-hour Holter ECG']
-  mapa_ordered boolean [note: 'Ambulatory Blood Pressure Monitoring (MAPA)']
-  other_studies text [note: 'Narrative complementary indications and notes']
-  created_at timestamptz [default: `now()`]
+  electrophysiology boolean [note: '5- Invasive electrophysiology study']
 
-  Note: 'Medical studies and diagnostic exams prescribed to the patient'
+  Note: 'Complementary diagnostic medical studies prescribed to patient (1:1 with t_visit)'
 }
 
-// ============================================================================
-// 6. QUESTIONNAIRE & MODULAR SURVEY RESPONSES (m_ & t_)
-// ============================================================================
+Table t_visit_answer {
+  answer_id bigint [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  visit_id int [not null, ref: > t_visit.visit_id, note: 'Associated clinical encounter']
+  question_id int [not null, ref: > m_question.question_id, note: 'Associated survey question']
+  selected_option_id int [ref: > m_answer_option.option_id, note: 'Selected discrete option (nullable)']
+  numeric_value decimal(12,3) [note: 'Quantitative continuous numeric response (nullable)']
+  text_value varchar(250) [note: 'Qualitative free text response (nullable)']
 
-Table m_questionnaire_sections {
-  id int [pk, increment]
-  code varchar(50) [unique, not null, note: 'MOD_1_SOCIO | MOD_3_FACTORES_MOD | etc.']
-  title varchar(150) [not null, note: 'Section clinical heading title']
-  display_order int [not null, default: 0, note: 'Sequential sorting order']
-
-  Note: 'Master questionnaire module chapters'
+  Note: 'EAV survey repository persisting all questionnaire responses per encounter'
 }
 
-Table m_questions {
-  id int [pk, increment]
-  section_id int [not null, ref: > m_questionnaire_sections.id]
-  code varchar(50) [unique, not null, note: 'Standard variable code (e.g. r_hta, r_mapa)']
-  text text [not null, note: 'Clinical question label verbatim']
-  response_type varchar(30) [not null, default: 'TEXTO', note: 'RADIO | CHECKBOX | TEXTO | NUMERICO']
-  display_order int [not null, default: 0]
+Table t_secure_share {
+  share_id int [pk, increment, note: 'Primary Key (Compatible with Supabase serial id / uuid)']
+  visit_id int [not null, ref: > t_visit.visit_id, note: 'Primary shared clinical encounter']
+  recipient_email varchar(254) [not null, note: 'Target patient / clinician destination email']
+  token_hash varchar(64) [unique, not null, note: 'SHA-256 cryptographic hash of link token']
+  code_hash varchar(128) [not null, note: 'Cryptographic hash of 6-digit access PIN code']
+  created_at timestamptz [default: `now()`, note: 'Dispatch creation timestamp']
+  expires_at timestamptz [not null, note: 'Link expiration timestamp']
+  attempts smallint [not null, default: 0, note: 'Failed access attempts count']
+  max_attempts smallint [not null, default: 5, note: 'Maximum allowed PIN attempts']
+  download_count smallint [not null, default: 0, note: 'Downloads conducted count']
+  max_downloads smallint [note: 'Maximum allowed downloads (null for unlimited)']
+  is_revoked boolean [not null, default: false, note: 'Administrative revocation flag']
+  revoked_at timestamptz [note: 'Revocation timestamp']
+  created_by_id int [ref: > t_user.user_id, note: 'Issuing clinician user']
+  note varchar(300) [note: 'Clinical / delivery observation notes']
 
-  Note: 'Master items and survey questions'
-}
-
-Table m_question_options {
-  id int [pk, increment]
-  question_id int [not null, ref: > m_questions.id]
-  option_code varchar(50) [not null, note: 'Coded choice identifier']
-  option_text varchar(255) [not null, note: 'Display option label']
-  numeric_value decimal(10,2) [note: 'SPSS assigned numeric code']
-  display_order int [not null, default: 0]
-
-  Note: 'Master categorical options for discrete questions'
-}
-
-Table t_visit_answers {
-  answer_id bigint [pk, increment, note: 'Serial primary key']
-  visit_id uuid [not null, ref: > t_visits.visit_id, note: 'Encounter relation']
-  question_id int [not null, ref: > m_questions.id, note: 'Questionnaire item']
-  selected_option_id int [ref: > m_question_options.id, note: 'Selected discrete option']
-  text_value text [note: 'Alphanumeric or narrative response']
-  numeric_value decimal(10,3) [note: 'Continuous metric response']
-  created_at timestamptz [default: `now()`]
-
-  Note: 'EAV survey repository persisting all questionnaire observations'
+  Note: 'Cryptographically protected secure shares for patient report delivery'
 }

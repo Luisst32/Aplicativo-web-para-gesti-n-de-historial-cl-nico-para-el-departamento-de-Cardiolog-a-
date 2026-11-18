@@ -25,6 +25,8 @@ from .importer.normalizers import (
     _resolve_canton_safe,
     _is_empty_or_nan,
     _clean_decimal,
+    _clean_int,
+    _parse_date_safe,
     _get_val_and_label,
 )
 from .importer.readers import (
@@ -96,6 +98,8 @@ __all__ = [
     '_resolve_canton_safe',
     '_is_empty_or_nan',
     '_clean_decimal',
+    '_clean_int',
+    '_parse_date_safe',
     '_get_val_and_label',
     # Lectores y metadatos
     '_SPEC_VALUE_LABELS',

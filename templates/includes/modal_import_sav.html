@@ -1,4 +1,4 @@
-<!-- Modal de Importación Inteligente y Automática de Archivos SPSS (.sav) -->
+<!-- Modal de Importación Inteligente y Automática de Archivos (.sav, .csv, R) -->
 <div class="modal-overlay" id="modalImportarSav" style="display:none; align-items:center; justify-content:center;">
   <div class="modal-card" id="savModalCard" style="max-width: 560px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.28); background: #ffffff; transition: max-width 0.3s ease;">
     
@@ -9,7 +9,7 @@
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         </div>
         <div>
-          <h3 class="modal-title" style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #1b2a41;">Importar .sav o R</h3>
+          <h3 class="modal-title" style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #1b2a41;">Importar Dataset (.sav, .csv, R)</h3>
         </div>
       </div>
       <button type="button" class="modal-close-btn" onclick="cerrarModalImportarSav()" title="Cerrar ventana">&times;</button>
@@ -26,6 +26,7 @@
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
           </div>
           <p style="font-weight: 700; font-size: 1.05rem; color: #1e293b; margin: 0;">Haz clic o arrastra aquí tu archivo</p>
+          <p style="font-size: 0.82rem; color: #64748b; margin: 6px 0 0;">Formatos soportados: SPSS (.sav, .zsav), CSV (.csv) y RStudio (.rds, .RData)</p>
         </div>
       </div>
 
@@ -36,7 +37,7 @@
             <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
           </svg>
         </div>
-        <h4 id="savLoadingTitle" style="font-size: 1.12rem; font-weight: 700; color: #1b2a41; margin: 0 0 6px;">Importando archivo SPSS...</h4>
+        <h4 id="savLoadingTitle" style="font-size: 1.12rem; font-weight: 700; color: #1b2a41; margin: 0 0 6px;">Importando archivo de datos...</h4>
         <p id="savLoadingSubtitle" style="font-size: 0.86rem; color: #64748b; margin: 0 0 22px;">Procesando y guardando datos automáticamente en la base de datos...</p>
 
         <!-- Contenedor de Barra de Carga -->
@@ -160,7 +161,7 @@
               <table style="width: 100%; border-collapse: collapse; font-size: 0.76rem; text-align: left;" id="savMappingTable">
                 <thead>
                   <tr style="background: #f8fafc; color: #475569; position: sticky; top: 0; border-bottom: 1px solid #e2e8f0;">
-                    <th style="padding: 7px 10px; width: 28%;">Columna en SPSS (.sav)</th>
+                    <th style="padding: 7px 10px; width: 28%;">Columna en archivo (.sav / .csv / R)</th>
                     <th style="padding: 7px 10px; width: 30%;">Nombre Corregido Automáticamente</th>
                     <th style="padding: 7px 10px; width: 42%;">Destino en Base de Datos (Módulo → Campo)</th>
                   </tr>

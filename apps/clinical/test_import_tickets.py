@@ -176,3 +176,108 @@ class ImportTicketEndpointTests(TestCase):
         with self.assertRaises(PermissionDenied):
             sav_importer.execute_sav_import('invalid', self.user)
         self.assertEqual(list(self.root.iterdir()), [])
+
+
+class CsvImportReaderAndNormalizerTests(TestCase):
+    def setUp(self):
+        self.root = self.enterContext(TemporaryDirectory(prefix='cardio-csv-test-'))
+        self.enterContext(override_settings(IMPORT_TEMP_ROOT=self.root))
+        self.user = User.objects.create_user(username='csv_tester', email='csv@example.invalid')
+        permissions = Permission.objects.filter(content_type__app_label='clinical')
+        self.user.user_permissions.set(permissions)
+
+        from catalog.models import Country, Province, Canton, Institution, Sex, Ethnicity
+        country, _ = Country.objects.get_or_create(iso_alpha3='ECU', defaults={'name': 'Ecuador'})
+        province, _ = Province.objects.get_or_create(country=country, iso_code='EC-G', defaults={'name': 'Guayas'})
+        Canton.objects.get_or_create(province=province, dpa_code='0910', defaults={'name': 'Milagro'})
+        Institution.objects.get_or_create(acronym='UNEMI', defaults={'name': 'Universidad Estatal de Milagro'})
+        Sex.objects.get_or_create(sex_id=1, defaults={'name': 'Hombre'})
+        Sex.objects.get_or_create(sex_id=2, defaults={'name': 'Mujer'})
+        Ethnicity.objects.get_or_create(name='Mestizo')
+
+    def test_parse_date_safe(self):
+        from clinical.services.importer.normalizers import _parse_date_safe
+        import datetime
+        d1 = _parse_date_safe('1985-05-20')
+        self.assertEqual(d1, datetime.date(1985, 5, 20))
+        d2 = _parse_date_safe('20/05/1985')
+        self.assertEqual(d2, datetime.date(1985, 5, 20))
+        d3 = _parse_date_safe('20-05-1985')
+        self.assertEqual(d3, datetime.date(1985, 5, 20))
+        d4 = _parse_date_safe(None)
+        self.assertIsNone(d4)
+        d5 = _parse_date_safe('invalid_date')
+        self.assertIsNone(d5)
+
+    def test_clean_int_and_decimal(self):
+        from clinical.services.importer.normalizers import _clean_int, _clean_decimal
+        from decimal import Decimal
+        self.assertEqual(_clean_int(42), 42)
+        self.assertEqual(_clean_int('42'), 42)
+        self.assertEqual(_clean_int('42.0'), 42)
+        self.assertEqual(_clean_int('42,0'), 42)
+        self.assertIsNone(_clean_int(None))
+        self.assertIsNone(_clean_int('N/A'))
+
+        self.assertEqual(_clean_decimal('72,5', 5, 2), Decimal('72.50'))
+        self.assertEqual(_clean_decimal('72.5', 5, 2), Decimal('72.50'))
+        self.assertIsNone(_clean_decimal('', 5, 2))
+
+    def test_read_csv_comma_and_semicolon_delimited(self):
+        from clinical.services.importer.readers import _read_dataset_file
+        # Comma delimited CSV
+        p_comma = Path(self.root) / 'comma.csv'
+        p_comma.write_bytes(b'CODIGO,EDAD,TAS,TAD\n101,45,120,80\n102,50,130,85\n')
+        df, meta = _read_dataset_file(p_comma, 'comma.csv')
+        self.assertEqual(len(df['CODIGO']), 2)
+        self.assertEqual(meta.number_rows, 2)
+        self.assertIn('CODIGO', df)
+        self.assertIn('EDAD', df)
+
+        # Semicolon delimited CSV (Excel format in Ecuador / Latin America)
+        p_semi = Path(self.root) / 'semi.csv'
+        p_semi.write_text('CODIGO;EDAD;PESO;TAS\n201;35;72,5;125\n202;40;68,0;118\n', encoding='utf-8')
+        df_semi, meta_semi = _read_dataset_file(p_semi, 'semi.csv')
+        self.assertEqual(len(df_semi['CODIGO']), 2)
+        self.assertEqual(meta_semi.number_rows, 2)
+        self.assertIn('CODIGO', df_semi)
+        self.assertIn('PESO', df_semi)
+
+    def test_end_to_end_csv_analysis_and_execution(self):
+        from clinical.services.sav_importer import analyze_sav_file, execute_sav_import
+        from clinical.models import Patient, Visit
+
+        csv_content = (
+            "CODIGO,NOMBRE,APELLIDO_P,CEDULA,SEXO,EDAD,FECHA_VISITA,TAS,TAD,PESO,TALLA\n"
+            "UNEMI-CSV-01,JUAN,PEREZ,0923485718,1,40,2026-03-15,120,80,75.5,172.0\n"
+            "UNEMI-CSV-02,MARIA,GOMEZ,1710034065,2,38,15/03/2026,115,75,62.0,165.0\n"
+        ).encode('utf-8')
+
+        bio = BytesIO(csv_content)
+        analysis = analyze_sav_file(bio, 'pacientes.csv', self.user)
+        self.assertTrue(analysis.get('success'))
+        self.assertEqual(analysis.get('total_rows'), 2)
+        self.assertIn('temp_token', analysis)
+
+        exec_res = execute_sav_import(analysis['temp_token'], self.user, duplicate_action='update')
+        self.assertTrue(exec_res.get('success'))
+        self.assertGreaterEqual(exec_res.get('total_rows'), 2)
+
+        p1 = Patient.objects.filter(id_card='0923485718').first()
+        self.assertIsNotNone(p1)
+        self.assertEqual(p1.first_names.upper(), 'JUAN')
+        self.assertEqual(p1.last_name1.upper(), 'PEREZ')
+
+        v1 = Visit.objects.filter(patient=p1).first()
+        self.assertIsNotNone(v1)
+        self.assertEqual(v1.vital_signs.systolic_bp, 120)
+        self.assertEqual(v1.vital_signs.diastolic_bp, 80)
+        self.assertEqual(float(v1.anthropometry.weight_kg), 75.5)
+
+        p2 = Patient.objects.filter(id_card='1710034065').first()
+        self.assertIsNotNone(p2)
+        v2 = Visit.objects.filter(patient=p2).first()
+        self.assertIsNotNone(v2)
+        import datetime
+        self.assertEqual(v2.visit_date, datetime.date(2026, 3, 15))
+
