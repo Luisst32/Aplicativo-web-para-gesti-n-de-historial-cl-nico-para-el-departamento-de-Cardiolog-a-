@@ -64,11 +64,11 @@
         <button type="button" class="btn" id="btn-limpiar-chat-page" style="font-size: 0.8rem; padding: 6px 14px; background: var(--color-bg-card, #FFFFFF); border: 1px solid var(--color-border-subtle, #CBD5E1); border-radius: var(--radius-sm, 6px); cursor: pointer; color: var(--color-text-body, #475569);" title="Limpiar la conversación">
           Limpiar Conversación
         </button>
-        <div data-user-menu></div>
         <a href="{% url 'security:logout' %}" class="btn" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; padding: 6px 12px; background: var(--color-bg-light, #F1F5F9); border: 1px solid var(--color-border-subtle, #CBD5E1); border-radius: var(--radius-sm, 6px); color: var(--color-text-body, #475569); text-decoration: none;" title="Cerrar sesión">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
           <span>Salir</span>
         </a>
+        <div class="user-corner-slot" data-user-menu title="Menú de usuario"></div>
       </div>
     </header>
 

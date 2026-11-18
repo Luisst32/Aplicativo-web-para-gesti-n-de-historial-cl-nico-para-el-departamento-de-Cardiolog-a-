@@ -4,7 +4,7 @@
 {% block title %}CARDIOUNEMI | Dashboard Epidemiológico y Clínico{% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'dashboard/css/dashboard.css' %}?v=20261114_restore13">
+  <link rel="stylesheet" href="{% static 'dashboard/css/dashboard.css' %}?v=20261117_v01">
   <style>
     /* Estilos embebidos de alta prioridad para Botón y Modal de Exportación */
     .btn-export-dashboard {
@@ -444,7 +444,6 @@
           <h1 id="view-title">Resumen General Epidemiológico</h1>
         </div>
         <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-          <div data-user-menu></div>
           <div class="sample-pill">
             <span class="status-dot"></span>
             <span id="active-sample-count">{{ summary_kpis.total|default:"0" }} de {{ summary_kpis.total|default:"0" }} evaluados (100%)</span>
@@ -457,6 +456,7 @@
             </svg>
             <span>Exportar</span>
           </button>
+          <div class="user-corner-slot" data-user-menu title="Menú de usuario"></div>
         </div>
       </div>
 
