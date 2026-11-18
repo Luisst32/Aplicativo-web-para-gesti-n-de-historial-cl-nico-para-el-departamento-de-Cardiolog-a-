@@ -777,10 +777,14 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
             await audioCtx.resume();
           }
 
-          recognizer = new model.KaldiRecognizer();
+          // KaldiRecognizer REQUIERE el sampleRate del AudioContext para decodificar
+          const sampleRate = audioCtx.sampleRate || 16000;
+          recognizer = new model.KaldiRecognizer(sampleRate);
 
           let textoInicial = (inputEl.value || '').trim();
           let frasesConfirmadas = [];
+          let sesionVozEnCurso = true;
+          const recognizerActivo = recognizer;
 
           const renderizarTexto = (parcial = '') => {
             const trozos = [];
@@ -797,6 +801,7 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
           };
 
           recognizer.on('result', (msg) => {
+            if (!sesionVozEnCurso || recognizer !== recognizerActivo) return;
             const t = (msg && msg.result && msg.result.text) ? msg.result.text.trim() : '';
             if (t) {
               // Prevenir repeticiones de la misma palabra/frase
@@ -808,6 +813,7 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
           });
 
           recognizer.on('partialresult', (msg) => {
+            if (!sesionVozEnCurso || recognizer !== recognizerActivo) return;
             const p = (msg && msg.result && msg.result.partial) ? msg.result.partial.trim() : '';
             renderizarTexto(p);
           });
@@ -817,8 +823,8 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
 
           recognizerNode.onaudioprocess = (evt) => {
             try {
-              if (sesionVozActiva && recognizer) {
-                recognizer.acceptWaveform(evt.inputBuffer);
+              if (sesionVozEnCurso && recognizerActivo) {
+                recognizerActivo.acceptWaveform(evt.inputBuffer);
               }
             } catch (errWf) {
               console.warn('Error acceptWaveform Vosk:', errWf);
@@ -841,6 +847,7 @@ Estoy aquí para responder preguntas analíticas, estadísticas y epidemiológic
             btnEl: btnVoz,
             inputEl: inputEl,
             detener: () => {
+              sesionVozEnCurso = false;
               try {
                 if (recognizerNode) {
                   recognizerNode.onaudioprocess = null;
