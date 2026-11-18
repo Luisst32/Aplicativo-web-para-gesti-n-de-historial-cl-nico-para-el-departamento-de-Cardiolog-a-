@@ -17,8 +17,20 @@ function activarRastreoDeCambiosFormulario() {
     if (!escuchandoCambiosFormulario) return;
     const target = ev.target;
     if (!target) return;
-    if (target.closest('#modalConfirmarSalida') || target.closest('#modalVisualizadorPdf')) return;
-    if (target.closest('#ehrCleanForm') || target.matches('input, select, textarea, [contenteditable]')) {
+    // Ignorar interacciones en componentes flotantes, modales o el asistente de chat
+    if (
+      target.closest('#modalConfirmarSalida') ||
+      target.closest('#modalVisualizadorPdf') ||
+      target.closest('#contenedor-chat') ||
+      target.closest('.ventana-chat-flotante') ||
+      target.closest('#formulario-chat') ||
+      target.closest('#btn-flotante-chat')
+    ) {
+      return;
+    }
+    // Únicamente registrar modificaciones si ocurren dentro del formulario clínico oficial
+    const ehrForm = target.closest('#ehrCleanForm');
+    if (ehrForm && target.matches('input, select, textarea, [contenteditable]')) {
       marcarFormularioModificado();
     }
   };
@@ -128,7 +140,17 @@ function configurarInterceptoresSalida() {
   // 3. Interceptar enlaces de navegación que salgan del formulario
   document.addEventListener('click', (ev) => {
     if (!formularioTieneCambios) return;
-    const enlace = ev.target.closest('a');
+    const target = ev.target;
+    if (!target) return;
+    if (
+      target.closest('#contenedor-chat') ||
+      target.closest('.ventana-chat-flotante') ||
+      target.closest('#formulario-chat') ||
+      target.closest('#btn-flotante-chat')
+    ) {
+      return;
+    }
+    const enlace = target.closest('a');
     if (!enlace) return;
     const href = enlace.getAttribute('href');
     if (!href || href.startsWith('#') || href.startsWith('javascript:') || enlace.target === '_blank') return;
