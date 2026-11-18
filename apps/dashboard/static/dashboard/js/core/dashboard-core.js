@@ -439,9 +439,15 @@ function switchTab(tabId, element) {
     if (navBtn) navBtn.classList.add('active');
   }
 
-  document.querySelectorAll('.tab-view').forEach(view => view.classList.remove('active'));
+  document.querySelectorAll('.tab-view').forEach(view => {
+    view.classList.remove('active');
+    view.style.display = 'none';
+  });
   const targetView = document.getElementById('tab-' + tabId);
-  if (targetView) targetView.classList.add('active');
+  if (targetView) {
+    targetView.classList.add('active');
+    targetView.style.display = 'flex';
+  }
 
   // Actualizar título de vista activa
   const titleEl = document.getElementById('view-title');
@@ -460,7 +466,8 @@ function switchTab(tabId, element) {
     titleEl.innerText = titles[tabId] || 'Dashboard Epidemiológico';
   }
 
-  // Renderizar o actualizar gráficos del tab activo
+  // Renderizar o actualizar KPIs y gráficos solo de la sección que se está abriendo
+  updateActiveTabKPIs(tabId);
   renderTabCharts(tabId);
 
   setTimeout(() => {
@@ -493,7 +500,7 @@ async function initDashboard() {
 
   syncSlicerOptions();
   filteredRecords = [...allRecords];
-  updateAllKPIs();
+  updateActiveTabKPIs(activeTabId);
   renderTabCharts(activeTabId);
 }
 
@@ -776,19 +783,14 @@ function onSlicerChange() {
     sampleCountEl.textContent = `${count} de ${total} evaluados (${pct}%)`;
   }
 
-  updateAllKPIs();
+  // Actualiza únicamente los KPIs y gráficos de la pestaña que está abierta
+  updateActiveTabKPIs(activeTabId);
   renderTabCharts(activeTabId);
 }
 
-// Actualiza todos los valores de las tarjetas KPI en todas las pestañas
-function updateAllKPIs() {
+// Actualiza los valores de las tarjetas KPI exclusivamente para la sección visible
+function updateActiveTabKPIs(tabId = activeTabId) {
   const n = filteredRecords.length;
-
-  // TAB 0: Resumen General
-  const htaCnt = filteredRecords.filter(r => r.hipertension).length;
-  const dlCnt = filteredRecords.filter(r => r.dislipemia).length;
-  const spObCnt = filteredRecords.filter(r => r.sobrepeso_u_obesidad).length;
-  const altoCnt = filteredRecords.filter(r => r.factores_riesgo_count >= 2).length;
 
   const setEl = (id, val) => {
     const el = document.getElementById(id);
@@ -801,111 +803,141 @@ function updateAllKPIs() {
     }
   };
 
-  setEl('kpi-total', n.toString());
-  setPrevalenceEl('kpi-hta', htaCnt, recordsWithValue('hipertension').length);
-  setPrevalenceEl('kpi-dl', dlCnt, recordsWithValue('dislipemia').length);
-  setPrevalenceEl('kpi-sp-ob', spObCnt, recordsWithValue('sobrepeso_u_obesidad').length);
-  setPrevalenceEl('kpi-riesgo-alto', altoCnt, recordsWithValue('factores_riesgo_count').length);
+  switch (tabId) {
+    case 'resumen-general': {
+      const htaCnt = filteredRecords.filter(r => r.hipertension).length;
+      const dlCnt = filteredRecords.filter(r => r.dislipemia).length;
+      const spObCnt = filteredRecords.filter(r => r.sobrepeso_u_obesidad).length;
+      const altoCnt = filteredRecords.filter(r => r.factores_riesgo_count >= 2).length;
 
-  // TAB 1: Datos del Individuo
-  const hombresCnt = filteredRecords.filter(r => r.sexo === 'Hombre').length;
-  const mujeresCnt = filteredRecords.filter(r => r.sexo === 'Mujer').length;
-  const postgradoCnt = filteredRecords.filter(r => r.nivel_estudios === 'Postgrado').length;
-  const casadosCnt = filteredRecords.filter(r => r.estado_civil === 'Casado/a').length;
+      setEl('kpi-total', n.toString());
+      setPrevalenceEl('kpi-hta', htaCnt, recordsWithValue('hipertension').length);
+      setPrevalenceEl('kpi-dl', dlCnt, recordsWithValue('dislipemia').length);
+      setPrevalenceEl('kpi-sp-ob', spObCnt, recordsWithValue('sobrepeso_u_obesidad').length);
+      setPrevalenceEl('kpi-riesgo-alto', altoCnt, recordsWithValue('factores_riesgo_count').length);
+      break;
+    }
+    case 'datos-individuo': {
+      const hombresCnt = filteredRecords.filter(r => r.sexo === 'Hombre').length;
+      const mujeresCnt = filteredRecords.filter(r => r.sexo === 'Mujer').length;
+      const postgradoCnt = filteredRecords.filter(r => r.nivel_estudios === 'Postgrado').length;
+      const casadosCnt = filteredRecords.filter(r => r.estado_civil === 'Casado/a').length;
 
-  setEl('kpi-ind-edad', `${formatMean(filteredRecords.map(r => r.edad))} años`);
-  setPrevalenceEl('kpi-ind-hombres', hombresCnt, recordsWithValue('sexo').length);
-  setPrevalenceEl('kpi-ind-mujeres', mujeresCnt, recordsWithValue('sexo').length);
-  setPrevalenceEl('kpi-ind-postgrado', postgradoCnt, recordsWithValue('nivel_estudios').length);
-  setPrevalenceEl('kpi-ind-casados', casadosCnt, recordsWithValue('estado_civil').length);
+      setEl('kpi-ind-edad', `${formatMean(filteredRecords.map(r => r.edad))} años`);
+      setPrevalenceEl('kpi-ind-hombres', hombresCnt, recordsWithValue('sexo').length);
+      setPrevalenceEl('kpi-ind-mujeres', mujeresCnt, recordsWithValue('sexo').length);
+      setPrevalenceEl('kpi-ind-postgrado', postgradoCnt, recordsWithValue('nivel_estudios').length);
+      setPrevalenceEl('kpi-ind-casados', casadosCnt, recordsWithValue('estado_civil').length);
+      break;
+    }
+    case 'exploracion-fisica': {
+      const cinturaRiesgo = filteredRecords.filter(r => r.abd_riesgo && r.abd_riesgo.includes('Riesgo')).length;
+      setEl('kpi-exp-imc', `${formatMean(filteredRecords.map(r => r.imc))} kg/m²`);
+      setPrevalenceEl('kpi-exp-cintura', cinturaRiesgo, recordsWithValue('abd_riesgo').filter(r => r.abd_riesgo !== 'Sin dato').length);
+      setEl('kpi-exp-tas', `${formatMean(filteredRecords.map(r => r.tas), 0)} mmHg`);
+      setEl('kpi-exp-tad', `${formatMean(filteredRecords.map(r => r.tad), 0)} mmHg`);
+      setEl('kpi-exp-sato2', `${formatMean(filteredRecords.map(r => r.sat_o2), 0)} %`);
+      break;
+    }
+    case 'factores-modificables': {
+      const htaCnt = filteredRecords.filter(r => r.hipertension).length;
+      const dlCnt = filteredRecords.filter(r => r.dislipemia).length;
+      const dmCnt = filteredRecords.filter(r => r.diabetes).length;
+      const tabacoCnt = filteredRecords.filter(r => r.fumador_activo).length;
+      const actFisicaCnt = filteredRecords.filter(r => r.actividad_fisica).length;
+      const higadoCnt = filteredRecords.filter(r => r.higado_graso).length;
+      const apneaCnt = filteredRecords.filter(r => r.apnea_sueno).length;
+      const vascCnt = filteredRecords.filter(r => r.vasculopatia_cualquiera).length;
+      const hombres = filteredRecords.filter(r => r.sexo === 'Hombre');
+      const disfuncionCnt = hombres.filter(r => r.disfuncion_erectil).length;
+      setPrevalenceEl('kpi-mod-hta', htaCnt, recordsWithValue('hipertension').filter(r => r['hipertension'] !== 'Sin dato').length);
+      setPrevalenceEl('kpi-mod-dm', dmCnt, recordsWithValue('diabetes').filter(r => r['diabetes'] !== 'Sin dato').length);
+      setPrevalenceEl('kpi-mod-dl', dlCnt, recordsWithValue('dislipemia').filter(r => r['dislipemia'] !== 'Sin dato').length);
+      setPrevalenceEl('kpi-mod-tabaco', tabacoCnt, recordsWithValue('fumador_activo').length);
+      setPrevalenceEl('kpi-mod-act-fisica', actFisicaCnt, recordsWithValue('actividad_fisica').length);
+      setPrevalenceEl('kpi-mod-higado', higadoCnt, recordsWithValue('higado_graso').length);
+      setPrevalenceEl('kpi-mod-apnea', apneaCnt, recordsWithValue('apnea_sueno').length);
+      setPrevalenceEl('kpi-mod-vasculopatia', vascCnt, recordsWithValue('vasculopatia_cualquiera').length);
+      setPrevalenceEl('kpi-mod-disfuncion', disfuncionCnt, hombres.filter(r => r.disfuncion_erectil !== null && r.disfuncion_erectil !== undefined).length, 'solo hombres');
+      break;
+    }
+    case 'factores-emergentes': {
+      const suenoMalo = filteredRecords.filter(r => r.calidad_sueno === 'Mala').length;
+      const estresTot = filteredRecords.filter(r => r.estres && r.estres !== 'Sin dato' && !r.estres.includes('Sin estrés')).length;
+      const malAmb = filteredRecords.filter(r => r.mal_ambiente_laboral).length;
+      const persA = filteredRecords.filter(r => r.personalidad_tipo_a).length;
+      const toxicos = filteredRecords.filter(r => r.toxicos_laboral).length;
+      setPrevalenceEl('kpi-em-sueno-malo', suenoMalo, recordsWithValue('calidad_sueno').filter(r => r.calidad_sueno !== 'Sin dato').length);
+      setPrevalenceEl('kpi-em-estres', estresTot, recordsWithValue('estres').filter(r => r.estres !== 'Sin dato').length);
+      setPrevalenceEl('kpi-em-mal-amb', malAmb, recordsWithValue('mal_ambiente_laboral').filter(r => r['mal_ambiente_laboral'] !== 'Sin dato').length);
+      setPrevalenceEl('kpi-em-pers-a', persA, recordsWithValue('personalidad_tipo_a').filter(r => r['personalidad_tipo_a'] !== 'Sin dato').length);
+      setPrevalenceEl('kpi-em-toxicos', toxicos, recordsWithValue('toxicos_laboral').filter(r => r['toxicos_laboral'] !== 'Sin dato').length);
+      break;
+    }
+    case 'antecedentes-familiares': {
+      const famHta = filteredRecords.filter(r => r.ant_fam_hta).length;
+      const famDm = filteredRecords.filter(r => r.ant_fam_dm).length;
+      const famDlp = filteredRecords.filter(r => r.ant_fam_dlp).length;
+      const famCvMayor = filteredRecords.filter(r => r.ant_fam_cv_mayor).length;
+      const famCualquiera = filteredRecords.filter(r => r.ant_fam_cualquiera).length;
+      setPrevalenceEl('kpi-fam-hta', famHta, recordsWithValue('ant_fam_hta').length);
+      setPrevalenceEl('kpi-fam-dm', famDm, recordsWithValue('ant_fam_dm').length);
+      setPrevalenceEl('kpi-fam-dlp', famDlp, recordsWithValue('ant_fam_dlp').length);
+      setPrevalenceEl('kpi-fam-cv-mayor', famCvMayor, recordsWithValue('ant_fam_cv_mayor').length);
+      setPrevalenceEl('kpi-fam-total', famCualquiera, recordsWithValue('ant_fam_cualquiera').length);
+      break;
+    }
+    case 'historia-no-cardio': {
+      const respCnt = filteredRecords.filter(r => r.asma === true || r.epoc === true).length;
+      const mentalCnt = filteredRecords.filter(r => r.salud_mental_desc && r.salud_mental_desc !== 'Sin dato' && !r.salud_mental_desc.includes('Sin trastorno')).length;
+      const reumaCnt = filteredRecords.filter(r => r.enfermedad_reumatologica).length;
+      const alergiasCnt = filteredRecords.filter(r => r.alergias_medicamentos).length;
+      const cancerCnt = filteredRecords.filter(r => r.cancer).length;
+      const ircCnt = filteredRecords.filter(r => r.insuficiencia_renal).length;
+      setPrevalenceEl('kpi-nc-resp', respCnt, recordsWithValue('respiratorio_desc').filter(r => r['respiratorio_desc'] !== 'Sin dato').length);
+      setPrevalenceEl('kpi-nc-mental', mentalCnt, recordsWithValue('salud_mental_desc').filter(r => r['salud_mental_desc'] !== 'Sin dato').length);
+      setPrevalenceEl('kpi-nc-reuma', reumaCnt, recordsWithValue('enfermedad_reumatologica').filter(r => r['enfermedad_reumatologica'] !== 'Sin dato').length);
+      setPrevalenceEl('kpi-nc-alergias', alergiasCnt, recordsWithValue('alergias_medicamentos').filter(r => r['alergias_medicamentos'] !== 'Sin dato').length);
+      setPrevalenceEl('kpi-nc-cancer', cancerCnt, recordsWithValue('cancer').length);
+      setPrevalenceEl('kpi-nc-irc', ircCnt, recordsWithValue('insuficiencia_renal').length);
+      break;
+    }
+    case 'covid-19': {
+      const covidInf = filteredRecords.filter(r => r.covid_infeccion).length;
+      const covidHosp = filteredRecords.filter(r => r.covid_hospitalizacion).length;
+      const covidSec = filteredRecords.filter(r => r.covid_tiene_secuelas).length;
+      const covidFatiga = filteredRecords.filter(r => r.covid_fatiga_long).length;
+      const covidRecupRows = filteredRecords.filter(r => r.covid_infeccion === true && typeof r.covid_tiene_secuelas === 'boolean');
+      const covidRecup = covidRecupRows.filter(r => r.covid_tiene_secuelas === false).length;
+      setPrevalenceEl('kpi-cov-infeccion', covidInf, recordsWithValue('covid_infeccion').filter(r => r['covid_infeccion'] !== 'Sin dato').length);
+      setPrevalenceEl('kpi-cov-hosp', covidHosp, recordsWithValue('covid_hospitalizacion').filter(r => r['covid_hospitalizacion'] !== 'Sin dato').length);
+      setPrevalenceEl('kpi-cov-secuelas', covidSec, recordsWithValue('covid_tiene_secuelas').filter(r => r['covid_tiene_secuelas'] !== 'Sin dato').length);
+      setPrevalenceEl('kpi-cov-fatiga', covidFatiga, recordsWithValue('covid_fatiga_long').filter(r => r['covid_fatiga_long'] !== 'Sin dato').length);
+      setPrevalenceEl('kpi-cov-recuperados', covidRecup, covidRecupRows.length);
+      setPrevalenceEl('kpi-covid-summary', covidInf, recordsWithValue('covid_infeccion').length);
+      break;
+    }
+    case 'electrocardiograma': {
+      const sinusalCnt = filteredRecords.filter(r => r.ecg_es_sinusal).length;
+      const arritmiaCnt = filteredRecords.filter(r => r.ecg_arritmia).length;
+      setPrevalenceEl('kpi-ecg-sinusal', sinusalCnt, recordsWithValue('ecg_es_sinusal').filter(r => r['ecg_es_sinusal'] !== 'Sin dato').length);
+      setPrevalenceEl('kpi-ecg-arritmia', arritmiaCnt, recordsWithValue('ecg_arritmia').filter(r => r['ecg_arritmia'] !== 'Sin dato').length);
+      setEl('kpi-ecg-pr', `${formatMean(filteredRecords.map(r => r.ecg_pr_ms), 0)} ms`);
+      setEl('kpi-ecg-qrs', `${formatMean(filteredRecords.map(r => r.ecg_qrs_ms), 0)} ms`);
+      setEl('kpi-ecg-qtc', `${formatMean(filteredRecords.map(r => r.ecg_qtc_ms), 0)} ms`);
+      break;
+    }
+  }
+}
 
-  // TAB 2: Exploración Física
-  const cinturaRiesgo = filteredRecords.filter(r => r.abd_riesgo && r.abd_riesgo.includes('Riesgo')).length;
-  setEl('kpi-exp-imc', `${formatMean(filteredRecords.map(r => r.imc))} kg/m²`);
-  setPrevalenceEl('kpi-exp-cintura', cinturaRiesgo, recordsWithValue('abd_riesgo').filter(r => r.abd_riesgo !== 'Sin dato').length);
-  setEl('kpi-exp-tas', `${formatMean(filteredRecords.map(r => r.tas), 0)} mmHg`);
-  setEl('kpi-exp-tad', `${formatMean(filteredRecords.map(r => r.tad), 0)} mmHg`);
-  setEl('kpi-exp-sato2', `${formatMean(filteredRecords.map(r => r.sat_o2), 0)} %`);
-
-  // TAB 3: Factores Modificables
-  const dmCnt = filteredRecords.filter(r => r.diabetes).length;
-  const tabacoCnt = filteredRecords.filter(r => r.fumador_activo).length;
-  const actFisicaCnt = filteredRecords.filter(r => r.actividad_fisica).length;
-  const higadoCnt = filteredRecords.filter(r => r.higado_graso).length;
-  const apneaCnt = filteredRecords.filter(r => r.apnea_sueno).length;
-  const vascCnt = filteredRecords.filter(r => r.vasculopatia_cualquiera).length;
-  const hombres = filteredRecords.filter(r => r.sexo === 'Hombre');
-  const disfuncionCnt = hombres.filter(r => r.disfuncion_erectil).length;
-  setPrevalenceEl('kpi-mod-hta', htaCnt, recordsWithValue('hipertension').filter(r => r['hipertension'] !== 'Sin dato').length);
-  setPrevalenceEl('kpi-mod-dm', dmCnt, recordsWithValue('diabetes').filter(r => r['diabetes'] !== 'Sin dato').length);
-  setPrevalenceEl('kpi-mod-dl', dlCnt, recordsWithValue('dislipemia').filter(r => r['dislipemia'] !== 'Sin dato').length);
-  setPrevalenceEl('kpi-mod-tabaco', tabacoCnt, recordsWithValue('fumador_activo').length);
-  setPrevalenceEl('kpi-mod-act-fisica', actFisicaCnt, recordsWithValue('actividad_fisica').length);
-  setPrevalenceEl('kpi-mod-higado', higadoCnt, recordsWithValue('higado_graso').length);
-  setPrevalenceEl('kpi-mod-apnea', apneaCnt, recordsWithValue('apnea_sueno').length);
-  setPrevalenceEl('kpi-mod-vasculopatia', vascCnt, recordsWithValue('vasculopatia_cualquiera').length);
-  setPrevalenceEl('kpi-mod-disfuncion', disfuncionCnt, hombres.filter(r => r.disfuncion_erectil !== null && r.disfuncion_erectil !== undefined).length, 'solo hombres');
-
-  // TAB 4: Factores Emergentes
-  const suenoMalo = filteredRecords.filter(r => r.calidad_sueno === 'Mala').length;
-  const estresTot = filteredRecords.filter(r => r.estres && r.estres !== 'Sin dato' && !r.estres.includes('Sin estrés')).length;
-  const malAmb = filteredRecords.filter(r => r.mal_ambiente_laboral).length;
-  const persA = filteredRecords.filter(r => r.personalidad_tipo_a).length;
-  const toxicos = filteredRecords.filter(r => r.toxicos_laboral).length;
-  setPrevalenceEl('kpi-em-sueno-malo', suenoMalo, recordsWithValue('calidad_sueno').filter(r => r.calidad_sueno !== 'Sin dato').length);
-  setPrevalenceEl('kpi-em-estres', estresTot, recordsWithValue('estres').filter(r => r.estres !== 'Sin dato').length);
-  setPrevalenceEl('kpi-em-mal-amb', malAmb, recordsWithValue('mal_ambiente_laboral').filter(r => r['mal_ambiente_laboral'] !== 'Sin dato').length);
-  setPrevalenceEl('kpi-em-pers-a', persA, recordsWithValue('personalidad_tipo_a').filter(r => r['personalidad_tipo_a'] !== 'Sin dato').length);
-  setPrevalenceEl('kpi-em-toxicos', toxicos, recordsWithValue('toxicos_laboral').filter(r => r['toxicos_laboral'] !== 'Sin dato').length);
-
-  // TAB 5: Antecedentes Familiares
-  const famHta = filteredRecords.filter(r => r.ant_fam_hta).length;
-  const famDm = filteredRecords.filter(r => r.ant_fam_dm).length;
-  const famDlp = filteredRecords.filter(r => r.ant_fam_dlp).length;
-  const famCvMayor = filteredRecords.filter(r => r.ant_fam_cv_mayor).length;
-  const famCualquiera = filteredRecords.filter(r => r.ant_fam_cualquiera).length;
-  setPrevalenceEl('kpi-fam-hta', famHta, recordsWithValue('ant_fam_hta').length);
-  setPrevalenceEl('kpi-fam-dm', famDm, recordsWithValue('ant_fam_dm').length);
-  setPrevalenceEl('kpi-fam-dlp', famDlp, recordsWithValue('ant_fam_dlp').length);
-  setPrevalenceEl('kpi-fam-cv-mayor', famCvMayor, recordsWithValue('ant_fam_cv_mayor').length);
-  setPrevalenceEl('kpi-fam-total', famCualquiera, recordsWithValue('ant_fam_cualquiera').length);
-
-  // TAB 6: Historia No Cardiovascular
-  const respCnt = filteredRecords.filter(r => r.asma === true || r.epoc === true).length;
-  const mentalCnt = filteredRecords.filter(r => r.salud_mental_desc && r.salud_mental_desc !== 'Sin dato' && !r.salud_mental_desc.includes('Sin trastorno')).length;
-  const reumaCnt = filteredRecords.filter(r => r.enfermedad_reumatologica).length;
-  const alergiasCnt = filteredRecords.filter(r => r.alergias_medicamentos).length;
-  const cancerCnt = filteredRecords.filter(r => r.cancer).length;
-  const ircCnt = filteredRecords.filter(r => r.insuficiencia_renal).length;
-  setPrevalenceEl('kpi-nc-resp', respCnt, recordsWithValue('respiratorio_desc').filter(r => r['respiratorio_desc'] !== 'Sin dato').length);
-  setPrevalenceEl('kpi-nc-mental', mentalCnt, recordsWithValue('salud_mental_desc').filter(r => r['salud_mental_desc'] !== 'Sin dato').length);
-  setPrevalenceEl('kpi-nc-reuma', reumaCnt, recordsWithValue('enfermedad_reumatologica').filter(r => r['enfermedad_reumatologica'] !== 'Sin dato').length);
-  setPrevalenceEl('kpi-nc-alergias', alergiasCnt, recordsWithValue('alergias_medicamentos').filter(r => r['alergias_medicamentos'] !== 'Sin dato').length);
-  setPrevalenceEl('kpi-nc-cancer', cancerCnt, recordsWithValue('cancer').length);
-  setPrevalenceEl('kpi-nc-irc', ircCnt, recordsWithValue('insuficiencia_renal').length);
-
-  // TAB 7: COVID-19 y Secuelas
-  const covidInf = filteredRecords.filter(r => r.covid_infeccion).length;
-  const covidHosp = filteredRecords.filter(r => r.covid_hospitalizacion).length;
-  const covidSec = filteredRecords.filter(r => r.covid_tiene_secuelas).length;
-  const covidFatiga = filteredRecords.filter(r => r.covid_fatiga_long).length;
-  const covidRecupRows = filteredRecords.filter(r => r.covid_infeccion === true && typeof r.covid_tiene_secuelas === 'boolean');
-  const covidRecup = covidRecupRows.filter(r => r.covid_tiene_secuelas === false).length;
-  setPrevalenceEl('kpi-cov-infeccion', covidInf, recordsWithValue('covid_infeccion').filter(r => r['covid_infeccion'] !== 'Sin dato').length);
-  setPrevalenceEl('kpi-cov-hosp', covidHosp, recordsWithValue('covid_hospitalizacion').filter(r => r['covid_hospitalizacion'] !== 'Sin dato').length);
-  setPrevalenceEl('kpi-cov-secuelas', covidSec, recordsWithValue('covid_tiene_secuelas').filter(r => r['covid_tiene_secuelas'] !== 'Sin dato').length);
-  setPrevalenceEl('kpi-cov-fatiga', covidFatiga, recordsWithValue('covid_fatiga_long').filter(r => r['covid_fatiga_long'] !== 'Sin dato').length);
-  setPrevalenceEl('kpi-cov-recuperados', covidRecup, covidRecupRows.length);
-  setPrevalenceEl('kpi-covid-summary', covidInf, recordsWithValue('covid_infeccion').length);
-
-  // TAB 8: Electrocardiograma (ECG)
-  const sinusalCnt = filteredRecords.filter(r => r.ecg_es_sinusal).length;
-  const arritmiaCnt = filteredRecords.filter(r => r.ecg_arritmia).length;
-  setPrevalenceEl('kpi-ecg-sinusal', sinusalCnt, recordsWithValue('ecg_es_sinusal').filter(r => r['ecg_es_sinusal'] !== 'Sin dato').length);
-  setPrevalenceEl('kpi-ecg-arritmia', arritmiaCnt, recordsWithValue('ecg_arritmia').filter(r => r['ecg_arritmia'] !== 'Sin dato').length);
-  setEl('kpi-ecg-pr', `${formatMean(filteredRecords.map(r => r.ecg_pr_ms), 0)} ms`);
-  setEl('kpi-ecg-qrs', `${formatMean(filteredRecords.map(r => r.ecg_qrs_ms), 0)} ms`);
-  setEl('kpi-ecg-qtc', `${formatMean(filteredRecords.map(r => r.ecg_qtc_ms), 0)} ms`);
+// Actualiza todos los valores de las tarjetas KPI en todas las pestañas (usado por exportaciones globales)
+function updateAllKPIs() {
+  const tabs = [
+    'resumen-general', 'datos-individuo', 'exploracion-fisica',
+    'factores-modificables', 'factores-emergentes', 'antecedentes-familiares',
+    'historia-no-cardio', 'covid-19', 'electrocardiograma'
+  ];
+  tabs.forEach(t => updateActiveTabKPIs(t));
 }
 
 // Despachador de renderizado por pestaña activa

@@ -72,6 +72,12 @@ async function startExport() {
   };
 
   try {
+    if (scope === 'all') {
+      if (typeof updateAllKPIs === 'function') updateAllKPIs();
+      if (Array.isArray(DASHBOARD_TABS) && typeof renderTabCharts === 'function') {
+        DASHBOARD_TABS.forEach(t => renderTabCharts(t.id));
+      }
+    }
     if (format === 'image') {
       await exportImage(scope, setProgress);
     } else if (format === 'pptx') {

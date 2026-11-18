@@ -6,6 +6,14 @@
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'dashboard/css/dashboard.css' %}?v=20261117_v01">
   <style>
+    /* Garantizar que solo la pestaña activa sea visible de inmediato sin cargar todas a la vez */
+    .tab-view:not(.active) {
+      display: none !important;
+    }
+    .tab-view.active {
+      display: flex !important;
+      flex-direction: column !important;
+    }
     /* Estilos embebidos de alta prioridad para Botón y Modal de Exportación */
     .btn-export-dashboard {
       background: #FFFFFF !important;
@@ -590,7 +598,8 @@
       {% include 'dashboard/sections/covid-19.html' %}
 
       {% include 'dashboard/sections/electrocardiograma.html' %}
-      </main>
+    </div>
+  </main>
 
   <!-- Widget Flotante del Chatbot Asistente -->
   {% include "chatbot/widget.html" %}
