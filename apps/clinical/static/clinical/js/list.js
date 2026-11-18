@@ -12,45 +12,51 @@ const seleccionados = new Set();
 let columnaOrdenActual = 'codigo';
 let direccionOrdenActual = 'asc';
 
-// Paginación: 20 pacientes por página
+// Paginación: 20 pacientes por página (carga bajo demanda por página)
 const PACIENTES_POR_PAGINA = 20;
 let paginaActual = 1;
+let totalPacientesServidor = 0;
+let cargandoPacientes = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Listeners de búsqueda y filtros (resetean a la página 1)
+  // Listeners de búsqueda y filtros con recarga bajo demanda
+  let debounceBusqueda = null;
   const filtroBusqueda = document.getElementById('filtroBusqueda');
   if (filtroBusqueda) {
     filtroBusqueda.addEventListener('input', () => {
-      paginaActual = 1;
-      renderPacientesTabla();
+      clearTimeout(debounceBusqueda);
+      debounceBusqueda = setTimeout(() => {
+        paginaActual = 1;
+        cargarYRenderizarPacientes();
+      }, 250);
     });
   }
   const filtroInst = document.getElementById('filtroInstitucion');
   if (filtroInst) {
     filtroInst.addEventListener('change', () => {
       paginaActual = 1;
-      renderPacientesTabla();
+      cargarYRenderizarPacientes();
     });
   }
   const filtroAnio = document.getElementById('filtroAnio');
   if (filtroAnio) {
     filtroAnio.addEventListener('change', () => {
       paginaActual = 1;
-      renderPacientesTabla();
+      cargarYRenderizarPacientes();
     });
   }
   const filtroEst = document.getElementById('filtroEstamento');
   if (filtroEst) {
     filtroEst.addEventListener('change', () => {
       paginaActual = 1;
-      renderPacientesTabla();
+      cargarYRenderizarPacientes();
     });
   }
   const filtroSex = document.getElementById('filtroSexo');
   if (filtroSex) {
     filtroSex.addEventListener('change', () => {
       paginaActual = 1;
-      renderPacientesTabla();
+      cargarYRenderizarPacientes();
     });
   }
   const ordenarEl = document.getElementById('ordenarPor');
@@ -80,26 +86,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Modal compartido "Nuevo Paciente"
   montarModalAgregarPaciente((nuevoPaciente) => {
-    actualizarOpcionesFiltrosDinamicos();
-    renderPacientesTabla();
+    paginaActual = 1;
+    cargarYRenderizarPacientes();
     window.location.assign(`/clinical/formulario/?paciente=${encodeURIComponent(nuevoPaciente.id)}`);
   });
-
-  // Cargar cohorte real desde base de datos PostgreSQL (HU-15)
-  await cargarPacientesDesdeServidor();
-  actualizarOpcionesFiltrosDinamicos();
 
   // Si la URL contiene ?paciente=<id>, filtrar en el buscador del listado sin bucle de redirección
   const params = new URLSearchParams(window.location.search);
   const idPacienteUrl = params.get('paciente');
   if (idPacienteUrl) {
-    const pacienteEncontrado = pacientes.find(p => p.id === idPacienteUrl);
     const filtroInp = document.getElementById('filtroBusqueda');
-    if (pacienteEncontrado && filtroInp) {
-      filtroInp.value = pacienteEncontrado.codigo || pacienteEncontrado.nombre;
+    if (filtroInp) {
+      filtroInp.value = idPacienteUrl;
     }
   }
-  renderPacientesTabla();
+
+  // Cargar primera página (únicamente los 20 pacientes visibles) desde PostgreSQL
+  await cargarYRenderizarPacientes();
 
   // Cerrar modales con Escape
   document.addEventListener('keydown', (e) => {
@@ -473,39 +476,99 @@ function actualizarIconosOrdenCabeceras() {
 }
 
 // =========================================================================
-// RENDERIZADO DE TABLA Y ESTADÍSTICAS
+// OBTENCIÓN Y CARGA BAJO DEMANDA DE PACIENTES POR PÁGINA (PAGINACIÓN REAL)
 // =========================================================================
 
-function renderPacientesTabla() {
-  const tbody = document.getElementById('pacientesTbody');
-  const emptyMsg = document.getElementById('tablaVaciaMensaje');
-  const filtrados = obtenerPacientesFiltrados();
+function obtenerParametrosFiltro() {
+  const filtroBusqueda = document.getElementById('filtroBusqueda');
+  const filtroInst = document.getElementById('filtroInstitucion');
+  const filtroAnio = document.getElementById('filtroAnio');
+  const filtroEst = document.getElementById('filtroEstamento');
+  const filtroSex = document.getElementById('filtroSexo');
+  const ordenarEl = document.getElementById('ordenarPor');
 
-  tbody.innerHTML = '';
-  actualizarIconosOrdenCabeceras();
-  actualizarStatsCards();
+  const q = filtroBusqueda ? filtroBusqueda.value.trim() : '';
+  const institucion = (filtroInst && filtroInst.value !== 'all') ? filtroInst.value.trim() : '';
+  const anio = (filtroAnio && filtroAnio.value !== 'all') ? filtroAnio.value.trim() : '';
+  const estamento = (filtroEst && filtroEst.value !== 'all') ? filtroEst.value.trim() : '';
+  const sexo = (filtroSex && filtroSex.value !== 'all') ? filtroSex.value.trim() : '';
 
-  const totalItems = filtrados.length;
-  const totalPaginas = Math.ceil(totalItems / PACIENTES_POR_PAGINA) || 1;
-
-  if (paginaActual > totalPaginas) paginaActual = totalPaginas;
-  if (paginaActual < 1) paginaActual = 1;
-
-  if (totalItems === 0) {
-    emptyMsg.classList.remove('oculto');
-  } else {
-    emptyMsg.classList.add('oculto');
-    const inicio = (paginaActual - 1) * PACIENTES_POR_PAGINA;
-    const fin = inicio + PACIENTES_POR_PAGINA;
-    const pacientesPagina = filtrados.slice(inicio, fin);
-
-    pacientesPagina.forEach(p => {
-      tbody.appendChild(crearFilaPaciente(p));
-    });
+  let ordenar_por = columnaOrdenActual;
+  let direccion = direccionOrdenActual;
+  if (ordenarEl && ordenarEl.value) {
+    const trozos = ordenarEl.value.split('_');
+    if (trozos.length === 2) {
+      ordenar_por = trozos[0];
+      direccion = trozos[1];
+    }
   }
 
-  actualizarControlesPaginacion(totalItems, totalPaginas);
-  actualizarEstadoSeleccion(filtrados);
+  const params = {
+    page: paginaActual,
+    page_size: PACIENTES_POR_PAGINA,
+    ordenar_por: ordenar_por,
+    direccion: direccion
+  };
+  if (q) params.q = q;
+  if (institucion) params.institucion = institucion;
+  if (anio) params.anio = anio;
+  if (estamento) params.estamento = estamento;
+  if (sexo) params.sexo = sexo;
+
+  return params;
+}
+
+async function cargarYRenderizarPacientes() {
+  if (cargandoPacientes) return;
+  cargandoPacientes = true;
+
+  const tbody = document.getElementById('pacientesTbody');
+  const emptyMsg = document.getElementById('tablaVaciaMensaje');
+  if (tbody) {
+    tbody.style.opacity = '0.5';
+  }
+
+  const params = obtenerParametrosFiltro();
+  try {
+    const data = await cargarPacientesDesdeServidor(params);
+    cargandoPacientes = false;
+    if (tbody) tbody.style.opacity = '1';
+
+    if (!data.success) {
+      if (emptyMsg) emptyMsg.classList.remove('oculto');
+      return;
+    }
+
+    pacientes = data.pacientes || [];
+    totalPacientesServidor = typeof data.total === 'number' ? data.total : pacientes.length;
+
+    const totalPaginas = data.total_pages || Math.ceil(totalPacientesServidor / PACIENTES_POR_PAGINA) || 1;
+    if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+
+    if (tbody) tbody.innerHTML = '';
+    actualizarIconosOrdenCabeceras();
+    actualizarStatsCards();
+
+    if (pacientes.length === 0) {
+      if (emptyMsg) emptyMsg.classList.remove('oculto');
+    } else {
+      if (emptyMsg) emptyMsg.classList.add('oculto');
+      pacientes.forEach(p => {
+        tbody.appendChild(crearFilaPaciente(p));
+      });
+    }
+
+    actualizarControlesPaginacion(totalPacientesServidor, totalPaginas);
+    actualizarEstadoSeleccion(pacientes);
+  } catch (err) {
+    cargandoPacientes = false;
+    if (tbody) tbody.style.opacity = '1';
+    console.error('Error al cargar pacientes bajo demanda:', err);
+  }
+}
+
+function renderPacientesTabla() {
+  return cargarYRenderizarPacientes();
 }
 
 function actualizarControlesPaginacion(totalItems, totalPaginas) {
@@ -539,31 +602,54 @@ function actualizarControlesPaginacion(totalItems, totalPaginas) {
 
   if (numCont) {
     numCont.innerHTML = '';
-    for (let i = 1; i <= totalPaginas; i++) {
-      const btnNum = document.createElement('button');
-      btnNum.type = 'button';
-      btnNum.className = `btn-pag-num ${i === paginaActual ? 'activa' : ''}`;
-      btnNum.textContent = i;
-      btnNum.title = `Ir a página ${i}`;
-      btnNum.onclick = () => cambiarPagina(i);
-      numCont.appendChild(btnNum);
+    const paginas = [];
+    if (totalPaginas <= 7) {
+      for (let i = 1; i <= totalPaginas; i++) paginas.push(i);
+    } else {
+      paginas.push(1);
+      if (paginaActual > 3) paginas.push('...');
+      const inicioV = Math.max(2, paginaActual - 1);
+      const finV = Math.min(totalPaginas - 1, paginaActual + 1);
+      for (let i = inicioV; i <= finV; i++) paginas.push(i);
+      if (paginaActual < totalPaginas - 2) paginas.push('...');
+      paginas.push(totalPaginas);
     }
+
+    paginas.forEach(p => {
+      if (p === '...') {
+        const span = document.createElement('span');
+        span.className = 'pag-ellipsis';
+        span.textContent = '...';
+        span.style.padding = '0 6px';
+        span.style.color = '#94a3b8';
+        span.style.fontWeight = '700';
+        numCont.appendChild(span);
+      } else {
+        const btnNum = document.createElement('button');
+        btnNum.type = 'button';
+        btnNum.className = `btn-pag-num ${p === paginaActual ? 'activa' : ''}`;
+        btnNum.textContent = p;
+        btnNum.title = `Ir a página ${p}`;
+        btnNum.onclick = () => cambiarPagina(p);
+        numCont.appendChild(btnNum);
+      }
+    });
   }
 }
 
 function cambiarPagina(nuevaPagina) {
-  const filtrados = obtenerPacientesFiltrados();
-  const totalPaginas = Math.ceil(filtrados.length / PACIENTES_POR_PAGINA) || 1;
-  if (nuevaPagina < 1 || nuevaPagina > totalPaginas) return;
+  const totalPaginas = Math.ceil(totalPacientesServidor / PACIENTES_POR_PAGINA) || 1;
+  if (nuevaPagina < 1 || nuevaPagina > totalPaginas || nuevaPagina === paginaActual) return;
   paginaActual = nuevaPagina;
-  renderPacientesTabla();
+  cargarYRenderizarPacientes();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function actualizarStatsCards() {
-  const totalPacientes = pacientes.length;
   const elTotalP = document.getElementById('statTotalPacientes');
-  if (elTotalP) elTotalP.textContent = totalPacientes;
+  if (elTotalP && typeof totalPacientesServidor === 'number') {
+    elTotalP.textContent = totalPacientesServidor;
+  }
 }
 
 function formatearFechaLegible(fechaStr) {
@@ -662,8 +748,7 @@ function toggleSeleccion(id, marcado) {
   } else {
     seleccionados.delete(id);
   }
-  const filtrados = obtenerPacientesFiltrados();
-  actualizarEstadoSeleccion(filtrados);
+  actualizarEstadoSeleccion(pacientes);
 
   const row = document.querySelector(`input[data-id="${id}"]`)?.closest('tr');
   if (row) {
@@ -672,24 +757,31 @@ function toggleSeleccion(id, marcado) {
 }
 
 function toggleSeleccionarTodos(marcarTodos) {
-  const filtrados = obtenerPacientesFiltrados();
-  filtrados.forEach(p => {
+  (pacientes || []).forEach(p => {
     if (marcarTodos) {
       seleccionados.add(p.id);
     } else {
       seleccionados.delete(p.id);
     }
   });
-  renderPacientesTabla();
+  const tbody = document.getElementById('pacientesTbody');
+  if (tbody) {
+    tbody.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.checked = marcarTodos;
+      cb.closest('tr')?.classList.toggle('seleccionada', marcarTodos);
+    });
+  }
+  actualizarEstadoSeleccion(pacientes);
 }
 
-function actualizarEstadoSeleccion(filtrados) {
-  const marcadosVisibles = filtrados.filter(p => seleccionados.has(p.id)).length;
+function actualizarEstadoSeleccion(lista = pacientes) {
+  const arr = Array.isArray(lista) ? lista : (pacientes || []);
+  const marcadosVisibles = arr.filter(p => seleccionados.has(p.id)).length;
   const checkTodosTop = document.getElementById('seleccionarTodos');
   const checkTodosTabla = document.getElementById('seleccionarTodosTabla');
 
-  const esCompleto = filtrados.length > 0 && marcadosVisibles === filtrados.length;
-  const esIndeterminado = marcadosVisibles > 0 && marcadosVisibles < filtrados.length;
+  const esCompleto = arr.length > 0 && marcadosVisibles === arr.length;
+  const esIndeterminado = marcadosVisibles > 0 && marcadosVisibles < arr.length;
 
   if (checkTodosTop) {
     checkTodosTop.checked = esCompleto;
@@ -735,7 +827,7 @@ function actualizarEstadoSeleccion(filtrados) {
 
   const countEl = document.getElementById('formulariosCount');
   if (countEl) {
-    let texto = `Mostrando ${filtrados.length} de ${pacientes.length} pacientes`;
+    let texto = `Mostrando ${arr.length} de ${totalPacientesServidor || arr.length} pacientes`;
     if (seleccionados.size > 0) {
       texto += ` · ${seleccionados.size} seleccionado(s)`;
     }

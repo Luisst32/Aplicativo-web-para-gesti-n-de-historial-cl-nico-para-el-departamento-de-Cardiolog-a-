@@ -346,30 +346,55 @@ def patient_list_api(request):
             qs = qs.filter(sex__name__istartswith='M')
 
     # Sorting
-    ordenar_por = request.GET.get('ordenar_por', 'codigo').strip().lower()
-    direccion = request.GET.get('direccion', 'asc').strip().lower()
-    prefix = '' if direccion == 'asc' else '-'
+    ordenar_param = request.GET.get('ordenar_por', 'codigo').strip().lower()
+    direccion = request.GET.get('direccion', '').strip().lower()
+    if '_' in ordenar_param and not direccion:
+        parts = ordenar_param.rsplit('_', 1)
+        ordenar_por = parts[0]
+        direccion = parts[1]
+    else:
+        ordenar_por = ordenar_param
+        if not direccion:
+            direccion = 'asc'
+
+    from django.db.models.functions import Length
+    from django.db.models import F
 
     if ordenar_por == 'nombre':
-        qs = qs.order_by(f"{prefix}first_names", f"{prefix}last_name1", "patient_id")
+        prefix = '' if direccion == 'asc' else '-'
+        qs = qs.order_by(f"{prefix}first_names", f"{prefix}last_name1", f"{prefix}last_name2", "patient_id")
     elif ordenar_por == 'fecha':
-        qs = qs.order_by(f"{prefix}visit__visit_date", "patient_id")
+        prefix = '' if direccion == 'asc' else '-'
+        qs = qs.order_by(f"{prefix}visit__visit_date", f"{prefix}patient_id")
     elif ordenar_por == 'codigo':
-        qs = qs.order_by(f"{prefix}patient_id")
+        if direccion == 'desc':
+            qs = qs.order_by(Length('visit__study_code').desc(), F('visit__study_code').desc(), '-patient_id')
+        else:
+            qs = qs.order_by(Length('visit__study_code').asc(), F('visit__study_code').asc(), 'patient_id')
     else:
-        qs = qs.order_by(f"{prefix}patient_id")
+        qs = qs.order_by('patient_id')
 
     try:
         page = int(request.GET.get('page', 1))
-        size = int(request.GET.get('page_size', 100))
+        size = int(request.GET.get('page_size', 20))
         if page < 1 or not 1 <= size <= 200:
             raise ValueError
     except ValueError:
         return JsonResponse({'success': False, 'error': 'Paginacion invalida.'}, status=400)
     total = qs.count()
-    pacientes_list = [_patient_to_dict(p) for p in qs[(page-1)*size:page*size]]
-    return JsonResponse({'success': True, 'total': total, 'pacientes': pacientes_list,
-                         'next_page': page+1 if page*size < total else None})
+    start = (page - 1) * size
+    end = page * size
+    pacientes_list = [_patient_to_dict(p) for p in qs[start:end]]
+    return JsonResponse({
+        'success': True,
+        'total': total,
+        'page': page,
+        'page_size': size,
+        'total_pages': max(1, (total + size - 1) // size),
+        'pacientes': pacientes_list,
+        'next_page': page + 1 if end < total else None,
+        'prev_page': page - 1 if page > 1 else None
+    })
 
 
 

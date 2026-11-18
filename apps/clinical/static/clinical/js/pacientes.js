@@ -13,25 +13,19 @@ let pacientes = [];
 async function cargarPacientesDesdeServidor(filtros = {}) {
   try {
     const params = new URLSearchParams(filtros);
-    const collected = [];
-    let page = 1;
-    do {
-      params.set('page', page);
-      const resp = await fetch(`/clinical/api/pacientes/?${params.toString()}`);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      if (!data.success || !Array.isArray(data.pacientes)) throw new Error('Respuesta invalida');
-      collected.push(...data.pacientes);
-      page = data.next_page;
-    } while (page);
-    pacientes = collected;
-    if (typeof actualizarOpcionesFiltrosDinamicos === 'function') {
-      actualizarOpcionesFiltrosDinamicos();
-    }
-    return pacientes;
+    if (!params.has('page')) params.set('page', 1);
+    if (!params.has('page_size')) params.set('page_size', 20);
+
+    const resp = await fetch(`/clinical/api/pacientes/?${params.toString()}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (!data.success || !Array.isArray(data.pacientes)) throw new Error('Respuesta inválida');
+
+    pacientes = data.pacientes;
+    return data;
   } catch (err) {
     console.error('Error al cargar pacientes desde el servidor:', err);
-    return [];
+    return { success: false, total: 0, pacientes: [] };
   }
 }
 
