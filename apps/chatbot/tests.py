@@ -205,6 +205,45 @@ class ChatbotSecurityAndPrivacyTests(TestCase):
         self.assertIn('Depresión', chart)
         self.assertNotIn('Riesgo Cardiovascular', chart)
 
+    @patch('chatbot.services.get_dashboard_evaluation_data')
+    def test_universal_chart_mapper_single_condition(self, mock_data):
+        mock_data.return_value = {
+            'records': [{'higado_graso': True}] * 10 + [{'higado_graso': False}] * 10
+        }
+        chart = build_chart_json_if_requested('grafica de higado graso')
+        self.assertIsNotNone(chart)
+        self.assertIn('Hígado Graso (Esteatosis Hepática)', chart)
+        self.assertIn('Con Hígado Graso', chart)
+
+    @patch('chatbot.services.get_dashboard_evaluation_data')
+    def test_universal_chart_mapper_cross_tab_sexo(self, mock_data):
+        mock_data.return_value = {
+            'records': [
+                {'sexo': 'Hombre', 'hipertension': True},
+                {'sexo': 'Hombre', 'hipertension': False},
+                {'sexo': 'Mujer', 'hipertension': True},
+                {'sexo': 'Mujer', 'hipertension': False},
+            ]
+        }
+        chart = build_chart_json_if_requested('grafica de hipertension por sexo')
+        self.assertIsNotNone(chart)
+        self.assertIn('Prevalencia de Hipertensión Arterial por Sexo (%)', chart)
+        self.assertIn('Hombres', chart)
+        self.assertIn('Mujeres', chart)
+
+    @patch('chatbot.services.get_dashboard_evaluation_data')
+    def test_universal_chart_mapper_scatter(self, mock_data):
+        mock_data.return_value = {
+            'records': [
+                {'edad': 45, 'tas': 130, 'imc': 26.5},
+                {'edad': 55, 'tas': 145, 'imc': 31.0},
+            ]
+        }
+        chart = build_chart_json_if_requested('grafica de dispersion de edad vs tas')
+        self.assertIsNotNone(chart)
+        self.assertIn('"type": "scatter"', chart)
+        self.assertIn('Dispersión Edad vs TAS', chart)
+
     def test_bulk_or_update_cache_invalidation(self):
         """Verifica que invalidate_cohort_cache elimine las claves del caché compartido."""
         cache.set(COHORT_SUMMARY_CACHE_KEY, "datos de cohorte en caché", timeout=300)

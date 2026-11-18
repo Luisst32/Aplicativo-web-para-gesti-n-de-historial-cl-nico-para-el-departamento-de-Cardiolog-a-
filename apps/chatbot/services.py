@@ -347,16 +347,27 @@ def get_anonymized_cohort_context() -> str:
 
 def build_chart_json_if_requested(question: str, raw_response: Optional[str] = None) -> Optional[str]:
     """
+    Mapeador Universal de Gráficas Clínicas:
     Genera un bloque json_chart estructurado garantizando 100% DATOS REALES extraídos
-    directamente de la base de datos de pacientes (N=59 / N=58).
-    Soporta tipos: 'scatter', 'pie' y 'bar'.
+    directamente de la cohorte institucional de pacientes (CARDIOUNEMI).
+    Soporta:
+    - Gráficos de dispersión (scatter): cualquier par de variables numéricas reales (TAS, TAD, IMC, Edad, Peso, Talla, FC, Cintura).
+    - Gráficos de pastel (pie / doughnut): cualquier distribución categórica o condición binaria de la cohorte.
+    - Gráficos de barras (bar):
+      * Variables categóricas individuales (Sexo, Grupos de Edad, Categorías de Personal, IMC, PA, Riesgo, Estrés, Alcohol, etc.)
+      * Condiciones clínicas individuales (Hígado Graso, Hipertensión, Diabetes, Dislipemia, Tabaquismo, COVID-19, etc.)
+      * Dominios multivariables (Factores Modificables, Secuelas Long-COVID, Hallazgos ECG, Antecedentes Familiares, Salud Mental, Comorbilidades)
+      * Tabulaciones cruzadas dinámicas (ej: "hipertensión por sexo", "hígado graso por categoría", "fumadores por grupo de edad")
     """
-    q = question.lower()
+    q_raw = question.lower()
+    q = normalize_clinical_query(question)
     chart_keywords = [
         'grafic', 'gráfico', 'grafico', 'grafica', 'barra', 'barras',
-        'pastel', 'pie', 'torta', 'circular', 'dispersion', 'dispersión', 'scatter', 'puntos'
+        'pastel', 'pie', 'torta', 'circular', 'dona', 'doughnut',
+        'dispersion', 'dispersión', 'scatter', 'puntos', 'correlaci',
+        'distribucion', 'distribución'
     ]
-    has_keyword = any(k in q for k in chart_keywords)
+    has_keyword = any(k in q_raw for k in chart_keywords)
     has_gemini_chart = bool(raw_response and '```json_chart' in raw_response)
 
     if not has_keyword and not has_gemini_chart:
@@ -373,195 +384,434 @@ def build_chart_json_if_requested(question: str, raw_response: Optional[str] = N
     if not records:
         return None
 
-    # Do not replace a requested depression/anxiety chart with the generic
-    # cardiovascular-risk chart.
-    if re.search(r'\b(depresion|depresiv[oa]s?|ansiedad|salud\s+mental)\b', normalize_clinical_query(question)):
-        mental_values = [
-            ('Depresión', sum(1 for record in records if record.get('depresion'))),
-            ('Ansiedad', sum(1 for record in records if record.get('ansiedad'))),
-        ]
-        chart_obj = {
-            'type': 'bar',
-            'title': f'Salud mental en la cohorte (n = {total_pacientes})',
-            'labels': [label for label, _ in mental_values],
-            'data': [value for _, value in mental_values],
-            'unit': 'pacientes',
-        }
-        return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
+    # Detectar formato deseado
+    is_scatter = any(k in q for k in ['disperci', 'dispersion', 'scatter', 'punto', 'puntos', 'nube', 'correlaci', ' vs ', ' contra ']) or bool(raw_response and '"type": "scatter"' in raw_response)
+    is_pie = any(k in q for k in ['pastel', 'pie', 'torta', 'circular', 'dona', 'doughnut']) or bool(raw_response and '"type": "pie"' in raw_response)
 
-    # Detectar tipo de gráfico preferido con tolerancia ortográfica (disperción, dispersión, correlación, etc.)
-    is_scatter = any(k in q for k in ['disperci', 'dispersion', 'dispersión', 'scatter', 'punto', 'puntos', 'nube', 'correlaci']) or bool(raw_response and '"type": "scatter"' in raw_response)
-    is_pie = any(k in q for k in ['pastel', 'pie', 'torta', 'circular']) or bool(raw_response and '"type": "pie"' in raw_response)
-
-    # 1. GRÁFICO DE DISPERSIÓN (SCATTER) CON PUNTOS REALES DE PACIENTES
+    # -------------------------------------------------------------
+    # 1. SCATTER (DISPERSIÓN) ENTRE DOS VARIABLES NUMÉRICAS
+    # -------------------------------------------------------------
     if is_scatter:
-        is_high_risk = any(w in q for w in ['alto', 'muy alto', 'riesgo', 'riengo', 'problema', 'cardiac', 'cardiovascul', 'peligro'])
+        num_map = {
+            'tas': ('TAS', 'Tensión Arterial Sistólica (mmHg)', lambda r: r.get('tas')),
+            'tad': ('TAD', 'Tensión Arterial Diastólica (mmHg)', lambda r: r.get('tad')),
+            'imc': ('IMC', 'Índice de Masa Corporal (kg/m²)', lambda r: r.get('imc')),
+            'edad': ('Edad', 'Edad (años)', lambda r: r.get('edad')),
+            'peso': ('Peso', 'Peso (kg)', lambda r: r.get('peso')),
+            'talla': ('Talla', 'Talla (cm)', lambda r: r.get('talla')),
+            'fc': ('FC', 'Frecuencia Cardíaca (lpm)', lambda r: r.get('fc')),
+            'perimetro': ('Cintura', 'Perímetro Abdominal (cm)', lambda r: r.get('perimetro_abdominal')),
+        }
+        found_matches = []
+        patterns = [
+            ('tas', r'\b(tas|sistolica|presion\s+sistolica)\b'),
+            ('tad', r'\b(tad|diastolica|presion\s+diastolica)\b'),
+            ('imc', r'\b(imc|masa\s+corporal|indice\s+de\s+masa)\b'),
+            ('edad', r'\b(edad|anos?)\b'),
+            ('peso', r'\b(peso|kilos?|kg)\b'),
+            ('talla', r'\b(talla|estatura|altura|cm)\b'),
+            ('fc', r'\b(fc|frecuencia|pulso|latidos)\b'),
+            ('perimetro', r'\b(cintura|perimetro|abdomen)\b'),
+        ]
+        for v_key, v_pat in patterns:
+            m = re.search(v_pat, q)
+            if m:
+                found_matches.append((m.start(), v_key))
 
-        if is_high_risk:
-            target_records = [
-                r for r in records
-                if 'Alto' in r.get('riesgo_global', '') or r.get('factores_riesgo_count', 0) >= 2
-            ]
-            subtitulo = "Alto/Muy Alto Riesgo"
+        found_matches.sort(key=lambda x: x[0])
+        found_vars = [k for _, k in found_matches]
+
+        # Fallbacks si solo se detectó una o ninguna
+        if len(found_vars) >= 2:
+            var_x_key, var_y_key = found_vars[0], found_vars[1]
+        elif len(found_vars) == 1:
+            var_x_key = found_vars[0]
+            var_y_key = 'tas' if var_x_key != 'tas' else 'imc'
         else:
-            target_records = records
-            subtitulo = "Cohorte CARDIOUNEMI"
+            var_x_key, var_y_key = 'tas', 'imc'
 
-        is_edad_x = 'edad' in q
-        is_tas_y = is_edad_x and ('tas' in q or 'presi' in q)
+        name_x, lbl_x, fn_x = num_map[var_x_key]
+        name_y, lbl_y, fn_y = num_map[var_y_key]
 
         points = []
-        for i, r in enumerate(target_records):
-            x_val = r.get('edad') if is_edad_x else r.get('tas')
-            y_val = r.get('tas') if is_tas_y else r.get('imc')
-            if x_val and y_val and float(x_val) > 0 and float(y_val) > 0:
-                p_code = r.get('codigo_estudio') or r.get('id') or f"{i+1}"
-                points.append({
-                    "x": round(float(x_val), 1),
-                    "y": round(float(y_val), 1),
-                    "name": f"Caso {p_code}"
-                })
-
-        x_lbl = "Edad (años)" if is_edad_x else "Tensión Arterial Sistólica (mmHg)"
-        y_lbl = "Tensión Arterial Sistólica (mmHg)" if is_tas_y else "Índice de Masa Corporal (kg/m²)"
+        for i, r in enumerate(records):
+            vx, vy = fn_x(r), fn_y(r)
+            try:
+                if vx is not None and vy is not None and float(vx) > 0 and float(vy) > 0:
+                    p_code = r.get('study_code') or r.get('codigo_estudio') or r.get('id') or f"{i+1}"
+                    points.append({
+                        "x": round(float(vx), 1),
+                        "y": round(float(vy), 1),
+                        "name": f"Caso {p_code}"
+                    })
+            except (ValueError, TypeError):
+                continue
 
         min_x = min([p['x'] for p in points]) if points else 0
         max_x = max([p['x'] for p in points]) if points else 0
         min_y = min([p['y'] for p in points]) if points else 0
         max_y = max([p['y'] for p in points]) if points else 0
 
-        v_x = "Edad" if is_edad_x else "TAS"
-        v_y = "TAS" if is_tas_y else "IMC"
-
         chart_obj = {
             "type": "scatter",
-            "title": f"Dispersión {v_x} vs {v_y} en Pacientes de {subtitulo} (n = {len(points)})",
+            "title": f"Dispersión {name_x} vs {name_y} en la Cohorte (n = {len(points)})",
             "points": points,
-            "xLabel": x_lbl,
-            "yLabel": y_lbl,
+            "xLabel": lbl_x,
+            "yLabel": lbl_y,
             "annotation": f"Datos 100% reales de la cohorte institucional (n = {len(points)}). Rango X: {min_x} - {max_x}, Rango Y: {min_y} - {max_y}."
         }
         return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
 
-    # 2. GRÁFICO DE PASTEL / PIE / CIRCULAR CON CONTEOS REALES
-    if is_pie:
-        if any(w in q for w in ['sexo', 'género', 'genero', 'hombre', 'mujer']):
-            hombres = sum(1 for r in records if r.get('sexo') == 'Hombre')
-            mujeres = sum(1 for r in records if r.get('sexo') == 'Mujer')
+    # -------------------------------------------------------------
+    # 2. CRUCES DE VARIABLES (TABULACIÓN CRUZADA DINÁMICA)
+    # Detecta: <Condición Clínica> [por/segun/en] <Agrupador>
+    # -------------------------------------------------------------
+    group_var = None
+    if re.search(r'\b(por\s+sexo|segun\s+sexo|en\s+hombres\s+y\s+mujeres|por\s+genero)\b', q):
+        group_var = 'sexo'
+    elif re.search(r'\b(por\s+categoria|segun\s+categoria|por\s+estamento|en\s+docentes\s+y\s+administrativos|por\s+personal)\b', q):
+        group_var = 'categoria'
+    elif re.search(r'\b(por\s+edad|por\s+grupo\s+de\s+edad|por\s+rango\s+de\s+edad|segun\s+edad)\b', q):
+        group_var = 'grupo_edad'
+
+    clinical_conditions = [
+        ('hipertension', r'\b(hipertension|presion\s+alta|hta)\b', 'Hipertensión Arterial'),
+        ('dislipemia', r'\b(dislipemia|dislipidemia|colesterol)\b', 'Dislipemia'),
+        ('diabetes', r'\b(diabetes|diabetic[oa]s?|glucosa)\b', 'Diabetes Mellitus'),
+        ('fumador_activo', r'\b(tabaquismo|fumador|fumar|cigarrillo)\b', 'Tabaquismo Activo'),
+        ('higado_graso', r'\b(higado\s+graso|esteatosis)\b', 'Hígado Graso'),
+        ('alcohol', r'\b(alcohol|bebidas?|bebedor)\b', 'Consumo de Alcohol'),
+        ('actividad_fisica', r'\b(sedentarismo|sedentario|actividad\s+fisica)\b', 'Sedentarismo'),
+        ('covid_infeccion', r'\b(covid|coronavirus|sars-cov-2)\b', 'Antecedente de COVID-19'),
+        ('sobrepeso_u_obesidad', r'\b(obesidad|sobrepeso|exceso\s+de\s+peso)\b', 'Sobrepeso u Obesidad'),
+        ('ansiedad', r'\b(ansiedad)\b', 'Ansiedad'),
+        ('depresion', r'\b(depresion|depresiv[oa]s?)\b', 'Depresión'),
+        ('estres_alto', r'\b(estres|estres\s+alto)\b', 'Estrés Alto'),
+    ]
+
+    matched_condition = None
+    for field_key, pattern, name_display in clinical_conditions:
+        if re.search(pattern, q):
+            matched_condition = (field_key, name_display)
+            break
+
+    if group_var and matched_condition:
+        cond_key, cond_name = matched_condition
+        if group_var == 'sexo':
+            groups = [('Hombres', 'Hombre'), ('Mujeres', 'Mujer')]
+            group_label = 'Sexo'
+        elif group_var == 'categoria':
+            cat_set = sorted(list({r.get('categoria') for r in records if r.get('categoria')}))
+            groups = [(c, c) for c in cat_set]
+            group_label = 'Categoría de Personal'
+        else:  # grupo_edad
+            age_order = ['<40 años', '40-49 años', '50-59 años', '60+ años']
+            existing_ages = {r.get('grupo_edad') for r in records if r.get('grupo_edad')}
+            groups = [(a, a) for a in age_order if a in existing_ages]
+            group_label = 'Grupo de Edad'
+
+        labels, data_pcts = [], []
+        total_eval = 0
+        for label_disp, val_match in groups:
+            sub = [r for r in records if r.get(group_var) == val_match]
+            if cond_key == 'actividad_fisica':
+                pos = sum(1 for r in sub if r.get('actividad_fisica') is False)
+            elif cond_key == 'estres_alto':
+                pos = sum(1 for r in sub if 'Laboral' in str(r.get('estres', '')) or 'Familiar' in str(r.get('estres', '')) or r.get('estres') == 'Alto')
+            elif cond_key == 'alcohol':
+                pos = sum(1 for r in sub if r.get('alcohol') in ['Ocasional', 'Semanal', 'Frecuente'] or r.get('alcohol') is True)
+            elif cond_key == 'sobrepeso_u_obesidad':
+                pos = sum(1 for r in sub if r.get('sobrepeso_u_obesidad') is True or (r.get('imc') and float(r.get('imc')) >= 25))
+            else:
+                pos = sum(1 for r in sub if r.get(cond_key) is True)
+            tot = len(sub)
+            total_eval += tot
+            pct_val = round((pos / tot) * 100, 1) if tot > 0 else 0
+            labels.append(f"{label_disp} ({pos} de {tot})")
+            data_pcts.append(pct_val)
+
+        chart_obj = {
+            "type": "bar",
+            "title": f"Prevalencia de {cond_name} por {group_label} (%) (n = {total_eval})",
+            "labels": labels,
+            "data": data_pcts,
+            "unit": "%",
+            "annotation": f"Porcentaje de prevalencia de {cond_name} comparado por {group_label.lower()} con base de datos institucional."
+        }
+        return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
+
+    # -------------------------------------------------------------
+    # 3. SALUD MENTAL (Depresión, Ansiedad) - Compatibilidad Test
+    # -------------------------------------------------------------
+    if re.search(r'\b(depresion|depresiv[oa]s?|ansiedad|salud\s+mental)\b', q):
+        dep_cnt = sum(1 for r in records if r.get('depresion') is True)
+        ans_cnt = sum(1 for r in records if r.get('ansiedad') is True)
+        mental_values = [('Depresión', dep_cnt), ('Ansiedad', ans_cnt)]
+        chart_obj = {
+            'type': 'bar',
+            'title': f'Salud mental en la cohorte (n = {total_pacientes})',
+            'labels': [l for l, _ in mental_values],
+            'data': [v for _, v in mental_values],
+            'unit': 'pacientes',
+        }
+        return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
+
+    # -------------------------------------------------------------
+    # 4. SECUELAS DE COVID (LONG-COVID)
+    # -------------------------------------------------------------
+    if re.search(r'\b(secuelas?|long\s*covid|covid\s+persistente|post\s*covid|fatiga|niebla)\b', q):
+        inf_patients = [r for r in records if r.get('covid_infeccion') is True]
+        n_inf = len(inf_patients) or total_pacientes
+        sec_fat = sum(1 for r in inf_patients if r.get('covid_fatiga_long') is True)
+        sec_nieb = sum(1 for r in inf_patients if r.get('covid_niebla_mental') is True)
+        sec_resp = sum(1 for r in inf_patients if r.get('covid_secuelas_resp') is True)
+        sec_card = sum(1 for r in inf_patients if r.get('covid_secuelas_cardio') is True)
+
+        items = [
+            ("Fatiga Persistente", sec_fat),
+            ("Niebla Mental / Cognitiva", sec_nieb),
+            ("Secuelas Respiratorias", sec_resp),
+            ("Secuelas Cardiovasculares", sec_card)
+        ]
+        chart_obj = {
+            "type": "bar",
+            "title": f"Espectro de Secuelas Persistentes Long-COVID (n = {n_inf} infectados)",
+            "labels": [label for label, _ in items],
+            "data": [cnt for _, cnt in items],
+            "unit": "casos",
+            "annotation": f"Casos reportados entre los pacientes con antecedente de infección por COVID-19 (n={n_inf})."
+        }
+        return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
+
+    # -------------------------------------------------------------
+    # 5. HALLAZGOS ELECTROCARDIOGRAMA (ECG)
+    # -------------------------------------------------------------
+    if re.search(r'\b(ecg|electrocardiograma|ritmo|arritmia|hvi|qtc|bloqueo)\b', q):
+        sinusal = sum(1 for r in records if r.get('ecg_es_sinusal') is True)
+        qtc_prol = sum(1 for r in records if 'Prolongado' in str(r.get('ecg_qtc_cat', '')))
+        hvi = sum(1 for r in records if r.get('ecg_hvi') is True)
+        arritmia = sum(1 for r in records if r.get('ecg_arritmia') is True)
+        bloqueo = sum(1 for r in records if r.get('ecg_bloqueo_presente') is True)
+
+        if is_pie:
             chart_obj = {
                 "type": "pie",
-                "title": f"Distribución por Sexo (n = {hombres + mujeres})",
-                "labels": ["Hombres", "Mujeres"],
-                "data": [hombres, mujeres],
-                "unit": "pacientes"
-            }
-        elif any(w in q for w in ['imc', 'peso', 'obesidad', 'sobrepeso', 'nutrici']):
-            norm_cnt = sum(1 for r in records if r.get('imc_cat') == 'Normal')
-            sp_cnt = sum(1 for r in records if r.get('imc_cat') == 'Sobrepeso')
-            ob1_cnt = sum(1 for r in records if r.get('imc_cat') == 'Obesidad I')
-            ob2_cnt = sum(1 for r in records if r.get('imc_cat') == 'Obesidad II')
-            obm_cnt = sum(1 for r in records if r.get('imc_cat') == 'Obesidad Mórbida')
-            chart_obj = {
-                "type": "pie",
-                "title": f"Distribución Nutricional e IMC (n = {total_pacientes})",
-                "labels": ["Normal", "Sobrepeso", "Obesidad I", "Obesidad II", "Obesidad Mórbida"],
-                "data": [norm_cnt, sp_cnt, ob1_cnt, ob2_cnt, obm_cnt],
-                "unit": "pacientes"
-            }
-        elif any(w in q for w in ['ecg', 'ritmo', 'sinusal']):
-            sinusal_cnt = sum(1 for r in records if r.get('ecg_es_sinusal'))
-            no_sinusal_cnt = total_pacientes - sinusal_cnt
-            chart_obj = {
-                "type": "pie",
-                "title": f"Ritmo Electrocardiográfico (n = {total_pacientes})",
-                "labels": ["Ritmo Sinusal", "Arritmias / No Sinusal"],
-                "data": [sinusal_cnt, no_sinusal_cnt],
+                "title": f"Ritmo Electrocardiográfico en la Cohorte (n = {total_pacientes})",
+                "labels": ["Ritmo Sinusal", "No Sinusal / Arritmias"],
+                "data": [sinusal, max(0, total_pacientes - sinusal)],
                 "unit": "pacientes"
             }
         else:
-            r_bajo = sum(1 for r in records if 'Bajo' in r.get('riesgo_global', ''))
-            r_mod = sum(1 for r in records if 'Moderado' in r.get('riesgo_global', ''))
-            r_alto = sum(1 for r in records if 'Alto' in r.get('riesgo_global', '') and 'Muy' not in r.get('riesgo_global', ''))
-            r_muy_alto = sum(1 for r in records if 'Muy Alto' in r.get('riesgo_global', ''))
+            pct_calc = lambda c: round((c / total_pacientes) * 100, 1) if total_pacientes else 0
             chart_obj = {
-                "type": "pie",
-                "title": f"Estratificación de Riesgo Cardiovascular Global (n = {total_pacientes})",
-                "labels": ["Riesgo Bajo (0 fact.)", "Riesgo Moderado (1 fact.)", "Riesgo Alto (2-3 fact.)", "Riesgo Muy Alto (≥4 fact.)"],
-                "data": [r_bajo, r_mod, r_alto, r_muy_alto],
-                "unit": "pacientes"
+                "type": "bar",
+                "title": f"Prevalencia de Hallazgos en el Electrocardiograma (%) (n = {total_pacientes})",
+                "labels": ["Ritmo Sinusal", "QTc Prolongado", "HVI", "Arritmias", "Bloqueos de Rama"],
+                "data": [pct_calc(sinusal), pct_calc(qtc_prol), pct_calc(hvi), pct_calc(arritmia), pct_calc(bloqueo)],
+                "unit": "%"
             }
         return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
 
-    # 3. GRÁFICO DE BARRAS (BAR) CON DATOS REALES DE BASE DE DATOS
-    if any(w in q for w in ['imc', 'peso', 'obesidad', 'sobrepeso', 'nutrici']):
-        norm_cnt = sum(1 for r in records if r.get('imc_cat') == 'Normal')
-        sp_cnt = sum(1 for r in records if r.get('imc_cat') == 'Sobrepeso')
-        ob1_cnt = sum(1 for r in records if r.get('imc_cat') == 'Obesidad I')
-        ob2_cnt = sum(1 for r in records if r.get('imc_cat') == 'Obesidad II')
-        obm_cnt = sum(1 for r in records if r.get('imc_cat') == 'Obesidad Mórbida')
+    # -------------------------------------------------------------
+    # 6. ANTECEDENTES FAMILIARES
+    # -------------------------------------------------------------
+    if re.search(r'\b(antecedentes?\s+familiar|familiares|herencia|padres?|madre)\b', q):
+        hta_f = sum(1 for r in records if r.get('ant_fam_hta') is True or r.get('ant_padre_hta') is True or r.get('ant_madre_hta') is True)
+        dm_f = sum(1 for r in records if r.get('ant_fam_dm') is True or r.get('ant_padre_dm') is True or r.get('ant_madre_dm') is True)
+        dlp_f = sum(1 for r in records if r.get('ant_fam_dlp') is True or r.get('ant_padre_dlp') is True or r.get('ant_madre_dlp') is True)
+        cv_f = sum(1 for r in records if r.get('ant_fam_cv_mayor') is True or r.get('ant_cardiopatia_prematura') is True or r.get('ant_muerte_subita') is True)
+
+        pct_calc = lambda c: round((c / total_pacientes) * 100, 1) if total_pacientes else 0
         chart_obj = {
             "type": "bar",
-            "title": f"Distribución de Categorías de IMC (n = {total_pacientes})",
-            "labels": ["Normal", "Sobrepeso", "Obesidad I", "Obesidad II", "Obesidad Mórbida"],
-            "data": [norm_cnt, sp_cnt, ob1_cnt, ob2_cnt, obm_cnt],
+            "title": f"Prevalencia de Antecedentes Familiares de Riesgo (%) (n = {total_pacientes})",
+            "labels": ["HTA Familiar", "Diabetes Familiar", "Dislipemia Familiar", "Enf. Cardiovascular Prematura"],
+            "data": [pct_calc(hta_f), pct_calc(dm_f), pct_calc(dlp_f), pct_calc(cv_f)],
+            "unit": "%"
+        }
+        return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
+
+    # -------------------------------------------------------------
+    # 7. VARIABLES CATEGÓRICAS INDIVIDUALES
+    # -------------------------------------------------------------
+    # Sexo
+    if re.search(r'\b(sexo|genero|hombres?|mujeres?|varon)\b', q):
+        h = sum(1 for r in records if r.get('sexo') == 'Hombre')
+        m = sum(1 for r in records if r.get('sexo') == 'Mujer')
+        chart_obj = {
+            "type": "pie" if is_pie else "bar",
+            "title": f"Distribución por Sexo (n = {h + m})",
+            "labels": ["Hombres", "Mujeres"],
+            "data": [h, m],
             "unit": "pacientes"
         }
-    elif any(w in q for w in ['riesgo', 'estratificaci', 'global']):
-        r_bajo = sum(1 for r in records if 'Bajo' in r.get('riesgo_global', ''))
-        r_mod = sum(1 for r in records if 'Moderado' in r.get('riesgo_global', ''))
-        r_alto = sum(1 for r in records if 'Alto' in r.get('riesgo_global', '') and 'Muy' not in r.get('riesgo_global', ''))
-        r_muy_alto = sum(1 for r in records if 'Muy Alto' in r.get('riesgo_global', ''))
+        return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
+
+    # Grupos de Edad
+    if re.search(r'\b(grupo\s+de\s+edad|grupos\s+de\s+edad|rango\s+de\s+edad|edades?|etario)\b', q):
+        age_order = ['<40 años', '40-49 años', '50-59 años', '60+ años']
+        counts = [sum(1 for r in records if r.get('grupo_edad') == grp) for grp in age_order]
         chart_obj = {
-            "type": "bar",
+            "type": "pie" if is_pie else "bar",
+            "title": f"Distribución por Grupos de Edad (n = {sum(counts)})",
+            "labels": age_order,
+            "data": counts,
+            "unit": "pacientes"
+        }
+        return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
+
+    # Categorías de Personal
+    if re.search(r'\b(categoria|personal|estamento|docente|administrativo|trabajadores|servicios)\b', q):
+        cat_counts = {}
+        for r in records:
+            c = r.get('categoria')
+            if c:
+                cat_counts[c] = cat_counts.get(c, 0) + 1
+        labels = sorted(list(cat_counts.keys()))
+        data_v = [cat_counts[k] for k in labels]
+        chart_obj = {
+            "type": "pie" if is_pie else "bar",
+            "title": f"Distribución por Categoría de Personal (n = {sum(data_v)})",
+            "labels": labels,
+            "data": data_v,
+            "unit": "pacientes"
+        }
+        return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
+
+    # Estado Nutricional / IMC
+    if re.search(r'\b(imc|nutricional|peso|obesidad|sobrepeso)\b', q):
+        cats = ['Normal', 'Sobrepeso', 'Obesidad I', 'Obesidad II', 'Obesidad Mórbida']
+        counts = [sum(1 for r in records if r.get('imc_cat') == c) for c in cats]
+        chart_obj = {
+            "type": "pie" if is_pie else "bar",
+            "title": f"Distribución Nutricional e IMC (n = {sum(counts)})",
+            "labels": cats,
+            "data": counts,
+            "unit": "pacientes"
+        }
+        return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
+
+    # Estratificación de Riesgo Cardiovascular
+    if re.search(r'\b(riesgo|estratificaci|global)\b', q):
+        r_bajo = sum(1 for r in records if 'Bajo' in str(r.get('riesgo_global', '')))
+        r_mod = sum(1 for r in records if 'Moderado' in str(r.get('riesgo_global', '')))
+        r_alto = sum(1 for r in records if 'Alto' in str(r.get('riesgo_global', '')) and 'Muy' not in str(r.get('riesgo_global', '')))
+        r_muy_alto = sum(1 for r in records if 'Muy Alto' in str(r.get('riesgo_global', '')))
+        chart_obj = {
+            "type": "pie" if is_pie else "bar",
             "title": f"Estratificación del Riesgo Cardiovascular (n = {total_pacientes})",
             "labels": ["Bajo (0 fact.)", "Moderado (1 fact.)", "Alto (2-3 fact.)", "Muy Alto (≥4 fact.)"],
             "data": [r_bajo, r_mod, r_alto, r_muy_alto],
             "unit": "pacientes"
         }
-    elif any(w in q for w in ['sexo', 'género', 'genero', 'hombre', 'mujer']):
-        hombres = sum(1 for r in records if r.get('sexo') == 'Hombre')
-        mujeres = sum(1 for r in records if r.get('sexo') == 'Mujer')
+        return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
+
+    # Estrés
+    if re.search(r'\b(estres|nivel\s+de\s+estres)\b', q):
+        estres_types = ['Sin estrés significativo', 'Estrés Laboral', 'Estrés Familiar', 'Laboral y Familiar']
+        counts = [sum(1 for r in records if r.get('estres') == t) for t in estres_types]
         chart_obj = {
-            "type": "bar",
-            "title": f"Distribución por Sexo (n = {hombres + mujeres})",
-            "labels": ["Hombres", "Mujeres"],
-            "data": [hombres, mujeres],
+            "type": "pie" if is_pie else "bar",
+            "title": f"Nivel y Tipología de Estrés Percibido (n = {sum(counts)})",
+            "labels": estres_types,
+            "data": counts,
             "unit": "pacientes"
         }
-    elif any(w in q for w in ['ecg', 'electrocardiograma', 'ritmo', 'arritmia', 'hvi', 'qtc']):
-        sinusal_cnt = sum(1 for r in records if r.get('ecg_es_sinusal'))
-        arritmia_cnt = sum(1 for r in records if r.get('ecg_arritmia'))
-        hvi_cnt = sum(1 for r in records if r.get('ecg_hvi'))
-        qtc_prol_cnt = sum(1 for r in records if 'Prolongado' in r.get('ecg_qtc_cat', ''))
+        return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
 
-        sinusal_pct = round((sinusal_cnt / total_pacientes) * 100, 1) if total_pacientes else 94.9
-        qtc_pct = round((qtc_prol_cnt / total_pacientes) * 100, 1) if total_pacientes else 10.2
-        hvi_pct = round((hvi_cnt / total_pacientes) * 100, 1) if total_pacientes else 8.5
-        arritmia_pct = round((arritmia_cnt / total_pacientes) * 100, 1) if total_pacientes else 5.1
+    # Consumo de Alcohol
+    if re.search(r'\b(alcohol|bebidas?|bebedor)\b', q):
+        alc_types = ['No consume', 'Ocasional', 'Semanal']
+        counts = [sum(1 for r in records if r.get('alcohol') == t) for t in alc_types]
+        chart_obj = {
+            "type": "pie" if is_pie else "bar",
+            "title": f"Distribución de Consumo de Alcohol (n = {sum(counts)})",
+            "labels": alc_types,
+            "data": counts,
+            "unit": "pacientes"
+        }
+        return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
 
+    # Presión Arterial (Categorías PA)
+    if re.search(r'\b(presion\s+arterial|estadios?\s+hta|clasificacion\s+pa)\b', q):
+        pa_order = ['PA Normal (<130/<80)', 'PA Elevada (130-139/80-89)', 'HTA Grado 1 (140-159/90-99)', 'HTA Grado 2 (≥140/90)']
+        pa_counts = [sum(1 for r in records if r.get('pa_categoria') == c) for c in pa_order]
         chart_obj = {
             "type": "bar",
-            "title": f"Prevalencia de Hallazgos ECG (%) (n = {total_pacientes})",
-            "labels": ["Ritmo Sinusal", "QTc Prolongado", "HVI", "Arritmias"],
-            "data": [sinusal_pct, qtc_pct, hvi_pct, arritmia_pct],
-            "unit": "%"
+            "title": f"Clasificación de Presión Arterial en Consulta (n = {sum(pa_counts)})",
+            "labels": pa_order,
+            "data": pa_counts,
+            "unit": "pacientes"
         }
-    else:
-        sp_ob = sum(1 for r in records if r.get('imc_cat') in ['Sobrepeso', 'Obesidad I', 'Obesidad II', 'Obesidad Mórbida'])
-        sed = sum(1 for r in records if not r.get('actividad_fisica'))
-        dlp = sum(1 for r in records if r.get('dislipemia'))
-        hta = sum(1 for r in records if r.get('hipertension'))
-        dm = sum(1 for r in records if r.get('diabetes'))
-        fum = sum(1 for r in records if r.get('fumador_activo'))
+        return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
 
-        pct = lambda cnt: round((cnt / total_pacientes) * 100, 1) if total_pacientes else 0
-        chart_obj = {
-            "type": "bar",
-            "title": f"Prevalencia de Factores Modificables de Riesgo (%) (n = {total_pacientes})",
-            "labels": ["Exceso de Peso", "Sedentarismo", "Dislipemia", "Hipertensión", "Diabetes", "Tabaquismo"],
-            "data": [pct(sp_ob), pct(sed), pct(dlp), pct(hta), pct(dm), pct(fum)],
-            "unit": "%"
-        }
+    # -------------------------------------------------------------
+    # 8. CONDICIONES CLÍNICAS INDIVIDUALES (BOOLEANAS)
+    # Hígado graso, diabetes, dislipemia, tabaquismo, covid, etc.
+    # -------------------------------------------------------------
+    single_boolean_specs = [
+        ('higado_graso', r'\b(higado\s+graso|esteatosis)\b', 'Hígado Graso (Esteatosis Hepática)', 'Con Hígado Graso', 'Sin Hígado Graso'),
+        ('hipertension', r'\b(hipertension|presion\s+alta|hta)\b', 'Hipertensión Arterial', 'Hipertensos', 'Normotensos'),
+        ('diabetes', r'\b(diabetes|diabetic[oa]s?)\b', 'Diabetes Mellitus', 'Diabéticos', 'No diabéticos'),
+        ('dislipemia', r'\b(dislipemia|dislipidemia|colesterol)\b', 'Dislipemia', 'Con Dislipemia', 'Sin Dislipemia'),
+        ('fumador_activo', r'\b(tabaquismo|fumador|fumar|cigarrillo)\b', 'Tabaquismo Activo', 'Fumadores Activos', 'No Fumadores'),
+        ('actividad_fisica', r'\b(actividad\s+fisica|ejercicio|deporte|sedentarismo)\b', 'Hábito de Actividad Física', 'Realiza Ejercicio', 'Sedentario'),
+        ('covid_infeccion', r'\b(covid|coronavirus|sars-cov-2)\b', 'Antecedente de Infección por COVID-19', 'Con Antecedente COVID', 'Sin Antecedente'),
+        ('covid_hospitalizacion', r'\b(hospitalizacion\s+covid|ingreso\s+covid)\b', 'Hospitalización por COVID-19', 'Hospitalizados', 'Ambulatorios'),
+        ('ecg_arritmia', r'\b(arritmias?)\b', 'Presencia de Arritmias Cardíacas', 'Con Arritmia', 'Sin Arritmia'),
+    ]
+
+    for key, pattern, title_desc, pos_lbl, neg_lbl in single_boolean_specs:
+        if re.search(pattern, q):
+            if key == 'actividad_fisica' and ('sedentar' in q):
+                pos_cnt = sum(1 for r in records if r.get('actividad_fisica') is False)
+                neg_cnt = sum(1 for r in records if r.get('actividad_fisica') is True)
+                pos_lbl, neg_lbl = 'Sedentarios', 'Activos Físicamente'
+                title_desc = 'Prevalencia de Sedentarismo'
+            else:
+                pos_cnt = sum(1 for r in records if r.get(key) is True)
+                neg_cnt = sum(1 for r in records if r.get(key) is False)
+
+            pos_pct = round((pos_cnt / total_pacientes) * 100, 1) if total_pacientes else 0
+            neg_pct = round((neg_cnt / total_pacientes) * 100, 1) if total_pacientes else 0
+
+            if is_pie:
+                chart_obj = {
+                    "type": "pie",
+                    "title": f"{title_desc} (n = {total_pacientes})",
+                    "labels": [f"{pos_lbl} ({pos_pct}%)", f"{neg_lbl} ({neg_pct}%)"],
+                    "data": [pos_cnt, neg_cnt],
+                    "unit": "pacientes"
+                }
+            else:
+                chart_obj = {
+                    "type": "bar",
+                    "title": f"Prevalencia de {title_desc} (n = {total_pacientes})",
+                    "labels": [f"{pos_lbl} ({pos_cnt})", f"{neg_lbl} ({neg_cnt})"],
+                    "data": [pos_pct, neg_pct],
+                    "unit": "%",
+                    "annotation": f"Positivos: {pos_cnt} ({pos_pct}%) | Negativos: {neg_cnt} ({neg_pct}%) sobre {total_pacientes} evaluados."
+                }
+            return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
+
+    # -------------------------------------------------------------
+    # 9. FACTORES MODIFICABLES GLOBALES (DEFAULT ROBUSTO)
+    # -------------------------------------------------------------
+    sp_ob = sum(1 for r in records if r.get('imc_cat') in ['Sobrepeso', 'Obesidad I', 'Obesidad II', 'Obesidad Mórbida'] or r.get('sobrepeso_u_obesidad') is True)
+    sed = sum(1 for r in records if r.get('actividad_fisica') is False)
+    dlp = sum(1 for r in records if r.get('dislipemia') is True)
+    hta = sum(1 for r in records if r.get('hipertension') is True)
+    dm = sum(1 for r in records if r.get('diabetes') is True)
+    fum = sum(1 for r in records if r.get('fumador_activo') is True)
+
+    pct = lambda cnt: round((cnt / total_pacientes) * 100, 1) if total_pacientes else 0
+    chart_obj = {
+        "type": "bar",
+        "title": f"Prevalencia de Factores Modificables de Riesgo (%) (n = {total_pacientes})",
+        "labels": ["Exceso de Peso", "Sedentarismo", "Dislipemia", "Hipertensión", "Diabetes", "Tabaquismo"],
+        "data": [pct(sp_ob), pct(sed), pct(dlp), pct(hta), pct(dm), pct(fum)],
+        "unit": "%"
+    }
     return f"\n\n```json_chart\n{json.dumps(chart_obj, ensure_ascii=False, indent=2)}\n```"
 
 
