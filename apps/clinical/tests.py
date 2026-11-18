@@ -1,4 +1,5 @@
 import datetime
+import json
 from decimal import Decimal
 from django.urls import reverse
 from django.test import TestCase, SimpleTestCase
@@ -7,7 +8,12 @@ from django.contrib.auth.models import Permission
 
 from catalog.models import Country, Province, Canton, Institution, Sex, Ethnicity, StaffCategory
 from clinical.models import Patient, Visit, Anthropometry, VitalSigns, VisitAnswer
-from clinical.validators import validate_ecuadorian_id, validate_clinical_ranges
+from clinical.validators import (
+    validate_ecuadorian_id,
+    validate_clinical_ranges,
+    validate_email_address,
+    validate_ecuadorian_phone,
+)
 from clinical.pdf import generate_clinical_sheet_pdf
 from audit.models import ChangeLog
 from audit.services import register_audit_log
@@ -30,6 +36,36 @@ class EcuadorianIdValidatorTests(SimpleTestCase):
     def test_invalid_checksum(self):
         # Último dígito incorrecto
         self.assertFalse(validate_ecuadorian_id('0923485719'))
+
+
+class EmailAndPhoneValidatorTests(SimpleTestCase):
+    def test_valid_emails(self):
+        self.assertTrue(validate_email_address('cvillacres@unemi.edu.ec'))
+        self.assertTrue(validate_email_address('doctor.cardiologia@hospital.gob.ec'))
+        self.assertTrue(validate_email_address('paciente123@gmail.com'))
+
+    def test_invalid_emails(self):
+        self.assertFalse(validate_email_address(''))
+        self.assertFalse(validate_email_address(None))
+        self.assertFalse(validate_email_address('correo_sin_arroba'))
+        self.assertFalse(validate_email_address('correo@sinpunto'))
+        self.assertFalse(validate_email_address('correo@.com'))
+        self.assertFalse(validate_email_address('@dominio.com'))
+
+    def test_valid_ecuadorian_phones(self):
+        self.assertTrue(validate_ecuadorian_phone('0987654321'))
+        self.assertTrue(validate_ecuadorian_phone('0991234567'))
+        self.assertTrue(validate_ecuadorian_phone('+593987654321'))
+        self.assertTrue(validate_ecuadorian_phone('042971234'))
+        self.assertTrue(validate_ecuadorian_phone('+59342971234'))
+
+    def test_invalid_ecuadorian_phones(self):
+        self.assertFalse(validate_ecuadorian_phone(''))
+        self.assertFalse(validate_ecuadorian_phone(None))
+        self.assertFalse(validate_ecuadorian_phone('12345'))
+        self.assertFalse(validate_ecuadorian_phone('0812345678'))
+        self.assertFalse(validate_ecuadorian_phone('09876543210123'))
+
 
 
 class ClinicalRangeValidatorTests(SimpleTestCase):
@@ -172,6 +208,107 @@ class ClinicalCRUDAndIntegrationTests(TestCase):
         self.assertIn('available_estamentos', resp.context)
         est_codes = [e['code'] for e in resp.context['available_estamentos']]
         self.assertIn('PDI', est_codes)
+
+    def test_patient_next_code_api(self):
+        self.client.force_login(self.user)
+        # Código inicial cuando no hay visitas numéricas
+        resp = self.client.get(reverse('clinical:api_patient_next_code'))
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data.get('success'))
+        self.assertIn('next_code', data)
+
+        # Crear visita con código 150
+        patient = Patient.objects.create(
+            institution=self.institution,
+            first_names='Prueba',
+            last_name1='Codigo',
+            birth_date=datetime.date(1990, 1, 1),
+            sex=self.sex,
+            ethnicity=self.ethnicity,
+            birth_canton=self.canton,
+            created_by=self.user,
+        )
+        Visit.objects.create(
+            patient=patient,
+            evaluator=self.user,
+            study_code='150',
+            visit_date=datetime.date(2026, 1, 1),
+            residence_canton=self.canton,
+            staff_category=self.staff_cat,
+        )
+        resp2 = self.client.get(reverse('clinical:api_patient_next_code'))
+        self.assertEqual(resp2.status_code, 200)
+        data2 = resp2.json()
+        self.assertEqual(data2.get('next_code'), '151')
+
+    def test_patient_create_api_separated_names_and_validators(self):
+        self.client.force_login(self.user)
+        # 1. Intento con correo inválido
+        payload_invalid_email = {
+            'codigo': '201',
+            'first_names': 'Carlos Alberto',
+            'last_name1': 'Zambrano',
+            'last_name2': 'Mendoza',
+            'correo': 'correo_invalido_sin_dominio',
+            'telefono': '0987654321',
+            'sexo': 'Hombre',
+            'fecha_nacimiento': '1992-06-15',
+            'institucion': 'UNEMI',
+            'estamento': 'PDI',
+        }
+        resp = self.client.post(
+            reverse('clinical:api_patient_create'),
+            data=json.dumps(payload_invalid_email),
+            content_type='application/json'
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('correo electrónico', resp.json().get('error', '').lower())
+
+        # 2. Intento con teléfono inválido
+        payload_invalid_phone = {
+            'codigo': '202',
+            'first_names': 'Carlos Alberto',
+            'last_name1': 'Zambrano',
+            'last_name2': 'Mendoza',
+            'correo': 'carlos.zambrano@unemi.edu.ec',
+            'telefono': '123456',  # Inválido en Ecuador
+            'sexo': 'Hombre',
+            'fecha_nacimiento': '1992-06-15',
+            'institucion': 'UNEMI',
+            'estamento': 'PDI',
+        }
+        resp2 = self.client.post(
+            reverse('clinical:api_patient_create'),
+            data=json.dumps(payload_invalid_phone),
+            content_type='application/json'
+        )
+        self.assertEqual(resp2.status_code, 400)
+        self.assertIn('teléfono', resp2.json().get('error', '').lower())
+
+        # 3. Creación exitosa con nombres separados y datos válidos
+        payload_valid = {
+            'codigo': '203',
+            'first_names': 'Carlos Alberto',
+            'last_name1': 'Zambrano',
+            'last_name2': 'Mendoza',
+            'correo': 'carlos.zambrano@unemi.edu.ec',
+            'telefono': '0987654321',
+            'sexo': 'Hombre',
+            'fecha_nacimiento': '1992-06-15',
+            'institucion': 'UNEMI',
+            'estamento': 'PDI',
+        }
+        resp3 = self.client.post(
+            reverse('clinical:api_patient_create'),
+            data=json.dumps(payload_valid),
+            content_type='application/json'
+        )
+        self.assertEqual(resp3.status_code, 200)
+        data3 = resp3.json()
+        self.assertTrue(data3.get('success'))
+        self.assertEqual(data3.get('paciente', {}).get('nombre'), 'Carlos Alberto Zambrano Mendoza')
+
 
 
 class SavImporterTests(TestCase):

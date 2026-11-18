@@ -1,5 +1,53 @@
 import re
 from django.core.exceptions import ValidationError
+from django.core.validators import validate_email as django_validate_email
+
+
+def validate_email_address(email: str) -> bool:
+    """
+    Valida si una dirección de correo tiene un formato real y sintaxis válida RFC.
+    Requiere estructura usuario@dominio.tld con dominio con punto y al menos 2 caracteres de TLD.
+    """
+    if not email or not isinstance(email, str):
+        return False
+    email = email.strip()
+    if len(email) < 5 or len(email) > 254:
+        return False
+    # Verificación de sintaxis de dominio real (debe tener @ y al menos un punto en el dominio con TLD >= 2)
+    email_regex = re.compile(
+        r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$'
+    )
+    if not email_regex.match(email):
+        return False
+    try:
+        django_validate_email(email)
+        return True
+    except ValidationError:
+        return False
+
+
+def validate_ecuadorian_phone(phone: str) -> bool:
+    """
+    Valida un número telefónico (móvil o convencional en Ecuador).
+    Móvil: 10 dígitos iniciando con 09 (ej. 0987654321) o formato internacional (+5939xxxxxxxx).
+    Fijo / Convencional: 9 dígitos iniciando con 02 a 07 (ej. 042971234) o internacional (+593[2-7]xxxxxxx).
+    """
+    if not phone or not isinstance(phone, str):
+        return False
+    clean = re.sub(r'[\s\-\.\(\)]', '', phone.strip())
+    # Móvil nacional: 09XXXXXXXX (10 dígitos)
+    if re.match(r'^09\d{8}$', clean):
+        return True
+    # Fijo nacional con código de área provincial: 0[2-7]XXXXXXX (9 dígitos)
+    if re.match(r'^0[2-7]\d{7}$', clean):
+        return True
+    # Móvil internacional Ecuador: +5939XXXXXXXX (13 caracteres)
+    if re.match(r'^\+5939\d{8}$', clean):
+        return True
+    # Fijo internacional Ecuador: +593[2-7]XXXXXXX (12 caracteres)
+    if re.match(r'^\+593[2-7]\d{7}$', clean):
+        return True
+    return False
 
 
 def validate_ecuadorian_id(cedula: str) -> bool:

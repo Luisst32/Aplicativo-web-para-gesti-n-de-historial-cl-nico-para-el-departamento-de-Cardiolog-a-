@@ -156,6 +156,39 @@ function actualizarFacultadesModal(uni, valorSeleccionado) {
 
 let alTerminarModalPaciente = null;
 
+function esCorreoValido(correo) {
+  if (!correo) return true;
+  const re = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/;
+  return re.test(correo.trim());
+}
+
+function esTelefonoValido(tel) {
+  if (!tel) return true;
+  const clean = tel.trim().replace(/[\s\-\.\(\)]/g, '');
+  return /^(?:09\d{8}|0[2-7]\d{7}|\+5939\d{8}|\+593[2-7]\d{7})$/.test(clean);
+}
+
+async function precargarSiguienteCodigo(uni, forzar = false) {
+  const inputCod = document.getElementById('m_codigo');
+  if (!inputCod) return;
+  if (!forzar && inputCod.dataset.userEdited === 'true' && inputCod.value.trim() !== '') {
+    return;
+  }
+  try {
+    const u = uni || document.getElementById('m_universidad')?.value || 'UNEMI';
+    const resp = await fetch(`/clinical/api/pacientes/proximo-codigo/?universidad=${encodeURIComponent(u)}`);
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.success && data.siguiente_codigo) {
+        inputCod.value = data.siguiente_codigo;
+        inputCod.dataset.userEdited = 'false';
+      }
+    }
+  } catch (err) {
+    console.warn('No se pudo precargar el siguiente código de ficha:', err);
+  }
+}
+
 function montarModalAgregarPaciente(onListo) {
   alTerminarModalPaciente = onListo;
   if (document.getElementById('modalAdd')) return; // Evitar duplicar
@@ -173,24 +206,32 @@ function montarModalAgregarPaciente(onListo) {
         <button class="modal-close-btn" id="btnCancelX" title="Cerrar">&times;</button>
       </div>
       <div class="modal-body pac-modal-body">
-        <!-- Fila 1: N.° Ficha Clínica (3 cols), Nombre (6 cols) y Cédula (3 cols) -->
+        <!-- Fila 1: N.° Ficha Clínica (3), Nombres (3), Primer Apellido (3), Segundo Apellido (3) -->
         <div class="pac-form-row">
           <div class="form-field pac-col-3">
             <label class="field-label">N.° Ficha Clínica</label>
-            <input type="text" class="form-input" id="m_codigo" placeholder="Ej: 1 (o auto)" name="m_codigo" autocomplete="off" title="Código numérico o identificador de ficha clínica. Si se deja en blanco se asignará automáticamente.">
+            <input type="text" class="form-input" id="m_codigo" placeholder="Calculando..." name="m_codigo" autocomplete="off" title="Código numérico sugerido automáticamente (siguiente disponible). Puede modificarlo libremente si lo desea.">
           </div>
-          <div class="form-field pac-col-6">
-            <label class="field-label">Nombre y Apellidos Completos *</label>
-            <input type="text" class="form-input" id="m_nombre" placeholder="Ej: Carmen Villacrés Moreira" name="m_nombre" required>
+          <div class="form-field pac-col-3">
+            <label class="field-label">Nombres *</label>
+            <input type="text" class="form-input" id="m_nombres" placeholder="Ej: Carmen Elena" name="m_nombres" required>
           </div>
+          <div class="form-field pac-col-3">
+            <label class="field-label">Primer Apellido *</label>
+            <input type="text" class="form-input" id="m_apellido1" placeholder="Ej: Villacrés" name="m_apellido1" required>
+          </div>
+          <div class="form-field pac-col-3">
+            <label class="field-label">Segundo Apellido</label>
+            <input type="text" class="form-input" id="m_apellido2" placeholder="Ej: Moreira (Opcional)" name="m_apellido2">
+          </div>
+        </div>
+
+        <!-- Fila 2: Cédula (3), Fecha Nac (3), Edad (2), Sexo (4) -->
+        <div class="pac-form-row">
           <div class="form-field pac-col-3">
             <label class="field-label">Cédula de Identidad (10 dígitos)</label>
             <input type="text" class="form-input" id="m_cedula" placeholder="Ej: 0928475615" maxlength="10" name="m_cedula">
           </div>
-        </div>
-
-        <!-- Fila 2: Fecha Nac (3), Edad (2), Sexo (3), Teléfono (4) -->
-        <div class="pac-form-row">
           <div class="form-field pac-col-3">
             <label class="field-label">Fecha Nacimiento *</label>
             <input type="date" class="form-input" id="m_fecha_nac" oninput="document.getElementById('m_edad').value = calcAgeStr(this.value)" name="m_fecha_nac" required>
@@ -199,26 +240,26 @@ function montarModalAgregarPaciente(onListo) {
             <label class="field-label">Edad <small>(Auto)</small></label>
             <input type="text" class="form-input calc" id="m_edad" readonly placeholder="Calculando..." name="m_edad">
           </div>
-          <div class="form-field pac-col-3">
+          <div class="form-field pac-col-4">
             <label class="field-label">Sexo *</label>
             <select class="form-select" id="m_sexo" name="m_sexo">
               <option value="H">Hombre (H)</option>
               <option value="M">Mujer (M)</option>
             </select>
           </div>
-          <div class="form-field pac-col-4">
-            <label class="field-label">Teléfono Móvil</label>
-            <input type="tel" class="form-input" id="m_telefono" placeholder="Ej: 0987654321" name="m_telefono">
-          </div>
         </div>
 
-        <!-- Fila 3: Correo (7) y Estamento (5) -->
+        <!-- Fila 3: Teléfono (4), Correo (4) y Estamento (4) -->
         <div class="pac-form-row">
-          <div class="form-field pac-col-7">
+          <div class="form-field pac-col-4">
+            <label class="field-label">Teléfono Móvil (10 dígitos)</label>
+            <input type="tel" class="form-input" id="m_telefono" placeholder="Ej: 0987654321" maxlength="13" name="m_telefono">
+          </div>
+          <div class="form-field pac-col-4">
             <label class="field-label">Correo Electrónico</label>
             <input type="email" class="form-input" id="m_correo" placeholder="Ej: cvillacres@unemi.edu.ec" name="m_correo">
           </div>
-          <div class="form-field pac-col-5">
+          <div class="form-field pac-col-4">
             <label class="field-label">Estamento Institucional *</label>
             <select class="form-select" id="m_estamento" name="m_estamento">
               <option value="PDI">PDI (Profesor)</option>
@@ -234,7 +275,7 @@ function montarModalAgregarPaciente(onListo) {
         <div class="pac-form-row">
           <div class="form-field pac-col-6">
             <label class="field-label">Universidad / Institución *</label>
-            <select class="form-select" id="m_universidad" name="m_universidad" onchange="actualizarFacultadesModal(this.value)">
+            <select class="form-select" id="m_universidad" name="m_universidad" onchange="actualizarFacultadesModal(this.value); precargarSiguienteCodigo(this.value);">
               <option value="UNEMI">UNEMI - Universidad Estatal de Milagro</option>
               <option value="ESPOL">ESPOL - Escuela Superior Politécnica del Litoral</option>
             </select>
@@ -261,24 +302,35 @@ function montarModalAgregarPaciente(onListo) {
 
   actualizarFacultadesModal(document.getElementById('m_universidad').value);
 
+  const codInput = document.getElementById('m_codigo');
+  if (codInput) {
+    codInput.addEventListener('input', () => {
+      codInput.dataset.userEdited = 'true';
+    });
+  }
+
   document.getElementById('btnCancelX').addEventListener('click', cerrarModalAgregarPaciente);
   document.getElementById('btnCancelModal').addEventListener('click', cerrarModalAgregarPaciente);
   document.getElementById('btnSaveModal').addEventListener('click', guardarPacienteDelModal);
 
-  ['m_nombre', 'm_fecha_nac', 'm_cedula'].forEach(id => {
-    document.getElementById(id).addEventListener('input', () => {
-      document.getElementById('m_duplicado').classList.remove('visible');
-    });
+  ['m_nombres', 'm_apellido1', 'm_apellido2', 'm_fecha_nac', 'm_cedula'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', () => {
+        document.getElementById('m_duplicado').classList.remove('visible');
+      });
+    }
   });
 }
 
-function abrirModalAgregarPaciente() {
+async function abrirModalAgregarPaciente() {
   const modal = document.getElementById('modalAdd');
   if (modal) {
     modal.classList.add('active');
     const uni = document.getElementById('m_universidad')?.value || 'UNEMI';
     actualizarFacultadesModal(uni);
-    document.getElementById('m_nombre').focus();
+    await precargarSiguienteCodigo(uni);
+    document.getElementById('m_nombres')?.focus();
   }
 }
 
@@ -287,7 +339,17 @@ function cerrarModalAgregarPaciente() {
   if (modal) {
     modal.classList.remove('active');
     document.getElementById('m_duplicado').classList.remove('visible');
-    document.getElementById('m_nombre').value = '';
+    const codInput = document.getElementById('m_codigo');
+    if (codInput) {
+      codInput.value = '';
+      codInput.dataset.userEdited = 'false';
+    }
+    const nombresInput = document.getElementById('m_nombres');
+    if (nombresInput) nombresInput.value = '';
+    const ap1Input = document.getElementById('m_apellido1');
+    if (ap1Input) ap1Input.value = '';
+    const ap2Input = document.getElementById('m_apellido2');
+    if (ap2Input) ap2Input.value = '';
     document.getElementById('m_cedula').value = '';
     document.getElementById('m_fecha_nac').value = '';
     document.getElementById('m_edad').value = '';
@@ -305,7 +367,9 @@ function cerrarModalAgregarPaciente() {
  */
 async function guardarPacienteDelModal() {
   const codigo = document.getElementById('m_codigo')?.value.trim() || '';
-  const nombre = document.getElementById('m_nombre').value.trim();
+  const nombres = (document.getElementById('m_nombres')?.value || '').trim();
+  const apellido1 = (document.getElementById('m_apellido1')?.value || '').trim();
+  const apellido2 = (document.getElementById('m_apellido2')?.value || '').trim();
   const fn = document.getElementById('m_fecha_nac').value;
   const cedula = document.getElementById('m_cedula').value.trim();
   const sexo = document.getElementById('m_sexo').value;
@@ -315,15 +379,40 @@ async function guardarPacienteDelModal() {
   const telefono = document.getElementById('m_telefono').value.trim();
   const correo = document.getElementById('m_correo').value.trim();
 
-  if (!nombre || !fn) {
-    alert('Por favor ingrese al menos el nombre y la fecha de nacimiento.');
+  if (!nombres || !apellido1) {
+    alert('Por favor ingrese tanto los nombres como el primer apellido.');
+    if (!nombres) document.getElementById('m_nombres')?.focus();
+    else document.getElementById('m_apellido1')?.focus();
     return;
   }
+
+  if (!fn) {
+    alert('Por favor ingrese la fecha de nacimiento.');
+    document.getElementById('m_fecha_nac').focus();
+    return;
+  }
+
+  if (correo && !esCorreoValido(correo)) {
+    alert('Por favor ingrese un correo electrónico con formato real (ej: usuario@dominio.com).');
+    document.getElementById('m_correo').focus();
+    return;
+  }
+
+  if (telefono && !esTelefonoValido(telefono)) {
+    alert('El número de teléfono no es válido. Debe tener 10 dígitos iniciando con 09 (ej: 0987654321).');
+    document.getElementById('m_telefono').focus();
+    return;
+  }
+
+  const nombreCompleto = `${nombres} ${apellido1} ${apellido2}`.trim();
 
   const payload = {
     codigo: codigo,
     study_code: codigo,
-    nombre: nombre,
+    first_names: nombres,
+    last_name1: apellido1,
+    last_name2: apellido2,
+    nombre: nombreCompleto,
     cedula: cedula,
     fecha_nac: fn,
     sexo: sexo,

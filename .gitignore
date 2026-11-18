@@ -36,7 +36,21 @@ $RECYCLE.BIN/
 
 # Logs y Temporales
 *.log
+*-error.log
+*.tmp
+*.bak
+*.orig
 scratch/
+
+# Archivos temporales de cuestionarios, exportaciones y ofimática
+cuestionario_*.txt
+*.pdf
+*.docx
+*.doc
+*.pptx
+*.xlsx
+*.xls
+*.csv
 
 # Documentación interna de asistencia
 GEMINI.md

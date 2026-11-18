@@ -12,6 +12,7 @@ urlpatterns = [
 
     # APIs JSON para Directorio de Pacientes y Expediente (HU-15, HU-16)
     path('api/pacientes/', views.patient_list_api, name='api_patient_list'),
+    path('api/pacientes/proximo-codigo/', views.patient_next_code_api, name='api_patient_next_code'),
     path('api/pacientes/crear/', views.patient_create_api, name='api_patient_create'),
     path('api/pacientes/<str:patient_id>/', views.patient_detail_api, name='api_patient_detail'),
 

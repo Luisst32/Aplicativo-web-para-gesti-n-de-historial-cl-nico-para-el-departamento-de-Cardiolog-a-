@@ -37,7 +37,10 @@ from clinical.models import (
     SecureShare
 )
 from clinical.services.measurements import save_measurements
-from clinical.validators import validate_ecuadorian_id, validate_clinical_ranges
+from clinical.validators import (
+    validate_ecuadorian_id, validate_clinical_ranges,
+    validate_email_address, validate_ecuadorian_phone
+)
 from clinical.pdf import generate_clinical_sheet_pdf
 from audit.services import AuditLogError, register_audit_log
 from security.access import clinical_access_required, require_clinical_access
@@ -386,12 +389,56 @@ def patient_detail_api(request, patient_id):
 
 
 @login_required
+@require_GET
+@clinical_access_required('read', api=True)
+def patient_next_code_api(request):
+    """
+    Retorna el siguiente número de ficha clínica disponible (máximo actual + 1)
+    para la institución seleccionada o a nivel general.
+    """
+    try:
+        uni = request.GET.get('universidad', '').strip()
+        qs = Visit.objects.all()
+        if uni and uni.lower() != 'all':
+            inst = (
+                Institution.objects.filter(acronym__iexact=uni).first() or
+                Institution.objects.filter(name__icontains=uni).first()
+            )
+            if inst:
+                qs = qs.filter(patient__institution=inst)
+
+        codes = qs.values_list('study_code', flat=True)
+        numeric_codes = []
+        for c in codes:
+            if not c:
+                continue
+            s = str(c).strip()
+            if s.isdigit():
+                numeric_codes.append(int(s))
+            else:
+                nums = re.findall(r'\d+', s)
+                if nums:
+                    numeric_codes.append(int(nums[0]))
+
+        siguiente = (max(numeric_codes) + 1) if numeric_codes else 1
+        return JsonResponse({
+            "success": True,
+            "siguiente_codigo": str(siguiente),
+            "next_code": str(siguiente),
+            "total_fichas": len(codes)
+        })
+    except Exception as e:
+        logger.error("Error al calcular el siguiente número de ficha clínica: %s", str(e))
+        return JsonResponse({"success": True, "siguiente_codigo": "1", "next_code": "1"})
+
+
+@login_required
 @require_POST
 @clinical_access_required('create', api=True)
 def patient_create_api(request):
     """
     Quick patient registration from modal (HU-15).
-    Enforces Ecuadorian ID verification and duplicate prevention.
+    Enforces Ecuadorian ID verification, email/phone validation, and duplicate prevention.
     Creates Patient, Visit, Anthropometry, and VitalSigns atomically.
     """
     try:
@@ -400,9 +447,34 @@ def patient_create_api(request):
         else:
             data = request.POST.dict()
 
-        nombre_completo = data.get('nombre', '').strip()
+        # Nombres y Apellidos separados o combinados
+        first_names = (data.get('first_names') or data.get('nombres') or '').strip()
+        last_name1 = (data.get('last_name1') or data.get('primer_apellido') or data.get('apellido1') or '').strip()
+        last_name2 = (data.get('last_name2') or data.get('segundo_apellido') or data.get('apellido2') or '').strip()
+
+        if not first_names or not last_name1:
+            nombre_completo = data.get('nombre', '').strip()
+            if nombre_completo:
+                partes = nombre_completo.split()
+                if len(partes) == 1:
+                    first_names = partes[0]
+                    last_name1 = "N/A"
+                    last_name2 = ""
+                elif len(partes) == 2:
+                    first_names = partes[0]
+                    last_name1 = partes[1]
+                    last_name2 = ""
+                elif len(partes) == 3:
+                    first_names = partes[0]
+                    last_name1 = partes[1]
+                    last_name2 = partes[2]
+                else:
+                    first_names = " ".join(partes[:-2])
+                    last_name1 = partes[-2]
+                    last_name2 = partes[-1]
+
         cedula = data.get('cedula', '').strip()
-        fecha_nac = data.get('fecha_nac', '').strip()
+        fecha_nac = (data.get('fecha_nac') or data.get('fecha_nacimiento') or '').strip()
         sexo_str = data.get('sexo', 'H').strip().upper()
         estamento_str = data.get('estamento', 'PDI').strip()
         universidad_str = data.get('universidad', 'UNEMI').strip().upper()
@@ -410,14 +482,28 @@ def patient_create_api(request):
         telefono = data.get('telefono', '').strip()
         correo = data.get('correo', '').strip()
 
-        if not nombre_completo or not fecha_nac:
-            return JsonResponse({"success": False, "error": "Nombre y fecha de nacimiento son requeridos."}, status=400)
+        if not first_names or not last_name1 or not fecha_nac:
+            return JsonResponse({"success": False, "error": "Nombres, primer apellido y fecha de nacimiento son requeridos."}, status=400)
 
         # Validar Cédula Ecuatoriana si fue suministrada
         if cedula and not validate_ecuadorian_id(cedula):
             return JsonResponse({
                 "success": False,
                 "error": f"La cédula '{cedula}' no es válida según el algoritmo oficial ecuatoriano."
+            }, status=400)
+
+        # Validar Correo Electrónico si fue suministrado
+        if correo and not validate_email_address(correo):
+            return JsonResponse({
+                "success": False,
+                "error": f"El correo electrónico '{correo}' no es válido. Ingrese una dirección con formato real (ej: usuario@dominio.com)."
+            }, status=400)
+
+        # Validar Teléfono si fue suministrado
+        if telefono and not validate_ecuadorian_phone(telefono):
+            return JsonResponse({
+                "success": False,
+                "error": f"El número de teléfono '{telefono}' no es válido. Debe tener 10 dígitos iniciando con 09 (ej: 0987654321)."
             }, status=400)
 
         # Chequear duplicado por cédula
@@ -430,25 +516,6 @@ def patient_create_api(request):
                     "error": f"El paciente con cédula {cedula} ya se encuentra registrado.",
                     "existente": _patient_to_dict(existente)
                 }, status=409)
-
-        # Partir nombre en nombres y apellidos
-        partes = nombre_completo.split()
-        if len(partes) == 1:
-            first_names = partes[0]
-            last_name1 = "N/A"
-            last_name2 = ""
-        elif len(partes) == 2:
-            first_names = partes[0]
-            last_name1 = partes[1]
-            last_name2 = ""
-        elif len(partes) == 3:
-            first_names = partes[0]
-            last_name1 = partes[1]
-            last_name2 = partes[2]
-        else:
-            first_names = " ".join(partes[:-2])
-            last_name1 = partes[-2]
-            last_name2 = partes[-1]
 
         with transaction.atomic():
             with connection.cursor() as cursor:
@@ -1501,6 +1568,21 @@ def form_save_api(request):
         })
         if errores_clinicos:
             return JsonResponse({"success": False, "error": " | ".join(errores_clinicos)}, status=400)
+
+        # Validaciones de formato para correo y teléfono si fueron modificados
+        f_cor = (raw_data.get('f_correo') or '').strip()
+        if f_cor and '***' not in f_cor and not validate_email_address(f_cor):
+            return JsonResponse({
+                "success": False,
+                "error": f"El correo electrónico '{f_cor}' no es válido. Ingrese una dirección con formato real (ej: usuario@dominio.com)."
+            }, status=400)
+
+        f_tel = (raw_data.get('f_telefono') or '').strip()
+        if f_tel and '***' not in f_tel and not validate_ecuadorian_phone(f_tel):
+            return JsonResponse({
+                "success": False,
+                "error": f"El teléfono '{f_tel}' no es válido. Debe tener 10 dígitos iniciando con 09 (ej: 0987654321)."
+            }, status=400)
 
         # Transacción Atómica Completa (HU-11, HU-12, HU-13)
         visit = update_clinical_record(patient, raw_data, request.user, getattr(request, 'client_ip', 'unknown'))

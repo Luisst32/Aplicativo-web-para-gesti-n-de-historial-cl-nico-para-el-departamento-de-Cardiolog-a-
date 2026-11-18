@@ -1,6 +1,146 @@
 let pacienteActual = null;
 let historialActual = null;
 
+// =============================================================================
+// GESTIÓN DE CAMBIOS SIN GUARDAR Y PROTECCIÓN DE SALIDA / NAVEGACIÓN
+// =============================================================================
+let formularioTieneCambios = false;
+let escuchandoCambiosFormulario = false;
+let accionNavegacionPendiente = null;
+
+function activarRastreoDeCambiosFormulario() {
+  escuchandoCambiosFormulario = true;
+  formularioTieneCambios = false;
+  actualizarIndicadorCambios();
+
+  const form = document.getElementById('ehrCleanForm');
+  if (form) {
+    form.addEventListener('input', () => {
+      marcarFormularioModificado();
+    });
+    form.addEventListener('change', () => {
+      marcarFormularioModificado();
+    });
+  }
+
+  // Prevenir que atrás en el navegador salga directamente sin advertencia
+  try {
+    history.pushState({ page: 'ficha_clinica' }, '', location.href);
+  } catch (e) {
+    // Si el navegador no permite manipular historial se omite
+  }
+}
+
+function marcarFormularioModificado() {
+  if (!escuchandoCambiosFormulario) return;
+  if (!formularioTieneCambios) {
+    formularioTieneCambios = true;
+    actualizarIndicadorCambios();
+  }
+}
+
+function marcarFormularioLimpio() {
+  formularioTieneCambios = false;
+  actualizarIndicadorCambios();
+}
+
+function actualizarIndicadorCambios() {
+  const badge = document.getElementById('indicadorCambiosPendientes');
+  if (!badge) return;
+  badge.style.display = formularioTieneCambios ? 'inline-flex' : 'none';
+}
+
+function abrirModalConfirmarSalida(accionDestino) {
+  accionNavegacionPendiente = accionDestino;
+  const modal = document.getElementById('modalConfirmarSalida');
+  if (modal) {
+    modal.style.display = 'flex';
+  } else {
+    if (confirm('Tiene cambios sin guardar en la ficha clínica. ¿Desea salir sin guardar los cambios?')) {
+      ejecutarSalidaSinGuardar();
+    }
+  }
+}
+
+function cerrarModalConfirmarSalida() {
+  const modal = document.getElementById('modalConfirmarSalida');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+  accionNavegacionPendiente = null;
+}
+
+function ejecutarSalidaSinGuardar() {
+  cerrarModalConfirmarSalida();
+  formularioTieneCambios = false;
+  if (typeof accionNavegacionPendiente === 'function') {
+    accionNavegacionPendiente();
+  } else if (typeof accionNavegacionPendiente === 'string') {
+    location.href = accionNavegacionPendiente;
+  } else {
+    location.href = '/clinical/listado/';
+  }
+}
+
+async function guardarYContinuarSalida() {
+  const ok = await guardarFichaCompleta();
+  if (ok) {
+    cerrarModalConfirmarSalida();
+    formularioTieneCambios = false;
+    if (typeof accionNavegacionPendiente === 'function') {
+      accionNavegacionPendiente();
+    } else if (typeof accionNavegacionPendiente === 'string') {
+      location.href = accionNavegacionPendiente;
+    } else {
+      location.href = '/clinical/listado/';
+    }
+  }
+}
+
+function configurarInterceptoresSalida() {
+  // 1. Advertencia nativa al recargar página (F5/Ctrl+R) o cerrar pestaña
+  window.addEventListener('beforeunload', (ev) => {
+    if (formularioTieneCambios) {
+      ev.preventDefault();
+      ev.returnValue = '';
+      return '';
+    }
+  });
+
+  // 2. Interceptar botón de retroceso del navegador (popstate)
+  window.addEventListener('popstate', () => {
+    if (formularioTieneCambios) {
+      try {
+        history.pushState({ page: 'ficha_clinica' }, '', location.href);
+      } catch (e) {}
+      abrirModalConfirmarSalida(() => {
+        formularioTieneCambios = false;
+        history.back();
+      });
+    }
+  });
+
+  // 3. Interceptar enlaces de navegación que salgan del formulario
+  document.addEventListener('click', (ev) => {
+    if (!formularioTieneCambios) return;
+    const enlace = ev.target.closest('a');
+    if (!enlace) return;
+    const href = enlace.getAttribute('href');
+    if (!href || href.startsWith('#') || href.startsWith('javascript:') || enlace.target === '_blank') return;
+
+    ev.preventDefault();
+    abrirModalConfirmarSalida(href);
+  });
+}
+
+// Hacer funciones disponibles globalmente para onclick del HTML
+window.abrirModalConfirmarSalida = abrirModalConfirmarSalida;
+window.cerrarModalConfirmarSalida = cerrarModalConfirmarSalida;
+window.ejecutarSalidaSinGuardar = ejecutarSalidaSinGuardar;
+window.guardarYContinuarSalida = guardarYContinuarSalida;
+window.marcarFormularioModificado = marcarFormularioModificado;
+window.marcarFormularioLimpio = marcarFormularioLimpio;
+
 document.addEventListener('DOMContentLoaded', async () => {
   inicializarRespuestasVacias();
   const urlParams = new URLSearchParams(location.search);
@@ -55,12 +195,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     aplicarProteccionPrivacidadFormulario(pacienteActual, historialActual);
     quitarSkeletonsFormulario();
     inicializarTodasLasCondiciones();
+    activarRastreoDeCambiosFormulario();
   } catch (err) {
     console.error('Error al cargar la ficha del paciente:', err);
     alert('No se pudo cargar la información del paciente desde la base de datos.');
   }
 
   restringirCamposNumericos();
+  configurarInterceptoresSalida();
 });
 
 // REMOVER PLACEHOLDERS SKELETON SCREENS DEL FORMULARIO
@@ -918,7 +1060,7 @@ async function guardarFichaCompleta() {
 
   if (!codigo && !pacienteActual && !idPacienteUrl) {
     alert('No hay un paciente o código válido seleccionado.');
-    return;
+    return false;
   }
 
   const btnTop = document.getElementById('btnGuardarFicha');
@@ -979,10 +1121,11 @@ async function guardarFichaCompleta() {
     const resJson = await resp.json();
     if (!resp.ok || !resJson.success) {
       alert('Error al guardar la ficha: ' + (resJson.error || 'Verifique los rangos clínicos y los campos obligatorios.'));
-      return;
+      return false;
     }
 
-    // Sincronizar en memoria con los datos persistidos en PostgreSQL
+    // Sincronizar en memoria con los datos persistidos en PostgreSQL sin marcar sucio el formulario
+    escuchandoCambiosFormulario = false;
     if (resJson.paciente) {
       pacienteActual = resJson.paciente;
       historialActual = obtenerUltimoHistorial(pacienteActual);
@@ -991,12 +1134,16 @@ async function guardarFichaCompleta() {
     if (resJson.datos) {
       restaurarFichaDesdeObjeto(resJson.datos);
     }
+    escuchandoCambiosFormulario = true;
+    marcarFormularioLimpio();
 
     const codMostrar = (pacienteActual && pacienteActual.codigo) ? pacienteActual.codigo : codigo;
     mostrarNotificacionToast(`✓ Ficha Clínica #${codMostrar} (${pacienteActual ? pacienteActual.nombre : ''}) guardada exitosamente en la base de datos.`);
+    return true;
   } catch (err) {
     console.error('Error al guardar la ficha en la base de datos:', err);
     alert('Error al conectar con la base de datos: ' + err.message);
+    return false;
   } finally {
     if (btnTop) {
       btnTop.disabled = false;
