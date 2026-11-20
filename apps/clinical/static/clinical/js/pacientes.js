@@ -137,10 +137,10 @@ function actualizarFacultadesModal(uni, valorSeleccionado) {
   const facList = catalogo[cleanUni] || catalogo['UNEMI'] || [];
 
   selFac.innerHTML = '';
-  // Opción por defecto "No respondió": valor vacío, no se guarda ninguna facultad.
+  // Opción por defecto "-- Seleccionar --": valor vacío, no se guarda ninguna facultad.
   const optNinguna = document.createElement('option');
   optNinguna.value = '';
-  optNinguna.textContent = 'No respondió';
+  optNinguna.textContent = '-- Seleccionar --';
   optNinguna.selected = true;
   selFac.appendChild(optNinguna);
   let seleccionado = false;
@@ -159,8 +159,8 @@ function actualizarFacultadesModal(uni, valorSeleccionado) {
 }
 
 // Solo Profesores (PDI) y Estudiantes pertenecen a una facultad. Para el resto
-// de estamentos el desplegable se bloquea en "No respondió" y no se envía.
-// Con PDI/Estudiantes "No respondió" sigue disponible y es el valor por defecto.
+// de estamentos el desplegable se bloquea en "-- Seleccionar --" y no se envía.
+// Con PDI/Estudiantes "-- Seleccionar --" sigue disponible y es el valor por defecto.
 const ESTAMENTOS_CON_FACULTAD = ['PDI', 'ESTUDIANTES'];
 
 function estamentoTieneFacultad(estamento) {
