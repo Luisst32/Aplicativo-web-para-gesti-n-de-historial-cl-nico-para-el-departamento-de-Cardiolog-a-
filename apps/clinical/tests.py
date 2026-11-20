@@ -613,6 +613,34 @@ class PatientCreateApiTests(TestCase):
         self.assertEqual(p.institution.acronym, 'ESPOL')
         self.assertEqual(p.visit.faculty, 'FIEC')
 
+    def test_create_patient_without_faculty_estamento_stores_none(self):
+        """AD/PAS/SERVICIO no tienen facultad: aunque llegue una, no se guarda."""
+        cedulas = ('0928475706', '0928475714', '0928475722')
+        for cedula, estamento in zip(cedulas, ('AD', 'PAS', 'SERVICIO')):
+            payload = {
+                'nombre': f'Prueba Estamento {estamento}',
+                'cedula': cedula,
+                'fecha_nac': '1980-01-01',
+                'sexo': 'H',
+                'estamento': estamento,
+                'universidad': 'UNEMI',
+                'facultad': 'FACS',
+            }
+            resp = self.client.post('/clinical/api/pacientes/crear/', data=payload, content_type='application/json')
+            self.assertEqual(resp.status_code, 200, resp.content)
+            self.assertIsNone(Patient.objects.get(id_card=cedula).visit.faculty)
+
+    def test_create_student_keeps_faculty_and_blank_is_none(self):
+        base = {'fecha_nac': '2003-01-01', 'sexo': 'M', 'estamento': 'ESTUDIANTES', 'universidad': 'UNEMI'}
+        resp = self.client.post('/clinical/api/pacientes/crear/', content_type='application/json',
+                                data={**base, 'nombre': 'Ana Est Uno', 'cedula': '0928475730', 'facultad': 'FACI'})
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(Patient.objects.get(id_card='0928475730').visit.faculty, 'FACI')
+        resp = self.client.post('/clinical/api/pacientes/crear/', content_type='application/json',
+                                data={**base, 'nombre': 'Ana Est Dos', 'cedula': '0928475748', 'facultad': ''})
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertIsNone(Patient.objects.get(id_card='0928475748').visit.faculty)
+
     def test_create_patient_missing_required_fails(self):
         payload = {
             'nombre': '',

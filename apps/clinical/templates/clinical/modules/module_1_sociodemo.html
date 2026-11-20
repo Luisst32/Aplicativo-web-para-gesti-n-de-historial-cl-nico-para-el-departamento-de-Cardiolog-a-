@@ -58,10 +58,17 @@
             </div>
 
             <!-- Nombres y apellidos -->
-            <div class="grid form-grid-3" style="margin-bottom: 16px;">
+            <!-- Primer y segundo nombre se muestran por separado, pero se envían
+                 unidos en el campo oculto f_nombre (columna única first_names). -->
+            <div class="grid form-grid-4" style="margin-bottom: 16px;">
               <div class="form-field">
-                <label class="field-label">1.- Nombres del paciente</label>
-                <input type="text" class="form-input" id="f_nombre" placeholder="Nombres" oninput="actualizarNombreCompleto();" name="f_nombre">
+                <label class="field-label">1.- Primer nombre</label>
+                <input type="text" class="form-input" id="f_nombre1" placeholder="Primer nombre" oninput="unirNombresFicha();" autocomplete="off">
+              </div>
+              <div class="form-field">
+                <label class="field-label">- Segundo nombre</label>
+                <input type="text" class="form-input" id="f_nombre2" placeholder="Segundo nombre" oninput="unirNombresFicha();" autocomplete="off">
+                <input type="hidden" id="f_nombre" name="f_nombre">
               </div>
               <div class="form-field">
                 <label class="field-label">- Primer apellido</label>
