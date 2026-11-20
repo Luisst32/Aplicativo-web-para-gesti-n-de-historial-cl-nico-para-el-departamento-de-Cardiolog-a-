@@ -137,10 +137,11 @@ function actualizarFacultadesModal(uni, valorSeleccionado) {
   const facList = catalogo[cleanUni] || catalogo['UNEMI'] || [];
 
   selFac.innerHTML = '';
-  // Opción vacía: se usa cuando el estamento no tiene facultad (no se guarda nada).
+  // Opción por defecto "No respondió": valor vacío, no se guarda ninguna facultad.
   const optNinguna = document.createElement('option');
   optNinguna.value = '';
-  optNinguna.textContent = '-- Ninguna --';
+  optNinguna.textContent = 'No respondió';
+  optNinguna.selected = true;
   selFac.appendChild(optNinguna);
   let seleccionado = false;
   facList.forEach(f => {
@@ -153,12 +154,13 @@ function actualizarFacultadesModal(uni, valorSeleccionado) {
     }
     selFac.appendChild(opt);
   });
-  if (!seleccionado && facList.length) selFac.value = facList[0].value;
+  if (!seleccionado) selFac.value = '';
   aplicarReglaFacultadModal();
 }
 
 // Solo Profesores (PDI) y Estudiantes pertenecen a una facultad. Para el resto
-// de estamentos el desplegable se bloquea en "-- Ninguna --" y no se envía.
+// de estamentos el desplegable se bloquea en "No respondió" y no se envía.
+// Con PDI/Estudiantes "No respondió" sigue disponible y es el valor por defecto.
 const ESTAMENTOS_CON_FACULTAD = ['PDI', 'ESTUDIANTES'];
 
 function estamentoTieneFacultad(estamento) {
@@ -169,21 +171,14 @@ function aplicarReglaFacultadModal() {
   const selFac = document.getElementById('m_facultad');
   if (!selFac) return;
   const permitido = estamentoTieneFacultad(document.getElementById('m_estamento')?.value);
-  const optNinguna = selFac.querySelector('option[value=""]');
   if (permitido) {
     selFac.disabled = false;
-    if (optNinguna) optNinguna.hidden = true;
-    if (!selFac.value) {
-      const primera = Array.from(selFac.options).find(o => o.value);
-      if (primera) selFac.value = primera.value;
-    }
+    selFac.title = '';
   } else {
-    if (optNinguna) optNinguna.hidden = false;
     selFac.value = '';
     selFac.disabled = true;
+    selFac.title = 'Solo Profesores (PDI) y Estudiantes registran facultad';
   }
-  const marca = document.getElementById('m_facultad_requerida');
-  if (marca) marca.hidden = !permitido;
 }
 
 let alTerminarModalPaciente = null;
@@ -304,7 +299,7 @@ function montarModalAgregarPaciente(onListo) {
             <label class="field-label">Estamento Institucional *</label>
             <select class="form-select" id="m_estamento" name="m_estamento" onchange="aplicarReglaFacultadModal()">
               <option value="PDI">PDI (Profesor)</option>
-              <option value="AD">AD (Administrativo)</option>
+              <option value="AD">Código de Trabajo</option>
               <option value="PAS">PAS (Personal de Adm. y Servicios)</option>
               <option value="SERVICIO">SERVICIO (Mantenimiento / Apoyo)</option>
               <option value="ESTUDIANTES">ESTUDIANTES</option>
@@ -322,7 +317,7 @@ function montarModalAgregarPaciente(onListo) {
             </select>
           </div>
           <div class="form-field pac-col-6">
-            <label class="field-label">Facultad / Dependencia <span id="m_facultad_requerida">*</span></label>
+            <label class="field-label">Facultad / Dependencia</label>
             <select class="form-select" id="m_facultad" name="m_facultad">
             </select>
           </div>

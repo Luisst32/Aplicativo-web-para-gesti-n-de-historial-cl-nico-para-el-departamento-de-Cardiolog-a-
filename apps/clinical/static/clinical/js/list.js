@@ -193,7 +193,7 @@ function actualizarOpcionesFiltrosDinamicos() {
 
     const labelsConocidos = {
       'PDI': 'PDI (Docentes)',
-      'AD': 'AD (Administrativos)',
+      'AD': 'Código de Trabajo',
       'PAS': 'PAS (Personal de Adm. y Servicios)',
       'SERVICIO': 'SERVICIO (Apoyo)',
       'ESTUDIANTES': 'ESTUDIANTES'
