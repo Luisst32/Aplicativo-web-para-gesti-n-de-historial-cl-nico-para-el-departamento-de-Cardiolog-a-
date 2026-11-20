@@ -156,7 +156,7 @@ def _patient_to_dict(patient, visit=None):
         "universidad": patient.institution.acronym if (patient.institution and patient.institution.acronym) else "UNEMI",
         "institucion": patient.institution.acronym if (patient.institution and patient.institution.acronym) else "UNEMI",
         "institucion_nombre": patient.institution.name if (patient.institution and patient.institution.name) else (patient.institution.acronym if patient.institution else "UNEMI"),
-        "facultad": visit.faculty if visit and visit.faculty else "FACI",
+        "facultad": visit.faculty if visit and visit.faculty else "",
         "ciudad": visit.residence_canton.name if (visit and visit.residence_canton) else (patient.birth_canton.name if patient.birth_canton else "Milagro"),
         "provincia": visit.residence_canton.province.name.upper() if (visit and visit.residence_canton and visit.residence_canton.province) else "GUAYAS",
         "telefono": phone_val,
@@ -504,7 +504,10 @@ def patient_create_api(request):
         sexo_str = data.get('sexo', 'H').strip().upper()
         estamento_str = data.get('estamento', 'PDI').strip()
         universidad_str = data.get('universidad', 'UNEMI').strip().upper()
-        facultad = data.get('facultad', 'FACS').strip()
+        # Solo Profesores (PDI) y Estudiantes tienen facultad; el resto no guarda ninguna.
+        facultad = (data.get('facultad') or '').strip()
+        if estamento_str.upper() not in ('PDI', 'ESTUDIANTES'):
+            facultad = ''
         telefono = data.get('telefono', '').strip()
         correo = data.get('correo', '').strip()
 
@@ -602,7 +605,7 @@ def patient_create_api(request):
                 staff_category=pdi,
                 professional_category=docente,
                 residence_canton=milagro,
-                faculty=facultad,
+                faculty=facultad or None,
                 status=Visit.Status.PENDING
             )
 
@@ -997,7 +1000,7 @@ def _build_form_datos(patient, visit):
         "f_codigo": visit.study_code if visit else "",
         "f_fecha_visita": visit.visit_date.isoformat() if (visit and visit.visit_date) else "",
         "f_universidad": patient.institution.acronym if (patient.institution and patient.institution.acronym) else "UNEMI",
-        "f_facultad": visit.faculty if visit and visit.faculty else "FACI",
+        "f_facultad": visit.faculty if visit and visit.faculty else "",
         "f_visita": str(visit.visit_number) if (visit and visit.visit_number) else "1",
         "f_estamento": visit.staff_category.name if (visit and visit.staff_category) else "PDI",
         "f_hijos": str(visit.num_children) if (visit and visit.num_children is not None) else "",

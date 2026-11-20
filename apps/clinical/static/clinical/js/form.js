@@ -602,9 +602,8 @@ function onUniversidadChange(uni, selectedFacultad) {
     customOpt.textContent = selectedFacultad;
     customOpt.selected = true;
     selFac.appendChild(customOpt);
-  } else if (!matched && facList.length > 0 && !selectedFacultad) {
-    selFac.value = facList[0].value;
   }
+  // Sin facultad registrada se queda en blanco: no se inventa una al guardar.
 
   const heroFac = document.getElementById('heroFacultad');
   if (heroFac) {
@@ -690,6 +689,26 @@ function toggleProvinciaExtranjera() {
     const inp = document.getElementById('f_pais_nac');
     if (inp) inp.value = '';
   }
+}
+
+// La BD guarda los nombres en un único campo (first_names). En la ficha se
+// muestran como primer y segundo nombre y se reúnen en el campo oculto f_nombre.
+function unirNombresFicha() {
+  const n1 = ((document.getElementById('f_nombre1') || {}).value || '').trim();
+  const n2 = ((document.getElementById('f_nombre2') || {}).value || '').trim();
+  const oculto = document.getElementById('f_nombre');
+  if (oculto) oculto.value = [n1, n2].filter(Boolean).join(' ');
+  actualizarNombreCompleto();
+}
+
+// Reparte el valor de f_nombre: primera palabra = primer nombre, resto = segundo.
+function repartirNombresFicha() {
+  const completo = ((document.getElementById('f_nombre') || {}).value || '').trim();
+  const trozos = completo ? completo.split(/\s+/) : [];
+  const el1 = document.getElementById('f_nombre1');
+  const el2 = document.getElementById('f_nombre2');
+  if (el1) el1.value = trozos[0] || '';
+  if (el2) el2.value = trozos.slice(1).join(' ');
 }
 
 function actualizarNombreCompleto() {
@@ -827,6 +846,8 @@ function aplicarProteccionPrivacidadFormulario(p, h) {
 
   const camposSensibles = [
     'f_nombre',
+    'f_nombre1',
+    'f_nombre2',
     'f_apellido1',
     'f_apellido2',
     'f_cedula',
@@ -843,6 +864,10 @@ function aplicarProteccionPrivacidadFormulario(p, h) {
 
   if (privacidad) {
     if (elNombre) elNombre.value = `Paciente ${codFicha}`;
+    const elNom1 = document.getElementById('f_nombre1');
+    const elNom2 = document.getElementById('f_nombre2');
+    if (elNom1) elNom1.value = `Paciente ${codFicha}`;
+    if (elNom2) elNom2.value = '******';
     if (elAp1) elAp1.value = '******';
     if (elAp2) elAp2.value = '******';
     if (elCed) elCed.value = (typeof censurarCedula === 'function') ? censurarCedula(p.cedula) : '09******00';
@@ -884,6 +909,7 @@ function aplicarProteccionPrivacidadFormulario(p, h) {
     }
 
     if (elNombre) elNombre.value = nomReal;
+    repartirNombresFicha();
     if (elAp1) elAp1.value = ap1Real;
     if (elAp2) elAp2.value = ap2Real;
     if (elCed) elCed.value = p.cedula || '';
@@ -1124,7 +1150,11 @@ async function guardarFichaCompleta() {
 
   // Preservar datos de identidad reales si el modo de privacidad está activo al guardar
   if (typeof esModoPrivacidadActivo === 'function' && esModoPrivacidadActivo() && pacienteActual) {
-    if (pacienteActual.nombre) {
+    if (pacienteActual.first_names || pacienteActual.last_name1) {
+      formData.set('f_nombre', pacienteActual.first_names || '');
+      formData.set('f_apellido1', pacienteActual.last_name1 || '');
+      formData.set('f_apellido2', pacienteActual.last_name2 || '');
+    } else if (pacienteActual.nombre) {
       const trozos = pacienteActual.nombre.trim().split(/\s+/);
       formData.set('f_nombre', trozos[0] || '');
       formData.set('f_apellido1', trozos[1] || '');

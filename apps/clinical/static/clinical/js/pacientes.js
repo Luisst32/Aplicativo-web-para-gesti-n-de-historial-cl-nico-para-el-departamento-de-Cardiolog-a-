@@ -137,15 +137,53 @@ function actualizarFacultadesModal(uni, valorSeleccionado) {
   const facList = catalogo[cleanUni] || catalogo['UNEMI'] || [];
 
   selFac.innerHTML = '';
+  // Opción vacía: se usa cuando el estamento no tiene facultad (no se guarda nada).
+  const optNinguna = document.createElement('option');
+  optNinguna.value = '';
+  optNinguna.textContent = '-- Ninguna --';
+  selFac.appendChild(optNinguna);
+  let seleccionado = false;
   facList.forEach(f => {
     const opt = document.createElement('option');
     opt.value = f.value;
     opt.textContent = f.label;
-    if (valorSeleccionado && (f.value === valorSeleccionado || f.label.toLowerCase().includes(valorSeleccionado.toLowerCase()))) {
+    if (!seleccionado && valorSeleccionado && (f.value === valorSeleccionado || f.label.toLowerCase().includes(valorSeleccionado.toLowerCase()))) {
       opt.selected = true;
+      seleccionado = true;
     }
     selFac.appendChild(opt);
   });
+  if (!seleccionado && facList.length) selFac.value = facList[0].value;
+  aplicarReglaFacultadModal();
+}
+
+// Solo Profesores (PDI) y Estudiantes pertenecen a una facultad. Para el resto
+// de estamentos el desplegable se bloquea en "-- Ninguna --" y no se envía.
+const ESTAMENTOS_CON_FACULTAD = ['PDI', 'ESTUDIANTES'];
+
+function estamentoTieneFacultad(estamento) {
+  return ESTAMENTOS_CON_FACULTAD.includes(String(estamento || '').toUpperCase().trim());
+}
+
+function aplicarReglaFacultadModal() {
+  const selFac = document.getElementById('m_facultad');
+  if (!selFac) return;
+  const permitido = estamentoTieneFacultad(document.getElementById('m_estamento')?.value);
+  const optNinguna = selFac.querySelector('option[value=""]');
+  if (permitido) {
+    selFac.disabled = false;
+    if (optNinguna) optNinguna.hidden = true;
+    if (!selFac.value) {
+      const primera = Array.from(selFac.options).find(o => o.value);
+      if (primera) selFac.value = primera.value;
+    }
+  } else {
+    if (optNinguna) optNinguna.hidden = false;
+    selFac.value = '';
+    selFac.disabled = true;
+  }
+  const marca = document.getElementById('m_facultad_requerida');
+  if (marca) marca.hidden = !permitido;
 }
 
 let alTerminarModalPaciente = null;
@@ -200,21 +238,30 @@ function montarModalAgregarPaciente(onListo) {
         <button class="modal-close-btn" id="btnCancelX" title="Cerrar">&times;</button>
       </div>
       <div class="modal-body pac-modal-body">
-        <!-- Fila 1: N.° Ficha Clínica (3), Nombres (3), Primer Apellido (3), Segundo Apellido (3) -->
+        <!-- Fila 1: N.° Ficha Clínica (2), Primer Nombre (5), Segundo Nombre (5).
+             Ambos nombres se guardan unidos en el campo único first_names. -->
         <div class="pac-form-row">
-          <div class="form-field pac-col-3">
+          <div class="form-field pac-col-2">
             <label class="field-label">N.° Ficha Clínica</label>
             <input type="text" class="form-input" id="m_codigo" placeholder="Calculando..." name="m_codigo" autocomplete="off" title="Código numérico sugerido automáticamente (siguiente disponible). Puede modificarlo libremente si lo desea.">
           </div>
-          <div class="form-field pac-col-3">
-            <label class="field-label">Nombres *</label>
-            <input type="text" class="form-input" id="m_nombres" placeholder="Ej: Carmen Elena" name="m_nombres" required>
+          <div class="form-field pac-col-5">
+            <label class="field-label">Primer Nombre *</label>
+            <input type="text" class="form-input" id="m_nombres" placeholder="Ej: Carmen" name="m_nombres" required>
           </div>
-          <div class="form-field pac-col-3">
+          <div class="form-field pac-col-5">
+            <label class="field-label">Segundo Nombre</label>
+            <input type="text" class="form-input" id="m_nombre2" placeholder="Ej: Elena (Opcional)" name="m_nombre2">
+          </div>
+        </div>
+
+        <!-- Fila 1b: Primer Apellido (6), Segundo Apellido (6) -->
+        <div class="pac-form-row">
+          <div class="form-field pac-col-6">
             <label class="field-label">Primer Apellido *</label>
             <input type="text" class="form-input" id="m_apellido1" placeholder="Ej: Villacrés" name="m_apellido1" required>
           </div>
-          <div class="form-field pac-col-3">
+          <div class="form-field pac-col-6">
             <label class="field-label">Segundo Apellido</label>
             <input type="text" class="form-input" id="m_apellido2" placeholder="Ej: Moreira (Opcional)" name="m_apellido2">
           </div>
@@ -255,7 +302,7 @@ function montarModalAgregarPaciente(onListo) {
           </div>
           <div class="form-field pac-col-4">
             <label class="field-label">Estamento Institucional *</label>
-            <select class="form-select" id="m_estamento" name="m_estamento">
+            <select class="form-select" id="m_estamento" name="m_estamento" onchange="aplicarReglaFacultadModal()">
               <option value="PDI">PDI (Profesor)</option>
               <option value="AD">AD (Administrativo)</option>
               <option value="PAS">PAS (Personal de Adm. y Servicios)</option>
@@ -275,7 +322,7 @@ function montarModalAgregarPaciente(onListo) {
             </select>
           </div>
           <div class="form-field pac-col-6">
-            <label class="field-label">Facultad / Dependencia *</label>
+            <label class="field-label">Facultad / Dependencia <span id="m_facultad_requerida">*</span></label>
             <select class="form-select" id="m_facultad" name="m_facultad">
             </select>
           </div>
@@ -307,7 +354,7 @@ function montarModalAgregarPaciente(onListo) {
   document.getElementById('btnCancelModal').addEventListener('click', cerrarModalAgregarPaciente);
   document.getElementById('btnSaveModal').addEventListener('click', guardarPacienteDelModal);
 
-  ['m_nombres', 'm_apellido1', 'm_apellido2', 'm_fecha_nac', 'm_cedula'].forEach(id => {
+  ['m_nombres', 'm_nombre2', 'm_apellido1', 'm_apellido2', 'm_fecha_nac', 'm_cedula'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.addEventListener('input', () => {
@@ -340,6 +387,8 @@ function cerrarModalAgregarPaciente() {
     }
     const nombresInput = document.getElementById('m_nombres');
     if (nombresInput) nombresInput.value = '';
+    const nombre2Input = document.getElementById('m_nombre2');
+    if (nombre2Input) nombre2Input.value = '';
     const ap1Input = document.getElementById('m_apellido1');
     if (ap1Input) ap1Input.value = '';
     const ap2Input = document.getElementById('m_apellido2');
@@ -361,7 +410,10 @@ function cerrarModalAgregarPaciente() {
  */
 async function guardarPacienteDelModal() {
   const codigo = document.getElementById('m_codigo')?.value.trim() || '';
-  const nombres = (document.getElementById('m_nombres')?.value || '').trim();
+  const nombre1 = (document.getElementById('m_nombres')?.value || '').trim();
+  const nombre2 = (document.getElementById('m_nombre2')?.value || '').trim();
+  // La BD guarda ambos nombres en un único campo (first_names).
+  const nombres = [nombre1, nombre2].filter(Boolean).join(' ');
   const apellido1 = (document.getElementById('m_apellido1')?.value || '').trim();
   const apellido2 = (document.getElementById('m_apellido2')?.value || '').trim();
   const fn = document.getElementById('m_fecha_nac').value;
@@ -369,13 +421,16 @@ async function guardarPacienteDelModal() {
   const sexo = document.getElementById('m_sexo').value;
   const estamento = document.getElementById('m_estamento').value;
   const universidad = document.getElementById('m_universidad')?.value || 'UNEMI';
-  const facultad = document.getElementById('m_facultad')?.value || 'FACS';
+  const selFacultad = document.getElementById('m_facultad');
+  const facultad = (selFacultad && !selFacultad.disabled && estamentoTieneFacultad(estamento))
+    ? selFacultad.value
+    : '';
   const telefono = document.getElementById('m_telefono').value.trim();
   const correo = document.getElementById('m_correo').value.trim();
 
-  if (!nombres || !apellido1) {
-    alert('Por favor ingrese tanto los nombres como el primer apellido.');
-    if (!nombres) document.getElementById('m_nombres')?.focus();
+  if (!nombre1 || !apellido1) {
+    alert('Por favor ingrese tanto el primer nombre como el primer apellido.');
+    if (!nombre1) document.getElementById('m_nombres')?.focus();
     else document.getElementById('m_apellido1')?.focus();
     return;
   }
