@@ -534,7 +534,7 @@ var FACULTADES_POR_UNIVERSIDAD = window.FACULTADES_POR_UNIVERSIDAD || {
     { value: 'FACS', label: 'FACS - Facultad de Salud' },
     { value: 'FACSO', label: 'FACSO - Ciencias Sociales, Educación Comercial y Derecho' },
     { value: 'FACE', label: 'FACE - Facultad de Educación' },
-    { value: 'POSGRADO', label: 'Posgrado / Dirección de Posgrado' }
+    { value: 'POSGRADO', label: 'Posgrado' }
   ],
   'ESPOL': [
     { value: 'FIEC', label: 'FIEC - Fac. de Ing. en Electricidad y Computación' },

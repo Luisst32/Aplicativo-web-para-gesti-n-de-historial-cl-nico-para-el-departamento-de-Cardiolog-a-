@@ -10,11 +10,14 @@ class QuotaTests(TestCase):
             self.assertTrue(consume('synthetic-user',20,now=60))
         self.assertFalse(consume('synthetic-user',20,now=60))
         self.assertTrue(consume('synthetic-user',20,now=120))
-    def test_peer_cannot_bypass_login_quota_by_forwarded_header(self):
+    # Reloj fijo: la cuota usa ventanas de 60 s y cruzar un minuto reiniciaba el contador (fallo intermitente en CI).
+    @patch('security.request_limits.time.time', return_value=6000.0)
+    def test_peer_cannot_bypass_login_quota_by_forwarded_header(self, _clock):
         for index in range(5):
             self.client.post('/security/login/', {'username':'synthetic', 'password':'bad'}, HTTP_X_FORWARDED_FOR=str(index))
         self.assertEqual(self.client.post('/security/login/', {'username':'synthetic', 'password':'bad'}, HTTP_X_FORWARDED_FOR='changed').status_code,429)
-    def test_reset_is_limited(self):
+    @patch('security.request_limits.time.time', return_value=6000.0)
+    def test_reset_is_limited(self, _clock):
         for _ in range(5):
             self.client.post('/security/password-reset/',{})
         self.assertEqual(self.client.post('/security/password-reset/',{}).status_code,429)

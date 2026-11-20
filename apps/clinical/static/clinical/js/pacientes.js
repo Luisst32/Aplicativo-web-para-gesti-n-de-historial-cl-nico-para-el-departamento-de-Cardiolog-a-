@@ -116,7 +116,7 @@ var FACULTADES_POR_UNIVERSIDAD = window.FACULTADES_POR_UNIVERSIDAD || {
     { value: 'FACI', label: 'FACI - Facultad de Ciencias e Ingeniería' },
     { value: 'FACSO', label: 'FACSO - Ciencias Sociales, Educación Comercial y Derecho' },
     { value: 'FACE', label: 'FACE - Facultad de Educación' },
-    { value: 'POSGRADO', label: 'Posgrado / Dirección de Posgrado' }
+    { value: 'POSGRADO', label: 'Posgrado' }
   ],
   'ESPOL': [
     { value: 'FCV', label: 'FCV - Facultad de Ciencias de la Vida' },
