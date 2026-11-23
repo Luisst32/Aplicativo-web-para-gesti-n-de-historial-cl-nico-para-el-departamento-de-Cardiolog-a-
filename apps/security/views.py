@@ -296,7 +296,7 @@ def api_settings_view(request):
         return JsonResponse({
             "status": "success",
             "chatbot_enabled": cfg.chatbot_enabled,
-            "active_llm_provider": cfg.active_llm_provider or "gemini",
+            "active_llm_provider": (cfg.active_llm_provider or "gemini") if is_admin else "",
 
             # Google Gemini
             "gemini_enabled": cfg.gemini_enabled if is_admin else False,
@@ -334,18 +334,40 @@ def api_settings_view(request):
             "updated_at": cfg.updated_at_utc.strftime("%d/%m/%Y %H:%M") if cfg.updated_at_utc else ""
         })
 
-    if not is_admin:
-        return JsonResponse({
-            "status": "error",
-            "message": "Acceso denegado: solo el rol Administrador puede modificar la configuración del sistema."
-        }, status=403)
-
-    # POST: Guardar ajustes (solo rol Administrador)
+    # POST: los perfiles clínicos solo actualizan el ajuste general permitido;
+    # el bloque administrativo completo se procesa más abajo.
     try:
         if request.content_type == 'application/json':
             data = json.loads(request.body.decode('utf-8'))
         else:
             data = request.POST
+
+        if not is_admin:
+            # Los perfiles clínicos solo pueden cambiar este ajuste general.
+            # Si llega cualquier campo protegido, se rechaza el lote completo
+            # sin modificar siquiera el estado del chatbot.
+            protected_fields = set(data.keys()) - {'chatbot_enabled'}
+            if protected_fields:
+                return JsonResponse({
+                    "status": "error",
+                    "message": "Acceso denegado: las credenciales, proveedores y APIs solo pueden ser modificados por el rol Administrador."
+                }, status=403)
+
+            if 'chatbot_enabled' in data:
+                raw_chatbot = data.get('chatbot_enabled')
+                cfg.chatbot_enabled = (
+                    raw_chatbot if isinstance(raw_chatbot, bool)
+                    else str(raw_chatbot).lower() in ('true', '1', 'on', 'yes')
+                )
+                cfg.updated_by = request.user
+                cfg.save()
+
+            return JsonResponse({
+                "status": "success",
+                "message": "Ajuste general guardado correctamente.",
+                "chatbot_enabled": cfg.chatbot_enabled,
+                "is_admin": False
+            })
 
         def _to_bool(val, default=None):
             if val is None: return default

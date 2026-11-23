@@ -960,7 +960,7 @@ function seleccionarPaciente(p, h) {
   document.getElementById('f_edad').value = edadStr;
 
   // Universidad y Facultad
-  const uniVal = p.universidad || 'UNEMI';
+  const uniVal = window.CARDIO_UNEMI_ONLY ? 'UNEMI' : (p.universidad || 'UNEMI');
   if (document.getElementById('f_universidad')) {
     document.getElementById('f_universidad').value = uniVal;
   }
@@ -1225,9 +1225,10 @@ function restaurarFichaDesdeObjeto(datos) {
     if (input.type === 'checkbox') { input.dataset.answer = ''; input._answerSelect.value = ''; }
   });
   // Inicializar selectores en cascada antes de iterar campos
-  if (datos.f_universidad) {
-    if (document.getElementById('f_universidad')) document.getElementById('f_universidad').value = datos.f_universidad;
-    onUniversidadChange(datos.f_universidad, datos.f_facultad);
+  if (datos.f_universidad || window.CARDIO_UNEMI_ONLY) {
+    const universidad = window.CARDIO_UNEMI_ONLY ? 'UNEMI' : datos.f_universidad;
+    if (document.getElementById('f_universidad')) document.getElementById('f_universidad').value = universidad;
+    onUniversidadChange(universidad, datos.f_facultad);
   }
   if (datos.f_provincia_nac) {
     if (document.getElementById('f_provincia_nac')) document.getElementById('f_provincia_nac').value = datos.f_provincia_nac;

@@ -313,7 +313,7 @@ SPSS_QUESTION_ALIASES = {
 
 
 STANDARD_FIELD_ALIASES = {
-    'codigo': ['codigo', 'study_code', 'id_paciente', 'paciente_id', 'id_participante', 'cod', 'id'],
+    'codigo': ['codigo', 'codigonuev', 'study_code', 'id_paciente', 'paciente_id', 'id_participante', 'cod', 'id'],
     'cedula': ['cedula', 'ci', 'id_card', 'dni', 'identificacion', 'num_cedula'],
     'nombres': ['nombres', 'nombre', 'first_names', 'nombre_completo', 'paciente'],
     'apellido1': ['primer_apellido', 'apellido1', 'apellido', 'apellido_p', 'apellido_paterno', 'apellidopaterno', 'last_name1', 'apellidos'],
@@ -341,7 +341,7 @@ STANDARD_FIELD_ALIASES = {
     'horario': ['horario_de_trabajo', 'horario', 'jornada_laboral'],
     'profesion': ['categoria_profesional', 'profesion', 'ocupacion'],
     'vivienda': ['su_vivienda_es', 'vivienda', 'tipo_vivienda'],
-    'ingresos': ['ingresos_totales_mensuales', 'ingresos', 'ingreso_familiar'],
+    'ingresos': ['ingresos_totales', 'ingresos_totales_mensuales', 'ingresos', 'ingreso_familiar'],
     'anio': ['ao', 'a_o', 'anio', 'year'],
 
     # Antropometría
@@ -353,7 +353,10 @@ STANDARD_FIELD_ALIASES = {
 
     # Signos Vitales
     'tas': ['tas_ts', 'tas', 'pa_sistolica', 'sistolica'],
-    'tad': ['tas_mmhg', 'tad', 'tsi', 'pa_diastolica', 'diastolica'],
+    # No usar "diastolica" como coincidencia parcial: también aparece en
+    # FUNCION_DIASTOLICA_VENTRICULO_* y no representa presión arterial.
+    'tad': ['tad_mmhg', 'tad', 'pa_diastolica'],
+    'dislipemia': ['dislipidemia', 'dislipemia'],
     'sat_o2': ['saturacion_o2', 'sat_o2', 'sato2'],
     'fc': ['frecuencia_cardiaca_ipm', 'fc', 'frecuencia_cardiaca', 'pulso'],
     'soplos': ['soplos_cardiacos', 'soplos', 'soplo'],
@@ -369,30 +372,35 @@ STANDARD_FIELD_ALIASES = {
     'ecg_qt': ['intervalo_qt_seg', 'qt_ms', 'qt'],
     'ecg_qtc': ['intervalo_corregido_baset_mseg', 'qtc_bazett_ms', 'qtc'],
     'ecg_eje': ['eje_electrico_a', 'eje', 'axis'],
-    'ecg_hvi': ['sobrecarga_sistolica', 'hvi'],
+    'ecg_hvi': ['ventriculo_izquierdo_hipertrofico', 'hvi'],
+    'ecg_sobrecarga': ['sobrecarga_sistolica'],
     'ecg_bloqueo': ['bloqueo_de_rama_cual', 'bloqueo_rama'],
     'ecg_rr': ['intervalo_rr_seg'],
-    'ecg_onda_p': ['anchura_onda_p_mm', 'onda_p_mitral'],
-    'ecg_bloqueo_av': ['bloqueo_av', 'bloqueo_sinoauricular_interauricular'],
+    'ecg_onda_p': ['anchura_onda_p_mm'],
+    'ecg_bloqueo_av': ['bloqueo_av'],
+    'ecg_sa_block': ['bloqueo_sinoauricular_interauricular'],
     'ecg_hemibloqueo': ['hemibloqueos'],
-    'ecg_patrones': ['patrones', 'deflexion_intrinsicoide_v5v6_seg'],
+    'ecg_hemibloqueo_detalle': ['hemibloqueos_cual'],
+    'ecg_patrones': ['patrones'],
+    'ecg_intrinsicoide': ['deflexion_intrinsicoide_v5v6_seg'],
     'ecg_onda_delta': ['onda_delta'],
     'ecg_cubeta': ['cubeta_digitalica'],
     'ecg_onda_q': ['onda_q_patologica'],
-    'ecg_t_negativa': ['t_negativa', 't_negativa_complejos'],
+    'ecg_t_negativa': ['t_negativa'],
+    'ecg_t_negativa_complejos': ['t_negativa_complejos'],
     'ecg_st_ascenso': ['ascenso_st_patologico'],
     'ecg_st_descenso': ['descenso_st_patologico'],
     'ecg_normal': ['ecg_normal'],
 
     # Estudios Solicitados al Paciente
-    'est_analisis_clinicos': ['usted_se_ha_realizado_estudios_clinicos', 'estudios_clinicos', 'estudios_analisis_clinicos'],
-    'est_ergometria_spect': ['usted_se_ha_realizado_estudios_de_ergonometria', 'ergometria_spect', 'estudios_ergometria'],
-    'est_tac_cardiaco': ['usted_se_ha_realizado_estudios_de_tac_cardiaco', 'tac_cardiaco', 'estudios_tac_cardiaco'],
-    'est_rnm_cardiaco': ['usted_se_ha_realizado_estudios_de_rnm_ccardiaco', 'rnm_cardiaco', 'estudios_rnm_cardiaco'],
-    'est_electrofisiologia': ['usted_se_ha_realizado_estudios_de_electrofisiologia', 'electrofisiologia', 'estudios_electrofisiologia'],
-    'est_ecocardiograma': ['usted_se_ha_realizado_estudios_ecocardiofrafia', 'estudios_ecocardiograma'],
-    'est_holter': ['usted_se_ha_realizado_estudios_holter_ecg', 'estudios_holter_ecg', 'estudios_holter'],
-    'est_mapa': ['usted_se_ha_realizado_estudios_de_mapa', 'estudios_mapa'],
+    'est_analisis_clinicos': ['estudios_clinicos', 'estudios_analisis_clinicos'],
+    'est_ergometria_spect': ['ergometria_spect', 'estudios_ergometria'],
+    'est_tac_cardiaco': ['tac_cardiaco', 'estudios_tac_cardiaco'],
+    'est_rnm_cardiaco': ['rnm_cardiaco', 'estudios_rnm_cardiaco'],
+    'est_electrofisiologia': ['electrofisiologia', 'estudios_electrofisiologia'],
+    'est_ecocardiograma': ['estudios_ecocardiograma'],
+    'est_holter': ['estudios_holter_ecg', 'estudios_holter'],
+    'est_mapa': ['estudios_mapa'],
 
     # Laboratorio
     'lab_hematies': ['hematies', 'globulos_rojos'],

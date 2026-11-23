@@ -10,6 +10,7 @@ import zipfile
 import logging
 from decimal import Decimal
 from django.shortcuts import render, get_object_or_404
+from django.conf import settings
 from django.http import JsonResponse, HttpResponse, Http404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
@@ -197,7 +198,9 @@ def form_view(request):
     Renders the clinical evaluation form template.
     Data is populated asynchronously via form_get_api or initial context.
     """
-    return render(request, 'clinical/form.html')
+    return render(request, 'clinical/form.html', {
+        'unemi_only': getattr(settings, 'UNEMI', False),
+    })
 
 
 @login_required
@@ -208,7 +211,10 @@ def list_view(request):
     Renders the patients directory and medical evaluations list.
     Populates dynamic filters for available years, staff categories and institutions (HU-15, HU-16).
     """
-    total_pacientes = Patient.objects.filter(status=Patient.Status.ACTIVE).count()
+    active_patients = Patient.objects.filter(status=Patient.Status.ACTIVE)
+    if getattr(settings, 'UNEMI', False):
+        active_patients = active_patients.filter(institution__acronym__iexact='UNEMI')
+    total_pacientes = active_patients.count()
 
     from django.utils import timezone
     from django.db.models.functions import ExtractYear
@@ -221,6 +227,8 @@ def list_view(request):
     ).annotate(
         v_year=ExtractYear('visit_date')
     ).values_list('v_year', flat=True).distinct()
+    if getattr(settings, 'UNEMI', False):
+        years_qs = years_qs.filter(patient__institution__acronym__iexact='UNEMI')
 
     years_set = {int(y) for y in years_qs if y is not None and 1900 < int(y) < 2200}
     if not years_set:
@@ -231,7 +239,8 @@ def list_view(request):
     estamentos_qs = list(
         Visit.objects.filter(
             patient__status=Patient.Status.ACTIVE,
-            staff_category__isnull=False
+            staff_category__isnull=False,
+            **({'patient__institution__acronym__iexact': 'UNEMI'} if getattr(settings, 'UNEMI', False) else {})
         ).values_list('staff_category__name', flat=True).distinct().order_by('staff_category__name')
     )
     if not estamentos_qs:
@@ -243,7 +252,7 @@ def list_view(request):
     labels_map = {
         'PDI': 'PDI (Docentes)',
         'AD': 'AD (Administrativos)',
-        'PAS': 'PAS (Personal de Adm. y Servicios)',
+        'PAS': 'Código de trabajo',
         'SERVICIO': 'SERVICIO (Apoyo)',
         'ESTUDIANTES': 'ESTUDIANTES',
     }
@@ -259,6 +268,10 @@ def list_view(request):
             institution__isnull=False
         ).values_list('institution_id', flat=True).distinct()
     )
+    if getattr(settings, 'UNEMI', False):
+        inst_ids = list(
+            Institution.objects.filter(acronym__iexact='UNEMI').values_list('institution_id', flat=True)
+        )
     if inst_ids:
         available_institutions = list(
             Institution.objects.filter(institution_id__in=inst_ids)
@@ -277,6 +290,7 @@ def list_view(request):
         'available_institutions': available_institutions,
         'available_years': available_years,
         'available_estamentos': available_estamentos,
+        'unemi_only': getattr(settings, 'UNEMI', False),
     })
 
 
@@ -305,6 +319,9 @@ def patient_list_api(request):
         'visit__living_situation', 'visit__education_level', 'visit__work_schedule',
         'visit__professional_category', 'visit__housing_type', 'visit__income_range'
     ).prefetch_related('visit__answers__question')
+
+    if getattr(settings, 'UNEMI', False):
+        qs = qs.filter(institution__acronym__iexact='UNEMI')
 
     q = request.GET.get('q', '').strip()
     if q:
@@ -2314,6 +2331,15 @@ def export_dataset_api(request):
         if isinstance(patient_ids, str) and patient_ids.lstrip().startswith('['):
             patient_ids = json.loads(patient_ids)
 
+        institution_id = data.get('institution_id')
+        if institution_id in (None, '', 'all'):
+            institution_id = None
+        else:
+            try:
+                institution_id = int(institution_id)
+            except (TypeError, ValueError):
+                raise RecordSelectionError('La institución seleccionada no es válida.')
+
         raw_privacy = data.get('privacy_mode', False)
         if isinstance(raw_privacy, str):
             privacy_mode = raw_privacy.strip().lower() in ('true', '1', 'yes', 'si', 'on')
@@ -2330,7 +2356,8 @@ def export_dataset_api(request):
         file_bytes, filename, content_type = generate_export_dataset(
             patient_ids=patient_ids,
             format_type=format_type,
-            privacy_mode=privacy_mode
+            privacy_mode=privacy_mode,
+            institution_id=institution_id
         )
 
         response = HttpResponse(file_bytes, content_type=content_type)

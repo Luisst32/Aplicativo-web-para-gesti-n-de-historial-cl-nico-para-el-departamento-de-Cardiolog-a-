@@ -102,10 +102,10 @@ async function startExport() {
 }
 
 // Helper para normalizar gradientes, desactivar clipPath problemáticos y asegurar visibilidad de rellenos SVG en html2canvas
-function fixSvgFillsForHtml2Canvas(clonedDoc, tabId) {
+function fixSvgFillsForHtml2Canvas(clonedDoc, tabId, rootOverride = null) {
   if (!clonedDoc) return;
   try {
-    const root = (tabId ? clonedDoc.getElementById('tab-' + tabId) : null) || clonedDoc;
+    const root = rootOverride || (tabId ? clonedDoc.getElementById('tab-' + tabId) : null) || clonedDoc;
 
     // 1. Desactivar clip-path SVG que html2canvas no soporta y oculta las barras de ApexCharts
     root.querySelectorAll('*').forEach(el => {
@@ -247,13 +247,116 @@ function getExportItems(scope) {
 }
 
 // Captura una parte específica (Parte 1 o Parte 2) de un módulo usando onclone sin slicing de píxeles
-async function renderSectionPartCanvas(h2c, tab, partNumber, scale = 1.1) {
+function buildExportHtmlStage(tab, partNumber) {
   const targetEl = document.getElementById('tab-' + tab.id);
   if (!targetEl) return null;
+
+  // Componer en un lienzo de escritorio amplio y escalar proporcionalmente
+  // al A4 evita que el navegador active el layout estrecho de pantalla.
+  const exportSourceWidth = 1600;
+
+  const stage = document.createElement('div');
+  stage.className = 'dashboard-export-html-stage';
+  stage.setAttribute('aria-hidden', 'true');
+  stage.style.cssText = `position:fixed;left:-100000px;top:0;width:${exportSourceWidth}px;min-height:10px;padding:0;margin:0;background:#FFFFFF;z-index:1;overflow:visible;pointer-events:none;`;
+
+  const clone = targetEl.cloneNode(true);
+  clone.id = 'dashboard-export-tab-' + tab.id;
+  clone.classList.add('dashboard-export-html-source');
+  clone.classList.add('active');
+  clone.style.setProperty('display', 'flex', 'important');
+  clone.style.flexDirection = 'column';
+  clone.style.width = `${exportSourceWidth}px`;
+  clone.style.maxWidth = `${exportSourceWidth}px`;
+  clone.style.height = 'auto';
+  clone.style.minHeight = '0';
+  clone.style.maxHeight = 'none';
+  clone.style.padding = '0';
+  clone.style.margin = '0';
+  clone.style.background = '#FFFFFF';
+
+  // cloneNode no copia los pÃ­xeles internos de canvas; copiamos su estado grÃ¡fico.
+  const originalCanvases = targetEl.querySelectorAll('canvas');
+  const clonedCanvases = clone.querySelectorAll('canvas');
+  originalCanvases.forEach((source, index) => {
+    const destination = clonedCanvases[index];
+    if (!destination) return;
+    try {
+      const image = document.createElement('img');
+      image.src = source.toDataURL('image/png');
+      image.width = source.width || 800;
+      image.height = source.height || 320;
+      image.alt = '';
+      image.style.cssText = 'display:block;width:100%;height:100%;object-fit:contain;';
+      destination.replaceWith(image);
+    } catch (err) {
+      destination.width = source.width;
+      destination.height = source.height;
+      const ctx = destination.getContext('2d');
+      if (ctx && source.width && source.height) ctx.drawImage(source, 0, 0);
+    }
+  });
+
+  clone.querySelectorAll('.chart-skeleton-placeholder').forEach(el => el.remove());
+  clone.querySelectorAll('button, input, select, textarea').forEach(el => {
+    el.style.pointerEvents = 'none';
+  });
+
+  const cfg = getTabPartsConfig(tab.id);
+  const splitIdx = cfg.splitIdx || 3;
+  const rows = Array.from(clone.children).filter(c =>
+    c && c.nodeType === 1 && c.tagName === 'DIV' &&
+    (c.classList.contains('kpi-row') || c.classList.contains('grid-row') || c.classList.contains('grid'))
+  );
+  rows.forEach((row, index) => {
+    if ((partNumber === 1 && index >= splitIdx) || (partNumber === 2 && index < splitIdx)) row.remove();
+  });
+
+  // El documento PDF siempre usa el layout de escritorio del dashboard,
+  // aunque Chrome evalúe las media queries con un viewport reducido.
+  clone.querySelectorAll('.kpi-row').forEach(row => {
+    row.style.setProperty('display', 'grid', 'important');
+    row.style.setProperty('grid-template-columns', 'repeat(6, minmax(0, 1fr))', 'important');
+    row.style.setProperty('gap', '12px', 'important');
+  });
+  clone.querySelectorAll('.grid-2-cols, .grid-2-cols-equal').forEach(row => {
+    row.style.setProperty('display', 'grid', 'important');
+    row.style.setProperty('grid-template-columns', 'repeat(2, minmax(0, 1fr))', 'important');
+    row.style.setProperty('gap', '16px', 'important');
+  });
+  clone.querySelectorAll('.grid-row').forEach(row => {
+    row.style.setProperty('width', '100%', 'important');
+    row.style.setProperty('min-width', '0', 'important');
+  });
+  clone.querySelectorAll('.card-kpi .kpi-title, .card-kpi .kpi-value').forEach(el => {
+    el.style.setProperty('visibility', 'visible', 'important');
+    el.style.setProperty('opacity', '1', 'important');
+  });
+
+  stage.appendChild(clone);
+  document.body.appendChild(stage);
+
+  // Encaja cada parte completa dentro del área útil de A4 horizontal.
+  const availableWidth = 277 * 3.779527559;
+  const availableHeight = 163 * 3.779527559;
+  const sourceWidth = Math.max(clone.scrollWidth, exportSourceWidth);
+  const sourceHeight = Math.max(clone.scrollHeight, 1);
+  const exportScale = Math.min(1, availableWidth / sourceWidth, availableHeight / sourceHeight);
+  clone.style.setProperty('transform', `scale(${exportScale})`, 'important');
+  clone.style.setProperty('transform-origin', 'top left', 'important');
+  return { stage, root: clone };
+}
+
+async function renderSectionPartCanvas(h2c, tab, partNumber, scale = 1.1) {
+  const htmlStage = buildExportHtmlStage(tab, partNumber);
+  if (!htmlStage) return null;
+  const targetEl = htmlStage.stage;
   const cfg = getTabPartsConfig(tab.id);
   const splitIdx = cfg.splitIdx || 3;
 
-  return await h2c(targetEl, {
+  try {
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return await h2c(targetEl, {
     scale: scale,
     useCORS: true,
     backgroundColor: '#FFFFFF',
@@ -263,15 +366,15 @@ async function renderSectionPartCanvas(h2c, tab, partNumber, scale = 1.1) {
       if (!el) return false;
       if (el.id === 'modal-export-dashboard') return true;
       if (el.id === 'slicers-bar' || el.id === 'main-nav' || el.id === 'app-header' || el.classList?.contains('sidebar')) return true;
-      if (el.classList && el.classList.contains('tab-view') && el.id !== ('tab-' + tab.id)) return true;
+       if (el.classList && el.classList.contains('tab-view') && el.id !== ('dashboard-export-tab-' + tab.id)) return true;
       return false;
     },
     onclone: (clonedDoc) => {
-      fixSvgFillsForHtml2Canvas(clonedDoc, tab.id);
-      const clonedTarget = clonedDoc.getElementById('tab-' + tab.id);
+      const clonedTarget = clonedDoc.getElementById('dashboard-export-tab-' + tab.id);
       if (!clonedTarget) return;
+      fixSvgFillsForHtml2Canvas(clonedDoc, tab.id, clonedTarget);
 
-      clonedTarget.style.display = 'flex';
+      clonedTarget.style.setProperty('display', 'flex', 'important');
       clonedTarget.style.flexDirection = 'column';
       clonedTarget.style.background = '#FFFFFF';
       clonedTarget.style.padding = '0';
@@ -280,32 +383,11 @@ async function renderSectionPartCanvas(h2c, tab, partNumber, scale = 1.1) {
       clonedTarget.style.minHeight = '0';
       clonedTarget.style.maxHeight = 'none';
 
-      const rows = Array.from(clonedTarget.children).filter(c =>
-        c && c.nodeType === 1 && c.tagName === 'DIV' &&
-        (c.classList.contains('kpi-row') || c.classList.contains('grid-row') || c.classList.contains('grid'))
-      );
-
-      if (rows.length === 0) return;
-
-      if (partNumber === 1) {
-        rows.forEach((r, idx) => {
-          if (idx >= splitIdx) {
-            r.style.display = 'none';
-          }
-        });
-      } else {
-        rows.forEach((r, idx) => {
-          if (idx < splitIdx) {
-            r.style.display = 'none';
-          }
-        });
-        if (rows[splitIdx]) {
-          rows[splitIdx].style.marginTop = '0px';
-          rows[splitIdx].style.paddingTop = '0px';
-        }
-      }
     }
-  });
+    });
+  } finally {
+    htmlStage.stage.remove();
+  }
 }
 
 // Wrapper retrocompatible
@@ -359,7 +441,208 @@ async function exportImage(scope, setProgress) {
 }
 
 // 2. Exportación a Documento PDF Ejecutivo Paginado (2 Páginas por Sección)
+function escapeExportHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getExportCsrfToken() {
+  if (typeof getCsrfToken === 'function') return getCsrfToken();
+  const match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+function collectDashboardExportStyles() {
+  const chunks = [];
+  document.querySelectorAll('style').forEach(style => {
+    if (style.textContent) chunks.push(style.textContent);
+  });
+  document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
+    try {
+      const sheet = link.sheet;
+      if (sheet && sheet.cssRules) {
+        chunks.push(Array.from(sheet.cssRules).map(rule => rule.cssText).join('\n'));
+      }
+    } catch (err) {}
+  });
+  return chunks.join('\n');
+}
+
+function serializeExportRoot(root) {
+  const clone = root.cloneNode(true);
+  clone.querySelectorAll('.chart-skeleton-placeholder').forEach(el => el.remove());
+  clone.querySelectorAll('button, input, select, textarea').forEach(el => el.remove());
+  clone.querySelectorAll('canvas').forEach(canvas => {
+    const image = document.createElement('img');
+    image.src = canvas.toDataURL('image/png');
+    image.width = canvas.width;
+    image.height = canvas.height;
+    image.style.cssText = canvas.getAttribute('style') || '';
+    image.className = canvas.className;
+    canvas.replaceWith(image);
+  });
+  return clone.outerHTML;
+}
+
+function buildDashboardHtmlReport(pages, scope) {
+  const instVal = document.getElementById('slicer-inst')?.value || 'Todas las Instituciones';
+  const anoVal = document.getElementById('slicer-ano')?.value || 'Todos los Anos';
+  const sampleText = `${filteredRecords.length} de ${allRecords.length} evaluados`;
+  const todayStr = new Date().toLocaleDateString('es-EC', { year: 'numeric', month: 'long', day: 'numeric' });
+  const pageCount = pages.length;
+  const css = collectDashboardExportStyles();
+  const pageHtml = pages.map((page, index) => `
+    <section class="cardiounemi-export-page">
+      <header class="cardiounemi-export-header">
+        <strong>CARDIOUNEMI - VIGILANCIA EPIDEMIOLOGICA CARDIOVASCULAR</strong>
+        <span>Cohorte: ${escapeExportHtml(sampleText)} | ${escapeExportHtml(instVal)} - Ano ${escapeExportHtml(anoVal)} | ${escapeExportHtml(todayStr)}</span>
+      </header>
+      <h1>${escapeExportHtml(page.title)}</h1>
+      <main class="cardiounemi-export-content">${page.html}</main>
+      <footer><span>Universidad Estatal de Milagro - Departamento de Cardiologia</span><span>Pagina ${index + 1} de ${pageCount}</span></footer>
+    </section>`).join('\n');
+
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>CardioUNEMI Dashboard</title>
+    <style>
+      ${css}
+      @page { size: A4 landscape; margin: 0; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; color: #1e293b; }
+      body { display: block !important; width: 297mm !important; min-width: 297mm !important; }
+      .cardiounemi-export-page {
+        display: block !important;
+        position: relative !important;
+        float: none !important;
+        clear: both !important;
+        width: 297mm !important;
+        height: 210mm !important;
+        min-height: 210mm !important;
+        max-height: 210mm !important;
+        padding: 10mm !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+        background: #fff !important;
+        break-after: page !important;
+        page-break-after: always !important;
+      }
+      .cardiounemi-export-page:last-child { break-after: auto !important; page-break-after: auto !important; }
+      .cardiounemi-export-header { height: 15mm; padding: 4mm 5mm; background: #1b2a41; color: #fff; display: flex; justify-content: space-between; align-items: center; font: 700 10pt Arial, sans-serif; }
+      .cardiounemi-export-header span { font-size: 7.5pt; font-weight: 400; white-space: nowrap; }
+      .cardiounemi-export-page h1 { height: 11mm; margin: 3mm 0 2mm; color: #1b2a41; font: 700 12pt Arial, sans-serif; }
+      .cardiounemi-export-content { display: block !important; width: 277mm !important; height: 163mm !important; overflow: hidden !important; }
+      .cardiounemi-export-content .dashboard-export-html-source { display: flex !important; width: 1600px !important; max-width: none !important; height: auto !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; }
+      .cardiounemi-export-content .dashboard-export-html-source .kpi-row { display: grid !important; grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+      .cardiounemi-export-content .dashboard-export-html-source .grid-2-cols,
+      .cardiounemi-export-content .dashboard-export-html-source .grid-2-cols-equal { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+      .cardiounemi-export-content .dashboard-export-html-source .kpi-title,
+      .cardiounemi-export-content .dashboard-export-html-source .kpi-value { visibility: visible !important; opacity: 1 !important; }
+      .cardiounemi-export-content .dashboard-export-html-source .apexcharts-canvas,
+      .cardiounemi-export-content .dashboard-export-html-source .apexcharts-svg { width: 100% !important; max-width: 100% !important; }
+      /* Modo presentación: los gráficos ocupan más área útil del panel,
+         especialmente las barras y sus etiquetas, sin alterar el dashboard. */
+      .cardiounemi-export-content .dashboard-export-html-source .summary-trend-factors .chart-container {
+        height: 380px !important; min-height: 380px !important;
+      }
+      .cardiounemi-export-content .dashboard-export-html-source .summary-trend-factors .apexcharts-canvas {
+        height: 100% !important;
+        transform-origin: top left !important;
+      }
+      .cardiounemi-export-content .dashboard-export-html-source .summary-trend-factors .apexcharts-canvas text {
+        font-size: 14px !important;
+      }
+      .cardiounemi-export-content .dashboard-export-html-source #chart-tendencia-temporal .apexcharts-canvas {
+        width: 62% !important; transform: scale(1.7, 1.22) !important;
+      }
+      .cardiounemi-export-content .dashboard-export-html-source #chart-factores-modificables .apexcharts-canvas {
+        width: 82% !important; transform: scale(1.35, 1.22) !important;
+      }
+      .cardiounemi-export-content .dashboard-export-html-source .summary-trend-factors .apexcharts-svg {
+        height: 100% !important;
+      }
+      .cardiounemi-export-content .card, .cardiounemi-export-content .grid, .cardiounemi-export-content .grid-row { break-inside: avoid; }
+      .cardiounemi-export-page footer { height: 6mm; margin-top: 2mm; display: flex; justify-content: space-between; color: #94a3b8; font: 7.5pt Arial, sans-serif; }
+    </style></head><body data-export-scope="${escapeExportHtml(scope)}">${pageHtml}</body></html>`;
+}
+
+async function requestDashboardHtmlPdf(reportHtml) {
+  const response = await fetch('/dashboard/export/html-pdf/', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getExportCsrfToken() },
+    body: JSON.stringify({ html: reportHtml })
+  });
+  if (!response.ok) {
+    let message = 'No se pudo convertir el HTML a PDF.';
+    try { const data = await response.json(); if (data.error) message = data.error; } catch (err) {}
+    throw new Error(message);
+  }
+  return await response.blob();
+}
+
+function downloadExportBlob(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url; link.download = fileName;
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 async function exportPdf(scope, setProgress) {
+  const exportItems = getExportItems(scope);
+  const total = exportItems.length;
+  const originalTab = activeTabId;
+  let currentRenderedTab = null;
+  const pages = [];
+
+  try {
+    for (let i = 0; i < total; i++) {
+      const item = exportItems[i];
+      const tab = item.tab;
+      setProgress(`Preparando HTML: ${item.title} (${i + 1}/${total})...`, Math.round(((i + 0.2) / total) * 78));
+      if (activeTabId !== tab.id) {
+        switchTab(tab.id, document.querySelector(`.nav-item[onclick*="${tab.id}"]`));
+        await new Promise(r => setTimeout(r, 420));
+        currentRenderedTab = tab.id;
+      } else if (currentRenderedTab !== tab.id) {
+        // También se aplica a la primera pestaña: sus gráficos Chart.js
+        // pueden terminar de dibujarse después del primer frame.
+        await new Promise(r => setTimeout(r, 420));
+        currentRenderedTab = tab.id;
+      }
+      // Algunos ApexCharts se crean cuando la pestaña aún estaba oculta y
+      // conservan un ancho pequeño. Actualizar y redimensionar justo antes
+      // de clonar corrige la geometría de barras, ejes y etiquetas.
+      try {
+        if (typeof renderTabCharts === 'function') renderTabCharts(tab.id);
+      } catch (err) {
+        console.warn('No se pudo actualizar la pestaña antes de exportar:', err);
+      }
+      window.dispatchEvent(new Event('resize'));
+      await new Promise(r => setTimeout(r, 160));
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      await new Promise(r => setTimeout(r, 180));
+
+      const htmlStage = buildExportHtmlStage(tab, item.partNumber);
+      if (!htmlStage) continue;
+      try { pages.push({ title: item.title, html: serializeExportRoot(htmlStage.root) }); }
+      finally { htmlStage.stage.remove(); }
+    }
+    if (!pages.length) throw new Error('No se encontraron secciones para exportar.');
+    setProgress('Convirtiendo HTML vectorial a PDF...', 88);
+    const pdfBlob = await requestDashboardHtmlPdf(buildDashboardHtmlReport(pages, scope));
+    downloadExportBlob(pdfBlob, scope === 'all'
+      ? `CardioUNEMI_Reporte_Integral_${new Date().toISOString().slice(0, 10)}.pdf`
+      : `CardioUNEMI_${activeTabId}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    setProgress('PDF HTML generado exitosamente.', 100);
+  } finally {
+    if (activeTabId !== originalTab) switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
+  }
+}
+
+async function exportPdfRasterFallback(scope, setProgress) {
   const { jsPDF } = window.jspdf || window;
   if (!jsPDF) {
     throw new Error('La librería jsPDF no está disponible.');

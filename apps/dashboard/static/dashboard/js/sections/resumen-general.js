@@ -3,18 +3,52 @@ function renderTabResumenGeneral() {
 
   // 1. Tendencia Temporal por Año
   const yearCounts = {};
+  const yearHtaCounts = {};
+  const yearHtaValidCounts = {};
   filteredRecords.forEach(r => {
     yearCounts[r.ano] = (yearCounts[r.ano] || 0) + 1;
+    if (r.hipertension === true) {
+      yearHtaCounts[r.ano] = (yearHtaCounts[r.ano] || 0) + 1;
+    }
+    if (r.hipertension === true || r.hipertension === false) {
+      yearHtaValidCounts[r.ano] = (yearHtaValidCounts[r.ano] || 0) + 1;
+    }
   });
   const years = Object.keys(yearCounts).sort();
   const yearData = years.map(y => yearCounts[y]);
+  const yearHtaData = years.map(y => yearHtaCounts[y] || 0);
+  const yearHtaValidData = years.map(y => yearHtaValidCounts[y] || 0);
+  const trendDataLabelFormatter = (val, opts) => {
+    const seriesIndex = opts?.seriesIndex ?? 0;
+    const dataIndex = opts?.dataPointIndex ?? 0;
+    const denominator = seriesIndex === 1 ? yearHtaValidData[dataIndex] : filteredRecords.length;
+    return `${val} (${formatPct(val, denominator)}%)`;
+  };
+  const trendTooltip = {
+    shared: true,
+    intersect: false,
+    y: {
+      formatter: (val, opts) => {
+        const seriesIndex = opts?.seriesIndex ?? 0;
+        const dataIndex = opts?.dataPointIndex ?? 0;
+        const denominator = seriesIndex === 1 ? yearHtaValidData[dataIndex] : filteredRecords.length;
+        const suffix = seriesIndex === 1 ? ' casos HTA' : ' evaluados';
+        return `${val}${suffix} (${formatPct(val, denominator)}%)`;
+      }
+    }
+  };
 
   const elTendencia = document.getElementById('chart-tendencia-temporal');
   if (elTendencia) {
     if (charts.tendencia) {
       charts.tendencia.updateOptions({
         xaxis: { categories: years.map(y => `Año ${y}`) },
-        series: [{ name: 'Evaluados', data: yearData }]
+        series: [
+          { name: 'Evaluados', data: yearData },
+          { name: 'HTA detectada', data: yearHtaData }
+        ],
+        dataLabels: { formatter: trendDataLabelFormatter },
+        tooltip: trendTooltip
       });
     } else {
       charts.tendencia = createDashboardApexChart(elTendencia, {
@@ -22,40 +56,68 @@ function renderTabResumenGeneral() {
         grid: { borderColor: '#e8eef5', strokeDashArray: 4 },
         markers: { size: 4, strokeWidth: 3, strokeColors: '#ffffff', hover: { size: 6 } },
         yaxis: { min: 0, labels: { formatter: val => Math.round(val) } },
-        colors: [PALETTE.primaryBlue],
-        stroke: { curve: 'smooth', width: 3 },
+        colors: [PALETTE.primaryBlue, PALETTE.emergencyRed],
+        stroke: { curve: 'smooth', width: [3, 3] },
         fill: { type: 'gradient', gradient: { shadeIntensity: 0, opacityFrom: 0.22, opacityTo: 0.02 } },
-        series: [{ name: 'Evaluados', data: yearData }],
+        series: [
+          { name: 'Evaluados', data: yearData },
+          { name: 'HTA detectada', data: yearHtaData }
+        ],
         xaxis: { categories: years.map(y => `Año ${y}`) },
         dataLabels: {
           enabled: true,
-          formatter: val => `${val} (${formatPct(val, filteredRecords.length)}%)`,
+          formatter: trendDataLabelFormatter,
           offsetY: -10,
           style: { fontSize: '12px', fontWeight: 700, colors: ['#0f172a'] },
           background: { enabled: false }
         },
-        tooltip: apexCountTooltip()
+        tooltip: trendTooltip
       });
       charts.tendencia.render();
     }
   }
 
   // 2. Factores Modificables Globales (Barra horizontal)
-  const htaPct = Number(formatPct(threeStateCounts('hipertension').yes, threeStateCounts('hipertension').answered).replace(',', '.'));
-  const dlPct = Number(formatPct(threeStateCounts('dislipemia').yes, threeStateCounts('dislipemia').answered).replace(',', '.'));
-  const obPct = Number(formatPct(threeStateCounts('obesidad').yes, threeStateCounts('obesidad').answered).replace(',', '.'));
-  const dmPct = Number(formatPct(threeStateCounts('diabetes').yes, threeStateCounts('diabetes').answered).replace(',', '.'));
-  const tabPct = Number(formatPct(threeStateCounts('fumador_activo').yes, threeStateCounts('fumador_activo').answered).replace(',', '.'));
-  const sedPct = Number(formatPct(threeStateCounts('actividad_fisica').no, threeStateCounts('actividad_fisica').answered).replace(',', '.'));
+  const factorStats = [
+    ['hipertension', 'yes'],
+    ['dislipemia', 'yes'],
+    ['obesidad', 'yes'],
+    ['diabetes', 'yes'],
+    ['fumador_activo', 'yes'],
+    ['actividad_fisica', 'no']
+  ].map(([field, response]) => {
+    const counts = threeStateCounts(field);
+    return {
+      cases: response === 'no' ? counts.no : counts.yes,
+      valid: counts.answered
+    };
+  });
 
   const fLabels = ['Hipertensión', 'Dislipemia', 'Obesidad', 'Diabetes', 'Tabaquismo', 'Sedentarismo'];
-  const fData = [htaPct.toFixed(1), dlPct.toFixed(1), obPct.toFixed(1), dmPct.toFixed(1), tabPct.toFixed(1), sedPct.toFixed(1)];
+  const fData = factorStats.map(({cases, valid}) => (
+    valid ? Number(((cases / valid) * 100).toFixed(1)) : 0
+  ));
+  const factorDataLabelFormatter = (value, opts) => {
+    const stat = factorStats[opts?.dataPointIndex ?? 0];
+    return stat?.valid ? `${stat.cases} (${formatPct(stat.cases, stat.valid)}%)` : '';
+  };
+  const factorTooltip = {
+    y: {
+      formatter: (value, opts) => {
+        const stat = factorStats[opts?.dataPointIndex ?? 0];
+        if (!stat?.valid) return 'Sin respuestas válidas';
+        return `${stat.cases} casos de ${stat.valid} respuestas válidas (${formatPct(stat.cases, stat.valid)}%)`;
+      }
+    }
+  };
 
   const elFactores = document.getElementById('chart-factores-modificables');
   if (elFactores) {
     if (charts.factores) {
       charts.factores.updateOptions({
-        series: [{ name: 'Prevalencia (%)', data: fData }]
+        series: [{ name: 'Prevalencia (%)', data: fData }],
+        dataLabels: { formatter: factorDataLabelFormatter },
+        tooltip: factorTooltip
       });
     } else {
       charts.factores = createDashboardApexChart(elFactores, {
@@ -69,14 +131,7 @@ function renderTabResumenGeneral() {
         legend: { show: false },
         dataLabels: {
           enabled: true,
-          formatter: (val) => {
-            const total = filteredRecords.length || 1;
-            const num = parseFloat(val);
-            if (!num || num <= 0) return '';
-            const casos = Math.round((num * total) / 100);
-            const pStr = num.toFixed(1).replace('.', ',');
-            return `${casos} (${pStr}%)`;
-          },
+          formatter: factorDataLabelFormatter,
           style: {
             fontSize: '11px', fontWeight: 700,
             colors: ['#ffffff']
@@ -84,7 +139,7 @@ function renderTabResumenGeneral() {
           dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow,
           background: { enabled: false }
         },
-        tooltip: apexPctTooltip()
+        tooltip: factorTooltip
       });
       charts.factores.render();
     }
@@ -386,25 +441,34 @@ function renderTabResumenGeneral() {
 
   // 6. FASE 3: Histograma de Factores de Riesgo por Persona
   const riskCounts = [0, 0, 0, 0, 0, 0]; // 0, 1, 2, 3, 4, 5+
+  let riskDenominator = 0;
   filteredRecords.forEach(r => {
-    let fCount = 0;
-    if (r.hipertension === true) fCount++;
-    if (r.dislipemia === true) fCount++;
-    if (r.imc >= 30) fCount++;
-    if (r.fumador_activo === true) fCount++;
-    if (r.actividad_fisica === false) fCount++;
-    if (r.higado_graso === true) fCount++;
-    if (r.estres === 'Alto') fCount++;
+    const factors = [r.hipertension, r.dislipemia, r.obesidad, r.diabetes, r.fumador_activo, r.higado_graso];
+    if (factors.some(factor => factor !== true && factor !== false)) return;
+    const fCount = factors.filter(factor => factor === true).length;
     const idx = Math.min(fCount, 5);
     riskCounts[idx]++;
+    riskDenominator++;
   });
+
+  const riskDataLabels = {
+    enabled: true,
+    formatter: val => val > 0 ? [`${val}`, `${formatPct(val, riskDenominator)}%`] : '',
+    style: { fontSize: '11px', fontWeight: 700, fontFamily: 'inherit', colors: ['#ffffff'] },
+    dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow,
+    background: { enabled: false }
+  };
+  const riskTooltip = apexCountTooltip(riskDenominator);
 
   const histLabels = ['0 Factores', '1 Factor', '2 Factores', '3 Factores', '4 Factores', '≥ 5 Factores'];
   const elHist = document.getElementById('chart-rg-hist-factores');
-  if (elHist && dashboardHasChartData('chart-rg-hist-factores', 'rgHist', filteredRecords.length)) {
+  if (elHist && dashboardHasChartData('chart-rg-hist-factores', 'rgHist', riskDenominator)) {
     if (charts.rgHist) {
       charts.rgHist.updateOptions({
-        series: [{ name: 'Evaluados', data: riskCounts }]
+        series: [{ name: 'Evaluados', data: riskCounts }],
+        yaxis: { max: Math.max(...riskCounts) + 4 },
+        dataLabels: riskDataLabels,
+        tooltip: riskTooltip
       });
     } else {
       charts.rgHist = createDashboardApexChart(elHist, {
@@ -433,13 +497,9 @@ function renderTabResumenGeneral() {
         },
         legend: { show: false },
         dataLabels: {
-          enabled: true,
-          formatter: val => val > 0 ? [`${val}`, `${formatPct(val, filteredRecords.length)}%`] : '',
-          style: { fontSize: '11px', fontWeight: 700, fontFamily: 'inherit', colors: ['#ffffff'] },
-          dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow,
-          background: { enabled: false }
+          ...riskDataLabels
         },
-        tooltip: apexCountTooltip()
+        tooltip: riskTooltip
       });
       charts.rgHist.render();
     }

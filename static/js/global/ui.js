@@ -1116,7 +1116,7 @@ async function guardarAjustesSistema(event) {
   }
 
   try {
-    const payload = {
+    const fullPayload = {
       chatbot_enabled,
       active_llm_provider,
       gemini_api_key,
@@ -1132,6 +1132,12 @@ async function guardarAjustesSistema(event) {
       gmail_client_secret,
       gmail_api_enabled
     };
+
+    // Un perfil clínico solo puede cambiar el ajuste general del chatbot.
+    // No enviar campos de APIs ocultos: el backend también debe rechazarlos.
+    const payload = window.CURRENT_USER?.is_admin
+      ? fullPayload
+      : { chatbot_enabled };
 
     const res = await fetch('/security/api/settings/', {
       method: 'POST',

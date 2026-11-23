@@ -510,6 +510,7 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261120_v02"></script>
-  <script src="{% static 'clinical/js/form.js' %}?v=20261120_v01"></script>
+  <script>window.CARDIO_UNEMI_ONLY = {% if unemi_only %}true{% else %}false{% endif %};</script>
+  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261120_v04"></script>
+  <script src="{% static 'clinical/js/form.js' %}?v=20261120_v02"></script>
 {% endblock %}

@@ -101,19 +101,32 @@ function renderTabElectrocardiograma() {
   renderThreeStateChart('chart-ecg-anomalias','ecgAnom', [['HVI','ecg_hvi'],['Bloqueo de rama','ecg_bloqueo_presente'],['Repolarizacion','ecg_repolarizacion']]);
 
   // Frecuencia Cardíaca ECG vs Frecuencia Clínica
-  const fcEcgMedia = parseFloat(formatMean(filteredRecords.map(r => r.ecg_fc), 0)) || 0;
-  const fcClinicaMedia = parseFloat(formatMean(filteredRecords.map(r => r.fc), 0)) || 0;
+  const meanOrNull = field => {
+    const values = filteredRecords
+      .map(record => record[field])
+      .filter(value => typeof value === 'number' && Number.isFinite(value));
+    return values.length
+      ? Math.round(values.reduce((total, value) => total + value, 0) / values.length)
+      : null;
+  };
+  const fcEcgMedia = meanOrNull('ecg_fc');
+  const fcClinicaMedia = meanOrNull('fc');
+  const fcLabels = [
+    fcEcgMedia === null ? ['FC por Trazado', 'ECG (sin dato)'] : ['FC por Trazado', 'ECG'],
+    fcClinicaMedia === null ? ['FC por Auscultación', 'Pulso (sin dato)'] : ['FC por Auscultación', 'o Pulso']
+  ];
 
   const ctxFc = document.getElementById('chart-ecg-fc-comparativa');
   if (ctxFc) {
     if (charts.ecgFc) {
       charts.ecgFc.data.datasets[0].data = [fcEcgMedia, fcClinicaMedia];
+      charts.ecgFc.data.labels = fcLabels;
       charts.ecgFc.update();
     } else {
       charts.ecgFc = createDashboardChart(ctxFc, {
         type: 'bar',
         data: {
-          labels: [['FC por Trazado', 'ECG'], ['FC por Auscultación', 'o Pulso']],
+          labels: fcLabels,
           datasets: [{
             label: 'Latidos por Minuto (lpm)',
             data: [fcEcgMedia, fcClinicaMedia],
@@ -146,7 +159,7 @@ function renderTabElectrocardiograma() {
           plugins: {
             legend: { display: false },
             datalabels: {
-              display: true,
+              display: (context) => typeof context.dataset.data[context.dataIndex] === 'number',
               anchor: 'end',
               align: 'bottom',
               offset: 16,
@@ -158,7 +171,7 @@ function renderTabElectrocardiograma() {
               textShadowColor: 'rgba(0, 0, 0, 0.35)',
               backgroundColor: 'transparent',
               clip: false,
-              formatter: (val) => `${val} lpm`
+              formatter: (val) => typeof val === 'number' ? `${val} lpm` : ''
             }
           }
         }

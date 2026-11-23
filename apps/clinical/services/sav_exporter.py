@@ -103,6 +103,62 @@ SENSITIVE_EXPORT_COLUMNS = [
 _SAV_TEMPLATE_CACHE = None
 
 
+_NUMERIC_DISPLAY_FORMAT_RE = re.compile(r'^(F|N|E)(\d+)(?:\.(\d+))?$')
+
+
+def _adaptive_numeric_formats(frame, source_formats=None):
+    """Choose an SPSS numeric display format from the values in each column.
+
+    SPSS applies one display format to an entire variable. Therefore an
+    integer-only column must use zero decimal places (``F8.0``), while a
+    column containing fractional values keeps enough decimal places to show
+    those values (for example ``F8.2`` for ``2.43``). This changes only the
+    presentation metadata; the dataframe values remain numeric.
+    """
+    formats = dict(source_formats or {})
+
+    for column in frame.columns:
+        series = frame[column]
+        if not pd.api.types.is_numeric_dtype(series):
+            continue
+
+        current = str(formats.get(column) or '').strip().upper()
+        match = _NUMERIC_DISPLAY_FORMAT_RE.match(current)
+        if match:
+            kind, width_text, source_decimals = match.groups()
+            width = int(width_text)
+            source_decimals = int(source_decimals or 0)
+        else:
+            kind = 'F'
+            width = 8
+            source_decimals = 0
+
+        numeric = pd.to_numeric(series, errors='coerce')
+        numeric = numeric[np.isfinite(numeric)]
+        if numeric.empty:
+            decimals = 0
+        else:
+            values = numeric.astype(float).tolist()
+            has_fraction = any(not np.isclose(value, round(value), atol=1e-12) for value in values)
+            if not has_fraction:
+                decimals = 0
+            else:
+                decimals = 0
+                for value in values:
+                    if np.isclose(value, round(value), atol=1e-12):
+                        continue
+                    try:
+                        decimal_value = Decimal(str(value)).normalize()
+                        decimals = max(decimals, max(0, -decimal_value.as_tuple().exponent))
+                    except (ArithmeticError, ValueError):
+                        decimals = max(decimals, source_decimals, 2)
+                decimals = min(max(decimals, 1), 6)
+
+        formats[column] = f'{kind}{width}.{decimals}'
+
+    return formats
+
+
 def get_sav_template_metadata():
     """
     Carga e indexa en memoria las columnas y metadatos oficiales de CardioUNEMI,
@@ -112,6 +168,14 @@ def get_sav_template_metadata():
     if _SAV_TEMPLATE_CACHE is not None:
         return _SAV_TEMPLATE_CACHE
 
+    # La matriz entregada por investigación es la fuente de verdad del orden,
+    # nombres, tipos y etiquetas.  El JSON histórico de 342 variables no debe
+    # reconstruir otra matriz ni agregar columnas que no existen en el .sav.
+    reference_candidates = [
+        Path(settings.BASE_DIR).parent / 'datos' / 'MATRIZ CARDIOESPOL 2026 FINAL.sav',
+        Path(settings.BASE_DIR) / 'datos' / 'MATRIZ CARDIOESPOL 2026 FINAL.sav',
+    ]
+    reference_path = next((p for p in reference_candidates if p.exists()), None)
     spec_json_path = Path(__file__).resolve().parent / 'sav_columns_spec.json'
 
     cols = []
@@ -119,7 +183,13 @@ def get_sav_template_metadata():
     col_value_labels = {}
     col_names_to_labels = {}
 
-    if spec_json_path.exists():
+    if reference_path is not None:
+        df_orig, meta = pyreadstat.read_sav(str(reference_path), apply_value_formats=False)
+        cols = list(meta.column_names)
+        col_dtypes = {col: str(df_orig[col].dtype) for col in cols}
+        col_value_labels = dict(meta.variable_value_labels or {})
+        col_names_to_labels = dict(meta.column_names_to_labels or {})
+    elif spec_json_path.exists():
         import json
         with open(spec_json_path, 'r', encoding='utf-8') as f:
             spec = json.load(f)
@@ -162,14 +232,17 @@ def get_sav_template_metadata():
     if not cols:
         raise RuntimeError("No se pudieron cargar las especificaciones de las columnas del dataset SPSS.")
 
-    # Incorporar las nuevas columnas del Cuestionario UNEMI 2026
-    for col_name, col_label, col_dt, v_labels in NEW_2026_EXPORT_COLUMNS:
-        if col_name not in cols:
-            cols.append(col_name)
-            col_dtypes[col_name] = col_dt
-            col_names_to_labels[col_name] = col_label
-            if v_labels:
-                col_value_labels[col_name] = v_labels
+    # Solo se agregan las variables nuevas cuando no existe la matriz oficial.
+    # Con la matriz oficial, agregar columnas altera el contrato que pidió el
+    # usuario y desplaza todos los datos posteriores.
+    if reference_path is None:
+        for col_name, col_label, col_dt, v_labels in NEW_2026_EXPORT_COLUMNS:
+            if col_name not in cols:
+                cols.append(col_name)
+                col_dtypes[col_name] = col_dt
+                col_names_to_labels[col_name] = col_label
+                if v_labels:
+                    col_value_labels[col_name] = v_labels
 
     # Construir mapa inverso de etiquetas a valores numéricos
     lbl_to_val_map = {}
@@ -211,7 +284,167 @@ def _to_float(val):
         return np.nan
 
 
-def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=False):
+def _restore_value_label_keys(raw_labels):
+    """JSON stores dictionary keys as strings; SPSS labels need numeric keys."""
+    restored = {}
+    for col, labels in (raw_labels or {}).items():
+        restored[col] = {}
+        for key, label in (labels or {}).items():
+            try:
+                numeric_key = float(key)
+                if numeric_key.is_integer():
+                    numeric_key = int(numeric_key)
+                restored[col][numeric_key] = label
+            except (TypeError, ValueError):
+                restored[col][key] = label
+    return restored
+
+
+def _source_snapshot_frame(visits, include_unlinked=False):
+    """Return original rows when one lossless source matrix is available.
+
+    A mixed selection (imported rows plus records created in the application,
+    or more than one imported matrix) cannot be a byte-for-byte round trip.
+    Returning ``None`` lets the caller build the official combined dataset
+    instead of failing the whole export.
+    """
+    raw_count = sum(1 for visit in visits if visit.source_dataset_id and visit.source_row_data is not None)
+    if raw_count == 0:
+        return None
+    if raw_count != len(visits):
+        return None
+
+    dataset_ids = {visit.source_dataset_id for visit in visits}
+    if len(dataset_ids) != 1:
+        return None
+
+    dataset = visits[0].source_dataset
+    columns = list(dataset.column_names or [])
+    source_rows = list(dataset.rows.all())
+    if include_unlinked:
+        rows = [source_row.row_data or {} for source_row in source_rows]
+    else:
+        selected_visit_ids = {visit.visit_id for visit in visits}
+        rows = [source_row.row_data or {} for source_row in source_rows if source_row.visit_id in selected_visit_ids]
+        if not rows:
+            ordered_visits = sorted(visits, key=lambda visit: (visit.source_row_index is None, visit.source_row_index or 0, visit.visit_id))
+            rows = [visit.source_row_data or {} for visit in ordered_visits]
+    original_types = dataset.original_variable_types or {}
+
+    converted = {}
+    for col in columns:
+        fmt = str(original_types.get(col, '') or '').upper()
+        values = [row.get(col) for row in rows]
+        if fmt.startswith('A'):
+            converted[col] = ['' if value is None else str(value) for value in values]
+        elif fmt.startswith(('DATETIME',)):
+            normalized = []
+            for value in values:
+                if value is None or str(value).strip() == '':
+                    normalized.append(None)
+                    continue
+                try:
+                    normalized.append(datetime.datetime.fromisoformat(str(value)))
+                except (TypeError, ValueError):
+                    normalized.append(None)
+            converted[col] = normalized
+        elif fmt.startswith(('DATE', 'ADATE', 'EDATE', 'SDATE')):
+            normalized = []
+            for value in values:
+                if value is None or str(value).strip() == '':
+                    normalized.append(None)
+                    continue
+                try:
+                    normalized.append(datetime.date.fromisoformat(str(value)[:10]))
+                except (TypeError, ValueError):
+                    normalized.append(None)
+            converted[col] = normalized
+        elif fmt.startswith(('TIME',)):
+            normalized = []
+            for value in values:
+                if value is None or str(value).strip() == '':
+                    normalized.append(None)
+                    continue
+                try:
+                    normalized.append(datetime.time.fromisoformat(str(value)))
+                except (TypeError, ValueError):
+                    normalized.append(None)
+            converted[col] = normalized
+        elif fmt:
+            normalized = []
+            for value in values:
+                if value is None or str(value).strip() == '':
+                    normalized.append(np.nan)
+                    continue
+                try:
+                    normalized.append(float(value))
+                except (TypeError, ValueError):
+                    normalized.append(np.nan)
+            converted[col] = normalized
+        else:
+            converted[col] = values
+
+    return pd.DataFrame(converted, columns=columns), dataset
+
+
+def _write_export_frame(out_df, format_type, metadata=None):
+    """Write a dataframe while retaining source SPSS metadata when available."""
+    fecha_str = datetime.date.today().strftime('%Y%m%d')
+    fmt = (format_type or 'sav').strip().lower()
+    metadata = metadata or {}
+    labels = metadata.get('column_labels') or {}
+    value_labels = _restore_value_label_keys(metadata.get('value_labels') or {})
+    original_types = metadata.get('original_variable_types') or {}
+    numeric_formats = _adaptive_numeric_formats(out_df, original_types)
+    display_width = metadata.get('variable_display_width') or {}
+    measures = metadata.get('variable_measure') or {}
+    missing_ranges = metadata.get('missing_ranges') or {}
+    file_label = metadata.get('file_label') or ''
+
+    if fmt == 'csv':
+        return out_df.to_csv(index=False, encoding='utf-8-sig').encode('utf-8-sig'), f'CardioUNEMI_Dataset_{fecha_str}.csv', 'text/csv; charset=utf-8'
+    if fmt == 'rds':
+        suffix = '.rds'
+        content_type = 'application/octet-stream'
+        writer = lambda path: pyreadr.write_rds(path, out_df)
+    elif fmt in ('rdata', 'rda', 'r'):
+        suffix = '.RData'
+        content_type = 'application/octet-stream'
+        writer = lambda path: pyreadr.write_rdata(path, out_df, df_name='CardioUnemi')
+    else:
+        suffix = '.zsav' if fmt == 'zsav' else '.sav'
+        content_type = 'application/x-spss-sav'
+
+        def writer(path):
+            pyreadstat.write_sav(
+                out_df,
+                path,
+                file_label=file_label,
+                compress=(fmt == 'zsav'),
+                column_labels=labels,
+                variable_value_labels=value_labels,
+                missing_ranges=missing_ranges,
+                variable_display_width=display_width,
+                variable_measure=measures,
+                variable_format=numeric_formats,
+            )
+
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp_path = tmp.name
+    try:
+        writer(tmp_path)
+        with open(tmp_path, 'rb') as output:
+            payload = output.read()
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
+    return payload, f'CardioUNEMI_Dataset_{fecha_str}{suffix}', content_type
+
+
+def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=False, institution_id=None):
     """
     Genera el dataset de exportación con todas las columnas clínicas oficiales y los nuevos campos 2026.
     Soporta los mismos formatos de exportación que se admiten en importación:
@@ -234,7 +467,12 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
     col_names_to_labels = dict(tpl['labels'])
     lbl_to_val_map = tpl['lbl_to_val_map']
 
-    if not privacy_mode:
+    reference_columns = set(tpl['columns'])
+    if not privacy_mode and reference_columns.intersection({'C.I', 'NOMBRES', 'APELLIDO1', 'APELLIDO2'}):
+        # La matriz oficial ya contiene sus columnas identificativas y su
+        # posición exacta. No insertar CEDULA/NOMBRES artificiales.
+        pass
+    elif not privacy_mode:
         # Se exportan todos los datos sensibles identificativos
         # Ubicar la columna CÓDIGO para insertar los datos sensibles de forma contigua
         codigo_idx = -1
@@ -254,6 +492,7 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
     else:
         # Modo Protección de Datos ACTIVO: suprimir cualquier columna sensible
         sensitive_col_names = {scol for scol, _, _, _ in SENSITIVE_EXPORT_COLUMNS}
+        sensitive_col_names.update({'NOMBRES', 'APELLIDO1', 'APELLIDO2', 'C.I', 'TEL\u00c9FONO', 'CORREO'})
         cols = [c for c in cols if c not in sensitive_col_names]
 
     # 1. Obtener visitas filtradas
@@ -263,13 +502,39 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
         'staff_category', 'professional_category', 'marital_status', 'living_situation',
         'education_level', 'work_schedule', 'housing_type', 'income_range',
         'anthropometry', 'vital_signs', 'electrocardiogram', 'laboratory', 'echocardiogram',
-        'ordered_studies'
+        'ordered_studies', 'source_dataset'
     ).order_by('visit_id')
+
+    if getattr(settings, 'UNEMI', False):
+        visits_qs = visits_qs.filter(patient__institution__acronym__iexact='UNEMI')
+
+    if institution_id not in (None, '', 'all'):
+        try:
+            visits_qs = visits_qs.filter(patient__institution_id=int(institution_id))
+        except (TypeError, ValueError):
+            raise ValueError('La institución seleccionada no es válida.')
 
     if patient_ids is not None:
         visits = selected_visits(patient_ids, active_only=True)
         visits_qs = visits_qs.filter(pk__in=[visit.pk for visit in visits])
     visits = list(visits_qs)
+
+    # Una importación SPSS conserva la fila y el esquema originales. Cuando la
+    # selección pertenece a una sola matriz, devolver ese snapshot garantiza la
+    # prueba: importar -> exportar conserva columnas, orden, valores y etiquetas.
+    if not privacy_mode:
+        source_frame = _source_snapshot_frame(visits, include_unlinked=(patient_ids is None))
+        if source_frame is not None:
+            raw_frame, source_metadata = source_frame
+            return _write_export_frame(raw_frame, format_type, {
+                'column_labels': source_metadata.column_labels,
+                'value_labels': source_metadata.value_labels,
+                'original_variable_types': source_metadata.original_variable_types,
+                'variable_display_width': source_metadata.variable_display_width,
+                'variable_measure': source_metadata.variable_measure,
+                'missing_ranges': source_metadata.missing_ranges,
+                'file_label': source_metadata.file_label,
+            })
 
     # 2. Cargar todas las respuestas clínicas en bloque
     answers_by_visit = {}
@@ -301,29 +566,34 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
             explicitly_empty = any(key in ans for key in (col, col.lower(), clean, clean.lower())) and val is None
 
             # Asignación directa prioritaria para variables sensibles identificativas del paciente
-            if col == 'CEDULA':
+            if col in {'CEDULA', 'C.I'}:
                 val = (p.id_card if p and p.id_card else '') or val
             elif col == 'NOMBRES':
                 val = (p.first_names if p and p.first_names else '') or val
-            elif col == 'APELLIDOS':
-                ap_val = f"{p.last_name1 or ''} {p.last_name2 or ''}".strip() if p else ''
-                val = ap_val or val
-            elif col == 'TELEFONO':
+            elif col in {'APELLIDOS', 'APELLIDO1'}:
+                val = (p.last_name1 if p and p.last_name1 else '') or val
+            elif col == 'APELLIDO2':
+                val = (p.last_name2 if p and p.last_name2 else '') or val
+            elif col in {'TELEFONO', 'TEL\u00c9FONO'}:
                 val = (p.phone if p and p.phone else '') or val
-            elif col == 'EMAIL':
+            elif col in {'EMAIL', 'CORREO'}:
                 val = (p.email if p and p.email else '') or val
 
             # Mapeo de respaldo desde modelos relacionales de la BD y nuevos campos 2026
             elif not explicitly_empty and (val is None or str(val).strip() == ''):
                 c_up = col.upper()
-                if clean.upper() == 'CODIGO':
+                if clean.upper() in {'CODIGO', 'CODIGONUEV'}:
                     val = v.study_code
                 elif col == 'UNIVERSIDAD':
                     val = 2.0 if (p and p.institution and 'ESPOL' in p.institution.acronym.upper()) else 1.0
                 elif col == 'FECHA':
                     val = v.visit_date
-                elif 'AO' in c_up or 'AO' in col:
+                elif col in {'AÑO', 'ANO'}:
                     val = float(v.visit_date.year) if v.visit_date else 2026.0
+                elif col == 'VISITA':
+                    val = v.visit_number
+                elif col == 'FACULTAD':
+                    val = v.faculty
                 elif col == 'EDAD':
                     if v.visit_date and p and p.birth_date:
                         val = float(v.visit_date.year - p.birth_date.year - (
@@ -347,21 +617,21 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
                     val = p.ethnicity.name if (p and p.ethnicity) else 'Mestizo'
                 elif col == 'ESTADO_CIVIL':
                     val = v.marital_status.name if v.marital_status else None
-                elif 'HIJOS' in c_up:
+                elif col == 'CUANTOS_HIJOS__TIENE':
                     val = float(v.num_children) if v.num_children is not None else np.nan
-                elif 'CONVIVE_CON' in c_up or 'CON_QUIEN_VIVE' in c_up:
+                elif col == 'CON_QUIEN_VIVE':
                     val = v.living_situation.name if v.living_situation else None
-                elif 'CONVIVIENTES' in c_up or 'CONVIVE_CON_USTES' in c_up or 'CONVIVE_CON_USTED' in c_up:
+                elif col == 'CUANTAS_PERSONAS_CONVIVE_CON_USTES_EN_EL_HOGAR':
                     val = float(v.num_cohabitants) if v.num_cohabitants is not None else np.nan
-                elif 'ESTUDIOS' in c_up:
+                elif col == 'NIVEL_ESTUDIOS_OBTENIDO':
                     val = v.education_level.name if v.education_level else None
-                elif 'HORARIO' in c_up:
+                elif col == 'HORARIO_DE_TRABAJO':
                     val = v.work_schedule.name if v.work_schedule else None
-                elif 'PROFESIONAL' in c_up:
+                elif col == 'CATEGORIA_PROFESIONAL':
                     val = v.professional_category.name if v.professional_category else None
-                elif 'VIVIENDA' in c_up:
+                elif col == 'SU_VIVIENDA_ES':
                     val = v.housing_type.name if v.housing_type else None
-                elif 'INGRESOS' in c_up:
+                elif col in {'INGRESOS_TOTALES', 'INGRESOS_TOTALES_MENSUALES'}:
                     val = v.income_range.name if v.income_range else None
 
                 # Antropometría
@@ -371,7 +641,7 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
                     val = float(v.anthropometry.height_cm)
                 elif col == 'IMC_KGM2' and hasattr(v, 'anthropometry') and v.anthropometry and v.anthropometry.bmi:
                     val = float(v.anthropometry.bmi)
-                elif 'PER' in c_up and 'ABDOMINAL' in c_up and hasattr(v, 'anthropometry') and v.anthropometry and v.anthropometry.waist_circumference_cm:
+                elif col in {'PERÍMETRO_ABDOMINAL_CM', 'PER�METRO_ABDOMINAL_CM'} and hasattr(v, 'anthropometry') and v.anthropometry and v.anthropometry.waist_circumference_cm:
                     val = float(v.anthropometry.waist_circumference_cm)
                 elif col == 'ASC_M2' and hasattr(v, 'anthropometry') and v.anthropometry and v.anthropometry.body_surface_area:
                     val = float(v.anthropometry.body_surface_area)
@@ -379,11 +649,11 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
                 # Signos Vitales
                 elif col == 'TAS_TS' and hasattr(v, 'vital_signs') and v.vital_signs and v.vital_signs.systolic_bp:
                     val = float(v.vital_signs.systolic_bp)
-                elif col == 'TAS_MMHG' and hasattr(v, 'vital_signs') and v.vital_signs and v.vital_signs.diastolic_bp:
+                elif col in {'TAS_MMHG', 'TAD_MMHG'} and hasattr(v, 'vital_signs') and v.vital_signs and v.vital_signs.diastolic_bp:
                     val = float(v.vital_signs.diastolic_bp)
-                elif 'SATURAC' in c_up and hasattr(v, 'vital_signs') and v.vital_signs and v.vital_signs.oxygen_saturation:
+                elif col in {'SATURACIÓN_O2', 'SATURACI�N_O2'} and hasattr(v, 'vital_signs') and v.vital_signs and v.vital_signs.oxygen_saturation:
                     val = float(v.vital_signs.oxygen_saturation)
-                elif 'FRECUENCIA' in c_up and hasattr(v, 'vital_signs') and v.vital_signs and v.vital_signs.heart_rate:
+                elif col == 'FRECUENCIA_CARDIACA_IPM' and hasattr(v, 'vital_signs') and v.vital_signs and v.vital_signs.heart_rate:
                     val = float(v.vital_signs.heart_rate)
                 elif col == 'SOPLOS_CARDIACOS' and hasattr(v, 'vital_signs') and v.vital_signs:
                     val = _export_bool(any_known(v.vital_signs.systolic_murmur, v.vital_signs.diastolic_murmur))
@@ -411,27 +681,32 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
                 # Laboratorio
                 elif hasattr(v, 'laboratory') and v.laboratory:
                     lab = v.laboratory
-                    if 'GLUCOSA' in c_up and lab.glucose_mg_dl: val = float(lab.glucose_mg_dl)
-                    elif 'UREA' in c_up and lab.urea_mg_dl: val = float(lab.urea_mg_dl)
-                    elif 'CREATINA' in c_up and lab.creatinine_mg_dl: val = float(lab.creatinine_mg_dl)
-                    elif 'COLESTEROL_TOTAL' in c_up and lab.total_cholesterol_mg_dl: val = float(lab.total_cholesterol_mg_dl)
-                    elif 'HDL' in c_up and lab.hdl_mg_dl: val = float(lab.hdl_mg_dl)
-                    elif 'LDL' in c_up and lab.ldl_mg_dl: val = float(lab.ldl_mg_dl)
-                    elif 'TRIGLICERIDOS' in c_up and lab.triglycerides_mg_dl: val = float(lab.triglycerides_mg_dl)
-                    elif 'HEMATIES' in c_up and lab.rbc_millions: val = float(lab.rbc_millions)
-                    elif 'HEMOGLOBINA' in c_up and lab.hemoglobin_g_dl: val = float(lab.hemoglobin_g_dl)
-                    elif 'HEMATOCRITO' in c_up and lab.hematocrit_percentage: val = float(lab.hematocrit_percentage)
-                    elif 'LEUCOCITOS' in c_up and lab.wbc_thousands: val = float(lab.wbc_thousands)
-                    elif 'PLAQUETAS' in c_up and lab.platelets_thousands: val = float(lab.platelets_thousands)
-                    elif 'GOT' in c_up and lab.ast_got_u_l: val = float(lab.ast_got_u_l)
-                    elif 'GPT' in c_up and lab.alt_gpt_u_l: val = float(lab.alt_gpt_u_l)
-                    elif 'GGT' in c_up and lab.ggt_u_l: val = float(lab.ggt_u_l)
-                    elif 'TSH' in c_up and lab.tsh_u_iu_ml: val = float(lab.tsh_u_iu_ml)
+                    lab_map = {
+                        'GLUCOSA_SANGRE': lab.glucose_mg_dl,
+                        'UREA_FUNCION_RENAL': lab.urea_mg_dl,
+                        'CREATINA_FUNCION_RENAL': lab.creatinine_mg_dl,
+                        'COLESTEROL_TOTAL_RIESGO_CARDIOVASCULAR': lab.total_cholesterol_mg_dl,
+                        'HDL_RIESGO_CARDIOVASCULAR': lab.hdl_mg_dl,
+                        'LDL_RIESGO_CARDIOVASCULAR': lab.ldl_mg_dl,
+                        'TRIGLICERIDOS_RIESGO_CARDIOVASCULAR': lab.triglycerides_mg_dl,
+                        'HEMATIES': lab.rbc_millions,
+                        'HEMOGLOBINA': lab.hemoglobin_g_dl,
+                        'HEMATOCRITO': lab.hematocrit_percentage,
+                        'LEUCOCITOS': lab.wbc_thousands,
+                        'PLAQUETAS': lab.platelets_thousands,
+                        'GOT_AST_FUNCION_HEPATICA': lab.ast_got_u_l,
+                        'GPT_ALT_FUNCION_HEPATICA': lab.alt_gpt_u_l,
+                        'GGT_FUNCION_HEPATICA': lab.ggt_u_l,
+                        'TSH_FUNCION_TIROIDEA': lab.tsh_u_iu_ml,
+                    }
+                    if col in lab_map and lab_map[col] is not None:
+                        val = float(lab_map[col])
 
                 # Ecocardiograma
                 elif hasattr(v, 'echocardiogram') and v.echocardiogram:
                     echo = v.echocardiogram
-                    if 'FRACCION_EYECCION' in c_up and echo.lvef_percentage: val = float(echo.lvef_percentage)
+                    if col == 'FRACCION_EYECCION_TEICHOLZ' and echo.lvef_percentage is not None:
+                        val = float(echo.lvef_percentage)
 
                 # Nuevos campos Cuestionario UNEMI 2026: Drogas
                 elif col == 'DROGAS_DOSIS_DIARIA':
@@ -637,12 +912,14 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
         with tempfile.NamedTemporaryFile(suffix='.zsav', delete=False) as tmp:
             tmp_path = tmp.name
         try:
+            numeric_formats = _adaptive_numeric_formats(out_df)
             pyreadstat.write_sav(
                 out_df,
                 tmp_path,
                 compress=True,
                 column_labels=col_names_to_labels,
-                variable_value_labels=col_value_labels
+                variable_value_labels=col_value_labels,
+                variable_format=numeric_formats
             )
             with open(tmp_path, 'rb') as f:
                 zsav_bytes = f.read()
@@ -659,11 +936,13 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
         with tempfile.NamedTemporaryFile(suffix='.sav', delete=False) as tmp:
             tmp_path = tmp.name
         try:
+            numeric_formats = _adaptive_numeric_formats(out_df)
             pyreadstat.write_sav(
                 out_df,
                 tmp_path,
                 column_labels=col_names_to_labels,
-                variable_value_labels=col_value_labels
+                variable_value_labels=col_value_labels,
+                variable_format=numeric_formats
             )
             with open(tmp_path, 'rb') as f:
                 sav_bytes = f.read()

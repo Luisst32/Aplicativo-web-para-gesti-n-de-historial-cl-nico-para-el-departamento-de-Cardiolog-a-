@@ -47,22 +47,43 @@ function renderTabFactoresModificables() {
   }
 
   // Hábitos Tóxicos (Tabaquismo y Alcohol)
-  const tabNo = filteredRecords.filter(r => r.tabaquismo === 'No fuma').length;
-  const tabEx = filteredRecords.filter(r => r.tabaquismo === 'Exfumador').length;
-  const tabAct = filteredRecords.filter(r => r.tabaquismo === 'Fumador Activo').length;
+  const tobaccoValid = filteredRecords.filter(r => ['No fuma', 'Exfumador', 'Fumador Activo'].includes(r.tabaquismo));
+  const tabNo = tobaccoValid.filter(r => r.tabaquismo === 'No fuma').length;
+  const tabEx = tobaccoValid.filter(r => r.tabaquismo === 'Exfumador').length;
+  const tabAct = tobaccoValid.filter(r => r.tabaquismo === 'Fumador Activo').length;
 
-  const alcNo = filteredRecords.filter(r => r.alcohol === 'No consume').length;
-  const alcOcas = filteredRecords.filter(r => r.alcohol === 'Ocasional').length;
-  const alcReg = filteredRecords.filter(r => r.alcohol === 'Semanal' || r.alcohol === 'Diario').length;
+  const alcoholValid = filteredRecords.filter(r => ['No consume', 'Ocasional', 'Semanal', 'Diario'].includes(r.alcohol));
+  const alcNo = alcoholValid.filter(r => r.alcohol === 'No consume').length;
+  const alcOcas = alcoholValid.filter(r => r.alcohol === 'Ocasional').length;
+  const alcReg = alcoholValid.filter(r => r.alcohol === 'Semanal' || r.alcohol === 'Diario').length;
+
+  const drugsValid = filteredRecords.filter(r => ['No consume', 'Ex consumidor', 'Ocasional', 'Semanal', 'Diario', 'Activo'].includes(r.drogas));
+  const drugNo = drugsValid.filter(r => r.drogas === 'No consume').length;
+  const drugOccasionalOrFormer = drugsValid.filter(r => r.drogas === 'Ocasional' || r.drogas === 'Ex consumidor').length;
+  const drugActiveOrRegular = drugsValid.filter(r => ['Semanal', 'Diario', 'Activo'].includes(r.drogas)).length;
 
   const toxCats = ['Sin Consumo / No Fuma', 'Consumo Ocasional / Ex', 'Consumo Activo / Regular'];
+  const toxData = [
+    [tabNo, tabEx, tabAct],
+    [alcNo, alcOcas, alcReg],
+    [drugNo, drugOccasionalOrFormer, drugActiveOrRegular]
+  ];
+  const toxDenominators = [tobaccoValid.length, alcoholValid.length, drugsValid.length];
+  const toxDataLabels = chartJsBarDataLabels();
+  toxDataLabels.formatter = (value, context) => {
+    if (typeof value !== 'number' || value <= 0) return '';
+    const denominator = toxDenominators[context.datasetIndex] || 0;
+    const pct = denominator > 0 ? ((value / denominator) * 100).toFixed(1).replace('.', ',') : '0,0';
+    return `${value} (${pct}%)`;
+  };
 
   const ctxTox = document.getElementById('chart-mod-toxicos');
   if (ctxTox) {
     if (charts.modTox) {
       charts.modTox.data.labels = toxCats;
-      charts.modTox.data.datasets[0].data = [tabNo, tabEx, tabAct];
-      charts.modTox.data.datasets[1].data = [alcNo, alcOcas, alcReg];
+      charts.modTox.data.datasets[0].data = toxData[0];
+      charts.modTox.data.datasets[1].data = toxData[1];
+      charts.modTox.data.datasets[2].data = toxData[2];
       charts.modTox.update();
     } else {
       charts.modTox = createDashboardChart(ctxTox, {
@@ -70,8 +91,9 @@ function renderTabFactoresModificables() {
         data: {
           labels: toxCats,
           datasets: [
-            { label: 'Tabaquismo', data: [tabNo, tabEx, tabAct], backgroundColor: PALETTE.emergencyRed, borderRadius: 5 },
-            { label: 'Consumo de Alcohol', data: [alcNo, alcOcas, alcReg], backgroundColor: PALETTE.primaryBlue, borderRadius: 5 }
+            { label: 'Tabaquismo', data: toxData[0], backgroundColor: PALETTE.emergencyRed, borderRadius: 5 },
+            { label: 'Consumo de Alcohol', data: toxData[1], backgroundColor: PALETTE.primaryBlue, borderRadius: 5 },
+            { label: 'Consumo de Drogas', data: toxData[2], backgroundColor: PALETTE.purple, borderRadius: 5 }
           ]
         },
         options: {
@@ -87,7 +109,7 @@ function renderTabFactoresModificables() {
           },
           plugins: {
             legend: { display: true, position: 'top' },
-            datalabels: chartJsBarDataLabels()
+            datalabels: toxDataLabels
           }
         }
       });
@@ -209,7 +231,7 @@ function renderTabFactoresModificables() {
     ['Periférica', 'vasculopatia_periferica'],
     ['Carotídea', 'vasculopatia_carotidea'],
     ['Femoral', 'vasculopatia_femoral'],
-    ['Cualquier vasculopatía', 'vasculopatia_cualquiera']
+    ['Cualquiera', 'vasculopatia_cualquiera']
   ];
   // Omitir subcampos sin ninguna respuesta respondida (n=0)
   const validVascular = vascular.filter(([, field]) => {
@@ -221,6 +243,19 @@ function renderTabFactoresModificables() {
   const vascularCounts = validVascular.map(([, field]) => filteredRecords.filter(r => r[field] === true).length);
   const vascularLabels = validVascular.map(([label]) => label);
   const vascularTotalValid = vascularDenominators.reduce((a, b) => a + b, 0);
+  const vascularDataLabels = apexCountAndPctDataLabel(vascularDenominators);
+  const formatPositiveVascularLabel = vascularDataLabels.formatter;
+  vascularDataLabels.formatter = function(val, opt) {
+    const value = typeof val === 'number' ? val : parseFloat(val);
+    if (!Number.isFinite(value)) return '';
+    if (value === 0) {
+      const denominator = vascularDenominators[opt?.dataPointIndex ?? 0] || 0;
+      return denominator ? `0 (${(0).toFixed(1).replace('.', ',')}%)` : '';
+    }
+    return formatPositiveVascularLabel(val, opt);
+  };
+  vascularDataLabels.offsetY = -12;
+  vascularDataLabels.style = { ...vascularDataLabels.style, colors: ['#1e293b'] };
 
   const elVascular = document.getElementById('chart-mod-vasculopatia');
   if (elVascular && dashboardHasChartData('chart-mod-vasculopatia', 'modVasc', vascularTotalValid)) {
@@ -232,7 +267,7 @@ function renderTabFactoresModificables() {
           horizontal: false,
           columnWidth: '75%',
           borderRadius: 6,
-          dataLabels: { position: 'center' },
+          dataLabels: { position: 'top' },
           colors: { backgroundBarColors: ['#f1f5f9'], backgroundBarRadius: 6 }
         }
       },
@@ -247,7 +282,7 @@ function renderTabFactoresModificables() {
         }
       },
       legend: { show: false },
-      dataLabels: apexCountAndPctDataLabel(vascularDenominators)
+      dataLabels: vascularDataLabels
     };
     if (charts.modVascular) charts.modVascular.updateOptions(options);
     else { charts.modVascular = createDashboardApexChart(elVascular, options); charts.modVascular.render(); }

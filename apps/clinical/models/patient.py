@@ -20,6 +20,8 @@ class Patient(models.Model):
     )
     id_card = models.CharField(
         max_length=13,
+        blank=True,
+        null=True,
         unique=True,
         db_column='id_card',
         help_text="National identification card number (cédula de identidad)"
@@ -27,16 +29,20 @@ class Patient(models.Model):
     first_names = models.CharField(max_length=100, db_column='first_names')
     last_name1 = models.CharField(max_length=50, db_column='last_name1')
     last_name2 = models.CharField(max_length=50, blank=True, null=True, db_column='last_name2')
-    birth_date = models.DateField(db_column='birth_date')
+    birth_date = models.DateField(blank=True, null=True, db_column='birth_date')
     sex = models.ForeignKey(
         'catalog.Sex',
         on_delete=models.PROTECT,
+        blank=True,
+        null=True,
         db_column='sex_id',
         related_name='patients'
     )
     ethnicity = models.ForeignKey(
         'catalog.Ethnicity',
         on_delete=models.PROTECT,
+        blank=True,
+        null=True,
         db_column='ethnicity_id',
         related_name='patients'
     )
@@ -92,7 +98,8 @@ class Patient(models.Model):
             models.CheckConstraint(
                 condition=(
                     (models.Q(birth_canton__isnull=False) & models.Q(birth_country__isnull=True) & models.Q(foreign_birth_place__isnull=True)) |
-                    (models.Q(birth_canton__isnull=True) & models.Q(birth_country__isnull=False))
+                    (models.Q(birth_canton__isnull=True) & models.Q(birth_country__isnull=False)) |
+                    (models.Q(birth_canton__isnull=True) & models.Q(birth_country__isnull=True) & models.Q(foreign_birth_place__isnull=True))
                 ),
                 name='ck_patient_birth_hierarchy'
             )

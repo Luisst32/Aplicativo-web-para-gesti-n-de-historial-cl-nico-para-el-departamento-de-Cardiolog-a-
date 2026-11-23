@@ -107,7 +107,7 @@ function renderTabHistoriaNoCardio() {
       { label: 'Hombres', filter: r => r.sexo === 'Hombre' },
       { label: 'Mujeres', filter: r => r.sexo === 'Mujer' },
       { label: 'PDI Docentes', filter: r => (r.categoria || '').includes('Docente') },
-      { label: 'PAS Admin.', filter: r => (r.categoria || '').includes('Admin') },
+      { label: 'Código de trabajo', filter: r => (r.categoria || '').includes('Admin') },
       { label: 'Servicios*', filter: r => (r.categoria || '').includes('Servicio') },
       { label: 'Estudiantes*', filter: r => (r.categoria || '').includes('Estudiante') }
     ];

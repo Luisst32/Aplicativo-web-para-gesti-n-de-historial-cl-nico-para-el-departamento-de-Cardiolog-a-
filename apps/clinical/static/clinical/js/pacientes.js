@@ -300,7 +300,7 @@ function montarModalAgregarPaciente(onListo) {
             <select class="form-select" id="m_estamento" name="m_estamento" onchange="aplicarReglaFacultadModal()">
               <option value="PDI">PDI (Profesor)</option>
               <option value="AD">Código de Trabajo</option>
-              <option value="PAS">PAS (Personal de Adm. y Servicios)</option>
+              <option value="PAS">Código de trabajo</option>
               <option value="SERVICIO">SERVICIO (Mantenimiento / Apoyo)</option>
               <option value="ESTUDIANTES">ESTUDIANTES</option>
             </select>
@@ -311,9 +311,9 @@ function montarModalAgregarPaciente(onListo) {
         <div class="pac-form-row">
           <div class="form-field pac-col-6">
             <label class="field-label">Universidad / Institución *</label>
-            <select class="form-select" id="m_universidad" name="m_universidad" onchange="actualizarFacultadesModal(this.value); precargarSiguienteCodigo(this.value);">
+            <select class="form-select" id="m_universidad" name="m_universidad" onchange="actualizarFacultadesModal(this.value); precargarSiguienteCodigo(this.value);"${window.CARDIO_UNEMI_ONLY ? ' disabled data-unemi-only="true" style="background:#f1f5f9; color:#64748b; cursor:not-allowed; opacity:.75;"' : ''}>
               <option value="UNEMI">UNEMI - Universidad Estatal de Milagro</option>
-              <option value="ESPOL">ESPOL - Escuela Superior Politécnica del Litoral</option>
+              ${window.CARDIO_UNEMI_ONLY ? '' : '<option value="ESPOL">ESPOL - Escuela Superior Politécnica del Litoral</option>'}
             </select>
           </div>
           <div class="form-field pac-col-6">

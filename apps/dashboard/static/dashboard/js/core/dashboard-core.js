@@ -48,7 +48,11 @@ function formatMean(arr, decimals = 1) {
 }
 
 function recordsWithValue(field) {
-  return filteredRecords.filter(record => record[field] !== null && record[field] !== undefined);
+  return filteredRecords.filter(record => (
+    record[field] !== null &&
+    record[field] !== undefined &&
+    record[field] !== 'Sin dato'
+  ));
 }
 
 function setKpiCaption(el, text) {
@@ -547,14 +551,25 @@ function syncSlicerOptions() {
   if (instSelect) {
     const existing = Array.from(instSelect.options).map(o => o.value);
     const unique = [...new Set(allRecords.map(r => r.institucion))].filter(Boolean).sort();
-    unique.forEach(inst => {
-      if (!existing.includes(inst)) {
-        const opt = document.createElement('option');
-        opt.value = inst;
-        opt.textContent = inst;
-        instSelect.appendChild(opt);
-      }
-    });
+    if (instSelect.dataset.unemiOnly === 'true') {
+      const allowed = unique[0] || existing.find(value => value && value !== 'all') || 'UNEMI';
+      instSelect.innerHTML = '';
+      const opt = document.createElement('option');
+      opt.value = allowed;
+      opt.textContent = allowed;
+      opt.selected = true;
+      instSelect.appendChild(opt);
+      instSelect.disabled = true;
+    } else {
+      unique.forEach(inst => {
+        if (!existing.includes(inst)) {
+          const opt = document.createElement('option');
+          opt.value = inst;
+          opt.textContent = inst;
+          instSelect.appendChild(opt);
+        }
+      });
+    }
   }
 
   const yearSelect = document.getElementById('slicer-ano');
@@ -805,16 +820,18 @@ function updateActiveTabKPIs(tabId = activeTabId) {
 
   switch (tabId) {
     case 'resumen-general': {
-      const htaCnt = filteredRecords.filter(r => r.hipertension).length;
-      const dlCnt = filteredRecords.filter(r => r.dislipemia).length;
-      const spObCnt = filteredRecords.filter(r => r.sobrepeso_u_obesidad).length;
-      const altoCnt = filteredRecords.filter(r => r.factores_riesgo_count >= 2).length;
+      const htaCnt = filteredRecords.filter(r => r.hipertension === true).length;
+      const dlCnt = filteredRecords.filter(r => r.dislipemia === true).length;
+      const spObCnt = filteredRecords.filter(r => r.sobrepeso_u_obesidad === true).length;
+      const altoCnt = filteredRecords.filter(r => r.riesgo_alto === true).length;
 
       setEl('kpi-total', n.toString());
       setPrevalenceEl('kpi-hta', htaCnt, recordsWithValue('hipertension').length);
       setPrevalenceEl('kpi-dl', dlCnt, recordsWithValue('dislipemia').length);
       setPrevalenceEl('kpi-sp-ob', spObCnt, recordsWithValue('sobrepeso_u_obesidad').length);
-      setPrevalenceEl('kpi-riesgo-alto', altoCnt, recordsWithValue('factores_riesgo_count').length);
+      setPrevalenceEl('kpi-riesgo-alto', altoCnt, recordsWithValue('riesgo_alto').length);
+      const covidCnt = filteredRecords.filter(r => r.covid_infeccion === true).length;
+      setPrevalenceEl('kpi-covid-summary', covidCnt, recordsWithValue('covid_infeccion').length);
       break;
     }
     case 'datos-individuo': {

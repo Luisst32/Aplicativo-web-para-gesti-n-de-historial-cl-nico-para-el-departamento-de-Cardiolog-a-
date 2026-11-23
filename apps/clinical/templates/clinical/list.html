@@ -52,7 +52,7 @@
           <span>Nuevo Paciente</span>
         </button>
 
-        <label class="selection-toggle" id="lblSeleccionarTodos" title="Seleccionar todos los pacientes visibles para exportar">
+        <label class="selection-toggle" id="lblSeleccionarTodos" title="Seleccionar todos los pacientes coincidentes">
           <input type="checkbox" id="seleccionarTodos" onchange="toggleSeleccionarTodos(this.checked)">
           Seleccionar todos
         </label>
@@ -93,11 +93,15 @@
 
           <div class="slicer-group slicer-institucion">
             <label for="filtroInstitucion">Institución</label>
-            <select id="filtroInstitucion" class="form-select slicer-select">
+            <select id="filtroInstitucion" class="form-select slicer-select"{% if unemi_only %} disabled data-unemi-only="true" style="background:#f1f5f9; color:#64748b; cursor:not-allowed; opacity:.75;"{% endif %}>
+              {% if unemi_only %}
+              <option value="UNEMI" selected>UNEMI</option>
+              {% else %}
               <option value="all">Todas las Instituciones</option>
               {% for inst in available_institutions %}
               <option value="{{ inst.acronym|default:inst.name }}">{{ inst.acronym|default:inst.name }}</option>
               {% endfor %}
+              {% endif %}
             </select>
           </div>
 
@@ -363,6 +367,20 @@
           </div>
         </div>
 
+        {% if not unemi_only %}
+        <!-- 1.1. INSTITUCIÓN DE LA EXPORTACIÓN -->
+        <div class="export-seccion" id="exportInstitucionSeccion" style="border:1px solid #dbeafe; border-radius:8px; padding:12px; background:#f8fbff;">
+          <label for="exportInstitucion" style="display:block; font-size:0.82rem; font-weight:700; color:#1e293b; margin-bottom:6px;">Institución a exportar</label>
+          <select id="exportInstitucion" class="form-select" onchange="actualizarResumenExportacion()" style="width:100%; box-sizing:border-box; padding:8px 10px; border-radius:7px; border:1.5px solid #cbd5e1; background:#ffffff; color:#1e293b; font-size:0.84rem;">
+            <option value="all" selected>Todas las instituciones</option>
+            {% for inst in available_institutions %}
+            <option value="{{ inst.institution_id }}">{{ inst.acronym|default:inst.name }}</option>
+            {% endfor %}
+          </select>
+          <span style="display:block; margin-top:5px; font-size:0.73rem; color:#64748b;">Se aplica al alcance «Todos los pacientes».</span>
+        </div>
+        {% endif %}
+
         <!-- 2. FORMATO DE SALIDA -->
         <div class="export-seccion">
           <label style="display:block; font-size:0.86rem; font-weight:700; color:#1b2a41; margin-bottom:8px;">2. Formato de Salida (SPSS, RStudio o CSV)</label>
@@ -610,6 +628,7 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261120_v02"></script>
-  <script src="{% static 'clinical/js/list.js' %}?v=20261120_v01"></script>
+  <script>window.CARDIO_UNEMI_ONLY = {% if unemi_only %}true{% else %}false{% endif %};</script>
+  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261120_v04"></script>
+  <script src="{% static 'clinical/js/list.js' %}?v=20261120_v08"></script>
 {% endblock %}

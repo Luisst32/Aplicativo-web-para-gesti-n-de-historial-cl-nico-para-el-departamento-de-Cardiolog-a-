@@ -215,8 +215,9 @@ function renderTabDatosIndividuo() {
   const eduLevels = ['Secundaria', 'Superior', 'Postgrado'];
   const eduData = eduLevels.map(lvl => {
     const inLvl = filteredRecords.filter(r => r.nivel_estudios === lvl);
-    const count = inLvl.length;
-    const highRisk = inLvl.filter(r => (r.factores_riesgo_count || 0) >= 2 || (r.riesgo_global && r.riesgo_global.includes('Alto'))).length;
+    const evaluable = inLvl.filter(r => typeof r.riesgo_alto === 'boolean');
+    const count = evaluable.length;
+    const highRisk = evaluable.filter(r => r.riesgo_alto === true).length;
     return {
       lvl,
       count,
@@ -224,6 +225,18 @@ function renderTabDatosIndividuo() {
       pct: count > 0 ? Number(((highRisk / count) * 100).toFixed(1)) : 0
     };
   }).filter(d => d.count > 0);
+  const eduDataLabelFormatter = (val, opt) => {
+    const d = eduData[opt.dataPointIndex];
+    return d ? `${d.highRisk} de ${d.count} (${val}%)` : `${val}%`;
+  };
+  const eduTooltip = {
+    y: {
+      formatter: (val, opt) => {
+        const d = eduData[opt.dataPointIndex];
+        return d ? formatWilsonCiLabel(d.highRisk, d.count) : `${val}%`;
+      }
+    }
+  };
 
   const elEduGrad = document.getElementById('chart-di-gradiente-educacion');
   if (elEduGrad && dashboardHasChartData('chart-di-gradiente-educacion', 'diEduGrad', eduData.length)) {
@@ -232,7 +245,9 @@ function renderTabDatosIndividuo() {
     if (charts.diEduGrad) {
       charts.diEduGrad.updateOptions({
         xaxis: { categories },
-        series: [{ name: '% Riesgo Alto (≥2 Factores)', data: seriesData }]
+        series: [{ name: '% Riesgo Alto (≥2 Factores)', data: seriesData }],
+        dataLabels: { enabled: true, formatter: eduDataLabelFormatter },
+        tooltip: eduTooltip
       });
     } else {
       charts.diEduGrad = createDashboardApexChart(elEduGrad, {
@@ -245,33 +260,33 @@ function renderTabDatosIndividuo() {
         legend: { show: false },
         dataLabels: {
           enabled: true,
-          formatter: (val, opt) => {
-            const d = eduData[opt.dataPointIndex];
-            return d ? `${d.highRisk} de ${d.count} (${val}%)` : `${val}%`;
-          },
+          formatter: eduDataLabelFormatter,
           style: { fontSize: '11px', fontWeight: 700, fontFamily: 'inherit', colors: ['#ffffff'] },
           dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow,
           background: { enabled: false }
         },
-        tooltip: {
-          y: {
-            formatter: (val, opt) => {
-              const d = eduData[opt.dataPointIndex];
-              return d ? formatWilsonCiLabel(d.highRisk, d.count) : `${val}%`;
-            }
-          }
-        }
+        tooltip: eduTooltip
       });
       charts.diEduGrad.render();
     }
   }
 
   // 6. FASE 3: Gradiente de Riesgo según Rango de Ingresos
-  const incLevels = ['Menos de $500', '$1001 - $2000'];
+  const incomeOrder = ['Menos de $500', '$500 - $1000', '$1001 - $2000', 'Más de $2000'];
+  const incLevels = [...new Set(filteredRecords
+    .map(r => r.rango_ingresos)
+    .filter(rng => rng && rng !== 'Sin dato'))].sort((a, b) => {
+      const indexA = incomeOrder.indexOf(a);
+      const indexB = incomeOrder.indexOf(b);
+      const orderA = indexA < 0 ? incomeOrder.length : indexA;
+      const orderB = indexB < 0 ? incomeOrder.length : indexB;
+      return orderA - orderB || a.localeCompare(b, 'es');
+    });
   const incData = incLevels.map(rng => {
     const inRng = filteredRecords.filter(r => r.rango_ingresos === rng);
-    const count = inRng.length;
-    const highRisk = inRng.filter(r => (r.factores_riesgo_count || 0) >= 2 || (r.riesgo_global && r.riesgo_global.includes('Alto'))).length;
+    const evaluable = inRng.filter(r => typeof r.riesgo_alto === 'boolean');
+    const count = evaluable.length;
+    const highRisk = evaluable.filter(r => r.riesgo_alto === true).length;
     return {
       rng,
       count,
@@ -279,6 +294,18 @@ function renderTabDatosIndividuo() {
       pct: count > 0 ? Number(((highRisk / count) * 100).toFixed(1)) : 0
     };
   }).filter(d => d.count > 0);
+  const incDataLabelFormatter = (val, opt) => {
+    const d = incData[opt.dataPointIndex];
+    return d ? `${d.highRisk} de ${d.count} (${val}%)` : `${val}%`;
+  };
+  const incTooltip = {
+    y: {
+      formatter: (val, opt) => {
+        const d = incData[opt.dataPointIndex];
+        return d ? formatWilsonCiLabel(d.highRisk, d.count) : `${val}%`;
+      }
+    }
+  };
 
   const elIncGrad = document.getElementById('chart-di-gradiente-ingresos');
   if (elIncGrad && dashboardHasChartData('chart-di-gradiente-ingresos', 'diIncGrad', incData.length)) {
@@ -287,35 +314,27 @@ function renderTabDatosIndividuo() {
     if (charts.diIncGrad) {
       charts.diIncGrad.updateOptions({
         xaxis: { categories },
-        series: [{ name: '% Riesgo Alto (≥2 Factores)', data: seriesData }]
+        series: [{ name: '% Riesgo Alto (≥2 Factores)', data: seriesData }],
+        dataLabels: { enabled: true, formatter: incDataLabelFormatter },
+        tooltip: incTooltip
       });
     } else {
       charts.diIncGrad = createDashboardApexChart(elIncGrad, {
         chart: { type: 'bar', height: 300, toolbar: { show: false }, animations: { enabled: false } },
         plotOptions: { bar: { horizontal: false, columnWidth: '45%', borderRadius: 6, distributed: true, dataLabels: { position: 'center' } } },
-        colors: [PALETTE.yellow, PALETTE.primaryBlue],
+        colors: [PALETTE.yellow, PALETTE.teal, PALETTE.primaryBlue, PALETTE.purple],
         series: [{ name: '% Riesgo Alto (≥2 Factores)', data: seriesData }],
         xaxis: { categories },
         yaxis: { min: 0, max: 100, labels: { formatter: val => `${Math.round(val)}%` }, title: { text: '% Prevalencia Riesgo Alto' } },
         legend: { show: false },
         dataLabels: {
           enabled: true,
-          formatter: (val, opt) => {
-            const d = incData[opt.dataPointIndex];
-            return d ? `${d.highRisk} de ${d.count} (${val}%)` : `${val}%`;
-          },
+          formatter: incDataLabelFormatter,
           style: { fontSize: '11px', fontWeight: 700, fontFamily: 'inherit', colors: ['#ffffff'] },
           dropShadow: UNIVERSAL_VALUE_LABEL_STYLE.apexDropShadow,
           background: { enabled: false }
         },
-        tooltip: {
-          y: {
-            formatter: (val, opt) => {
-              const d = incData[opt.dataPointIndex];
-              return d ? formatWilsonCiLabel(d.highRisk, d.count) : `${val}%`;
-            }
-          }
-        }
+        tooltip: incTooltip
       });
       charts.diIncGrad.render();
     }

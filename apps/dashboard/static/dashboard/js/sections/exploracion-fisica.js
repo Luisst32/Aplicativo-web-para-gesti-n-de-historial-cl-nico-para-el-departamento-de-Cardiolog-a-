@@ -69,22 +69,44 @@ function renderTabExploracionFisica() {
   }
 
   // Clasificación Presión Arterial (Pie con leyenda detallada)
-  const paCats = ['PA Normal (<130/<80)', 'PA Elevada (130-139/80-89)', 'HTA Grado 1 (140-159/90-99)', 'HTA Grado 2 (≥140/90)'];
-  const paVals = paCats.map(c => filteredRecords.filter(r => r.pa_categoria === c).length);
-  const paLegendLabels = ['Normal', 'Elevada / Limítrofe', 'HTA Grado 1', 'HTA Grado 2'].map((lbl, idx) => `${lbl}: ${paVals[idx]} (${formatPct(paVals[idx], n)}%)`);
+  const paCategoryConfig = [
+    {value: 'PA Normal (<130/<80)', label: 'Normal (TAS/TAD)', color: PALETTE.green},
+    {value: 'PA Elevada (130-139/80-89)', label: 'Elevada (TAS/TAD)', color: PALETTE.yellow},
+    {value: 'HTA Grado 1 (140-159/90-99)', label: 'HTA Grado 1 (TAS/TAD)', color: PALETTE.emergencyRed},
+    {value: 'HTA Grado 2 (≥160/100)', label: 'HTA Grado 2 (TAS/TAD)', color: '#991B1B'},
+    {value: 'PA Normal (TAS <130)', label: 'Normal TAS (<130)', color: PALETTE.green},
+    {value: 'PA Elevada (TAS 130-139)', label: 'Elevada TAS (130-139)', color: PALETTE.yellow},
+    {value: 'HTA Grado 1 (TAS 140-159)', label: 'HTA Grado 1 TAS (140-159)', color: PALETTE.emergencyRed},
+    {value: 'HTA Grado 2 (TAS ≥160)', label: 'HTA Grado 2 TAS (≥160)', color: '#991B1B'},
+    {value: 'PA Normal (TAD <80)', label: 'Normal TAD (<80)', color: PALETTE.green},
+    {value: 'PA Elevada (TAD 80-89)', label: 'Elevada TAD (80-89)', color: PALETTE.yellow},
+    {value: 'HTA Grado 1 (TAD 90-99)', label: 'HTA Grado 1 TAD (90-99)', color: PALETTE.emergencyRed},
+    {value: 'HTA Grado 2 (TAD ≥100)', label: 'HTA Grado 2 TAD (≥100)', color: '#991B1B'}
+  ];
+  const paPresentCategories = paCategoryConfig.map(category => ({
+    ...category,
+    count: filteredRecords.filter(r => r.pa_categoria === category.value).length
+  })).filter(category => category.count > 0);
+  const paValidCount = paPresentCategories.reduce((total, category) => total + category.count, 0);
+  const paVals = paPresentCategories.map(category => category.count);
+  const paColors = paPresentCategories.map(category => category.color);
+  const paLegendLabels = paPresentCategories.map(category => (
+    `${category.label}: ${category.count} (${formatPct(category.count, paValidCount)}%)`
+  ));
 
   const ctxPa = document.getElementById('chart-exp-pa-cat');
-  if (ctxPa) {
+  if (ctxPa && dashboardHasChartData('chart-exp-pa-cat', 'expPa', paValidCount)) {
     if (charts.expPa) {
       charts.expPa.data.labels = paLegendLabels;
       charts.expPa.data.datasets[0].data = paVals;
+      charts.expPa.data.datasets[0].backgroundColor = paColors;
       charts.expPa.update();
     } else {
       charts.expPa = createDashboardChart(ctxPa, {
         type: 'doughnut',
         data: {
           labels: paLegendLabels,
-          datasets: [{ data: paVals, backgroundColor: [PALETTE.green, PALETTE.yellow, PALETTE.emergencyRed, '#991B1B'] }]
+          datasets: [{ data: paVals, backgroundColor: paColors }]
         },
         options: {
           responsive: true,

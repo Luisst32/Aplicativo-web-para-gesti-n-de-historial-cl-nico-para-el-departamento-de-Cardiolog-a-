@@ -87,7 +87,7 @@ function renderTabCovid19() {
   // 5. FASE 3: Prevalencia COVID-19 con IC 95% por Categoría de Personal
   const elCovIc = document.getElementById('chart-covid-prevalencia-ic');
   if (elCovIc) {
-    const cats = ['PDI (Docentes)', 'PAS (Administrativos)', 'Personal de Servicios', 'Estudiantes'];
+    const cats = ['PDI (Docentes)', 'Código de trabajo', 'Personal de Servicios', 'Estudiantes'];
     const catData = cats.map(c => {
       const sub = filteredRecords.filter(r => r.categoria === c);
       const inf = sub.filter(r => r.covid_infeccion === true).length;

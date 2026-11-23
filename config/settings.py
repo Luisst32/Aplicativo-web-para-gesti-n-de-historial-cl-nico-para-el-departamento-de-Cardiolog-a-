@@ -22,6 +22,10 @@ if os.environ.get('DEBUG', '').strip().lower() == 'release':
 # El entorno del proceso tiene prioridad; no buscar archivos .env en otras carpetas.
 load_dotenv(BASE_DIR / '.env')
 
+# Modo institucional: con UNEMI=true el directorio y sus filtros muestran
+# únicamente la institución UNEMI. Con UNEMI=false muestran la cohorte completa.
+UNEMI = os.getenv('UNEMI', 'false').strip().lower() in {'true', '1', 'yes', 'si', 'on'}
+
 # Agregar directorio apps/ al PYTHONPATH para importaciones limpias
 sys.path.insert(0, str(BASE_DIR / 'apps'))
 

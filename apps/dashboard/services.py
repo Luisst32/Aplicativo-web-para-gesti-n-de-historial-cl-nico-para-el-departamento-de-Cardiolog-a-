@@ -23,6 +23,7 @@ Incorporates the 8 core clinical modules requested for epidemiological analysis:
 
 import re
 from datetime import date
+from django.conf import settings
 from django.db.models import Prefetch
 
 from clinical.models import Visit, VisitAnswer
@@ -59,7 +60,7 @@ def map_category_label(cat_name):
     if 'PDI' in cat_upper or 'DOCENTE' in cat_upper:
         return 'PDI (Docentes)'
     if 'PAS' in cat_upper or 'ADMIN' in cat_upper:
-        return 'PAS (Administrativos)'
+        return 'Código de trabajo'
     if 'SERVICIO' in cat_upper:
         return 'Personal de Servicios'
     if 'ESTUDIANTE' in cat_upper:
@@ -97,6 +98,21 @@ def _answer(answers, *codes):
     return None
 
 
+def _numeric_answer(numeric_answers, answers, *codes):
+    """Read a numeric questionnaire value without treating blanks as zero."""
+    for code in codes:
+        if code in numeric_answers:
+            return numeric_answers[code]
+        value = answers.get(code)
+        if value is None or not str(value).strip():
+            continue
+        try:
+            return float(str(value).strip().replace(',', '.'))
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
 def _affirmative(value):
     """Return True/False for a recorded yes/no answer, otherwise None."""
     if value is None or str(value).strip() == '':
@@ -116,11 +132,23 @@ def _affirmative(value):
 
 
 def _any_known(*values):
-    """Three-valued OR: unknown remains unknown unless another source is positive."""
-    known = [value for value in values if value is not None]
-    if any(value is True for value in known):
+    """Merge a direct clinical answer with corroborating evidence.
+
+    Positive evidence wins; otherwise an explicit negative remains usable even
+    when a secondary measurement was not recorded.
+    """
+    if any(value is True for value in values):
         return True
-    if known and all(value is False for value in known):
+    if any(value is False for value in values):
+        return False
+    return None
+
+
+def _fully_known_or(*values):
+    """Return an OR result only when positive or when every source is negative."""
+    if any(value is True for value in values):
+        return True
+    if values and all(value is False for value in values):
         return False
     return None
 
@@ -190,6 +218,8 @@ def get_dashboard_evaluation_data():
         .all()
         .order_by('visit_id')
     )
+    if getattr(settings, 'UNEMI', False):
+        visits = visits.filter(patient__institution__acronym__iexact='UNEMI')
 
     records = []
     available_years = set()
@@ -352,25 +382,71 @@ def get_dashboard_evaluation_data():
             abd_riesgo = 'Sin dato'
 
         vs = getattr(v, 'vital_signs', None)
-        tas = float(vs.systolic_bp) if vs and vs.systolic_bp is not None else None
-        tad = float(vs.diastolic_bp) if vs and vs.diastolic_bp is not None else None
-        fc = int(vs.heart_rate) if vs and vs.heart_rate is not None else None
+        tas = (
+            float(vs.systolic_bp)
+            if vs and vs.systolic_bp is not None
+            else _numeric_answer(
+                numeric_answers,
+                answers_dict,
+                'f_tas', 'tas_ts', 'tas', 'pa_sistolica', 'sistolica',
+            )
+        )
+        tad = (
+            float(vs.diastolic_bp)
+            if vs and vs.diastolic_bp is not None
+            else _numeric_answer(
+                numeric_answers,
+                answers_dict,
+                'f_tsi', 'tas_mmhg', 'tad_mmhg', 'tad', 'pa_diastolica', 'presion_diastolica',
+            )
+        )
+        fc = (
+            int(vs.heart_rate)
+            if vs and vs.heart_rate is not None
+            else _numeric_answer(
+                numeric_answers,
+                answers_dict,
+                'f_fc', 'frecuencia_cardiaca_ipm', 'fc', 'frecuencia_cardiaca', 'pulso',
+            )
+        )
         sat_o2 = int(vs.oxygen_saturation) if vs and vs.oxygen_saturation is not None else None
 
-        # Clasificación de Presión Arterial
-        if tas is None or tad is None:
+        # Clasificación de presión: usa ambas medidas cuando existen; si falta
+        # una, conserva la estratificación de la medida realmente observada.
+        if tas is not None and tas > 0 and tad is not None and tad > 0:
+            if tas >= 160.0 or tad >= 100.0:
+                pa_categoria = 'HTA Grado 2 (≥160/100)'
+            elif tas >= 140.0 or tad >= 90.0:
+                pa_categoria = 'HTA Grado 1 (140-159/90-99)'
+            elif tas >= 130.0 or tad >= 80.0:
+                pa_categoria = 'PA Elevada (130-139/80-89)'
+            else:
+                pa_categoria = 'PA Normal (<130/<80)'
+        elif tas is not None and tas > 0:
+            if tas >= 160.0:
+                pa_categoria = 'HTA Grado 2 (TAS ≥160)'
+            elif tas >= 140.0:
+                pa_categoria = 'HTA Grado 1 (TAS 140-159)'
+            elif tas >= 130.0:
+                pa_categoria = 'PA Elevada (TAS 130-139)'
+            else:
+                pa_categoria = 'PA Normal (TAS <130)'
+        elif tad is not None and tad > 0:
+            if tad >= 100.0:
+                pa_categoria = 'HTA Grado 2 (TAD ≥100)'
+            elif tad >= 90.0:
+                pa_categoria = 'HTA Grado 1 (TAD 90-99)'
+            elif tad >= 80.0:
+                pa_categoria = 'PA Elevada (TAD 80-89)'
+            else:
+                pa_categoria = 'PA Normal (TAD <80)'
+        elif tas is None and tad is None:
             pa_categoria = 'Sin dato'
-        elif tas >= 140.0 or tad >= 90.0:
-            pa_categoria = 'HTA Grado 2 (≥140/90)' if (tas >= 160.0 or tad >= 100.0) else 'HTA Grado 1 (140-159/90-99)'
-        elif tas >= 130.0 or tad >= 80.0:
-            pa_categoria = 'PA Elevada (130-139/80-89)'
-        elif tas > 0:
-            pa_categoria = 'PA Normal (<130/<80)'
         else:
             pa_categoria = 'No registrada'
 
         # Hallazgos auscultatorios
-        soplos = _any_known(vs.systolic_murmur, vs.diastolic_murmur) if vs else None
+        soplos = _fully_known_or(vs.systolic_murmur, vs.diastolic_murmur) if vs else None
         soplo_grado = int(vs.murmur_grade) if vs and vs.murmur_grade else 0
         ausc_pulm_normal = vs.pulmonary_auscultation_normal if vs else None
         ausc_abdom_normal = vs.abdominal_auscultation_normal if vs else None
@@ -381,9 +457,14 @@ def get_dashboard_evaluation_data():
         # Hipertensión (HTA)
         r_hta_val = _answer(answers_dict, 'r_hta', 'hipertension', 'hta', 'hta_tto')
         is_hta_ans = _affirmative(r_hta_val)
-        is_hta_bp = (tas >= 140.0 or tad >= 90.0) if tas is not None and tad is not None else None
+        if (tas is not None and tas >= 140.0) or (tad is not None and tad >= 90.0):
+            is_hta_bp = True
+        elif tas is not None and tad is not None:
+            is_hta_bp = False
+        else:
+            is_hta_bp = None
         # Diagnóstico clínico oficial de HTA (anamnesis)
-        hipertension = is_hta_ans
+        hipertension = _any_known(is_hta_ans, is_hta_bp)
         # PA elevada en consulta física (variable independiente)
         pa_elevada_consulta = is_hta_bp
 
@@ -400,13 +481,27 @@ def get_dashboard_evaluation_data():
 
         # Diabetes Mellitus
         lab = getattr(v, 'laboratory', None)
-        glucosa = float(lab.glucose_mg_dl) if lab and lab.glucose_mg_dl is not None else None
+        glucosa = (
+            float(lab.glucose_mg_dl)
+            if lab and lab.glucose_mg_dl is not None
+            else _numeric_answer(
+                numeric_answers,
+                answers_dict,
+                'diab_glucosa', 'lab_glucosa', 'glucosa_sangre', 'glucosa',
+            )
+        )
+        hba1c = _numeric_answer(
+            numeric_answers,
+            answers_dict,
+            'diab_hba1c', 'lab_hba1c', 'hemoglobina_glicosilada', 'hba1c',
+        )
         r_dm_val = _answer(answers_dict, 'r_dm', 'diabetes_mellitus', 'dm', 'diab_glucosa')
         is_dm_ans = _affirmative(r_dm_val)
         is_dm_lab = glucosa >= 126.0 if glucosa is not None else None
         # Diagnóstico clínico oficial de DM (anamnesis)
-        diabetes = is_dm_ans
-        diabetes_lab = is_dm_lab
+        is_dm_hba1c = hba1c >= 6.5 if hba1c is not None else None
+        diabetes_lab = _fully_known_or(is_dm_lab, is_dm_hba1c)
+        diabetes = _any_known(is_dm_ans, diabetes_lab)
         if r_dm_val and 'tratada' in r_dm_val.lower():
             db_desc = 'Tipo 2 tratada'
         elif diabetes is True:
@@ -424,9 +519,21 @@ def get_dashboard_evaluation_data():
         r_dl_val = _answer(answers_dict, 'r_dislip', 'dislipemia', 'r_dislipemia')
         is_dl_ans = _affirmative(r_dl_val)
         lipid_values = (col_total, col_ldl, triglic)
-        is_dl_lab = (col_total >= 200.0 or col_ldl >= 130.0 or triglic >= 150.0) if all(value is not None for value in lipid_values) else None
+        available_lipids = [value for value in lipid_values if value is not None]
+        if not available_lipids:
+            is_dl_lab = None
+        elif (
+            (col_total is not None and col_total >= 200.0)
+            or (col_ldl is not None and col_ldl >= 130.0)
+            or (triglic is not None and triglic >= 150.0)
+        ):
+            is_dl_lab = True
+        elif len(available_lipids) == len(lipid_values):
+            is_dl_lab = False
+        else:
+            is_dl_lab = None
         # Diagnóstico clínico oficial de Dislipemia si existe anamnesis; si no fue evaluada, laboratorio
-        dislipemia = is_dl_ans if is_dl_ans is not None else is_dl_lab
+        dislipemia = _any_known(is_dl_ans, is_dl_lab)
         dislipemia_lab = is_dl_lab
 
         if r_dl_val and 'no tratada' in r_dl_val.lower():
@@ -471,6 +578,35 @@ def get_dashboard_evaluation_data():
         else:
             alcohol = 'No consume'
 
+        # Consumo de drogas: distinguir uso actual, exconsumo y ausencia.
+        r_drogas_val = _answer(answers_dict, 'r_drogas', 'drogas')
+        drogas_freq_val = _answer(answers_dict, 'drogas_frecuencia')
+        ex_drogas_val = _answer(answers_dict, 'chk_ex_drogas')
+        drogas_text = ' '.join(
+            str(value).strip().lower()
+            for value in (r_drogas_val, drogas_freq_val, ex_drogas_val)
+            if value is not None and str(value).strip()
+        )
+        ex_drogas_text = str(ex_drogas_val or '').strip().lower()
+        ex_drogas = (
+            'ex consumidor' in drogas_text
+            or ex_drogas_text in {'on', 'checked', 'true', '1', '1.0', 'si', 'sí'}
+        )
+        if _es_negativo(r_drogas_val):
+            drogas = 'Ex consumidor' if ex_drogas else 'No consume'
+        elif 'diari' in drogas_text:
+            drogas = 'Diario'
+        elif 'seman' in drogas_text:
+            drogas = 'Semanal'
+        elif 'ocasional' in drogas_text:
+            drogas = 'Ocasional'
+        elif ex_drogas:
+            drogas = 'Ex consumidor'
+        elif _affirmative(r_drogas_val) is True:
+            drogas = 'Activo'
+        else:
+            drogas = None
+
         # Actividad Física y Deporte
         r_act_val = _answer(answers_dict, 'usted_realiza_actividad_fisica', 'actividad_fisica', 'af_camina', 'af_aerobicos')
         actividad_fisica = _affirmative(r_act_val)
@@ -486,12 +622,13 @@ def get_dashboard_evaluation_data():
         higado_graso = _affirmative(r_hg_val) if r_hg_val else None
         vasculopatia_periferica = _affirmative(_answer(answers_dict, 'r_vasc_perif'))
         vasculopatia_carotidea = _affirmative(_answer(answers_dict, 'r_vasc_carot'))
-        vasculopatia_femoral = _affirmative(_answer(answers_dict, 'r_vasc_fem'))
+        vasculopatia_femoral = _affirmative(_answer(answers_dict, 'r_vasc_fem', 'r_vasc_femoral'))
         vasculopatia_values = (vasculopatia_periferica, vasculopatia_carotidea, vasculopatia_femoral)
+        vasculopatia_directa = _answer(answers_dict, 'r_vasculopatia', 'vasculopatia')
         vasculopatia_cualquiera = (
-            True if any(value is True for value in vasculopatia_values)
-            else False if any(value is False for value in vasculopatia_values)
-            else None
+            _affirmative(vasculopatia_directa)
+            if vasculopatia_directa is not None
+            else _fully_known_or(*vasculopatia_values)
         )
         disfuncion_erectil = _affirmative(_answer(answers_dict, 'r_disfunc'))
 
@@ -503,17 +640,30 @@ def get_dashboard_evaluation_data():
         predimed_adherencia = (None if any(value is None for value in diet_answers) else
             'Buena Adherencia' if all(diet_answers) else 'Adherencia Moderada/Baja')
 
-        # Riesgo Global (conteo de factores)
+        # Separar el score exacto del indicador umbral (>=2). Con dos
+        # positivos conocidos se sabe que supera el umbral aunque falten
+        # otros factores; un score exacto requiere las seis respuestas.
         factors = [hipertension, dislipemia, obesidad, diabetes, fumador_activo, higado_graso]
-        factores_riesgo_count = sum(1 for f in factors if f)
-        if factores_riesgo_count == 0:
-            riesgo_global = 'Bajo (0 factores)'
-        elif factores_riesgo_count == 1:
-            riesgo_global = 'Moderado (1 factor)'
-        elif factores_riesgo_count <= 3:
-            riesgo_global = 'Alto (2-3 factores)'
+        known_positive_factors = sum(factor is True for factor in factors)
+        factors_complete = all(factor is not None for factor in factors)
+        riesgo_alto = (
+            True if known_positive_factors >= 2
+            else False if factors_complete
+            else None
+        )
+        if not factors_complete:
+            factores_riesgo_count = None
+            riesgo_global = 'Sin dato'
         else:
-            riesgo_global = 'Muy Alto (4+ factores)'
+            factores_riesgo_count = sum(1 for factor in factors if factor is True)
+            if factores_riesgo_count == 0:
+                riesgo_global = 'Bajo (0 factores)'
+            elif factores_riesgo_count == 1:
+                riesgo_global = 'Moderado (1 factor)'
+            elif factores_riesgo_count <= 3:
+                riesgo_global = 'Alto (2-3 factores)'
+            else:
+                riesgo_global = 'Muy Alto (4+ factores)'
 
         # -------------------------------------------------------------
         # BLOQUE 4: FACTORES EMERGENTES
@@ -618,11 +768,11 @@ def get_dashboard_evaluation_data():
         ant_madre_acv = family_value('ant_madre_ictus', 'antecedentes_madres', 'ictus', 'acv')
         ant_cardiopatia_prematura = _affirmative(_answer(answers_dict, 'af_cardiopatia_prematura'))
         ant_muerte_subita = _affirmative(_answer(answers_dict, 'af_muerte_subita'))
-        ant_fam_hta = _any_known(ant_padre_hta, ant_madre_hta)
-        ant_fam_dm = _any_known(ant_padre_dm, ant_madre_dm)
-        ant_fam_dlp = _any_known(ant_padre_dlp, ant_madre_dlp)
-        ant_fam_cv_mayor = _any_known(ant_padre_iam, ant_madre_iam, ant_padre_acv, ant_madre_acv, ant_cardiopatia_prematura, ant_muerte_subita)
-        ant_fam_cualquiera = _any_known(ant_fam_hta, ant_fam_dm, ant_fam_dlp, ant_fam_cv_mayor)
+        ant_fam_hta = _fully_known_or(ant_padre_hta, ant_madre_hta)
+        ant_fam_dm = _fully_known_or(ant_padre_dm, ant_madre_dm)
+        ant_fam_dlp = _fully_known_or(ant_padre_dlp, ant_madre_dlp)
+        ant_fam_cv_mayor = _fully_known_or(ant_padre_iam, ant_madre_iam, ant_padre_acv, ant_madre_acv, ant_cardiopatia_prematura, ant_muerte_subita)
+        ant_fam_cualquiera = _fully_known_or(ant_fam_hta, ant_fam_dm, ant_fam_dlp, ant_fam_cv_mayor)
 
         # -------------------------------------------------------------
         # BLOQUE 6: HISTORIA CLÍNICA NO CARDIOVASCULAR
@@ -704,7 +854,18 @@ def get_dashboard_evaluation_data():
         ecg_arritmia = (not ecg_es_sinusal) if ecg_es_sinusal is not None else None
         arritmias = ecg_arritmia
 
-        ecg_fc = int(ecg.heart_rate) if (ecg and ecg.heart_rate) else None
+        ecg_fc_model = float(ecg.heart_rate) if ecg and ecg.heart_rate is not None else None
+        ecg_fc_answer = _numeric_answer(numeric_answers, answers_dict, 'ecg_fc')
+        # Las importaciones antiguas copiaban la FC clínica al campo ECG.
+        # Si no hay respuesta ECG explícita y coincide con el pulso, no es una
+        # medición independiente del trazado y se excluye de esta comparación.
+        ecg_fc = (
+            ecg_fc_answer
+            if ecg_fc_answer is not None
+            else ecg_fc_model
+            if ecg_fc_model is not None and (fc is None or ecg_fc_model != fc)
+            else None
+        )
         ecg_pr_ms = int(ecg.pr_interval_ms) if (ecg and ecg.pr_interval_ms) else None
         if ecg_pr_ms is not None:
             if ecg_pr_ms < 120:
@@ -769,6 +930,7 @@ def get_dashboard_evaluation_data():
             'grupo_edad': grupo_edad,
             'categoria': categoria,
             'factores_riesgo_count': factores_riesgo_count,
+            'riesgo_alto': riesgo_alto,
             'riesgo_global': riesgo_global,
 
             # Bloque 1: Datos del Individuo
@@ -811,6 +973,7 @@ def get_dashboard_evaluation_data():
             'tabaquismo': tabaquismo,
             'fumador_activo': fumador_activo,
             'alcohol': alcohol,
+            'drogas': drogas,
             'actividad_fisica': actividad_fisica,
             'deporte': deporte,
             'higado_graso': higado_graso,
@@ -921,14 +1084,14 @@ def get_dashboard_evaluation_data():
     hta_cnt = sum(1 for r in records if r['hipertension'])
     dl_cnt = sum(1 for r in records if r['dislipemia'])
     sp_ob_cnt = sum(1 for r in records if r['sobrepeso_u_obesidad'])
-    riesgo_alto_cnt = sum(1 for r in records if r['factores_riesgo_count'] >= 2)
+    riesgo_alto_cnt = sum(1 for r in records if r['riesgo_alto'] is True)
 
     summary_kpis = {
         'total': n,
         'hta_pct': fmt_pct(hta_cnt, 'hipertension'),
         'dl_pct': fmt_pct(dl_cnt, 'dislipemia'),
         'sp_ob_pct': fmt_pct(sp_ob_cnt, 'sobrepeso_u_obesidad'),
-        'riesgo_alto_pct': fmt_pct(riesgo_alto_cnt, 'factores_riesgo_count'),
+        'riesgo_alto_pct': fmt_pct(riesgo_alto_cnt, 'riesgo_alto'),
     }
 
     # KPIs específicos precalculados para cada bloque temático
@@ -942,9 +1105,9 @@ def get_dashboard_evaluation_data():
     imc_medio = f"{(sum(valid_imc) / len(valid_imc)):.1f}".replace('.', ',') if valid_imc else "0,0"
     cintura_riesgo_cnt = sum(1 for r in records if 'Riesgo' in r['abd_riesgo'])
     valid_tas = [r['tas'] for r in records if r['tas'] is not None and r['tas'] > 0]
-    tas_media = f"{(sum(valid_tas) / len(valid_tas)):.0f}" if valid_tas else "0"
+    tas_media = f"{(sum(valid_tas) / len(valid_tas)):.0f}" if valid_tas else "—"
     valid_tad = [r['tad'] for r in records if r['tad'] is not None and r['tad'] > 0]
-    tad_media = f"{(sum(valid_tad) / len(valid_tad)):.0f}" if valid_tad else "0"
+    tad_media = f"{(sum(valid_tad) / len(valid_tad)):.0f}" if valid_tad else "—"
     valid_sato2 = [r['sat_o2'] for r in records if r['sat_o2'] is not None and r['sat_o2'] > 0]
     sato2_media = f"{(sum(valid_sato2) / len(valid_sato2)):.0f}" if valid_sato2 else "0"
 

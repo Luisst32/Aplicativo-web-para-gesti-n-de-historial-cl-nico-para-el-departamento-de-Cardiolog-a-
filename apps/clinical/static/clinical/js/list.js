@@ -7,6 +7,7 @@
 
 // IDs de pacientes marcados con checkbox para exportación masiva
 const seleccionados = new Set();
+const pacientesCache = new Map();
 
 // Estado de ordenamiento (Código 1, 2, 3, 4, 5... por defecto)
 let columnaOrdenActual = 'codigo';
@@ -194,7 +195,7 @@ function actualizarOpcionesFiltrosDinamicos() {
     const labelsConocidos = {
       'PDI': 'PDI (Docentes)',
       'AD': 'Código de Trabajo',
-      'PAS': 'PAS (Personal de Adm. y Servicios)',
+      'PAS': 'Código de trabajo',
       'SERVICIO': 'SERVICIO (Apoyo)',
       'ESTUDIANTES': 'ESTUDIANTES'
     };
@@ -251,6 +252,13 @@ function actualizarOpcionesFiltrosDinamicos() {
   // Solo se agregan las instituciones reales de los pacientes que existen
   const selInstitucion = document.getElementById('filtroInstitucion');
   if (selInstitucion) {
+    const unemiOnly = selInstitucion.dataset.unemiOnly === 'true';
+    if (unemiOnly) {
+      selInstitucion.innerHTML = '<option value="UNEMI" selected>UNEMI</option>';
+      selInstitucion.value = 'UNEMI';
+      selInstitucion.disabled = true;
+      return;
+    }
     const rawInst = selInstitucion.value ? selInstitucion.value.trim() : 'all';
     const instSeleccionada = (!rawInst || rawInst.toLowerCase() === 'all') ? 'all' : rawInst;
     const instSet = new Set();
@@ -518,6 +526,41 @@ function obtenerParametrosFiltro() {
   return params;
 }
 
+function registrarPacientesEnCache(lista) {
+  (Array.isArray(lista) ? lista : []).forEach(p => {
+    if (p && p.id !== undefined && p.id !== null) {
+      pacientesCache.set(String(p.id), p);
+    }
+  });
+}
+
+async function cargarTodosLosPacientesCoincidentes() {
+  const baseParams = obtenerParametrosFiltro();
+  baseParams.page = 1;
+  baseParams.page_size = 200;
+
+  const todos = [];
+  let pagina = 1;
+  let totalPaginas = 1;
+
+  while (pagina <= totalPaginas) {
+    baseParams.page = pagina;
+    const query = new URLSearchParams(baseParams);
+    const resp = await fetch(`/clinical/api/pacientes/?${query.toString()}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (!data.success || !Array.isArray(data.pacientes)) {
+      throw new Error('Respuesta inválida al cargar todos los pacientes');
+    }
+    todos.push(...data.pacientes);
+    totalPaginas = data.total_pages || Math.ceil((data.total || todos.length) / 200) || 1;
+    pagina += 1;
+  }
+
+  registrarPacientesEnCache(todos);
+  return todos;
+}
+
 async function cargarYRenderizarPacientes() {
   if (cargandoPacientes) return;
   cargandoPacientes = true;
@@ -540,6 +583,7 @@ async function cargarYRenderizarPacientes() {
     }
 
     pacientes = data.pacientes || [];
+    registrarPacientesEnCache(pacientes);
     totalPacientesServidor = typeof data.total === 'number' ? data.total : pacientes.length;
 
     const totalPaginas = data.total_pages || Math.ceil(totalPacientesServidor / PACIENTES_POR_PAGINA) || 1;
@@ -756,14 +800,29 @@ function toggleSeleccion(id, marcado) {
   }
 }
 
-function toggleSeleccionarTodos(marcarTodos) {
-  (pacientes || []).forEach(p => {
-    if (marcarTodos) {
-      seleccionados.add(p.id);
-    } else {
-      seleccionados.delete(p.id);
+async function toggleSeleccionarTodos(marcarTodos) {
+  const checks = [
+    document.getElementById('seleccionarTodos'),
+    document.getElementById('seleccionarTodosTabla')
+  ].filter(Boolean);
+
+  if (!marcarTodos) {
+    seleccionados.clear();
+  } else {
+    checks.forEach(check => { check.disabled = true; });
+    try {
+      const todos = await cargarTodosLosPacientesCoincidentes();
+      seleccionados.clear();
+      todos.forEach(p => seleccionados.add(p.id));
+    } catch (err) {
+      checks.forEach(check => { check.checked = false; });
+      alert('No se pudieron cargar todos los pacientes para la selección masiva.');
+      console.error('Error al seleccionar todos los pacientes:', err);
+    } finally {
+      checks.forEach(check => { check.disabled = false; });
     }
-  });
+  }
+
   const tbody = document.getElementById('pacientesTbody');
   if (tbody) {
     tbody.querySelectorAll('input[type="checkbox"]').forEach(cb => {
@@ -837,7 +896,9 @@ function actualizarEstadoSeleccion(lista = pacientes) {
 
 function obtenerPacientesParaExportar() {
   if (seleccionados.size > 0) {
-    return pacientes.filter(p => seleccionados.has(p.id));
+    return Array.from(seleccionados)
+      .map(id => pacientesCache.get(String(id)))
+      .filter(Boolean);
   }
   return obtenerPacientesFiltrados();
 }
@@ -852,14 +913,16 @@ function abrirModalExportar() {
   const modal = document.getElementById('modalExportarInteligente');
   if (!modal) return;
 
-  const totalPacientes = pacientes.length;
+  const totalPacientes = (typeof totalPacientesServidor === 'number' && totalPacientesServidor > 0)
+    ? totalPacientesServidor
+    : pacientes.length;
   const filtrados = obtenerPacientesFiltrados();
-  const cantFiltrados = filtrados.length;
+  const cantFiltrados = typeof totalPacientesServidor === 'number'
+    ? totalPacientesServidor
+    : filtrados.length;
   const cantSeleccionados = seleccionados.size;
 
-  const inicio = (paginaActual - 1) * PACIENTES_POR_PAGINA;
-  const fin = inicio + PACIENTES_POR_PAGINA;
-  const cantPagina = filtrados.slice(inicio, fin).length;
+  const cantPagina = pacientes.length;
 
   // Actualizar píldoras de conteo en tiempo real
   const elPillTodos = document.getElementById('pillAlcanceTodos');
@@ -896,6 +959,20 @@ function abrirModalExportar() {
   modal.classList.add('active');
 }
 
+function actualizarSelectorInstitucionExportacion() {
+  const alcance = document.querySelector('input[name="exportAlcance"]:checked')?.value || 'todos';
+  const select = document.getElementById('exportInstitucion');
+  const section = document.getElementById('exportInstitucionSeccion');
+  if (!select) return;
+
+  const enabled = alcance === 'todos';
+  select.disabled = !enabled;
+  select.style.background = enabled ? '#ffffff' : '#f1f5f9';
+  select.style.color = enabled ? '#1e293b' : '#64748b';
+  select.style.cursor = enabled ? 'pointer' : 'not-allowed';
+  if (section) section.style.opacity = enabled ? '1' : '0.7';
+}
+
 function actualizarBadgeModalExportarPrivacidad() {
   const badge = document.getElementById('badgeExportPrivacidad');
   const dot = document.getElementById('dotExportPrivacidad');
@@ -928,24 +1005,22 @@ function cerrarModalExportar() {
   }
 }
 
-function obtenerPacientesSegunAlcance() {
+async function obtenerPacientesSegunAlcance() {
   const alcance = document.querySelector('input[name="exportAlcance"]:checked')?.value || 'todos';
-  const filtrados = obtenerPacientesFiltrados();
-
   switch (alcance) {
     case 'todos':
       return pacientes;
 
     case 'filtrados':
-      return filtrados;
+      return cargarTodosLosPacientesCoincidentes();
 
     case 'seleccionados':
-      return pacientes.filter(p => seleccionados.has(p.id));
+      return Array.from(seleccionados)
+        .map(id => pacientesCache.get(String(id)))
+        .filter(Boolean);
 
     case 'pagina': {
-      const inicio = (paginaActual - 1) * PACIENTES_POR_PAGINA;
-      const fin = inicio + PACIENTES_POR_PAGINA;
-      return filtrados.slice(inicio, fin);
+      return pacientes;
     }
 
     default:
@@ -954,6 +1029,8 @@ function obtenerPacientesSegunAlcance() {
 }
 
 function actualizarResumenExportacion() {
+  const alcance = document.querySelector('input[name="exportAlcance"]:checked')?.value || 'todos';
+  actualizarSelectorInstitucionExportacion();
   // Actualizar estilos activos de las tarjetas de formato
   document.querySelectorAll('.export-format-card').forEach(card => {
     const radio = card.querySelector('input[name="exportFormato"]');
@@ -968,15 +1045,26 @@ function actualizarResumenExportacion() {
 }
 
 async function ejecutarExportacionInteligente() {
-  const pacs = obtenerPacientesSegunAlcance();
-  if (!pacs || pacs.length === 0) {
+  const alcance = document.querySelector('input[name="exportAlcance"]:checked')?.value || 'todos';
+  let pacs = null;
+  try {
+    pacs = alcance === 'todos' ? null : await obtenerPacientesSegunAlcance();
+  } catch (err) {
+    alert('No se pudieron cargar todos los pacientes coincidentes para exportar.');
+    console.error('Error al preparar la exportación:', err);
+    return;
+  }
+  if (alcance !== 'todos' && (!pacs || pacs.length === 0)) {
     alert('No hay pacientes que coincidan con el alcance seleccionado.');
     return;
   }
 
   const formato = document.querySelector('input[name="exportFormato"]:checked')?.value || 'sav';
-  const alcance = document.querySelector('input[name="exportAlcance"]:checked')?.value || 'todos';
   const patientIds = alcance === 'todos' ? [] : pacs.map(p => p.id);
+  const institutionSelect = document.getElementById('exportInstitucion');
+  const institutionId = alcance === 'todos' && institutionSelect && institutionSelect.value !== 'all'
+    ? institutionSelect.value
+    : null;
 
   const btnTxt = document.getElementById('btnTxtDescargar');
   const btn = document.querySelector('.btn-ejecutar-exportacion');
@@ -1003,7 +1091,8 @@ async function ejecutarExportacionInteligente() {
         patient_ids: patientIds,
         format: formato,
         scope: alcance,
-        privacy_mode: privacyActive
+        privacy_mode: privacyActive,
+        institution_id: institutionId
       })
     });
 
@@ -1219,7 +1308,7 @@ function abrirModalEnviarCorreo() {
   }
 
   if (arrSeleccionados.length === 1) {
-    const pSel = pacientes.find(p => String(p.id) === String(arrSeleccionados[0]));
+    const pSel = pacientesCache.get(String(arrSeleccionados[0])) || pacientes.find(p => String(p.id) === String(arrSeleccionados[0]));
     if (resumenEl) {
       resumenEl.innerHTML = `Se generará un enlace protegido con código de acceso para <strong>1 ficha clínica</strong>.`;
     }
@@ -1231,7 +1320,7 @@ function abrirModalEnviarCorreo() {
       resumenEl.innerHTML = `Se generarán enlaces protegidos con código de acceso para <strong>${arrSeleccionados.length} fichas clínicas</strong> (descargables en .ZIP comprimido o por separado).`;
     }
     if (inputDest) {
-      const correos = pacientes
+      const correos = Array.from(pacientesCache.values())
         .filter(p => (seleccionados.has(p.id) || seleccionados.has(String(p.id))) && (p.correo || p.email))
         .map(p => p.correo || p.email)
         .slice(0, 5);

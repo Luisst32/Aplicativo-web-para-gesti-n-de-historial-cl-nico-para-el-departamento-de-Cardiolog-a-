@@ -490,11 +490,19 @@
           <!-- Slicer Institución -->
           <div class="slicer-group">
             <label for="slicer-inst">Institución</label>
-            <select id="slicer-inst" class="form-select slicer-select" onchange="onSlicerChange()">
-              <option value="all">Todas las Instituciones</option>
-              {% for inst in available_institutions %}
-              <option value="{{ inst }}">{{ inst }}</option>
-              {% endfor %}
+            <select id="slicer-inst" class="form-select slicer-select" onchange="onSlicerChange()"{% if unemi_only %} disabled data-unemi-only="true" style="background:#f1f5f9; color:#64748b; cursor:not-allowed; opacity:.75;"{% endif %}>
+              {% if unemi_only %}
+                {% for inst in available_institutions %}
+                <option value="{{ inst }}" selected>{{ inst }}</option>
+                {% empty %}
+                <option value="UNEMI" selected>UNEMI</option>
+                {% endfor %}
+              {% else %}
+                <option value="all">Todas las Instituciones</option>
+                {% for inst in available_institutions %}
+                <option value="{{ inst }}">{{ inst }}</option>
+                {% endfor %}
+              {% endif %}
             </select>
           </div>
 
@@ -790,16 +798,16 @@
     };
   </script>
 
-  <script src="{% static 'dashboard/js/core/dashboard-core.js' %}?v=20261115_v09"></script>
+  <script src="{% static 'dashboard/js/core/dashboard-core.js' %}?v=20261121_calc03"></script>
   <script src="{% static 'dashboard/js/core/chart-style.js' %}?v=20261118_forest01"></script>
-  <script src="{% static 'dashboard/js/sections/resumen-general.js' %}?v=20261118_forest01"></script>
-  <script src="{% static 'dashboard/js/sections/datos-individuo.js' %}?v=20261115_v09"></script>
-  <script src="{% static 'dashboard/js/sections/exploracion-fisica.js' %}?v=20261115_v09"></script>
-  <script src="{% static 'dashboard/js/sections/factores-modificables.js' %}?v=20261115_v09"></script>
+  <script src="{% static 'dashboard/js/sections/resumen-general.js' %}?v=20261121_calc03"></script>
+  <script src="{% static 'dashboard/js/sections/datos-individuo.js' %}?v=20261121_income_risk01"></script>
+  <script src="{% static 'dashboard/js/sections/exploracion-fisica.js' %}?v=20261121_bp_source01"></script>
+  <script src="{% static 'dashboard/js/sections/factores-modificables.js' %}?v=20261121_toxic_drugs01"></script>
   <script src="{% static 'dashboard/js/sections/factores-emergentes.js' %}?v=20261115_v09"></script>
   <script src="{% static 'dashboard/js/sections/antecedentes-familiares.js' %}?v=20261115_v09"></script>
-  <script src="{% static 'dashboard/js/sections/historia-no-cardio.js' %}?v=20261118_scale01"></script>
-  <script src="{% static 'dashboard/js/sections/covid-19.js' %}?v=20261118_scale01"></script>
-  <script src="{% static 'dashboard/js/sections/electrocardiograma.js' %}?v=20261115_v09"></script>
-  <script src="{% static 'dashboard/js/core/dashboard-export.js' %}?v=20261115_v09"></script>
+  <script src="{% static 'dashboard/js/sections/historia-no-cardio.js' %}?v=20261120_scale02"></script>
+  <script src="{% static 'dashboard/js/sections/covid-19.js' %}?v=20261120_scale02"></script>
+  <script src="{% static 'dashboard/js/sections/electrocardiograma.js' %}?v=20261121_fc_source01"></script>
+    <script src="{% static 'dashboard/js/core/dashboard-export.js' %}?v=20261120_html08"></script>
 {% endblock %}

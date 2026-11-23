@@ -406,6 +406,21 @@ class SecurityApiEndpointsTests(TestCase):
         self.assertTrue(SystemSetting.is_chatbot_enabled())
         self.assertEqual(SystemSetting.get_gemini_api_key(), 'ORIGINAL_SECRET_KEY')
 
+    def test_settings_api_non_admin_can_update_general_chatbot_setting(self):
+        SystemSetting.set_settings(chatbot_enabled=True)
+        self.client.login(username='doctor_test', password='CurrentPassword123!')
+
+        response = self.client.post(
+            '/security/api/settings/',
+            data=json.dumps({'chatbot_enabled': False}),
+            content_type='application/json'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'success')
+        self.assertFalse(response.json()['chatbot_enabled'])
+        self.assertFalse(SystemSetting.is_chatbot_enabled())
+
 
 class GlobalLoginRedirectTests(TestCase):
     def setUp(self):

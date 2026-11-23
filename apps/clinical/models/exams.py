@@ -199,6 +199,8 @@ class Electrocardiogram(models.Model):
     rhythm = models.ForeignKey(
         'catalog.EcgRhythm',
         on_delete=models.PROTECT,
+        blank=True,
+        null=True,
         db_column='rhythm_id',
         related_name='electrocardiograms'
     )

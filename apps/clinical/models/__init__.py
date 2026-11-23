@@ -10,6 +10,7 @@ from .exams import (
 )
 from .answers import VisitAnswer
 from .share import SecureShare
+from .source_dataset import SourceDataset, SourceDatasetRow
 
 __all__ = [
     'Patient',
@@ -22,4 +23,6 @@ __all__ = [
     'OrderedStudies',
     'VisitAnswer',
     'SecureShare',
+    'SourceDataset',
+    'SourceDatasetRow',
 ]

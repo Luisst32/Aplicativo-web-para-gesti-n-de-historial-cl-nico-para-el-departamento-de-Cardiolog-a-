@@ -136,7 +136,7 @@ class DashboardServicesAndViewsTestCase(TestCase):
         self.assertEqual(len(data['records']), 2)
         self.assertIn(2026, data['years'])
         self.assertIn('PDI (Docentes)', data['categories'])
-        self.assertIn('PAS (Administrativos)', data['categories'])
+        self.assertIn('Código de trabajo', data['categories'])
 
         # Check Patient 1 record
         rec1 = next(r for r in data['records'] if r['study_code'] == 'CUN-2026-001')
@@ -148,7 +148,7 @@ class DashboardServicesAndViewsTestCase(TestCase):
         self.assertTrue(rec1['obesidad'])              # BMI > 30 (95 / 1.7^2 = 32.87)
         self.assertTrue(rec1['dislipemia'])            # Lab Chol 220 >= 200
         self.assertEqual(rec1['abd_riesgo'], 'Riesgo Elevado (>102)')
-        self.assertIn(rec1['riesgo_global'], ['Alto (2-3 factores)', 'Muy Alto (4+ factores)'])
+        self.assertEqual(rec1['riesgo_global'], 'Sin dato')
 
         # Check Patient 2 record
         rec2 = next(r for r in data['records'] if r['study_code'] == 'CUN-2026-002')
@@ -160,7 +160,7 @@ class DashboardServicesAndViewsTestCase(TestCase):
         self.assertFalse(rec2['obesidad'])
         self.assertFalse(rec2['dislipemia'])
         self.assertEqual(rec2['abd_riesgo'], 'Normal (<80)')
-        self.assertEqual(rec2['riesgo_global'], 'Bajo (0 factores)')
+        self.assertEqual(rec2['riesgo_global'], 'Sin dato')
 
     def test_missing_measurements_and_answers_are_not_clinical_defaults(self):
         """Absent source values remain absent instead of becoming normal findings."""
@@ -184,6 +184,29 @@ class DashboardServicesAndViewsTestCase(TestCase):
         self.assertEqual(record['tabaquismo'], 'Sin dato')
         self.assertIsNone(record['imc'])
         self.assertEqual(record['imc_cat'], 'Sin dato')
+
+    def test_risk_metrics_use_any_positive_source_and_mark_incomplete_scores(self):
+        """Clinical thresholds are not ignored and missing risk factors stay unknown."""
+        self.visit2.vital_signs.systolic_bp = 145
+        self.visit2.vital_signs.diastolic_bp = 95
+        self.visit2.vital_signs.save(update_fields=['systolic_bp', 'diastolic_bp'])
+        laboratory = self.visit2.laboratory
+        laboratory.glucose_mg_dl = Decimal('130.0')
+        laboratory.total_cholesterol_mg_dl = Decimal('220.0')
+        laboratory.ldl_mg_dl = None
+        laboratory.triglycerides_mg_dl = None
+        laboratory.save(update_fields=['glucose_mg_dl', 'total_cholesterol_mg_dl', 'ldl_mg_dl', 'triglycerides_mg_dl'])
+
+        record = next(
+            row for row in services.get_dashboard_evaluation_data()['records']
+            if row['study_code'] == 'CUN-2026-002'
+        )
+
+        self.assertTrue(record['hipertension'])
+        self.assertTrue(record['dislipemia'])
+        self.assertTrue(record['diabetes'])
+        self.assertIsNone(record['factores_riesgo_count'])
+        self.assertEqual(record['riesgo_global'], 'Sin dato')
 
     def test_prevalence_denominators_exclude_missing_laboratory(self):
         Laboratory.objects.filter(visit=self.visit2).delete()

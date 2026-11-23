@@ -28,14 +28,14 @@ class Visit(models.Model):
         related_name='evaluated_visits',
         help_text="Clinician / Specialist who conducted the evaluation"
     )
-    visit_number = models.PositiveSmallIntegerField(default=1, db_column='visit_number')
+    visit_number = models.PositiveSmallIntegerField(blank=True, null=True, db_column='visit_number')
     study_code = models.CharField(
         max_length=30,
         db_index=True,
         db_column='study_code',
         help_text="Cardiovascular study code per cohort/institution (e.g., 1, 2, CUN-2024-001)"
     )
-    visit_date = models.DateField(db_column='visit_date')
+    visit_date = models.DateField(blank=True, null=True, db_column='visit_date')
     study_year = models.GeneratedField(
         expression=ExtractYear('visit_date'),
         output_field=models.IntegerField(),
@@ -114,12 +114,24 @@ class Visit(models.Model):
     residence_canton = models.ForeignKey(
         'catalog.Canton',
         on_delete=models.PROTECT,
+        blank=True,
+        null=True,
         db_column='residence_canton_id',
         related_name='resident_visits'
     )
     faculty = models.CharField(max_length=150, blank=True, null=True, db_column='faculty')
     num_children = models.PositiveSmallIntegerField(blank=True, null=True, db_column='num_children')
     num_cohabitants = models.PositiveSmallIntegerField(blank=True, null=True, db_column='num_cohabitants')
+    source_dataset = models.ForeignKey(
+        'clinical.SourceDataset',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        db_column='source_dataset_id',
+        related_name='visits',
+    )
+    source_row_index = models.PositiveIntegerField(blank=True, null=True, db_column='source_row_index')
+    source_row_data = models.JSONField(blank=True, null=True, db_column='source_row_data')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
 
     class Meta:

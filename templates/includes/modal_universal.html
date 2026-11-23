@@ -260,6 +260,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
             Ajustes Generales
           </button>
+          {% if request.user.is_administrator %}
           <button 
             type="button" 
             id="tabBtnAjustesApis" 
@@ -269,6 +270,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
             Gestión de APIs & Cloud
           </button>
+          {% endif %}
         </div>
 
         <form id="formAjustesSistema" autocomplete="off" onsubmit="guardarAjustesSistema(event)">
@@ -322,6 +324,7 @@
               </label>
             </div>
 
+            {% if request.user.is_administrator %}
             <!-- Selector de Proveedor Principal de IA (Active LLM Provider) -->
             <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
@@ -399,11 +402,13 @@
                 </div>
               </div>
             </div>
+            {% endif %}
           </div>
 
           <!-- =========================================================
                SUB-SECCIÓN 2: GESTIÓN DE APIS EN TARJETAS (4 SERVICIOS)
                ========================================================= -->
+          {% if request.user.is_administrator %}
           <div id="subseccionAjustesApis" style="display: none;">
             <!-- Barra de Filtro / Selección de API a Configurar -->
             <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;">
@@ -720,6 +725,7 @@
 
             </div>
           </div>
+          {% endif %}
           <!-- Mensajes de estado -->
           <div id="ajustesErrorMsg" style="display: none; padding: 10px 14px; border-radius: 8px; background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; font-size: 0.82rem; margin-bottom: 14px;"></div>
 

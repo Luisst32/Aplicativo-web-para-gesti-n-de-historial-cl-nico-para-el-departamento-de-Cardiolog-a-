@@ -12,6 +12,8 @@ import datetime
 import unicodedata
 import math
 import sys
+import json
+import hashlib
 from decimal import Decimal
 from pathlib import Path
 
@@ -29,7 +31,7 @@ from catalog.models import (
 from clinical.models import (
     Patient, Visit, Anthropometry, VitalSigns,
     Electrocardiogram, Echocardiogram, Laboratory, VisitAnswer,
-    OrderedStudies
+    OrderedStudies, SourceDataset, SourceDatasetRow
 )
 
 try:
@@ -55,6 +57,172 @@ from .normalizers import (
     _get_val_and_label,
 )
 from .readers import _read_dataset_file
+
+
+_IDENTIFIER_SOURCE_COLUMNS = {
+    'universidad', 'codigonuev', 'codigo', 'visita', 'categoria_personal',
+    'fecha', 'facultad', 'nombres', 'apellido1', 'apellido2',
+    'tipodocumento', 'ci', 'cedula', 'telefono', 'correo',
+}
+
+
+def _column_has_values(df_dict, column, total_rows):
+    return any(not _is_empty_or_nan(df_dict[column][i]) for i in range(total_rows))
+
+
+def _build_field_to_column(col_names, df_dict, total_rows):
+    """Map fields using exact normalized names, with source-specific priorities.
+
+    The previous fallback used substring matching for every alias. That made
+    ``TAD_MMHG`` match an empty echocardiography column and allowed derived
+    columns to steal real source fields. Exact matching is deterministic and
+    still supports aliases declared in constants.py.
+    """
+    by_norm = {}
+    for column in col_names:
+        by_norm.setdefault(normalize_var_name(column), []).append(column)
+
+    priorities = {
+        'codigo': ('codigonuev', 'codigo'),
+        'cedula': ('ci', 'cedula', 'id_card'),
+        'fecha_visita': ('fecha', 'fecha_visita'),
+        'tad': ('tad_mmhg', 'tad', 'pa_diastolica'),
+        'dislipemia': ('dislipidemia', 'dislipemia'),
+        'ecg_onda_p': ('anchura_onda_p_mm',),
+        'ecg_bloqueo_av': ('bloqueo_av',),
+        'ecg_sa_block': ('bloqueo_sinoauricular_interauricular',),
+        'ecg_hemibloqueo': ('hemibloqueos',),
+        'ecg_hemibloqueo_detalle': ('hemibloqueos_cual',),
+        'ecg_t_negativa': ('t_negativa',),
+        'ecg_t_negativa_complejos': ('t_negativa_complejos',),
+        'ecg_patrones': ('patrones',),
+        'ecg_intrinsicoide': ('deflexion_intrinsicoide_v5v6_seg',),
+    }
+
+    field_to_col = {}
+    all_aliases = dict(STANDARD_FIELD_ALIASES)
+    for field, aliases in priorities.items():
+        all_aliases[field] = list(aliases)
+
+    for field, aliases in all_aliases.items():
+        candidates = []
+        for alias in aliases:
+            candidates.extend(by_norm.get(normalize_var_name(alias), []))
+        if not candidates:
+            continue
+        with_data = [c for c in candidates if _column_has_values(df_dict, c, total_rows)]
+        field_to_col[field] = (with_data or candidates)[0]
+    return field_to_col
+
+
+def _question_code_for_column(column, used_codes):
+    """Return a stable <=30-character code without collisions."""
+    base = normalize_var_name(column)
+    if not base:
+        return None
+    candidate = base[:30]
+    if candidate not in used_codes or used_codes[candidate] == column:
+        used_codes[candidate] = column
+        return candidate
+    suffix = hashlib.sha1(column.encode('utf-8')).hexdigest()[:6]
+    candidate = f'{base[:23]}_{suffix}'
+    used_codes[candidate] = column
+    return candidate
+
+
+def _value_and_label(df_dict, meta, column, row_index):
+    value = df_dict[column][row_index]
+    labels = meta.variable_value_labels.get(column, {})
+    return value, _get_val_and_label(value, labels)[1]
+
+
+def _normalized_label(value, label):
+    text = label or ('' if _is_empty_or_nan(value) else str(value))
+    return unicodedata.normalize('NFKD', str(text)).encode('ascii', 'ignore').decode().strip().upper()
+
+
+def _nullable_bool(value, label=''):
+    """Decode SPSS boolean codes by label first, preserving missing values."""
+    if _is_empty_or_nan(value):
+        return None
+    text = _normalized_label(value, label)
+    if text in {'NO', 'NINGUNA', 'NUNCA', '0', 'FALSE'} or text.startswith('NO '):
+        return False
+    if text in {'SI', 'S', 'YES', 'TRUE', '1'} or text.startswith('SI '):
+        return True
+    try:
+        return float(value) != 0
+    except (TypeError, ValueError):
+        return None
+
+
+def _source_value(df_dict, field_to_col, field, row_index):
+    column = field_to_col.get(field)
+    return None if not column else df_dict[column][row_index]
+
+
+def _source_column_map(col_names):
+    return {normalize_var_name(column): column for column in col_names}
+
+
+def _source_cell(df_dict, meta, source_columns, name, row_index):
+    column = source_columns.get(normalize_var_name(name))
+    return (None, '') if not column else _value_and_label(df_dict, meta, column, row_index)
+
+
+def _positive_code(value, label=''):
+    if _is_empty_or_nan(value):
+        return None
+    normalized = _normalized_label(value, label)
+    if normalized in {'NO', 'NINGUNO', 'NINGUNA', '0', 'FALSE'} or normalized.startswith('NO '):
+        return False
+    if normalized in {'SI', 'S', 'YES', 'TRUE'} or normalized.startswith('SI '):
+        return True
+    try:
+        return float(value) != 0
+    except (TypeError, ValueError):
+        return None
+
+
+def _json_safe_source_value(value):
+    """Convert one reader value to a lossless JSON-compatible representation."""
+    if value is None:
+        return None
+    if isinstance(value, (datetime.datetime, datetime.date, datetime.time)):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return str(value)
+    if hasattr(value, 'item'):
+        try:
+            return _json_safe_source_value(value.item())
+        except Exception:
+            pass
+    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        return None
+    if isinstance(value, (list, tuple)):
+        return [_json_safe_source_value(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _json_safe_source_value(item) for key, item in value.items()}
+    try:
+        json.dumps(value)
+        return value
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _source_dataset_metadata(meta, col_names):
+    """Capture SPSS metadata needed to write the same schema back."""
+    return {
+        'column_names': list(col_names),
+        'column_labels': _json_safe_source_value(getattr(meta, 'column_names_to_labels', {}) or {}),
+        'value_labels': _json_safe_source_value(getattr(meta, 'variable_value_labels', {}) or {}),
+        'original_variable_types': _json_safe_source_value(getattr(meta, 'original_variable_types', {}) or {}),
+        'variable_display_width': _json_safe_source_value(getattr(meta, 'variable_display_width', {}) or {}),
+        'variable_measure': _json_safe_source_value(getattr(meta, 'variable_measure', {}) or {}),
+        'missing_ranges': _json_safe_source_value(getattr(meta, 'missing_ranges', {}) or {}),
+        'file_label': _json_safe_source_value(getattr(meta, 'file_label', None) or ''),
+        'file_encoding': _json_safe_source_value(getattr(meta, 'file_encoding', None) or ''),
+    }
 
 
 def execute_sav_import(temp_token, user, current_year=2026, duplicate_action="update"):
@@ -92,21 +260,19 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
 
     total_rows = meta.number_rows
     col_names = list(df_dict.keys())
+    source_meta = _source_dataset_metadata(meta, col_names)
 
-    # Mapa de columna a campo estándar
-    field_to_col = {}
-    for col in col_names:
-        f_match = _match_column_to_field(col)
-        if f_match and f_match not in field_to_col:
-            field_to_col[f_match] = col
+    # Mapa determinista: las columnas fuente exactas tienen prioridad sobre
+    # cualquier coincidencia por subcadena.
+    field_to_col = _build_field_to_column(col_names, df_dict, total_rows)
 
     # Catálogos pre-cargados para alta eficiencia
     inst_unemi = Institution.objects.filter(acronym__iexact='UNEMI').first() or Institution.objects.first()
     inst_espol = Institution.objects.filter(acronym__iexact='ESPOL').first() or inst_unemi
     sex_hombre = Sex.objects.filter(name__istartswith='H').first()
     sex_mujer = Sex.objects.filter(name__istartswith='M').first()
-    ethnicity_default = Ethnicity.objects.filter(name__icontains='Mestizo').first() or Ethnicity.objects.first()
-    default_canton = _resolve_canton_safe('Milagro') or Canton.objects.first()
+    ethnicity_default = None
+    default_canton = None
     sections_by_code = {s.code: s for s in QuestionnaireSection.objects.all()}
     default_section = sections_by_code.get('MOD_3_FACTORES_MOD') or QuestionnaireSection.objects.first()
     if not default_section:
@@ -118,10 +284,12 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
         'SERVICIO': StaffCategory.objects.filter(name__icontains='SERVICIO').first(),
         'ESTUDIANTES': StaffCategory.objects.filter(name__icontains='ESTUDIANTE').first(),
     }
+    staff_map['ESTUDIANTE'] = staff_map['ESTUDIANTES']
     staff_num_map = {
         1: staff_map['PDI'],
         2: staff_map['PAS'],
-        4: staff_map['SERVICIO'],
+        3: None,
+        4: staff_map['ESTUDIANTES'],
         5: staff_map['ESTUDIANTES'],
     }
     marital_map = {
@@ -189,9 +357,9 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
     prof_estudiante = ProfessionalCategory.objects.filter(name__icontains='Estudiante').first()
     prof_otro = ProfessionalCategory.objects.filter(name__icontains='Otro').first()
     prof_map = {
+        'NO PERMANENTE': prof_ocasional,
         'PERMANENTE': prof_titular,
         'TITULAR': prof_titular,
-        'NO PERMANENTE': prof_ocasional,
         'OCASIONAL': prof_ocasional,
         'ADMINISTRACION': prof_publico,
         'SERVIDOR': prof_publico,
@@ -221,10 +389,10 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
         4: housing_map['OTRO'],
     }
     income_map = {
-        '500': IncomeRange.objects.filter(name__icontains='500').first(),
-        '1000': IncomeRange.objects.filter(name__icontains='1000').first(),
-        '1500': IncomeRange.objects.filter(name__icontains='1001').first(),
-        '2000': IncomeRange.objects.filter(name__icontains='2000').first(),
+        '500': IncomeRange.objects.filter(name='Menos de $500').first(),
+        '1000': IncomeRange.objects.filter(name='$500 - $1000').first(),
+        '1500': IncomeRange.objects.filter(name='$1001 - $2000').first(),
+        '2000': IncomeRange.objects.filter(name='Más de $2000').first(),
     }
     income_num_map = {
         1: income_map['500'],
@@ -236,30 +404,30 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
         7: income_map['2000'],
         8: income_map['2000'],
     }
-    rhythm_default = EcgRhythm.objects.first()
-    if not rhythm_default:
-        rhythm_default = EcgRhythm.objects.create(name='Sinusal', status=EcgRhythm.Status.ACTIVE)
+    rhythm_default = None
+    rhythm_catalog = list(EcgRhythm.objects.all())
 
     # Pre-cargar y preparar en memoria todas las Preguntas (Questions)
     existing_questions = {q.code: q for q in Question.objects.all()}
     col_code_map = {}
+    used_question_codes = {}
     for col_name in col_names:
         clean = normalize_var_name(col_name)
-        if clean:
-            clean_30 = clean[:30]
-            col_code_map[col_name] = clean_30
-            if clean_30 not in existing_questions:
+        if clean and clean not in _IDENTIFIER_SOURCE_COLUMNS and _column_has_values(df_dict, col_name, total_rows):
+            question_code = _question_code_for_column(col_name, used_question_codes)
+            col_code_map[col_name] = question_code
+            if question_code not in existing_questions:
                 target_sec_code = classify_spss_question_section(col_name)
                 target_sec = sections_by_code.get(target_sec_code) or default_section
                 var_label = meta.column_names_to_labels.get(col_name) or col_name
                 q = Question.objects.create(
                     section=target_sec,
-                    code=clean_30,
+                    code=question_code,
                     text=str(var_label)[:255],
                     response_type=Question.ResponseType.TEXTO,
                     display_order=999
                 )
-                existing_questions[clean_30] = q
+                existing_questions[question_code] = q
 
     for form_k in SPSS_QUESTION_ALIASES.keys():
         if form_k not in existing_questions:
@@ -349,11 +517,6 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                 if len(s_ced) == 9 and s_ced.isdigit():
                     s_ced = s_ced.zfill(10)
                 id_c = s_ced
-        if not id_c:
-            numeric_num = int(re.sub(r'[^0-9]', '', sc)) if any(c.isdigit() for c in sc) else (i + 1)
-            inst_pfx = "08" if row_inst == inst_espol else "09"
-            id_c = f"{inst_pfx}{str(numeric_num).zfill(8)}"
-
         row_meta.append((sc, id_c, row_inst))
 
     all_scs = [sc for sc, _, _ in row_meta]
@@ -367,7 +530,7 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
     }
     existing_patients = {
         p.id_card: p
-        for p in Patient.objects.filter(id_card__in=all_ids)
+        for p in Patient.objects.filter(id_card__in=[value for value in all_ids if value])
         .select_related('visit', 'visit__anthropometry', 'visit__vital_signs', 'visit__electrocardiogram', 'visit__laboratory', 'visit__echocardiogram', 'visit__ordered_studies')
     }
 
@@ -376,9 +539,27 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
     skipped_count = 0
     duplicate_records = []
     errors = []
+    warnings = []
     answers_to_upsert = {}
 
     with transaction.atomic():
+        source_dataset = SourceDataset.objects.create(
+            filename=temp_path.name,
+            **source_meta,
+        )
+        source_rows = {
+            i: SourceDatasetRow.objects.create(
+                source_dataset=source_dataset,
+                row_index=i,
+                row_data={
+                    col_name: _json_safe_source_value(df_dict[col_name][i])
+                    for col_name in col_names
+                },
+            )
+            for i in range(total_rows)
+        }
+        source_columns = _source_column_map(col_names)
+
         for i in range(total_rows):
             study_code, id_card, inst = row_meta[i]
             row_answers = {}
@@ -422,11 +603,7 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                         raw_dob = df_dict[field_to_col['fecha_nac']][i]
                         birth_date = _parse_date_safe(raw_dob)
 
-                    if not birth_date:
-                        birth_year = (current_year - edad_val) if edad_val else 1980
-                        birth_date = datetime.date(birth_year, 1, 1)
-
-                    birth_canton = default_canton
+                    birth_canton = None
                     if 'ciudad_nac' in field_to_col:
                         val_cn = df_dict[field_to_col['ciudad_nac']][i]
                         vlabels_cn = meta.variable_value_labels.get(field_to_col['ciudad_nac'], {})
@@ -436,7 +613,7 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                         rc = _resolve_canton_safe(lbl_cn or val_cn)
                         if rc: birth_canton = rc
 
-                    residence_canton = default_canton
+                    residence_canton = None
                     if 'ciudad_res' in field_to_col:
                         val_cr = df_dict[field_to_col['ciudad_res']][i]
                         vlabels_cr = meta.variable_value_labels.get(field_to_col['ciudad_res'], {})
@@ -448,7 +625,7 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
 
                     # 3. Paciente
                     existing_v = existing_visits.get((inst.institution_id, study_code))
-                    patient = existing_v.patient if (existing_v and existing_v.patient) else existing_patients.get(id_card)
+                    patient = existing_v.patient if (existing_v and existing_v.patient) else (existing_patients.get(id_card) if id_card else None)
                     is_duplicate_case = bool(patient or existing_v)
 
                     if patient and duplicate_action == "skip":
@@ -489,7 +666,8 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                             patient.email = str(v_mail).strip()
                     patient.status = Patient.Status.ACTIVE
                     patient.save()
-                    existing_patients[id_card] = patient
+                    if id_card:
+                        existing_patients[id_card] = patient
 
                     # 4. Visita
                     visit = getattr(patient, 'visit', None) or existing_v
@@ -511,13 +689,21 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                     visit.evaluator = user
                     visit.residence_canton = residence_canton
 
-                    visit_date = datetime.date.today()
+                    visit_date = None
                     if 'fecha_visita' in field_to_col:
                         raw_fv = df_dict[field_to_col['fecha_visita']][i]
                         parsed_fv = _parse_date_safe(raw_fv)
                         if parsed_fv:
                             visit_date = parsed_fv
-                    visit.visit_date = visit_date
+                    if 'visita' in field_to_col:
+                        visit_number = _clean_int(df_dict[field_to_col['visita']][i])
+                        if visit_number is not None:
+                            visit.visit_number = visit_number
+                    visit.visit_date = visit_date if 'fecha_visita' in field_to_col and not _is_empty_or_nan(df_dict[field_to_col['fecha_visita']][i]) else None
+
+                    if 'facultad' in field_to_col:
+                        faculty_value = df_dict[field_to_col['facultad']][i]
+                        visit.faculty = None if _is_empty_or_nan(faculty_value) else str(faculty_value).strip()
 
                     if 'estamento' in field_to_col:
                         st_val = df_dict[field_to_col['estamento']][i]
@@ -527,11 +713,10 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                         _, st_lbl = _get_val_and_label(st_val, vlabels_st)
                         st_found = False
                         if st_lbl:
-                            for k_st, sc_obj in staff_map.items():
-                                if k_st in st_lbl.upper():
-                                    visit.staff_category = sc_obj
-                                    st_found = True
-                                    break
+                            st_key = _normalized_label(st_val, st_lbl)
+                            if st_key in {'PDI', 'PAS', 'SERVICIO', 'ESTUDIANTE', 'ESTUDIANTES'}:
+                                visit.staff_category = staff_map.get(st_key)
+                                st_found = visit.staff_category is not None
                         if not st_found and st_val is not None:
                             try:
                                 st_int = int(float(st_val))
@@ -639,9 +824,9 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                         _, pr_lbl = _get_val_and_label(pr_val, vlabels_pr)
                         pr_found = False
                         if pr_lbl:
-                            pr_upper = pr_lbl.upper()
+                            pr_upper = _normalized_label(pr_val, pr_lbl)
                             for k_pr, pf_obj in prof_map.items():
-                                if k_pr in pr_upper:
+                                if pr_upper == k_pr or (k_pr == 'NO PERMANENTE' and pr_upper.startswith('NO PERMANENTE')):
                                     visit.professional_category = pf_obj
                                     pr_found = True
                                     break
@@ -680,11 +865,19 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                         _, in_lbl = _get_val_and_label(in_val, vlabels_in)
                         in_found = False
                         if in_lbl:
-                            for k_in, in_obj in income_map.items():
-                                if k_in in in_lbl.upper():
-                                    visit.income_range = in_obj
-                                    in_found = True
-                                    break
+                            in_upper = _normalized_label(in_val, in_lbl)
+                            if 'MENOS' in in_upper:
+                                visit.income_range = income_map['500']
+                                in_found = True
+                            elif '500' in in_upper and '1000' in in_upper:
+                                visit.income_range = income_map['1000']
+                                in_found = True
+                            elif '1001' in in_upper or '1500' in in_upper:
+                                visit.income_range = income_map['1500']
+                                in_found = True
+                            elif 'MAS DE' in in_upper or '3001' in in_upper or '2501' in in_upper:
+                                visit.income_range = income_map['2000']
+                                in_found = True
                         if not in_found and in_val is not None:
                             try:
                                 in_int = int(float(in_val))
@@ -717,6 +910,12 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
 
                     visit.status = Visit.Status.COMPLETED
                     visit.save()
+                    visit.source_dataset = source_dataset
+                    visit.source_row_index = i
+                    visit.source_row_data = source_rows[i].row_data
+                    visit.save(update_fields=['source_dataset', 'source_row_index', 'source_row_data'])
+                    source_rows[i].visit = visit
+                    source_rows[i].save(update_fields=['visit'])
                     existing_visits[(inst.institution_id, study_code)] = visit
 
                     # 5. Antropometría
@@ -740,20 +939,25 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                             if pm_c is not None: perim_val = pm_c
 
                     ant = getattr(visit, 'anthropometry', None)
-                    if not ant:
-                        ant = Anthropometry(visit=visit, weight_kg=peso_val or Decimal("70.00"), height_cm=talla_val or Decimal("170.0"), waist_circumference_cm=perim_val or Decimal("85.0"))
-                    else:
-                        if peso_val: ant.weight_kg = peso_val
-                        if talla_val: ant.height_cm = talla_val
-                        if perim_val: ant.waist_circumference_cm = perim_val
-                    ant.save()
-                    visit.anthropometry = ant
+                    if ant:
+                        if peso_val is not None: ant.weight_kg = peso_val
+                        if talla_val is not None: ant.height_cm = talla_val
+                        if perim_val is not None: ant.waist_circumference_cm = perim_val
+                        ant.save()
+                    elif peso_val is not None and talla_val is not None:
+                        ant = Anthropometry(
+                            visit=visit,
+                            weight_kg=peso_val,
+                            height_cm=talla_val,
+                            waist_circumference_cm=perim_val,
+                        )
+                        ant.save()
 
                     # 6. Signos Vitales
-                    tas_val = 120
-                    tad_val = 80
-                    sat_val = 98
-                    fc_val = 72
+                    tas_val = None
+                    tad_val = None
+                    sat_val = None
+                    fc_val = None
                     if 'tas' in field_to_col:
                         v_tas = df_dict[field_to_col['tas']][i]
                         c_tas = _clean_int(v_tas)
@@ -772,14 +976,21 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                         if c_fc is not None: fc_val = c_fc
 
                     vs = getattr(visit, 'vital_signs', None)
-                    if not vs:
-                        vs = VitalSigns(visit=visit)
-                    vs.systolic_bp = tas_val
-                    vs.diastolic_bp = tad_val
-                    vs.oxygen_saturation = sat_val
-                    vs.heart_rate = fc_val
+                    if vs and tas_val is not None and tad_val is not None:
+                        vs.systolic_bp = tas_val
+                        vs.diastolic_bp = tad_val
+                        vs.oxygen_saturation = sat_val
+                        vs.heart_rate = fc_val
+                    elif vs is None and tas_val is not None and tad_val is not None:
+                        vs = VitalSigns(
+                            visit=visit,
+                            systolic_bp=tas_val,
+                            diastolic_bp=tad_val,
+                            oxygen_saturation=sat_val,
+                            heart_rate=fc_val,
+                        )
 
-                    if 'soplos' in field_to_col:
+                    if vs is not None and 'soplos' in field_to_col:
                         v_sop = df_dict[field_to_col['soplos']][i]
                         _, sop_lbl = _get_val_and_label(v_sop, meta.variable_value_labels.get(field_to_col['soplos'], {}))
                         sop_str = sop_lbl.lower()
@@ -788,30 +999,39 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                         m_grade = re.search(r'grado\s*([1-4])', sop_str)
                         if m_grade: vs.murmur_grade = int(m_grade.group(1))
 
-                    if 'resp_normal' in field_to_col:
+                    if vs is not None and 'resp_normal' in field_to_col:
                         v_rn = df_dict[field_to_col['resp_normal']][i]
                         vs.pulmonary_auscultation_normal = None if _is_empty_or_nan(v_rn) else (v_rn == 1.0 or v_rn is None)
-                    if 'abdom_normal' in field_to_col:
+                    if vs is not None and 'abdom_normal' in field_to_col:
                         v_an = df_dict[field_to_col['abdom_normal']][i]
                         vs.abdominal_auscultation_normal = None if _is_empty_or_nan(v_an) else (v_an == 1.0 or v_an is None)
-                    if 'pulsos' in field_to_col:
+                    if vs is not None and 'pulsos' in field_to_col:
                         v_pu = df_dict[field_to_col['pulsos']][i]
                         vs.pedal_pulses_symmetric = None if _is_empty_or_nan(v_pu) else (v_pu == 1.0 or v_pu is None)
-                    vs.save()
-                    visit.vital_signs = vs
+                    if vs is not None:
+                        vs.save()
 
                     # 7. ECG
                     ecg = getattr(visit, 'electrocardiogram', None)
                     if not ecg:
                         ecg = Electrocardiogram(visit=visit, rhythm=rhythm_default)
-                    ecg.heart_rate = fc_val
+                    # FRECUENCIA_CARDIACA_IPM es la FC clínica, no una medida
+                    # obtenida del trazado ECG. No duplicarla en Electrocardiogram.
 
                     if 'ecg_ritmo' in field_to_col:
                         v_r = df_dict[field_to_col['ecg_ritmo']][i]
                         _, r_lbl = _get_val_and_label(v_r, meta.variable_value_labels.get(field_to_col['ecg_ritmo'], {}))
                         if r_lbl:
-                            r_obj = EcgRhythm.objects.filter(name__icontains=r_lbl[:10]).first()
-                            if r_obj: ecg.rhythm = r_obj
+                            r_key = _normalized_label(v_r, r_lbl)
+                            r_obj = None
+                            if 'SIUNSAL' in r_key or 'SINUS' in r_key:
+                                r_obj = next((obj for obj in rhythm_catalog if 'SINUSAL' in _normalized_label(obj.name, obj.name)), None)
+                            elif r_key == 'RL' or r_key == 'OTRO':
+                                r_obj = next((obj for obj in rhythm_catalog if 'OTRO' in _normalized_label(obj.name, obj.name)), None)
+                            else:
+                                r_obj = next((obj for obj in rhythm_catalog if r_key and r_key in _normalized_label(obj.name, obj.name)), None)
+                            if r_obj:
+                                ecg.rhythm = r_obj
 
                     if 'ecg_pr' in field_to_col:
                         v_pr = df_dict[field_to_col['ecg_pr']][i]
@@ -845,20 +1065,25 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
 
                     if 'ecg_eje' in field_to_col:
                         v_eje = df_dict[field_to_col['ecg_eje']][i]
-                        if v_eje and not _is_empty_or_nan(v_eje):
+                        if not _is_empty_or_nan(v_eje):
                             try: ecg.qrs_axis_degrees = int(float(v_eje))
                             except Exception: pass
 
                     if 'ecg_hvi' in field_to_col:
                         v_hvi = df_dict[field_to_col['ecg_hvi']][i]
-                        ecg.left_ventricular_hypertrophy = None if _is_empty_or_nan(v_hvi) else (v_hvi == 1.0)
+                        _, hvi_lbl = _value_and_label(df_dict, meta, field_to_col['ecg_hvi'], i)
+                        ecg.left_ventricular_hypertrophy = _nullable_bool(v_hvi, hvi_lbl)
+
+                    if 'ecg_sobrecarga' in field_to_col:
+                        v_sob = df_dict[field_to_col['ecg_sobrecarga']][i]
+                        _, sob_lbl = _value_and_label(df_dict, meta, field_to_col['ecg_sobrecarga'], i)
+                        ecg.systolic_overload = _nullable_bool(v_sob, sob_lbl)
 
                     if 'ecg_bloqueo' in field_to_col:
                         v_bl = df_dict[field_to_col['ecg_bloqueo']][i]
                         _, bl_lbl = _get_val_and_label(v_bl, meta.variable_value_labels.get(field_to_col['ecg_bloqueo'], {}))
-                        if bl_lbl:
-                            ecg.bundle_branch_block = bl_lbl[:50]
-                            ecg.has_bundle_branch_block = True
+                        ecg.bundle_branch_block = None if _is_empty_or_nan(v_bl) else (bl_lbl or str(v_bl))[:50]
+                        ecg.has_bundle_branch_block = _nullable_bool(v_bl, bl_lbl)
 
                     if 'ecg_rr' in field_to_col:
                         v_rr = df_dict[field_to_col['ecg_rr']][i]
@@ -888,8 +1113,8 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                     if 'ecg_bloqueo_av' in field_to_col:
                         v_bav = df_dict[field_to_col['ecg_bloqueo_av']][i]
                         _, bav_lbl = _get_val_and_label(v_bav, meta.variable_value_labels.get(field_to_col['ecg_bloqueo_av'], {}))
-                        if v_bav in [1.0, 2.0, 3.0, '1', '2', '3'] or 'SI' in bav_lbl.upper():
-                            ecg.av_block = True
+                        ecg.av_block = _nullable_bool(v_bav, bav_lbl)
+                        if ecg.av_block:
                             ecg.av_block_grade = bav_lbl[:50] if bav_lbl else 'Bloqueo AV'
 
                     if 'ecg_hemibloqueo' in field_to_col:
@@ -901,31 +1126,38 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
 
                     if 'ecg_onda_delta' in field_to_col:
                         v_od = df_dict[field_to_col['ecg_onda_delta']][i]
-                        ecg.delta_wave = None if _is_empty_or_nan(v_od) else (v_od == 1.0 or v_od == '1')
+                        _, od_lbl = _value_and_label(df_dict, meta, field_to_col['ecg_onda_delta'], i)
+                        ecg.delta_wave = _nullable_bool(v_od, od_lbl)
 
                     if 'ecg_cubeta' in field_to_col:
                         v_cub = df_dict[field_to_col['ecg_cubeta']][i]
-                        ecg.digitalis_effect = None if _is_empty_or_nan(v_cub) else (v_cub == 1.0 or v_cub == '1')
+                        _, cub_lbl = _value_and_label(df_dict, meta, field_to_col['ecg_cubeta'], i)
+                        ecg.digitalis_effect = _nullable_bool(v_cub, cub_lbl)
 
                     if 'ecg_onda_q' in field_to_col:
                         v_oq = df_dict[field_to_col['ecg_onda_q']][i]
-                        ecg.pathological_q_wave = None if _is_empty_or_nan(v_oq) else (v_oq == 1.0 or v_oq == '1' or str(v_oq).strip().upper() == 'SI')
+                        _, oq_lbl = _value_and_label(df_dict, meta, field_to_col['ecg_onda_q'], i)
+                        ecg.pathological_q_wave = _nullable_bool(v_oq, oq_lbl)
 
                     if 'ecg_t_negativa' in field_to_col:
                         v_tn = df_dict[field_to_col['ecg_t_negativa']][i]
-                        ecg.negative_t_wave = None if _is_empty_or_nan(v_tn) else (v_tn == 1.0 or v_tn == '1' or str(v_tn).strip().upper() == 'SI')
+                        _, tn_lbl = _value_and_label(df_dict, meta, field_to_col['ecg_t_negativa'], i)
+                        ecg.negative_t_wave = _nullable_bool(v_tn, tn_lbl)
 
                     if 'ecg_st_ascenso' in field_to_col:
                         v_sta = df_dict[field_to_col['ecg_st_ascenso']][i]
-                        ecg.st_elevation_pathological = None if _is_empty_or_nan(v_sta) else (v_sta == 1.0 or v_sta == '1' or str(v_sta).strip().upper() == 'SI')
+                        _, sta_lbl = _value_and_label(df_dict, meta, field_to_col['ecg_st_ascenso'], i)
+                        ecg.st_elevation_pathological = _nullable_bool(v_sta, sta_lbl)
 
                     if 'ecg_st_descenso' in field_to_col:
                         v_std = df_dict[field_to_col['ecg_st_descenso']][i]
-                        ecg.st_depression = None if _is_empty_or_nan(v_std) else (v_std == 1.0 or v_std == '1' or str(v_std).strip().upper() == 'SI')
+                        _, std_lbl = _value_and_label(df_dict, meta, field_to_col['ecg_st_descenso'], i)
+                        ecg.st_depression = _nullable_bool(v_std, std_lbl)
 
                     if 'ecg_normal' in field_to_col:
                         v_norm = df_dict[field_to_col['ecg_normal']][i]
-                        ecg.is_normal = None if _is_empty_or_nan(v_norm) else (v_norm == 1.0 or v_norm == '1')
+                        _, norm_lbl = _value_and_label(df_dict, meta, field_to_col['ecg_normal'], i)
+                        ecg.is_normal = _nullable_bool(v_norm, norm_lbl)
 
                     ecg.save()
                     visit.electrocardiogram = ecg
@@ -979,9 +1211,18 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                             val_l = df_dict[field_to_col[f_lab]][i]
                             if val_l is not None:
                                 max_d, dec_p = lab_field_specs.get(model_attr, (5, 2))
+                                if model_attr == 'platelets_thousands':
+                                    try:
+                                        numeric_platelets = float(val_l)
+                                        if numeric_platelets > 1000:
+                                            val_l = numeric_platelets / 1000.0
+                                    except (TypeError, ValueError):
+                                        pass
                                 clean_l = _clean_decimal(val_l, max_d, dec_p)
                                 if clean_l is not None:
                                     setattr(lab, model_attr, clean_l)
+                                else:
+                                    warnings.append(f'Fila {i + 1}: {field_to_col[f_lab]} fuera del rango del campo relacional; se conserva en la matriz fuente.')
                     lab.save()
                     visit.laboratory = lab
 
@@ -1006,7 +1247,16 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                         echo.ventricular_hypertrophy = None if _is_empty_or_nan(v_ehvi) else (v_ehvi == 1.0)
                     if 'eco_disfuncion' in field_to_col:
                         v_dis = df_dict[field_to_col['eco_disfuncion']][i]
-                        echo.diastolic_dysfunction = None if _is_empty_or_nan(v_dis) else (v_dis == 1.0)
+                        _, dis_lbl = _value_and_label(df_dict, meta, field_to_col['eco_disfuncion'], i)
+                        dis_key = _normalized_label(v_dis, dis_lbl)
+                        if _is_empty_or_nan(v_dis):
+                            echo.diastolic_dysfunction = None
+                        elif 'ALTERAD' in dis_key or 'DISFUNC' in dis_key:
+                            echo.diastolic_dysfunction = True
+                        elif 'NORMAL' in dis_key:
+                            echo.diastolic_dysfunction = False
+                        else:
+                            echo.diastolic_dysfunction = _nullable_bool(v_dis, dis_lbl)
                     if 'eco_calcificacion' in field_to_col:
                         v_calc = df_dict[field_to_col['eco_calcificacion']][i]
                         echo.aortic_valve_calcification = None if _is_empty_or_nan(v_calc) else (v_calc == 1.0)
@@ -1087,7 +1337,7 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
 
                         # Form aliases
                         for form_k, spss_k in SPSS_QUESTION_ALIASES.items():
-                            if spss_k == clean_code:
+                            if normalize_var_name(spss_k) == normalize_var_name(col_name) or spss_k == clean_code:
                                 q_form = existing_questions.get(form_k)
                                 if q_form:
                                     row_answers[(visit.pk, q_form.pk)] = VisitAnswer(
@@ -1110,66 +1360,66 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                                 selected_option=None
                             )
 
-                    estres_raw = str(df_dict.get('ESTRES', [None]*total_rows)[i] or '').upper()
-                    if 'TRABAJO' in estres_raw: _set_ans('em_estres_trab', 'Si')
-                    elif estres_raw and 'NO' in estres_raw: _set_ans('em_estres_trab', 'No')
-                    if 'FAMILIAR' in estres_raw or 'FAMILIA' in estres_raw: _set_ans('em_estres_fam', 'Si')
-                    elif estres_raw and 'NO' in estres_raw: _set_ans('em_estres_fam', 'No')
+                    estres_raw, estres_lbl = _source_cell(df_dict, meta, source_columns, 'ESTRES', i)
+                    estres_key = _normalized_label(estres_raw, estres_lbl)
+                    if not _is_empty_or_nan(estres_raw):
+                        _set_ans('em_estres_trab', 'Si' if 'TRABAJO' in estres_key else 'No')
+                        _set_ans('em_estres_fam', 'Si' if 'FAMILIA' in estres_key else 'No')
 
-                    pers_raw = str(df_dict.get('PERSONALIDAD_TIPO_A', [None]*total_rows)[i] or '').upper()
-                    if 'TIPO A' in pers_raw or 'SI' in pers_raw: _set_ans('em_pers_a', 'Si')
-                    elif pers_raw and 'NO' in pers_raw: _set_ans('em_pers_a', 'No')
+                    pers_raw, pers_lbl = _source_cell(df_dict, meta, source_columns, 'PERSONALIDAD_TIPO_A', i)
+                    pers_value = _positive_code(pers_raw, pers_lbl)
+                    if pers_value is not None:
+                        _set_ans('em_pers_a', 'Si' if pers_value else 'No')
 
-                    padre_raw = str(df_dict.get('ANTECEDENTES_PADRES', [None]*total_rows)[i] or '').upper()
-                    if padre_raw:
-                        _set_ans('ant_padre_hta', 'Si' if 'HTA' in padre_raw else 'No')
-                        _set_ans('ant_padre_dm', 'Si' if ('DIAB' in padre_raw or 'DM' in padre_raw) else 'No')
-                        _set_ans('ant_padre_iam', 'Si' if ('INFARTO' in padre_raw or 'IAM' in padre_raw) else 'No')
-                        _set_ans('ant_padre_ictus', 'Si' if ('ICTUS' in padre_raw or 'ACV' in padre_raw) else 'No')
-
-                    madre_raw = str(df_dict.get('ANTECEDENTES_MADRES', [None]*total_rows)[i] or '').upper()
-                    if madre_raw:
-                        _set_ans('ant_madre_hta', 'Si' if 'HTA' in madre_raw else 'No')
-                        _set_ans('ant_madre_dm', 'Si' if ('DIAB' in madre_raw or 'DM' in madre_raw) else 'No')
-                        _set_ans('ant_madre_iam', 'Si' if ('INFARTO' in madre_raw or 'IAM' in madre_raw) else 'No')
-                        _set_ans('ant_madre_ictus', 'Si' if ('ICTUS' in madre_raw or 'ACV' in madre_raw) else 'No')
+                    for source_name, prefix in [('ANTECEDENTES_PADRES', 'padre'), ('ANTECEDENTES_MADRES', 'madre')]:
+                        family_raw, family_lbl = _source_cell(df_dict, meta, source_columns, source_name, i)
+                        family_key = _normalized_label(family_raw, family_lbl)
+                        if not _is_empty_or_nan(family_raw):
+                            _set_ans(f'ant_{prefix}_hta', 'Si' if 'HTA' in family_key else 'No')
+                            _set_ans(f'ant_{prefix}_dm', 'Si' if ('DIAB' in family_key or 'DM' in family_key) else 'No')
+                            _set_ans(f'ant_{prefix}_iam', 'Si' if ('INFART' in family_key or 'IAM' in family_key) else 'No')
+                            _set_ans(f'ant_{prefix}_ictus', 'Si' if ('ICTUS' in family_key or 'ACV' in family_key) else 'No')
 
                     from clinical.services.covid_answers import resolve_covid
                     covid_source = {}
                     for source, code in [('HISTORIA_COVID','historia_covid'), ('LONG_COVID','longcovid')]:
-                        raw = df_dict.get(source, [None]*total_rows)[i]
+                        raw, label = _source_cell(df_dict, meta, source_columns, source, i)
                         if not _is_empty_or_nan(raw):
-                            covid_source[code] = raw
+                            covid_source[code] = label or raw
                     covid = resolve_covid(covid_source)
                     for code, metric in [('covid_paso','covid_infeccion'), ('covid_ingreso','covid_hospitalizacion'), ('longcovid','covid_fatiga_long')]:
                         if covid[metric] is not None:
                             _set_ans(code, 'Si' if covid[metric] else 'No')
 
-                    oliva_raw = str(df_dict.get('USA_USTED_ACEITE_DE_OLIVA', [None]*total_rows)[i] or '').upper()
-                    if oliva_raw:
-                        is_ol = 'Si' if ('SI' in oliva_raw or oliva_raw == '1.0') else 'No'
+                    oliva_raw, oliva_lbl = _source_cell(df_dict, meta, source_columns, 'USA_USTED_ACEITE_DE_OLIVA', i)
+                    if not _is_empty_or_nan(oliva_raw):
+                        is_ol = 'Si' if _positive_code(oliva_raw, oliva_lbl) else 'No'
                         _set_ans('pred_q1', is_ol)
                         _set_ans('pred_q2', is_ol)
 
-                    act_raw = str(df_dict.get('USTED_REALIZA_ACTIVIDAD_FISICA', [None]*total_rows)[i] or '').upper()
-                    if act_raw: _set_ans('act_realiza', 'Si' if ('SI' in act_raw or act_raw == '1.0') else 'No')
-                    aer_raw = str(df_dict.get('USTED_REALIZA_EJERCICIOS_AEROBICOS', [None]*total_rows)[i] or '').upper()
-                    if aer_raw: _set_ans('act_aerob', 'Si' if ('SI' in aer_raw or aer_raw == '1.0') else 'No')
-                    ana_raw = str(df_dict.get('USTED_REALIZA_EJERCICIOS_ANAEROBICOS', [None]*total_rows)[i] or '').upper()
-                    if ana_raw: _set_ans('act_anaerob', 'Si' if ('SI' in ana_raw or ana_raw == '1.0') else 'No')
-                    dep_raw = str(df_dict.get('HACE_DEPORTE', [None]*total_rows)[i] or '').upper()
-                    if dep_raw: _set_ans('act_deporte', 'Si' if ('SI' in dep_raw or dep_raw == '1.0') else 'No')
+                    for source_name, target in [
+                        ('USTED_REALIZA_ACTIVIDAD_FISICA', 'act_realiza'),
+                        ('USTED_REALIZA_EJERCICIOS_AEROBICOS', 'act_aerob'),
+                        ('USTED_REALIZA_EJERCICIOS_ANAEROBICOS', 'act_anaerob'),
+                        ('HACE_DEPORTE', 'act_deporte'),
+                    ]:
+                        activity_raw, activity_lbl = _source_cell(df_dict, meta, source_columns, source_name, i)
+                        activity_value = _positive_code(activity_raw, activity_lbl)
+                        if activity_value is not None:
+                            _set_ans(target, 'Si' if activity_value else 'No')
 
                     # Factores de riesgo modificables sincronizados con el formulario
-                    hta_raw = df_dict.get('HIPERTENSION', [None]*total_rows)[i]
-                    if hta_raw is not None and str(hta_raw).strip() != '':
-                        _set_ans('r_hta', 'Si' if hta_raw in [1.0, 2.0, '1', '2', '1.0', '2.0'] else 'No')
-                        _set_ans('r_hta_farmacos', 'Si' if hta_raw in [2.0, '2', '2.0'] else 'No')
+                    hta_raw, hta_lbl = _source_cell(df_dict, meta, source_columns, 'HIPERTENSION', i)
+                    hta_value = _positive_code(hta_raw, hta_lbl)
+                    if hta_value is not None:
+                        _set_ans('r_hta', 'Si' if hta_value else 'No')
+                        _set_ans('r_hta_farmacos', 'Si' if str(hta_raw) in {'2', '2.0'} else 'No')
 
-                    dislip_raw = df_dict.get('DISLIPEMIA', [None]*total_rows)[i]
-                    if dislip_raw is not None and str(dislip_raw).strip() != '':
-                        _set_ans('r_dislipemia', 'Si' if dislip_raw in [1.0, 2.0, '1', '2', '1.0', '2.0'] else 'No')
-                        _set_ans('r_dislip_farmacos', 'Si' if dislip_raw in [2.0, '2', '2.0'] else 'No')
+                    dislip_raw, dislip_lbl = _source_cell(df_dict, meta, source_columns, 'DISLIPIDEMIA', i)
+                    dislip_value = _positive_code(dislip_raw, dislip_lbl)
+                    if dislip_value is not None:
+                        _set_ans('r_dislipemia', 'Si' if dislip_value else 'No')
+                        _set_ans('r_dislip_farmacos', 'Si' if str(dislip_raw) in {'2', '2.0'} else 'No')
 
                     vasc_raw = df_dict.get('VASCULOPATÍA', [None]*total_rows)[i]
                     if vasc_raw is not None and str(vasc_raw).strip() != '':
@@ -1185,6 +1435,27 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                     mapa_raw = df_dict.get('USTED_SE_HA_REALIZADO_ESTUDIOS_DE_MAPA', [None]*total_rows)[i]
                     if mapa_raw is not None and str(mapa_raw).strip() != '':
                         _set_ans('r_mapa', 'Si' if mapa_raw in [1.0, '1', '1.0', 'SI', 'Si', 'Sí'] else 'No')
+
+                    # Fuentes de la matriz 2026 con nombres/acentos dañados por SPSS.
+                    # Se resuelven por nombre normalizado para no depender de una
+                    # codificación concreta del encabezado.
+                    vasc_raw, vasc_lbl = _source_cell(df_dict, meta, source_columns, 'VASCULOPATIA', i)
+                    if vasc_raw is not None and str(vasc_raw).strip() != '':
+                        vasc_text = _normalized_label(vasc_raw, vasc_lbl)
+                        vasc_positive = vasc_text not in {'NO', '0', 'NINGUNA'} and not vasc_text.startswith('NO ')
+                        _set_ans('r_vasculopatia', 'Si' if vasc_positive else 'No')
+                        _set_ans('r_vasc_femoral', 'Si' if 'FEMORAL' in vasc_text else 'No')
+
+                    holter_raw, holter_lbl = _source_cell(df_dict, meta, source_columns, 'HOLTER', i)
+                    if holter_raw is not None and str(holter_raw).strip() != '':
+                        holter_text = _normalized_label(holter_raw, holter_lbl)
+                        _set_ans('r_holter', 'Si' if holter_text not in {'NO', '0'} else 'No')
+                        _set_ans('holter_resultado', 'Alterada' if 'ALTER' in holter_text else 'Normal')
+
+                    mapa_raw, mapa_lbl = _source_cell(df_dict, meta, source_columns, 'SE_HA_PUESTO_MAPA', i)
+                    if mapa_raw is not None and str(mapa_raw).strip() != '':
+                        mapa_text = _normalized_label(mapa_raw, mapa_lbl)
+                        _set_ans('r_mapa', 'Si' if mapa_text not in {'NO', '0'} else 'No')
 
                     # Confirmar lote de respuestas de la fila actual
                     answers_to_upsert.update(row_answers)
@@ -1233,10 +1504,21 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
         except Exception:
             pass
 
-    # Limpiar archivo temporal
-    if temp_path.exists():
-        try: temp_path.unlink()
-        except Exception: pass
+    # Solo eliminar archivos reclamados dentro del directorio privado de
+    # importaciones. Esto evita que una llamada interna de prueba o una tarea
+    # administrativa pueda borrar por accidente un .sav fuente fuera de ese
+    # directorio.
+    try:
+        import_root = Path(settings.IMPORT_TEMP_ROOT).resolve()
+        staged_path = Path(temp_path).resolve()
+        staged_path.relative_to(import_root)
+    except (AttributeError, OSError, ValueError):
+        staged_path = None
+    if staged_path is not None and staged_path.exists():
+        try:
+            staged_path.unlink()
+        except OSError:
+            pass
 
     dup_summary = f"{len(duplicate_records)} duplicados actualizados en BD" if len(duplicate_records) > 0 else "sin duplicados"
     return {
@@ -1248,6 +1530,7 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
         "duplicate_count": len(duplicate_records),
         "duplicate_records": duplicate_records[:200],
         "errors": errors[:10],
+        "warnings": warnings[:200],
         "message": f"Se procesaron con éxito {total_rows} registros ({created_count} nuevos creados, {dup_summary}, {skipped_count} omitidos)."
     }
 

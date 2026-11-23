@@ -163,7 +163,11 @@ class ExactRecordSelectionTests(TestCase):
         frame = self.export([6101])
         self.assertEqual(len(frame), 1)
         self.assertEqual(int(frame.iloc[0]['EDAD']), 36)
-        self.assertEqual(int(frame.iloc[0, 2]), 800000)
+        code_column = next(
+            column for column in ('CODIGONUEV', 'CÓDIGO', 'C�DIGO', 'CODIGO')
+            if column in frame.columns
+        )
+        self.assertEqual(int(frame.iloc[0][code_column]), 800000)
 
     def test_dataset_invalid_selection_never_falls_back_to_all(self):
         for ids in ([800000], [6101, 800000], [], ['all'], ['todos'], True, [True]):
