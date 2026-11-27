@@ -67,3 +67,6 @@ PROGRESS.md
 .private_imports/
 node_modules/
 **/node_modules/
+
+# Plantilla SPSS de UNEMI sin registros (solo esquema y metadatos)
+!apps/clinical/services/unemi_reference_empty.sav

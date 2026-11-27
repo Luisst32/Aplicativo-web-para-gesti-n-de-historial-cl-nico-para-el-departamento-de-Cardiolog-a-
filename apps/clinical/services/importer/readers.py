@@ -6,7 +6,6 @@ RStudio (.rds, .RData, .rda, .r) y CSV con sanitización profunda de tipos y val
 """
 
 import os
-import json
 import math
 from pathlib import Path
 from decimal import Decimal
@@ -15,6 +14,7 @@ import pandas as pd
 import pyreadstat
 
 from .normalizers import normalize_var_name
+from ..reference_matrix import load_unemi_reference_metadata
 
 def _sanitize_dataset_dict(raw_dict):
     """
@@ -54,23 +54,11 @@ def _sanitize_dataset_dict(raw_dict):
 _SPEC_VALUE_LABELS = None
 
 def _get_spec_value_labels():
-    """Carga de forma perezosa y cacheada el diccionario maestro de value_labels oficial de UNEMI."""
+    """Load UNEMI value labels from the checked-in, zero-row reference SAV."""
     global _SPEC_VALUE_LABELS
     if _SPEC_VALUE_LABELS is None:
-        try:
-            # Busca en el directorio actual o en el directorio padre (services/)
-            spec_path = Path(__file__).resolve().parent / 'sav_columns_spec.json'
-            if not spec_path.exists():
-                spec_path = Path(__file__).resolve().parent.parent / 'sav_columns_spec.json'
-
-            if spec_path.exists():
-                with open(spec_path, 'r', encoding='utf-8') as f:
-                    raw_spec = json.load(f)
-                _SPEC_VALUE_LABELS = raw_spec.get('value_labels', {})
-            else:
-                _SPEC_VALUE_LABELS = {}
-        except Exception:
-            _SPEC_VALUE_LABELS = {}
+        metadata = load_unemi_reference_metadata()
+        _SPEC_VALUE_LABELS = dict(metadata.variable_value_labels or {})
     return _SPEC_VALUE_LABELS
 
 
@@ -80,10 +68,14 @@ class DatasetMetadata:
         self.number_rows = len(df)
         self.number_columns = len(df.columns)
         self.column_names = [str(c) for c in df.columns]
-        self.column_labels = column_labels or [str(c) for c in df.columns]
+        reference_labels = load_unemi_reference_metadata().column_names_to_labels or {}
+        if column_labels:
+            self.column_labels = column_labels
+        else:
+            self.column_labels = [reference_labels.get(str(c)) or str(c) for c in df.columns]
         self.column_names_to_labels = dict(zip(self.column_names, self.column_labels))
 
-        # Combinar value labels provistas con el catálogo oficial de UNEMI (sav_columns_spec.json)
+        # Completar etiquetas faltantes desde la matriz vacía de referencia UNEMI.
         # Esto permite que archivos exportados desde RStudio o CSV (que no portan etiquetas de SPSS)
         # resuelvan automáticamente los códigos numéricos de estamentos, cantones, etc.
         combined_vl = {}

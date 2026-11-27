@@ -5,25 +5,20 @@ Servicio de exportación de base de datos a formatos oficiales:
 - IBM SPSS Statistics (.sav, .zsav)
 - RStudio (.rds, .RData)
 - Delimitado Excel / CSV (.csv UTF-8 con BOM)
-Garantiza la exportación de las columnas clínicas históricas idénticas a
-'Base_datos_Unemi_CardioUnemi-ACTUALIZADO.sav' más todos los nuevos campos
-del Cuestionario UNEMI 2026, conservando tipos, diccionarios de variables,
-etiquetas de valor (value labels) y respuestas no modeladas.
+Usa el esquema exacto de la matriz vacía de referencia UNEMI, conservando el
+orden de columnas, tipos y metadatos SPSS disponibles.
 """
 
 import os
 import re
 import tempfile
 import datetime
-from pathlib import Path
 from decimal import Decimal
 
 import numpy as np
 import pandas as pd
 import pyreadstat
 import pyreadr
-from django.conf import settings
-
 from catalog.institutions import (
     InstitutionResolutionError,
     filter_to_selectable_institutions,
@@ -33,68 +28,7 @@ from catalog.institutions import (
 from clinical.services.record_selection import selected_visits
 from clinical.models import Patient, Visit, VisitAnswer
 from clinical.services.sav_importer import normalize_var_name
-
-# Catálogo oficial de nuevas variables incorporadas en Cuestionario UNEMI 2026
-NEW_2026_EXPORT_COLUMNS = [
-    # Módulo Factores de Riesgo Modificables - Drogas (Frecuencia detallada y cesación)
-    ('DROGAS_DOSIS_DIARIA', 'Drogas: Consumo con dosis diaria (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('DROGAS_DOSIS_SEMANAL', 'Drogas: Consumo con dosis semanal (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('DROGAS_DOSIS_OCASIONAL', 'Drogas: Consumo con dosis ocasional (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('CHK_EX_DROGAS', 'Drogas: Ex-consumidor > 1 año (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('DROGAS_CUALES', 'Drogas: Sustancias que consume o consumió', 'object', {}),
-    ('DROGAS_FRECUENCIA', 'Drogas: Frecuencia general de consumo', 'object', {}),
-
-    # Módulo Historia Cardiovascular Actual (Pág. 4-5)
-    ('HC_ISQUEMICA', 'Historia cardiovascular: Cardiopatía isquémica (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('HC_ISQUEMICA_ANGINA', 'Cardiopatía isquémica: Angina de pecho (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('HC_ISQUEMICA_INFARTO', 'Cardiopatía isquémica: Infarto de miocardio (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('HC_REVASC', 'Historia cardiovascular: Revascularización coronaria (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('REVASCULARIZACION_TIPO', 'Revascularización coronaria: Tipo (1=Angioplastia, 2=Bypass, 3=Ambas)', 'float64', {1.0: 'Angioplastia', 2.0: 'Bypass', 3.0: 'Ambas'}),
-    ('HC_INSUF_CARDIACA', 'Historia cardiovascular: Insuficiencia cardíaca (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('HC_VALVULOPATIA', 'Historia cardiovascular: Valvulopatía (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('HC_VALVULOPATIA_CUALES', 'Valvulopatía: ¿Cuáles válvulas o lesiones?', 'object', {}),
-    ('HC_VALVULOPATIA_OPERADO', 'Valvulopatía: Operado por este motivo (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('HC_HOSPITALIZACION', 'Ingreso hospitalario por problema cardíaco (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('HC_HOSPITALIZACION_MOTIVO', 'Ingreso hospitalario: Motivo de internamiento', 'object', {}),
-
-    # Módulo Historia No Cardiovascular - Cáncer
-    ('NC_CANCER', 'Historia no cardiovascular: Cáncer (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('CANCER_PULMON', 'Cáncer: Pulmón (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('CANCER_PROSTATA', 'Cáncer: Próstata (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('CANCER_COLON', 'Cáncer: Colon (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('CANCER_MAMA', 'Cáncer: Mama (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('CANCER_VEJIGA', 'Cáncer: Vejiga (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('CANCER_UTERO', 'Cáncer: Útero (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('CANCER_OVARIO', 'Cáncer: Ovario (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('CANCER_OTRO', 'Cáncer: Otro tipo tumoral (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('CANCER_OTRO_DETALLE', 'Cáncer: Especificar otro tipo tumoral', 'object', {}),
-    ('CANCER_QT', 'Cáncer: Recibió Quimioterapia (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('CANCER_RT', 'Cáncer: Recibió Radioterapia (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-
-    # Módulo Estudios Prescritos (Catálogo Oficial 2026: 8 ítems + Observaciones)
-    ('EST_ANALISIS_CLINICOS', 'Estudios prescritos: 1.- Análisis clínicos (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('EST_ERGOMETRIA_SPECT', 'Estudios prescritos: 2.- Ergometría con SPECT (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('EST_TAC_CARDIACO', 'Estudios prescritos: 3.- TAC Cardíaco (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('EST_RNM_CARDIACO', 'Estudios prescritos: 4.- RNM Cardíaco (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('EST_ELECTROFISIOLOGIA', 'Estudios prescritos: 5.- Electrofisiología Cardíaca (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('EST_ECOCARDIOGRAMA', 'Estudios prescritos: 6.- Ecocardiografía (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('EST_HOLTER', 'Estudios prescritos: 7.- Holter ECG (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('EST_MAPA', 'Estudios prescritos: 8.- MAPA (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('ESTUDIOS_OBSERVACIONES', 'Estudios prescritos: Observaciones y otros estudios indicados', 'object', {}),
-
-    # Módulo Estilo de Vida: PREDIMED (Lácteos y Sofrito 2026)
-    ('PRED_Q13_CONSUME', 'PREDIMED: 13. Consume leche de vaca (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('PRED_LECHE_VASOS_DIA', 'PREDIMED: Leche de vaca - vasos al día', 'float64', {}),
-    ('PRED_LECHE_VASOS_SEM', 'PREDIMED: Leche de vaca - vasos a la semana', 'float64', {}),
-    ('PRED_LECHE_TIPO', 'PREDIMED: Leche de vaca - tipo (Entera, Desnatada, etc.)', 'object', {}),
-    ('PRED_Q14_CONSUME', 'PREDIMED: 14. Consume queso (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('PRED_QUESO_VECES_SEM', 'PREDIMED: Queso - veces a la semana', 'float64', {}),
-    ('PRED_QUESO_GRAMOS', 'PREDIMED: Queso - gramos consumidos', 'float64', {}),
-    ('PRED_Q15_CONSUME', 'PREDIMED: 15. Consume yogurt (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-    ('PRED_YOGURT_CANT_SEM', 'PREDIMED: Yogurt - unidades a la semana', 'float64', {}),
-    ('PRED_YOGURT_TIPO', 'PREDIMED: Yogurt - tipo', 'object', {}),
-    ('PRED_Q19', 'PREDIMED: 19. Consume sofrito casero >= 2 veces/sem (0=No, 1=Sí)', 'float64', {0.0: 'No', 1.0: 'Sí'}),
-]
+from .reference_matrix import load_unemi_reference_metadata
 
 # Catálogo de variables identificativas y sensibles del paciente (condicionadas a Modo Protección de Datos)
 SENSITIVE_EXPORT_COLUMNS = [
@@ -166,128 +100,57 @@ def _adaptive_numeric_formats(frame, source_formats=None):
 
 
 def get_sav_template_metadata():
-    """
-    Carga e indexa en memoria las columnas y metadatos oficiales de CardioUNEMI,
-    integrando las 342 columnas de la cohorte histórica más las variables del Cuestionario 2026.
-    """
+    """Load UNEMI's exact column contract from the empty reference SAV."""
     global _SAV_TEMPLATE_CACHE
     if _SAV_TEMPLATE_CACHE is not None:
         return _SAV_TEMPLATE_CACHE
 
-    # La matriz entregada por investigación es la fuente de verdad del orden,
-    # nombres, tipos y etiquetas.  El JSON histórico de 342 variables no debe
-    # reconstruir otra matriz ni agregar columnas que no existen en el .sav.
-    configured_reference = os.getenv('CARDIO_SAV_REFERENCE', '').strip()
-    reference_candidates = [Path(configured_reference)] if configured_reference else []
-    reference_directories = (
-        Path(settings.BASE_DIR).parent / 'datos',
-        Path(settings.BASE_DIR) / 'datos',
-    )
-    for directory in reference_directories:
-        if directory.is_dir():
-            reference_candidates.extend(sorted(
-                directory.glob('MATRIZ CARDIO*FINAL.sav'),
-                key=lambda path: path.stat().st_mtime,
-                reverse=True,
-            ))
-            reference_candidates.extend(sorted(
-                directory.glob('MATRIZ CARDIO*.sav'),
-                key=lambda path: path.stat().st_mtime,
-                reverse=True,
-            ))
-    reference_path = next((p for p in reference_candidates if p.exists()), None)
-    spec_json_path = Path(__file__).resolve().parent / 'sav_columns_spec.json'
-
-    cols = []
+    meta = load_unemi_reference_metadata()
+    cols = list(meta.column_names)
     col_dtypes = {}
-    col_value_labels = {}
-    col_names_to_labels = {}
+    for col in cols:
+        readstat_type = meta.readstat_variable_types.get(col)
+        original_format = str((meta.original_variable_types or {}).get(col, '')).upper()
+        if readstat_type == 'string':
+            col_dtypes[col] = 'object'
+        elif original_format.startswith(('DATE', 'ADATE', 'EDATE', 'SDATE', 'DATETIME', 'TIME')):
+            col_dtypes[col] = 'datetime64[ns]'
+        else:
+            col_dtypes[col] = 'float64'
 
-    if reference_path is not None:
-        df_orig, meta = pyreadstat.read_sav(str(reference_path), apply_value_formats=False)
-        cols = list(meta.column_names)
-        col_dtypes = {col: str(df_orig[col].dtype) for col in cols}
-        col_value_labels = dict(meta.variable_value_labels or {})
-        col_names_to_labels = dict(meta.column_names_to_labels or {})
-    elif spec_json_path.exists():
-        import json
-        with open(spec_json_path, 'r', encoding='utf-8') as f:
-            spec = json.load(f)
-        cols = spec.get('columns', [])
-        col_names_to_labels = spec.get('column_labels', {})
-        raw_val_labels = spec.get('value_labels', {})
-        raw_dtypes = spec.get('dtypes', {})
-        col_dtypes = {col: str(dt) for col, dt in raw_dtypes.items()}
+    col_value_labels = {
+        col: dict(labels or {})
+        for col, labels in (meta.variable_value_labels or {}).items()
+    }
+    col_names_to_labels = dict(meta.column_names_to_labels or {})
 
-        # Convertir llaves numéricas en value labels
-        for col, vmap in raw_val_labels.items():
-            parsed_vmap = {}
-            for k, v in vmap.items():
-                try:
-                    num_k = float(k)
-                    if num_k.is_integer():
-                        num_k = int(num_k)
-                    parsed_vmap[num_k] = v
-                except (ValueError, TypeError):
-                    parsed_vmap[k] = v
-            col_value_labels[col] = parsed_vmap
-    else:
-        template_candidates = [
-            Path(settings.BASE_DIR) / 'Base_datos_Unemi_CardioUnemi-ACTUALIZADO.sav',
-            Path(settings.BASE_DIR) / 'media' / 'Base_datos_Unemi_CardioUnemi-ACTUALIZADO.sav',
-        ]
-        template_path = None
-        for candidate in template_candidates:
-            if candidate.exists():
-                template_path = candidate
-                break
-
-        if template_path and template_path.exists():
-            df_orig, meta = pyreadstat.read_sav(str(template_path))
-            cols = meta.column_names
-            col_dtypes = {col: str(df_orig[col].dtype) for col in cols}
-            col_value_labels = meta.variable_value_labels or {}
-            col_names_to_labels = meta.column_names_to_labels or {}
-
-    if not cols:
-        raise RuntimeError("No se pudieron cargar las especificaciones de las columnas del dataset SPSS.")
-
-    # Solo se agregan las variables nuevas cuando no existe la matriz oficial.
-    # Con la matriz oficial, agregar columnas altera el contrato que pidió el
-    # usuario y desplaza todos los datos posteriores.
-    if reference_path is None:
-        for col_name, col_label, col_dt, v_labels in NEW_2026_EXPORT_COLUMNS:
-            if col_name not in cols:
-                cols.append(col_name)
-                col_dtypes[col_name] = col_dt
-                col_names_to_labels[col_name] = col_label
-                if v_labels:
-                    col_value_labels[col_name] = v_labels
-
-    # Construir mapa inverso de etiquetas a valores numéricos
     lbl_to_val_map = {}
-    for col, vmap in col_value_labels.items():
-        inv = {}
-        for num_v, lbl_str in vmap.items():
-            s = str(lbl_str).strip().upper()
-            inv[s] = num_v
-            norm_lbl = normalize_var_name(lbl_str)
-            if norm_lbl:
-                inv[norm_lbl.upper()] = num_v
-            if isinstance(num_v, (int, float)) and num_v == int(num_v):
-                inv[str(int(num_v))] = num_v
-            inv[str(num_v)] = num_v
-        lbl_to_val_map[col] = inv
+    for col, value_labels in col_value_labels.items():
+        inverse = {}
+        for numeric_value, label in value_labels.items():
+            normalized_label = str(label).strip().upper()
+            inverse[normalized_label] = numeric_value
+            normalized_name = normalize_var_name(label)
+            if normalized_name:
+                inverse[normalized_name.upper()] = numeric_value
+            if isinstance(numeric_value, (int, float)) and numeric_value == int(numeric_value):
+                inverse[str(int(numeric_value))] = numeric_value
+            inverse[str(numeric_value)] = numeric_value
+        lbl_to_val_map[col] = inverse
 
     _SAV_TEMPLATE_CACHE = {
         'columns': cols,
         'dtypes': col_dtypes,
         'value_labels': col_value_labels,
         'labels': col_names_to_labels,
-        'lbl_to_val_map': lbl_to_val_map
+        'lbl_to_val_map': lbl_to_val_map,
+        'original_variable_types': dict(meta.original_variable_types or {}),
+        'variable_display_width': dict(meta.variable_display_width or {}),
+        'variable_measure': dict(meta.variable_measure or {}),
+        'missing_ranges': dict(meta.missing_ranges or {}),
+        'file_label': meta.file_label,
     }
     return _SAV_TEMPLATE_CACHE
-
 
 def _institution_export_codes(value_labels):
     """Match admin-enabled institutions to existing SPSS labels, then allocate new codes."""
@@ -452,13 +315,38 @@ def _write_export_frame(out_df, format_type, metadata=None):
     fecha_str = datetime.date.today().strftime('%Y%m%d')
     fmt = (format_type or 'sav').strip().lower()
     metadata = metadata or {}
-    labels = metadata.get('column_labels') or {}
-    value_labels = _restore_value_label_keys(metadata.get('value_labels') or {})
-    original_types = metadata.get('original_variable_types') or {}
+    output_columns = set(out_df.columns)
+    labels = {
+        column: label
+        for column, label in (metadata.get('column_labels') or {}).items()
+        if column in output_columns
+    }
+    value_labels = _restore_value_label_keys({
+        column: labels_for_values
+        for column, labels_for_values in (metadata.get('value_labels') or {}).items()
+        if column in output_columns
+    })
+    original_types = {
+        column: variable_type
+        for column, variable_type in (metadata.get('original_variable_types') or {}).items()
+        if column in output_columns
+    }
     numeric_formats = _adaptive_numeric_formats(out_df, original_types)
-    display_width = metadata.get('variable_display_width') or {}
-    measures = metadata.get('variable_measure') or {}
-    missing_ranges = metadata.get('missing_ranges') or {}
+    display_width = {
+        column: width
+        for column, width in (metadata.get('variable_display_width') or {}).items()
+        if column in output_columns
+    }
+    measures = {
+        column: measure
+        for column, measure in (metadata.get('variable_measure') or {}).items()
+        if column in output_columns
+    }
+    missing_ranges = {
+        column: ranges
+        for column, ranges in (metadata.get('missing_ranges') or {}).items()
+        if column in output_columns
+    }
     file_label = metadata.get('file_label') or ''
 
     if fmt == 'csv':
@@ -474,10 +362,24 @@ def _write_export_frame(out_df, format_type, metadata=None):
     else:
         suffix = '.zsav' if fmt == 'zsav' else '.sav'
         content_type = 'application/x-spss-sav'
+        sav_frame = out_df.copy()
+        for column, variable_type in original_types.items():
+            string_format = re.match(r'^A(\d+)$', str(variable_type).strip().upper())
+            if not string_format or column not in sav_frame.columns:
+                continue
+            width = int(string_format.group(1))
+
+            def pad_string(value):
+                if value is None or (not isinstance(value, str) and pd.isna(value)):
+                    value = ''
+                value = str(value)
+                return value if len(value) >= width else value.ljust(width)
+
+            sav_frame[column] = sav_frame[column].map(pad_string)
 
         def writer(path):
             pyreadstat.write_sav(
-                out_df,
+                sav_frame,
                 path,
                 file_label=file_label,
                 compress=(fmt == 'zsav'),
@@ -506,7 +408,7 @@ def _write_export_frame(out_df, format_type, metadata=None):
 
 def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=False, institution_id=None):
     """
-    Genera el dataset de exportación con todas las columnas clínicas oficiales y los nuevos campos 2026.
+    Genera el dataset con el esquema y orden de la matriz de referencia UNEMI.
     Soporta los mismos formatos de exportación que se admiten en importación:
       - 'sav': IBM SPSS Statistics (.sav)
       - 'zsav': IBM SPSS Comprimido (.zsav)
@@ -930,94 +832,15 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
         rows_data.append(row)
 
     out_df = pd.DataFrame(rows_data, columns=cols)
-    fecha_str = datetime.date.today().strftime('%Y%m%d')
-    fmt = (format_type or 'sav').strip().lower()
-
-    if fmt == 'csv':
-        # Exportación en CSV / Excel UTF-8 BOM
-        csv_bytes = out_df.to_csv(index=False, encoding='utf-8-sig').encode('utf-8-sig')
-        filename = f"CardioUNEMI_Dataset_{fecha_str}.csv"
-        content_type = "text/csv; charset=utf-8"
-        return csv_bytes, filename, content_type
-
-    elif fmt in ('rds',):
-        # Exportación en RStudio RDS
-        with tempfile.NamedTemporaryFile(suffix='.rds', delete=False) as tmp:
-            tmp_path = tmp.name
-        try:
-            pyreadr.write_rds(tmp_path, out_df)
-            with open(tmp_path, 'rb') as f:
-                rds_bytes = f.read()
-        finally:
-            if os.path.exists(tmp_path):
-                try: os.unlink(tmp_path)
-                except Exception: pass
-        filename = f"CardioUNEMI_Dataset_{fecha_str}.rds"
-        content_type = "application/octet-stream"
-        return rds_bytes, filename, content_type
-
-    elif fmt in ('rdata', 'rda', 'r'):
-        # Exportación en RStudio Workspace RData
-        with tempfile.NamedTemporaryFile(suffix='.RData', delete=False) as tmp:
-            tmp_path = tmp.name
-        try:
-            pyreadr.write_rdata(tmp_path, out_df, df_name='CardioUnemi')
-            with open(tmp_path, 'rb') as f:
-                rdata_bytes = f.read()
-        finally:
-            if os.path.exists(tmp_path):
-                try: os.unlink(tmp_path)
-                except Exception: pass
-        filename = f"CardioUNEMI_Dataset_{fecha_str}.RData"
-        content_type = "application/octet-stream"
-        return rdata_bytes, filename, content_type
-
-    elif fmt in ('zsav',):
-        # Exportación en IBM SPSS Comprimido (.zsav)
-        with tempfile.NamedTemporaryFile(suffix='.zsav', delete=False) as tmp:
-            tmp_path = tmp.name
-        try:
-            numeric_formats = _adaptive_numeric_formats(out_df)
-            pyreadstat.write_sav(
-                out_df,
-                tmp_path,
-                compress=True,
-                column_labels=col_names_to_labels,
-                variable_value_labels=col_value_labels,
-                variable_format=numeric_formats
-            )
-            with open(tmp_path, 'rb') as f:
-                zsav_bytes = f.read()
-        finally:
-            if os.path.exists(tmp_path):
-                try: os.unlink(tmp_path)
-                except Exception: pass
-        filename = f"CardioUNEMI_Dataset_{fecha_str}.zsav"
-        content_type = "application/x-spss-sav"
-        return zsav_bytes, filename, content_type
-
-    else:
-        # Por defecto: IBM SPSS Statistics estándar (.sav)
-        with tempfile.NamedTemporaryFile(suffix='.sav', delete=False) as tmp:
-            tmp_path = tmp.name
-        try:
-            numeric_formats = _adaptive_numeric_formats(out_df)
-            pyreadstat.write_sav(
-                out_df,
-                tmp_path,
-                column_labels=col_names_to_labels,
-                variable_value_labels=col_value_labels,
-                variable_format=numeric_formats
-            )
-            with open(tmp_path, 'rb') as f:
-                sav_bytes = f.read()
-        finally:
-            if os.path.exists(tmp_path):
-                try: os.unlink(tmp_path)
-                except Exception: pass
-        filename = f"CardioUNEMI_Dataset_{fecha_str}.sav"
-        content_type = "application/x-spss-sav"
-        return sav_bytes, filename, content_type
+    return _write_export_frame(out_df, format_type, {
+        'column_labels': col_names_to_labels,
+        'value_labels': col_value_labels,
+        'original_variable_types': tpl['original_variable_types'],
+        'variable_display_width': tpl['variable_display_width'],
+        'variable_measure': tpl['variable_measure'],
+        'missing_ranges': tpl['missing_ranges'],
+        'file_label': tpl['file_label'],
+    })
 
 
 def _first_recorded(values, *keys):

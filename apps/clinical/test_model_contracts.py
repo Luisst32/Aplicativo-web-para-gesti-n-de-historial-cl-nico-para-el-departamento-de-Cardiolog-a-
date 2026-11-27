@@ -25,9 +25,8 @@ from security.models import User
 def expected_export_column_counts():
     """Column counts derived from the template the exporter actually loads.
 
-    The official matrix lives outside Git (it contains cohort data), so local
-    runs use it while CI and fresh servers fall back to sav_columns_spec.json.
-    Hard-coded counts made the suite pass only on the machine with the matrix.
+    The checked-in UNEMI reference matrix contains only schema and metadata,
+    so local and CI runs use the same export contract.
     """
     columns = list(sav_exporter.get_sav_template_metadata()['columns'])
     identifiers = {'C.I', 'NOMBRES', 'APELLIDO1', 'APELLIDO2'}
@@ -106,10 +105,6 @@ class ClinicalModelContractTests(TestCase):
         institution, _ = Institution.objects.update_or_create(
             acronym='UNEMI',
             defaults={'name': 'Synthetic institution', 'is_selectable': True},
-        )
-        Institution.objects.update_or_create(
-            acronym='ESPOL',
-            defaults={'name': 'Escuela Superior Politécnica del Litoral', 'is_selectable': True},
         )
         sex, _ = Sex.objects.get_or_create(sex_id=1, defaults={'name': 'Hombre'})
         Sex.objects.get_or_create(sex_id=2, defaults={'name': 'Mujer'})
@@ -237,9 +232,9 @@ class ClinicalModelContractTests(TestCase):
         self.assertEqual(self.export_frame().iloc[0]['FRACCION_ACORTAMIENTO_FA'], 32.5)
 
     def test_reference_sav_round_trip_preserves_rows_and_schema(self):
-        source = Path(settings.BASE_DIR).parent / 'datos' / 'MATRIZ CARDIOESPOL 2026 FINAL.sav'
+        source = Path(settings.BASE_DIR).parent / 'datos' / 'Base_datos_Unemi_CardioUnemi-ACTUALIZADO (2).sav'
         if not source.exists():
-            self.skipTest('No está disponible la matriz SPSS de referencia local.')
+            self.skipTest('No está disponible la matriz SPSS de UNEMI local.')
 
         source_frame, _ = pyreadstat.read_sav(str(source), apply_value_formats=False)
         staged_source = Path(self.folder) / 'reference-source.sav'
@@ -263,7 +258,7 @@ class ClinicalModelContractTests(TestCase):
 
     def test_import_export_round_trip_preserves_duplicate_prefix_columns(self):
         frame = pd.DataFrame({
-            'UNIVERSIDAD': [1.0, 2.0],
+            'UNIVERSIDAD': [1.0, 1.0],
             'CODIGONUEV': [432.0, 433.0],
             'NOMBRES': ['Ana', 'Luis'],
             'APELLIDO1': ['Uno', 'Dos'],
@@ -283,7 +278,7 @@ class ClinicalModelContractTests(TestCase):
             pyreadstat.write_sav(
                 frame,
                 str(source),
-                variable_value_labels={'UNIVERSIDAD': {1.0: 'UNEMI', 2.0: 'ESPOL'}},
+                variable_value_labels={'UNIVERSIDAD': {1.0: 'UNEMI'}},
             )
             source_frame, _ = pyreadstat.read_sav(str(source), apply_value_formats=False)
             staged_source = Path(directory) / 'staged-source.sav'
