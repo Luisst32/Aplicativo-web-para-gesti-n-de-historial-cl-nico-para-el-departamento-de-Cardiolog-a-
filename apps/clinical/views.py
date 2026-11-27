@@ -1661,6 +1661,20 @@ def form_save_api(request):
 # PDF EXPORT VIEW (HU-17)
 # =============================================================================
 
+_TRUTHY = ('1', 'true', 'yes', 'si', 'on')
+
+
+def _is_truthy(value):
+    if isinstance(value, bool):
+        return value
+    return str(value or '').strip().lower() in _TRUTHY
+
+
+def _pdf_privacy_requested(request):
+    """Modo de protección de datos solicitado por el cliente para PDFs."""
+    return _is_truthy(request.GET.get('privacidad') or request.POST.get('privacidad'))
+
+
 @login_required
 @xframe_options_sameorigin
 @clinical_access_required('read')
@@ -1699,7 +1713,7 @@ def export_pdf_view(request, visit_id=None):
         raise RecordSelectionError('Seleccione un paciente o una ficha clínica.')
 
     _ensure_selectable_institutions([visit])
-    pdf_bytes = generate_clinical_sheet_pdf(visit, is_blank=False)
+    pdf_bytes = generate_clinical_sheet_pdf(visit, is_blank=False, privacy_mode=_pdf_privacy_requested(request))
     study_code_clean = (visit.study_code or f"V{visit.visit_id}").replace('/', '-').replace(' ', '_')
     filename = f"Cuestionario_UNEMI_{study_code_clean}.pdf"
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
@@ -1709,21 +1723,27 @@ def export_pdf_view(request, visit_id=None):
     return response
 
 
-def _generate_zip_stream(visits):
+def _generate_zip_stream(visits, privacy_mode=False):
     """
     Genera en memoria un archivo ZIP con todos los PDFs correspondientes a las visitas indicadas.
     Cada archivo se nombra de forma limpia e inequívoca con su código de estudio y nombre.
+    Con privacy_mode los PDFs omiten datos personales y el nombre del archivo
+    contiene solo el número de ficha.
     """
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
         used_names = set()
         for idx, v in enumerate(visits, start=1):
-            pdf_bytes = generate_clinical_sheet_pdf(v, is_blank=False)
+            pdf_bytes = generate_clinical_sheet_pdf(v, is_blank=False, privacy_mode=privacy_mode)
             code_str = (v.study_code or f"V{v.visit_id}").replace('/', '-').replace(' ', '_')
-            p_name = (v.patient.full_name or f"Paciente_{idx}").replace(' ', '_')
-            filename = f"Ficha_Clinica_{code_str}_{p_name}.pdf"
+            if privacy_mode:
+                base_name = f"Ficha_Clinica_{code_str}"
+            else:
+                p_name = (v.patient.full_name or f"Paciente_{idx}").replace(' ', '_')
+                base_name = f"Ficha_Clinica_{code_str}_{p_name}"
+            filename = f"{base_name}.pdf"
             if filename in used_names:
-                filename = f"Ficha_Clinica_{code_str}_{p_name}_{idx}.pdf"
+                filename = f"{base_name}_{idx}.pdf"
             used_names.add(filename)
             zf.writestr(filename, pdf_bytes)
     buffer.seek(0)
@@ -1745,17 +1765,18 @@ def api_download_batch_pdf(request):
 
     visits_list = selected_visits(raw_ids)
     _ensure_selectable_institutions(visits_list)
+    privacy_mode = _pdf_privacy_requested(request)
 
     if len(visits_list) == 1:
         v = visits_list[0]
-        pdf_bytes = generate_clinical_sheet_pdf(v, is_blank=False)
+        pdf_bytes = generate_clinical_sheet_pdf(v, is_blank=False, privacy_mode=privacy_mode)
         study_code_clean = (v.study_code or f"V{v.visit_id}").replace('/', '-').replace(' ', '_')
         filename = f"Cuestionario_UNEMI_{study_code_clean}.pdf"
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
     else:
-        zip_bytes = _generate_zip_stream(visits_list)
+        zip_bytes = _generate_zip_stream(visits_list, privacy_mode=privacy_mode)
         response = HttpResponse(zip_bytes, content_type='application/zip')
         response['Content-Disposition'] = 'attachment; filename="Fichas_Clinicas_Cardiologia_UNEMI.zip"'
         return response
@@ -1786,6 +1807,7 @@ def api_send_patient_sheet_email(request):
     raw_duration = data.get('duration_hours', 48)
     subject = (data.get('subject') or 'Documento disponible en portal seguro').strip()
     notes = (data.get('notes') or '').strip()[:300]
+    privacy_mode = _is_truthy(data.get('privacy_mode', False))
 
     if not patient_ids:
         resp = JsonResponse({"success": False, "error": "Debe seleccionar al menos una ficha clínica para compartir."}, status=400)
@@ -1864,7 +1886,8 @@ def api_send_patient_sheet_email(request):
             max_downloads=None,  # Sin límite restrictivo de descargas
             is_revoked=False,
             created_by=request.user,
-            note=notes
+            note=notes,
+            privacy_mode=privacy_mode,
         )
         share.visits.set(visits_list)
 
@@ -1885,7 +1908,8 @@ def api_send_patient_sheet_email(request):
                     'total_fichas': len(visits_list),
                     'recipient_email': email,
                     'expires_at': expires_at.isoformat(),
-                    'duration_hours': duration_hours
+                    'duration_hours': duration_hours,
+                    'privacy_mode': privacy_mode,
                 },
                 machine_name=ip_addr
             )
@@ -2032,7 +2056,7 @@ def public_secure_share_view(request, token):
             logger.warning(f"Error registrando descarga en auditoría: {audit_err}")
 
         if descarga_tipo == 'zip' or (descarga_tipo == 'todo' and len(visits) > 1):
-            zip_bytes = _generate_zip_stream(visits)
+            zip_bytes = _generate_zip_stream(visits, privacy_mode=share.privacy_mode)
             response = HttpResponse(zip_bytes, content_type='application/zip')
             response['Content-Disposition'] = 'attachment; filename="documentos_clinicos.zip"'
             response['Referrer-Policy'] = 'no-referrer'
@@ -2041,7 +2065,7 @@ def public_secure_share_view(request, token):
             return response
 
         elif descarga_tipo == 'pdf':
-            pdf_bytes = generate_clinical_sheet_pdf(target_visit, is_blank=False)
+            pdf_bytes = generate_clinical_sheet_pdf(target_visit, is_blank=False, privacy_mode=share.privacy_mode)
             code_str = (target_visit.study_code or f"V{target_visit.visit_id}").replace('/', '-').replace(' ', '_')
             filename = f"Ficha_Clinica_{code_str}.pdf" if len(visits) > 1 else "documento.pdf"
 
@@ -2111,7 +2135,7 @@ def public_secure_share_view(request, token):
             if request.POST.get('descarga') == 'zip' and len(visits) > 1:
                 share.download_count += 1
                 share.save(update_fields=['download_count'])
-                zip_bytes = _generate_zip_stream(visits)
+                zip_bytes = _generate_zip_stream(visits, privacy_mode=share.privacy_mode)
                 response = HttpResponse(zip_bytes, content_type='application/zip')
                 response['Content-Disposition'] = 'attachment; filename="documentos_clinicos.zip"'
                 response['Referrer-Policy'] = 'no-referrer'
@@ -2122,7 +2146,7 @@ def public_secure_share_view(request, token):
                     raise RecordSelectionError('Documento no incluido en este enlace.', 404)
                 share.download_count += 1
                 share.save(update_fields=['download_count'])
-                pdf_bytes = generate_clinical_sheet_pdf(visits[0], is_blank=False)
+                pdf_bytes = generate_clinical_sheet_pdf(visits[0], is_blank=False, privacy_mode=share.privacy_mode)
                 response = HttpResponse(pdf_bytes, content_type='application/pdf')
                 response['Content-Disposition'] = 'attachment; filename="documento.pdf"'
                 response['Referrer-Policy'] = 'no-referrer'
@@ -2133,7 +2157,10 @@ def public_secure_share_view(request, token):
     documentos = []
     for v in visits:
         code_str = v.study_code or f"V{v.visit_id}"
-        patient_name = v.patient.full_name if v.patient else "Paciente"
+        if share.privacy_mode:
+            patient_name = f"Ficha N.° {code_str}"
+        else:
+            patient_name = v.patient.full_name if v.patient else "Paciente"
         date_str = v.visit_date.strftime('%d/%m/%Y') if v.visit_date else 'Fecha no registrada'
         documentos.append({
             'visit_id': v.visit_id,

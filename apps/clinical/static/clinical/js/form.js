@@ -2887,14 +2887,13 @@ function actualizarOpcionesMenuPdfSegunPrivacidad() {
   const opcVerBlanco = document.getElementById('pdfOpcionVerBlanco');
   const opcDescBlanco = document.getElementById('pdfOpcionDescargarBlanco');
 
-  if (opcVer) opcVer.style.display = isPriv ? 'none' : 'flex';
-  if (opcDesc) opcDesc.style.display = isPriv ? 'none' : 'flex';
+  // Con protección de datos la ficha se genera sin datos personales.
+  if (opcVer) opcVer.style.display = 'flex';
+  if (opcDesc) opcDesc.style.display = 'flex';
+  const txtDesc = opcDesc ? opcDesc.querySelector('span') : null;
+  if (txtDesc) txtDesc.textContent = isPriv ? 'Descargar Ficha Actual (sin datos sensibles)' : 'Descargar Ficha Actual';
   if (opcVerBlanco) {
     opcVerBlanco.style.display = 'flex';
-    opcVerBlanco.style.borderTop = isPriv ? 'none' : '1px solid #f1f5f9';
-    opcVerBlanco.style.fontWeight = isPriv ? '700' : '600';
-    opcVerBlanco.style.color = isPriv ? '#0f172a' : '#475569';
-    opcVerBlanco.style.background = isPriv ? '#f8fafc' : 'transparent';
   }
   if (opcDescBlanco) {
     opcDescBlanco.style.display = 'flex';
@@ -2946,6 +2945,7 @@ function _construirUrlPdf(isBlank = false, isDownload = false) {
     const hId = urlParams.get('historial') || (typeof historialActual !== 'undefined' && historialActual ? historialActual.id : null);
     if (pId) params.push(`paciente=${encodeURIComponent(pId)}`);
     if (hId) params.push(`historial=${encodeURIComponent(hId)}`);
+    if (_esModoPrivacidadActivoSeguro()) params.push('privacidad=1');
   }
   if (isDownload) {
     params.push('download=1');
@@ -2960,15 +2960,7 @@ function exportarFormularioPDF(isBlank = false) {
   const menu = document.getElementById('pdfDropdownMenu');
   if (menu) menu.style.display = 'none';
 
-  const isPriv = _esModoPrivacidadActivoSeguro();
-  if (isPriv && !isBlank) {
-    if (typeof mostrarToast === 'function') {
-      mostrarToast('Modo de Privacidad Activo: la exportación de fichas con datos del paciente está restringida.', 'warning');
-    } else {
-      alert('Modo de Privacidad Activo: la exportación de fichas con datos del paciente está restringida.');
-    }
-    return;
-  }
+  // Modo privacidad: la ficha se genera sin datos personales (ver _construirUrlPdf).
 
   const downloadUrl = _construirUrlPdf(isBlank, true);
   descargarPdfDirecto(downloadUrl);
@@ -2978,15 +2970,7 @@ function abrirModalVisualizadorPdf(isBlank = false) {
   const menu = document.getElementById('pdfDropdownMenu');
   if (menu) menu.style.display = 'none';
 
-  const isPriv = _esModoPrivacidadActivoSeguro();
-  if (isPriv && !isBlank) {
-    if (typeof mostrarToast === 'function') {
-      mostrarToast('Modo de Privacidad Activo: la visualización de fichas con datos del paciente está restringida.', 'warning');
-    } else {
-      alert('Modo de Privacidad Activo: la visualización de fichas con datos del paciente está restringida.');
-    }
-    return;
-  }
+  // Modo privacidad: la ficha se genera sin datos personales (ver _construirUrlPdf).
 
   const modal = document.getElementById('modalVisualizadorPdf');
   const iframe = document.getElementById('pdfModalIframe');

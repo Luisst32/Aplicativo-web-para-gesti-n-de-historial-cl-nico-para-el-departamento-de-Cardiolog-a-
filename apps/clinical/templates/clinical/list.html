@@ -513,7 +513,7 @@
               </label>
               <span style="font-size:0.74rem; font-weight:600; color:#64748b;">Máximo 5 correos</span>
             </div>
-            <input type="text" id="correoDestinatariosInput" class="form-input" placeholder="destinatario1@correo.com, destinatario2@unemi.edu.ec" style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:7px; border:1.5px solid #cbd5e1; font-size:0.88rem;" required>
+            <input type="text" id="correoDestinatariosInput" class="form-input" autocomplete="off" placeholder="destinatario1@correo.com, destinatario2@unemi.edu.ec" style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:7px; border:1.5px solid #cbd5e1; font-size:0.88rem;" required>
             <span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:block;">Cada destinatario recibirá un enlace independiente con su propio código de verificación.</span>
           </div>
 
@@ -635,5 +635,5 @@
   {{ institution_catalog|json_script:"cardio-institution-catalog" }}
   <script>window.CARDIO_UNEMI_ONLY = {% if unemi_only %}true{% else %}false{% endif %};</script>
   <script src="{% static 'clinical/js/pacientes.js' %}?v=20261123_institutions01"></script>
-  <script src="{% static 'clinical/js/list.js' %}?v=20261126_clear_selection07"></script>
+  <script src="{% static 'clinical/js/list.js' %}?v=20261127_privacy_pdf01"></script>
 {% endblock %}

@@ -161,11 +161,23 @@ def _build_rose_torso_drawing() -> Drawing:
     return d
 
 
-def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> bytes:
+# Datos personales que se omiten del PDF con el modo de protección de datos.
+# La ficha queda identificada únicamente por su número (f_codigo).
+PRIVACY_REDACTED_PDF_FIELDS = (
+    "f_nombre", "f_apellido1", "f_apellido2", "f_cedula",
+    "f_telefono", "f_correo", "f_fecha_nac",
+)
+PRIVACY_PLACEHOLDER = "[Protegido]"
+
+
+def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False, privacy_mode: bool = False) -> bytes:
     """
     Generates the official UNEMI cardiovascular study clinical questionnaire PDF report.
     Mirrors 100% of the questions, module structure, item order, and 3-state clinical
     answers implemented in the web questionnaire (Modules 1 through 7).
+
+    privacy_mode=True omite nombres, apellidos, cédula, teléfono, correo y fecha de
+    nacimiento (cuerpo y pie de página); la ficha se identifica solo por su número.
     """
     from clinical.views import _build_form_datos
 
@@ -185,6 +197,9 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
         )
         if not has_ecg_record and not has_ecg_ritmo_ans:
             datos["ecg_ritmo"] = ""
+        if privacy_mode:
+            for key in PRIVACY_REDACTED_PDF_FIELDS:
+                datos[key] = PRIVACY_PLACEHOLDER
     else:
         datos = {}
         is_blank = True if visit is None else is_blank
@@ -196,6 +211,8 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
         full_nom = f"{datos.get('f_nombre', '')} {datos.get('f_apellido1', '')} {datos.get('f_apellido2', '')}".strip()
         ced = str(datos.get("f_cedula") or "").strip()
         patient_footer = f"{full_nom} ({ced})" if ced else full_nom
+        if privacy_mode:
+            patient_footer = ""
 
     doc = SimpleDocTemplate(
         buffer,
@@ -533,6 +550,8 @@ def generate_clinical_sheet_pdf(visit: Visit = None, is_blank: bool = False) -> 
     else:
         primer_nombre = ""
         segundo_nombre = ""
+    if privacy_mode and not is_blank:
+        primer_nombre = segundo_nombre = xml_escape(PRIVACY_PLACEHOLDER)
 
     estamento_boxes = choice_boxes(
         raw_val("f_estamento"),

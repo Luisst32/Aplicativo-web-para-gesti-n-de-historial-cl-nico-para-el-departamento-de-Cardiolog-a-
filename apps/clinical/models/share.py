@@ -74,6 +74,13 @@ class SecureShare(models.Model):
         verbose_name="Máximo de Descargas Permitidas (None = ilimitado)"
     )
 
+    # Protección de datos: el destinatario recibe PDFs sin datos personales,
+    # identificados solo por el número de ficha.
+    privacy_mode = models.BooleanField(
+        default=False,
+        verbose_name="Protección de Datos (PDF sin datos sensibles)"
+    )
+
     # Estado y Revocación
     is_revoked = models.BooleanField(
         default=False,

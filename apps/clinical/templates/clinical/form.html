@@ -131,14 +131,13 @@
             var opcVerBlanco = document.getElementById('pdfOpcionVerBlanco');
             var opcDescBlanco = document.getElementById('pdfOpcionDescargarBlanco');
 
-            if (opcVer) opcVer.style.display = isPriv ? 'none' : 'flex';
-            if (opcDesc) opcDesc.style.display = isPriv ? 'none' : 'flex';
+            // Con protección de datos la ficha se genera sin datos personales.
+            if (opcVer) opcVer.style.display = 'flex';
+            if (opcDesc) opcDesc.style.display = 'flex';
+            var txtDesc = opcDesc ? opcDesc.querySelector('span') : null;
+            if (txtDesc) txtDesc.textContent = isPriv ? 'Descargar Ficha Actual (sin datos sensibles)' : 'Descargar Ficha Actual';
             if (opcVerBlanco) {
               opcVerBlanco.style.display = 'flex';
-              opcVerBlanco.style.borderTop = isPriv ? 'none' : '1px solid #f1f5f9';
-              opcVerBlanco.style.fontWeight = isPriv ? '700' : '600';
-              opcVerBlanco.style.color = isPriv ? '#0f172a' : '#475569';
-              opcVerBlanco.style.background = isPriv ? '#f8fafc' : 'transparent';
             }
             if (opcDescBlanco) {
               opcDescBlanco.style.display = 'flex';
@@ -175,6 +174,15 @@
               var hId = urlParams.get('historial') || (typeof historialActual !== 'undefined' && historialActual ? historialActual.id : null);
               if (pId) params.push('paciente=' + encodeURIComponent(pId));
               if (hId) params.push('historial=' + encodeURIComponent(hId));
+              var priv = false;
+              try {
+                priv = (typeof esModoPrivacidadActivo === 'function')
+                  ? esModoPrivacidadActivo()
+                  : localStorage.getItem('cardio_privacy_mode') === 'true';
+              } catch (e) {
+                priv = false;
+              }
+              if (priv) params.push('privacidad=1');
             }
             if (isDownload) {
               params.push('download=1');
@@ -213,14 +221,7 @@
             } catch (e) {
               isPriv = false;
             }
-            if (isPriv && !isBlank) {
-              if (typeof mostrarToast === 'function') {
-                mostrarToast('Modo de Privacidad Activo: la exportación de fichas con datos del paciente está restringida.', 'warning');
-              } else {
-                alert('Modo de Privacidad Activo: la exportación de fichas con datos del paciente está restringida.');
-              }
-              return;
-            }
+            // Modo privacidad: se genera la ficha sin datos personales (ver _construirUrlPdf).
 
             var url = _construirUrlPdf(isBlank, true);
             descargarPdfDirecto(url);
@@ -240,14 +241,7 @@
             } catch (e) {
               isPriv = false;
             }
-            if (isPriv && !isBlank) {
-              if (typeof mostrarToast === 'function') {
-                mostrarToast('Modo de Privacidad Activo: la visualización de fichas con datos del paciente está restringida.', 'warning');
-              } else {
-                alert('Modo de Privacidad Activo: la visualización de fichas con datos del paciente está restringida.');
-              }
-              return;
-            }
+            // Modo privacidad: se genera la ficha sin datos personales (ver _construirUrlPdf).
 
             var modal = document.getElementById('modalVisualizadorPdf');
             var iframe = document.getElementById('pdfModalIframe');
@@ -513,5 +507,5 @@
   {{ institution_catalog|json_script:"cardio-institution-catalog" }}
   <script>window.CARDIO_UNEMI_ONLY = {% if unemi_only %}true{% else %}false{% endif %};</script>
   <script src="{% static 'clinical/js/pacientes.js' %}?v=20261123_institutions01"></script>
-  <script src="{% static 'clinical/js/form.js' %}?v=20261123_institutions01"></script>
+  <script src="{% static 'clinical/js/form.js' %}?v=20261127_privacy_pdf01"></script>
 {% endblock %}

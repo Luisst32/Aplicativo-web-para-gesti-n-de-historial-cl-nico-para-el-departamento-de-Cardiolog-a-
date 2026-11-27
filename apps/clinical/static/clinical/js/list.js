@@ -1151,12 +1151,24 @@ async function ejecutarExportacionInteligente() {
   }
 }
 
+// Modo de protección de datos: los PDF salen sin datos personales (solo N.° de ficha).
+function pdfPrivacidadActiva() {
+  try {
+    return (typeof esModoPrivacidadActivo === 'function')
+      ? esModoPrivacidadActivo()
+      : (localStorage.getItem('cardio_privacy_mode') === 'true');
+  } catch (e) {
+    return false;
+  }
+}
+
 // Impresión y descarga oficial en PDF de la Ficha Clínica (HU-17)
 function exportarPDFHistorial(pacienteId, historialId) {
   let url = `/clinical/ficha/pdf/?paciente=${encodeURIComponent(pacienteId)}`;
   if (historialId) {
     url += `&historial=${encodeURIComponent(historialId)}`;
   }
+  if (pdfPrivacidadActiva()) url += '&privacidad=1';
   window.open(url, '_blank');
 }
 
@@ -1171,7 +1183,8 @@ function descargarPDFsSeleccionados() {
     }
     return;
   }
-  const url = `/clinical/api/ficha/descargar-seleccionados/?patient_ids=${encodeURIComponent(arr.join(','))}`;
+  let url = `/clinical/api/ficha/descargar-seleccionados/?patient_ids=${encodeURIComponent(arr.join(','))}`;
+  if (pdfPrivacidadActiva()) url += '&privacidad=1';
   window.open(url, '_blank');
 }
 
@@ -1318,25 +1331,17 @@ function abrirModalEnviarCorreo() {
   }
 
   if (arrSeleccionados.length === 1) {
-    const pSel = pacientesCache.get(String(arrSeleccionados[0])) || pacientes.find(p => String(p.id) === String(arrSeleccionados[0]));
     if (resumenEl) {
       resumenEl.innerHTML = `Se generará un enlace protegido con código de acceso para <strong>1 ficha clínica</strong>.`;
-    }
-    if (inputDest) {
-      inputDest.value = (pSel && (pSel.correo || pSel.email)) ? (pSel.correo || pSel.email) : '';
     }
   } else {
     if (resumenEl) {
       resumenEl.innerHTML = `Se generarán enlaces protegidos con código de acceso para <strong>${arrSeleccionados.length} fichas clínicas</strong> (descargables en .ZIP comprimido o por separado).`;
     }
-    if (inputDest) {
-      const correos = Array.from(pacientesCache.values())
-        .filter(p => (seleccionados.has(p.id) || seleccionados.has(String(p.id))) && (p.correo || p.email))
-        .map(p => p.correo || p.email)
-        .slice(0, 5);
-      inputDest.value = correos.join(', ');
-    }
   }
+
+  // Los destinatarios se escriben siempre a mano: no se precargan correos.
+  if (inputDest) inputDest.value = '';
 
   modal.style.display = 'flex';
   if (inputDest) setTimeout(() => inputDest.focus(), 150);
@@ -1412,7 +1417,8 @@ async function ejecutarEnvioCorreoFicha() {
         recipients: destinatarios,
         duration_hours: durationHours,
         subject: inputAsunto?.value || 'Documento disponible en portal seguro',
-        notes: notasSanitizadas
+        notes: notasSanitizadas,
+        privacy_mode: pdfPrivacidadActiva()
       })
     });
 
