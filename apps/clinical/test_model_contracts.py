@@ -70,7 +70,14 @@ class ClinicalModelContractTests(TestCase):
         country, _ = Country.objects.get_or_create(iso_alpha3='ECU', defaults={'name': 'Ecuador'})
         province, _ = Province.objects.get_or_create(country=country, iso_code='EC-G', defaults={'name': 'Guayas'})
         canton, _ = Canton.objects.get_or_create(province=province, dpa_code='0910', defaults={'name': 'Milagro'})
-        institution, _ = Institution.objects.get_or_create(acronym='UNEMI', defaults={'name': 'Synthetic institution'})
+        institution, _ = Institution.objects.update_or_create(
+            acronym='UNEMI',
+            defaults={'name': 'Synthetic institution', 'is_selectable': True},
+        )
+        Institution.objects.update_or_create(
+            acronym='ESPOL',
+            defaults={'name': 'Escuela Superior Politécnica del Litoral', 'is_selectable': True},
+        )
         sex, _ = Sex.objects.get_or_create(sex_id=1, defaults={'name': 'Hombre'})
         Sex.objects.get_or_create(sex_id=2, defaults={'name': 'Mujer'})
         ethnicity, _ = Ethnicity.objects.get_or_create(name='Mestizo')
@@ -244,7 +251,11 @@ class ClinicalModelContractTests(TestCase):
         })
         with TemporaryDirectory(prefix='cardio-roundtrip-') as directory:
             source = Path(directory) / 'source.sav'
-            pyreadstat.write_sav(frame, str(source))
+            pyreadstat.write_sav(
+                frame,
+                str(source),
+                variable_value_labels={'UNIVERSIDAD': {1.0: 'UNEMI', 2.0: 'ESPOL'}},
+            )
             source_frame, _ = pyreadstat.read_sav(str(source), apply_value_formats=False)
             staged_source = Path(directory) / 'staged-source.sav'
             shutil.copy2(source, staged_source)
