@@ -23,9 +23,9 @@ Incorporates the 8 core clinical modules requested for epidemiological analysis:
 
 import re
 from datetime import date
-from django.conf import settings
 from django.db.models import Prefetch
 
+from catalog.institutions import filter_to_selectable_institutions, selectable_institutions
 from clinical.models import Visit, VisitAnswer
 from clinical.services.covid_answers import resolve_covid
 from .boolean_answers import recorded_answers, descriptors
@@ -218,13 +218,11 @@ def get_dashboard_evaluation_data():
         .all()
         .order_by('visit_id')
     )
-    if getattr(settings, 'UNEMI', False):
-        visits = visits.filter(patient__institution__acronym__iexact='UNEMI')
+    visits = filter_to_selectable_institutions(visits, 'patient__institution')
 
     records = []
     available_years = set()
     available_categories = set()
-    available_institutions = set()
 
     for v in visits:
         p = v.patient
@@ -232,8 +230,7 @@ def get_dashboard_evaluation_data():
         ano = v_date.year
         available_years.add(ano)
 
-        inst_name = p.institution.name if (p and p.institution) else 'Universidad Estatal de Milagro'
-        available_institutions.add(inst_name)
+        inst_name = p.institution.name if (p and p.institution) else ''
 
         # -------------------------------------------------------------
         # BLOQUE 1: DATOS DEL INDIVIDUO (SOCIODEMOGRAFÍA)
@@ -1073,7 +1070,9 @@ def get_dashboard_evaluation_data():
 
     sorted_years = sorted(list(available_years))
     sorted_categories = sorted(list(available_categories))
-    sorted_institutions = sorted(list(available_institutions))
+    sorted_institutions = list(
+        selectable_institutions().values_list('name', flat=True).order_by('name')
+    )
 
     n = len(records)
     def fmt_pct(cnt, field):

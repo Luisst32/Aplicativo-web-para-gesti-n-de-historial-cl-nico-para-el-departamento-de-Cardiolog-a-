@@ -475,7 +475,7 @@ FIELD_DESTINATIONS = {
     'apellido1': ('Identificación del Paciente', 'Primer Apellido (last_name1)'),
     'apellido2': ('Identificación del Paciente', 'Segundo Apellido (last_name2)'),
     'universidad': ('Identificación Institucional', 'Institución / Universidad'),
-    'estamento': ('Identificación Institucional', 'Estamento UNEMI / Categoría'),
+    'estamento': ('Identificación Institucional', 'Estamento / Categoría'),
     'facultad': ('Identificación Institucional', 'Facultad'),
     'visita': ('Identificación Institucional', 'N.° de Visita'),
     'fecha_visita': ('Identificación Institucional', 'Fecha de Visita'),

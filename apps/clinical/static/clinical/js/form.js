@@ -528,25 +528,6 @@ function obtenerPayloadTabaquismo() {
 // =============================================================================
 // CATÁLOGOS DINÁMICOS EN CASCADA: UNIVERSIDAD-FACULTAD Y PROVINCIA-CANTÓN
 // =============================================================================
-var FACULTADES_POR_UNIVERSIDAD = window.FACULTADES_POR_UNIVERSIDAD || {
-  'UNEMI': [
-    { value: 'FACI', label: 'FACI - Facultad de Ciencias e Ingeniería' },
-    { value: 'FACS', label: 'FACS - Facultad de Salud' },
-    { value: 'FACSO', label: 'FACSO - Ciencias Sociales, Educación Comercial y Derecho' },
-    { value: 'FACE', label: 'FACE - Facultad de Educación' },
-    { value: 'POSGRADO', label: 'Posgrado' }
-  ],
-  'ESPOL': [
-    { value: 'FIEC', label: 'FIEC - Fac. de Ing. en Electricidad y Computación' },
-    { value: 'FCNM', label: 'FCNM - Fac. de Ciencias Naturales y Matemáticas' },
-    { value: 'FIMCP', label: 'FIMCP - Fac. de Ing. Mecánica y Ciencias de la Producción' },
-    { value: 'FCSH', label: 'FCSH - Fac. de Ciencias Sociales y Humanísticas' },
-    { value: 'FCV', label: 'FCV - Facultad de Ciencias de la Vida' },
-    { value: 'FIMCM', label: 'FIMCM - Fac. de Ing. Marítima y Ciencias del Mar' },
-    { value: 'EDCOM', label: 'EDCOM - Escuela de Diseño y Comunicación Visual' }
-  ]
-};
-
 const CANTONES_POR_PROVINCIA = {
   'AZUAY': ['Cuenca', 'Camilo Ponce Enríquez', 'Chordeleg', 'El Pan', 'Girón', 'Guachapala', 'Gualaceo', 'Nabón', 'Oña', 'Paute', 'Pucará', 'San Fernando', 'Santa Isabel', 'Sevilla de Oro', 'Sígsig'],
   'BOLIVAR': ['Guaranda', 'Caluma', 'Chillanes', 'Chimbo', 'Echeandía', 'Las Naves', 'San Miguel'],
@@ -579,38 +560,40 @@ function onUniversidadChange(uni, selectedFacultad) {
   const selFac = document.getElementById('f_facultad');
   if (!selFac) return;
 
-  const cleanUni = (uni || 'UNEMI').toUpperCase().trim();
-  const facList = FACULTADES_POR_UNIVERSIDAD[cleanUni] || FACULTADES_POR_UNIVERSIDAD['UNEMI'];
+  const cleanUni = String(uni || '').toUpperCase().trim();
+  const catalog = typeof obtenerCatalogoInstituciones === 'function'
+    ? obtenerCatalogoInstituciones()
+    : (Array.isArray(window.CARDIO_INSTITUTIONS) ? window.CARDIO_INSTITUTIONS : []);
+  const institution = catalog.find(item => String(item.acronym).toUpperCase() === cleanUni);
+  const facList = institution?.faculties || [];
 
-  selFac.innerHTML = '<option value="">-- Seleccionar Facultad --</option>';
+  selFac.replaceChildren();
+  const empty = document.createElement('option');
+  empty.value = '';
+  empty.textContent = '-- Seleccionar Facultad --';
+  selFac.appendChild(empty);
   let matched = false;
-
-  facList.forEach(f => {
-    const opt = document.createElement('option');
-    opt.value = f.value;
-    opt.textContent = f.label;
-    if (selectedFacultad && (f.value.toLowerCase() === String(selectedFacultad).toLowerCase() || f.label.toLowerCase().includes(String(selectedFacultad).toLowerCase()))) {
-      opt.selected = true;
+  facList.forEach(faculty => {
+    const option = document.createElement('option');
+    option.value = faculty.value;
+    option.textContent = faculty.label;
+    if (selectedFacultad && (String(faculty.value).toLowerCase() === String(selectedFacultad).toLowerCase() || String(faculty.label).toLowerCase().includes(String(selectedFacultad).toLowerCase()))) {
+      option.selected = true;
       matched = true;
     }
-    selFac.appendChild(opt);
+    selFac.appendChild(option);
   });
-
   if (!matched && selectedFacultad) {
-    const customOpt = document.createElement('option');
-    customOpt.value = selectedFacultad;
-    customOpt.textContent = selectedFacultad;
-    customOpt.selected = true;
-    selFac.appendChild(customOpt);
+    const custom = document.createElement('option');
+    custom.value = selectedFacultad;
+    custom.textContent = selectedFacultad;
+    custom.selected = true;
+    selFac.appendChild(custom);
   }
-  // Sin facultad registrada se queda en blanco: no se inventa una al guardar.
 
   const heroFac = document.getElementById('heroFacultad');
-  if (heroFac) {
-    heroFac.textContent = selFac.value || cleanUni;
-  }
+  if (heroFac) heroFac.textContent = selFac.value || cleanUni;
 }
-
 function onProvinciaNacChange(prov, selectedMunicipio) {
   const selMun = document.getElementById('f_municipio');
   if (!selMun) return;
@@ -953,14 +936,16 @@ function seleccionarPaciente(p, h) {
   document.getElementById('heroFechaNac').textContent = p.fechaNac;
   document.getElementById('heroSexo').textContent = p.sexo === 'H' ? 'Hombre' : 'Mujer';
   document.getElementById('heroEstamento').textContent = p.estamento;
-  document.getElementById('heroFacultad').textContent = p.facultad || 'UNEMI';
+  document.getElementById('heroFacultad').textContent = p.facultad || p.universidad || '';
 
   document.getElementById('f_codigo').value = codFicha;
   document.getElementById('f_fecha_nac').value = p.fechaNac;
   document.getElementById('f_edad').value = edadStr;
 
   // Universidad y Facultad
-  const uniVal = window.CARDIO_UNEMI_ONLY ? 'UNEMI' : (p.universidad || 'UNEMI');
+  const uniVal = window.CARDIO_UNEMI_ONLY
+    ? (typeof obtenerInstitucionPredeterminada === 'function' ? obtenerInstitucionPredeterminada() : '')
+    : (p.universidad || '');
   if (document.getElementById('f_universidad')) {
     document.getElementById('f_universidad').value = uniVal;
   }
@@ -1225,11 +1210,12 @@ function restaurarFichaDesdeObjeto(datos) {
     if (input.type === 'checkbox') { input.dataset.answer = ''; input._answerSelect.value = ''; }
   });
   // Inicializar selectores en cascada antes de iterar campos
-  if (datos.f_universidad || window.CARDIO_UNEMI_ONLY) {
-    const universidad = window.CARDIO_UNEMI_ONLY ? 'UNEMI' : datos.f_universidad;
-    if (document.getElementById('f_universidad')) document.getElementById('f_universidad').value = universidad;
-    onUniversidadChange(universidad, datos.f_facultad);
-  }
+  const universidad = window.CARDIO_UNEMI_ONLY
+    ? (typeof obtenerInstitucionPredeterminada === 'function' ? obtenerInstitucionPredeterminada() : '')
+    : (datos.f_universidad || '');
+  const universidadSelect = document.getElementById('f_universidad');
+  if (universidadSelect) universidadSelect.value = universidad;
+  onUniversidadChange(universidad, datos.f_facultad);
   if (datos.f_provincia_nac) {
     if (document.getElementById('f_provincia_nac')) document.getElementById('f_provincia_nac').value = datos.f_provincia_nac;
     onProvinciaNacChange(datos.f_provincia_nac, datos.f_municipio);
@@ -1421,7 +1407,7 @@ function mostrarNotificacionToast(msg) {
 // Contrato de integración estricto con Base_CardioUNEMI_legible.csv (§6 y §7)
 // =============================================================================
 
-// Columnas del CSV exportado: las 112 de BASE UNIFICADO ESPOL + UNEMICarolina,
+// Columnas del CSV exportado: el esquema unificado de referencia,
 // en su orden exacto, menos SINTOMAS_COVID y USTED_CONSUME_HUEVOS, que el usuario
 // descarto por irrelevantes. Es la unica base que se usa como contrato.
 //
@@ -1854,7 +1840,7 @@ function construirRegistro184Columnas() {
   const reg = {};
 
   // 1. UNIVERSIDAD
-  reg['UNIVERSIDAD'] = v('f_universidad') || 'UNEMI';
+  reg['UNIVERSIDAD'] = v('f_universidad') || '';
 
   // 2. AÑO
   const fCod = v('f_codigo');

@@ -6,6 +6,56 @@
 
 let pacientes = [];
 
+function obtenerCatalogoInstituciones() {
+  if (Array.isArray(window.CARDIO_INSTITUTIONS)) return window.CARDIO_INSTITUTIONS;
+  const node = document.getElementById('cardio-institution-catalog');
+  if (!node) return [];
+  try {
+    const data = JSON.parse(node.textContent || '[]');
+    window.CARDIO_INSTITUTIONS = Array.isArray(data) ? data : [];
+  } catch (_) {
+    window.CARDIO_INSTITUTIONS = [];
+  }
+  return window.CARDIO_INSTITUTIONS;
+}
+
+function obtenerInstitucionPredeterminada() {
+  const catalog = obtenerCatalogoInstituciones();
+  return String(
+    catalog.find(item => String(item.acronym).toUpperCase() === 'UNEMI')?.acronym ||
+    catalog[0]?.acronym ||
+    ''
+  );
+}
+
+function poblarSelectInstituciones(select, selectedValue = '') {
+  if (!select) return;
+  const catalog = obtenerCatalogoInstituciones();
+  const selected = String(selectedValue || select.value || '').trim().toUpperCase();
+  select.replaceChildren();
+  if (!catalog.length) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = '-- No hay instituciones activas --';
+    option.disabled = true;
+    option.selected = true;
+    select.appendChild(option);
+    return;
+  }
+  const defaultAcronym = obtenerInstitucionPredeterminada();
+  catalog.forEach(institution => {
+    const option = document.createElement('option');
+    option.value = institution.acronym;
+    option.textContent = `${institution.acronym} - ${institution.name}`;
+    select.appendChild(option);
+  });
+  select.value = catalog.some(item => String(item.acronym).toUpperCase() === selected)
+    ? selected
+    : defaultAcronym;
+}
+
+obtenerCatalogoInstituciones();
+
 /**
  * Carga la cohorte activa de pacientes desde la base de datos PostgreSQL
  * a través de la API REST /clinical/api/pacientes/
@@ -110,34 +160,16 @@ function buscarPacienteExistente(nombre, fechaNac) {
 // CATÁLOGO DE FACULTADES Y MODAL AGREGAR NUEVO PACIENTE
 // =========================================================================
 
-var FACULTADES_POR_UNIVERSIDAD = window.FACULTADES_POR_UNIVERSIDAD || {
-  'UNEMI': [
-    { value: 'FACS', label: 'FACS - Facultad de Salud y Servicios Sociales' },
-    { value: 'FACI', label: 'FACI - Facultad de Ciencias e Ingeniería' },
-    { value: 'FACSO', label: 'FACSO - Ciencias Sociales, Educación Comercial y Derecho' },
-    { value: 'FACE', label: 'FACE - Facultad de Educación' },
-    { value: 'POSGRADO', label: 'Posgrado' }
-  ],
-  'ESPOL': [
-    { value: 'FCV', label: 'FCV - Facultad de Ciencias de la Vida' },
-    { value: 'FIEC', label: 'FIEC - Fac. de Ing. en Electricidad y Computación' },
-    { value: 'FCNM', label: 'FCNM - Fac. de Ciencias Naturales y Matemáticas' },
-    { value: 'FIMCP', label: 'FIMCP - Fac. de Ing. Mecánica y Ciencias de la Producción' },
-    { value: 'FCSH', label: 'FCSH - Fac. de Ciencias Sociales y Humanísticas' },
-    { value: 'FIMCM', label: 'FIMCM - Fac. de Ing. Marítima y Ciencias del Mar' },
-    { value: 'EDCOM', label: 'EDCOM - Escuela de Diseño y Comunicación Visual' }
-  ]
-};
-
 function actualizarFacultadesModal(uni, valorSeleccionado) {
   const selFac = document.getElementById('m_facultad');
   if (!selFac) return;
-  const catalogo = window.FACULTADES_POR_UNIVERSIDAD || FACULTADES_POR_UNIVERSIDAD;
-  const cleanUni = (uni || 'UNEMI').toUpperCase().trim();
-  const facList = catalogo[cleanUni] || catalogo['UNEMI'] || [];
+  const cleanUni = String(uni || '').toUpperCase().trim();
+  const institution = obtenerCatalogoInstituciones().find(
+    item => String(item.acronym).toUpperCase() === cleanUni
+  );
+  const facList = institution?.faculties || [];
 
-  selFac.innerHTML = '';
-  // Opción por defecto "-- Seleccionar --": valor vacío, no se guarda ninguna facultad.
+  selFac.replaceChildren();
   const optNinguna = document.createElement('option');
   optNinguna.value = '';
   optNinguna.textContent = '-- Seleccionar --';
@@ -148,16 +180,23 @@ function actualizarFacultadesModal(uni, valorSeleccionado) {
     const opt = document.createElement('option');
     opt.value = f.value;
     opt.textContent = f.label;
-    if (!seleccionado && valorSeleccionado && (f.value === valorSeleccionado || f.label.toLowerCase().includes(valorSeleccionado.toLowerCase()))) {
+    if (!seleccionado && valorSeleccionado && (String(f.value).toLowerCase() === String(valorSeleccionado).toLowerCase() || String(f.label).toLowerCase().includes(String(valorSeleccionado).toLowerCase()))) {
       opt.selected = true;
       seleccionado = true;
     }
     selFac.appendChild(opt);
   });
-  if (!seleccionado) selFac.value = '';
+  if (valorSeleccionado && !seleccionado) {
+    const custom = document.createElement('option');
+    custom.value = valorSeleccionado;
+    custom.textContent = valorSeleccionado;
+    custom.selected = true;
+    selFac.appendChild(custom);
+  } else if (!seleccionado) {
+    selFac.value = '';
+  }
   aplicarReglaFacultadModal();
 }
-
 // Solo Profesores (PDI) y Estudiantes pertenecen a una facultad. Para el resto
 // de estamentos el desplegable se bloquea en "-- Seleccionar --" y no se envía.
 // Con PDI/Estudiantes "-- Seleccionar --" sigue disponible y es el valor por defecto.
@@ -202,7 +241,8 @@ async function precargarSiguienteCodigo(uni, forzar = false) {
     return;
   }
   try {
-    const u = uni || document.getElementById('m_universidad')?.value || 'UNEMI';
+    const u = uni || document.getElementById('m_universidad')?.value || '';
+    if (!u) return;
     const resp = await fetch(`/clinical/api/pacientes/proximo-codigo/?universidad=${encodeURIComponent(u)}`);
     if (resp.ok) {
       const data = await resp.json();
@@ -311,10 +351,7 @@ function montarModalAgregarPaciente(onListo) {
         <div class="pac-form-row">
           <div class="form-field pac-col-6">
             <label class="field-label">Universidad / Institución *</label>
-            <select class="form-select" id="m_universidad" name="m_universidad" onchange="actualizarFacultadesModal(this.value); precargarSiguienteCodigo(this.value);"${window.CARDIO_UNEMI_ONLY ? ' disabled data-unemi-only="true" style="background:#f1f5f9; color:#64748b; cursor:not-allowed; opacity:.75;"' : ''}>
-              <option value="UNEMI">UNEMI - Universidad Estatal de Milagro</option>
-              ${window.CARDIO_UNEMI_ONLY ? '' : '<option value="ESPOL">ESPOL - Escuela Superior Politécnica del Litoral</option>'}
-            </select>
+            <select class="form-select" id="m_universidad" name="m_universidad" onchange="actualizarFacultadesModal(this.value); precargarSiguienteCodigo(this.value);"${window.CARDIO_UNEMI_ONLY ? ' disabled data-unemi-only="true" style="background:#f1f5f9; color:#64748b; cursor:not-allowed; opacity:.75;"' : ''}></select>
           </div>
           <div class="form-field pac-col-6">
             <label class="field-label">Facultad / Dependencia</label>
@@ -336,6 +373,7 @@ function montarModalAgregarPaciente(onListo) {
   </div>
   `);
 
+  poblarSelectInstituciones(document.getElementById('m_universidad'));
   actualizarFacultadesModal(document.getElementById('m_universidad').value);
 
   const codInput = document.getElementById('m_codigo');
@@ -363,7 +401,7 @@ async function abrirModalAgregarPaciente() {
   const modal = document.getElementById('modalAdd');
   if (modal) {
     modal.classList.add('active');
-    const uni = document.getElementById('m_universidad')?.value || 'UNEMI';
+    const uni = document.getElementById('m_universidad')?.value || obtenerInstitucionPredeterminada();
     actualizarFacultadesModal(uni);
     await precargarSiguienteCodigo(uni);
     document.getElementById('m_nombres')?.focus();
@@ -392,8 +430,9 @@ function cerrarModalAgregarPaciente() {
     document.getElementById('m_fecha_nac').value = '';
     document.getElementById('m_edad').value = '';
     const selUni = document.getElementById('m_universidad');
-    if (selUni) selUni.value = 'UNEMI';
-    actualizarFacultadesModal('UNEMI');
+    const defaultInstitution = obtenerInstitucionPredeterminada();
+    if (selUni) selUni.value = defaultInstitution;
+    actualizarFacultadesModal(defaultInstitution);
     document.getElementById('m_telefono').value = '';
     document.getElementById('m_correo').value = '';
   }
@@ -415,7 +454,12 @@ async function guardarPacienteDelModal() {
   const cedula = document.getElementById('m_cedula').value.trim();
   const sexo = document.getElementById('m_sexo').value;
   const estamento = document.getElementById('m_estamento').value;
-  const universidad = document.getElementById('m_universidad')?.value || 'UNEMI';
+  const universidad = document.getElementById('m_universidad')?.value || '';
+  if (!universidad) {
+    alert('Seleccione una institución activa del catálogo.');
+    document.getElementById('m_universidad')?.focus();
+    return;
+  }
   const selFacultad = document.getElementById('m_facultad');
   const facultad = (selFacultad && !selFacultad.disabled && estamentoTieneFacultad(estamento))
     ? selFacultad.value

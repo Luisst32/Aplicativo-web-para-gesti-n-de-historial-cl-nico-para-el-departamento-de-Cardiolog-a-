@@ -26,11 +26,18 @@ from django.contrib.auth.hashers import make_password
 from django.urls import reverse
 
 from catalog.models import (
-    Country, Province, Canton, Institution,
+    Country, Province, Canton,
     Sex, Ethnicity, StaffCategory, ProfessionalCategory,
     EducationLevel, IncomeRange, MaritalStatus,
     LivingSituation, HousingType, WorkSchedule,
     EcgRhythm, Question, AnswerOption, QuestionnaireSection
+)
+from catalog.institutions import (
+    InstitutionResolutionError,
+    filter_to_selectable_institutions,
+    institution_catalog_payload,
+    resolve_selectable_institution,
+    selectable_institutions,
 )
 from clinical.models import (
     Patient, Visit, Anthropometry, VitalSigns,
@@ -51,6 +58,14 @@ from clinical.services.record_selection import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _ensure_selectable_institutions(records):
+    allowed_ids = set(selectable_institutions().values_list('pk', flat=True))
+    for record in records:
+        patient = getattr(record, 'patient', record)
+        if patient.institution_id not in allowed_ids:
+            raise Http404
 
 
 from clinical.services.sav_importer import (
@@ -154,9 +169,9 @@ def _patient_to_dict(patient, visit=None):
         "fechaNac": patient.birth_date.isoformat() if patient.birth_date else "",
         "sexo": "H" if (patient.sex and patient.sex.name.lower().startswith('h')) else "M",
         "estamento": visit.staff_category.name if (visit and visit.staff_category) else "PDI",
-        "universidad": patient.institution.acronym if (patient.institution and patient.institution.acronym) else "UNEMI",
-        "institucion": patient.institution.acronym if (patient.institution and patient.institution.acronym) else "UNEMI",
-        "institucion_nombre": patient.institution.name if (patient.institution and patient.institution.name) else (patient.institution.acronym if patient.institution else "UNEMI"),
+        "universidad": patient.institution.acronym if (patient.institution and patient.institution.acronym) else "",
+        "institucion": patient.institution.acronym if (patient.institution and patient.institution.acronym) else "",
+        "institucion_nombre": patient.institution.name if (patient.institution and patient.institution.name) else (patient.institution.acronym if patient.institution else ""),
         "facultad": visit.faculty if visit and visit.faculty else "",
         "ciudad": visit.residence_canton.name if (visit and visit.residence_canton) else (patient.birth_canton.name if patient.birth_canton else "Milagro"),
         "provincia": visit.residence_canton.province.name.upper() if (visit and visit.residence_canton and visit.residence_canton.province) else "GUAYAS",
@@ -198,8 +213,15 @@ def form_view(request):
     Renders the clinical evaluation form template.
     Data is populated asynchronously via form_get_api or initial context.
     """
+    institution_catalog = institution_catalog_payload()
+    default_institution = next(
+        (row['acronym'] for row in institution_catalog if row['acronym'].upper() == 'UNEMI'),
+        institution_catalog[0]['acronym'] if institution_catalog else '',
+    )
     return render(request, 'clinical/form.html', {
         'unemi_only': getattr(settings, 'UNEMI', False),
+        'institution_catalog': institution_catalog,
+        'default_institution': default_institution,
     })
 
 
@@ -211,24 +233,24 @@ def list_view(request):
     Renders the patients directory and medical evaluations list.
     Populates dynamic filters for available years, staff categories and institutions (HU-15, HU-16).
     """
-    active_patients = Patient.objects.filter(status=Patient.Status.ACTIVE)
-    if getattr(settings, 'UNEMI', False):
-        active_patients = active_patients.filter(institution__acronym__iexact='UNEMI')
+    institution_catalog = institution_catalog_payload()
+    available_institutions = institution_catalog
+    active_patients = filter_to_selectable_institutions(
+        Patient.objects.filter(status=Patient.Status.ACTIVE)
+    )
     total_pacientes = active_patients.count()
 
     from django.utils import timezone
     from django.db.models.functions import ExtractYear
-    from catalog.models import StaffCategory, Institution
+    from catalog.models import StaffCategory
 
     # Detección dinámica inteligente: ÚNICAMENTE los años de visitas de pacientes activos existentes
-    years_qs = Visit.objects.filter(
+    years_qs = filter_to_selectable_institutions(Visit.objects.filter(
         visit_date__isnull=False,
         patient__status=Patient.Status.ACTIVE
     ).annotate(
         v_year=ExtractYear('visit_date')
-    ).values_list('v_year', flat=True).distinct()
-    if getattr(settings, 'UNEMI', False):
-        years_qs = years_qs.filter(patient__institution__acronym__iexact='UNEMI')
+    ), 'patient__institution').values_list('v_year', flat=True).distinct()
 
     years_set = {int(y) for y in years_qs if y is not None and 1900 < int(y) < 2200}
     if not years_set:
@@ -237,10 +259,12 @@ def list_view(request):
 
     # Estamentos institucionales presentes en visitas de la cohorte activa
     estamentos_qs = list(
-        Visit.objects.filter(
-            patient__status=Patient.Status.ACTIVE,
-            staff_category__isnull=False,
-            **({'patient__institution__acronym__iexact': 'UNEMI'} if getattr(settings, 'UNEMI', False) else {})
+        filter_to_selectable_institutions(
+            Visit.objects.filter(
+                patient__status=Patient.Status.ACTIVE,
+                staff_category__isnull=False,
+            ),
+            'patient__institution',
         ).values_list('staff_category__name', flat=True).distinct().order_by('staff_category__name')
     )
     if not estamentos_qs:
@@ -261,33 +285,10 @@ def list_view(request):
         for name in estamentos_qs
     ]
 
-    # Instituciones presentes en pacientes activos de la cohorte
-    inst_ids = list(
-        Patient.objects.filter(
-            status=Patient.Status.ACTIVE,
-            institution__isnull=False
-        ).values_list('institution_id', flat=True).distinct()
-    )
-    if getattr(settings, 'UNEMI', False):
-        inst_ids = list(
-            Institution.objects.filter(acronym__iexact='UNEMI').values_list('institution_id', flat=True)
-        )
-    if inst_ids:
-        available_institutions = list(
-            Institution.objects.filter(institution_id__in=inst_ids)
-            .order_by('acronym')
-            .values('institution_id', 'acronym', 'name')
-        )
-    else:
-        available_institutions = list(
-            Institution.objects.filter(status=Institution.Status.ACTIVE)
-            .order_by('acronym')
-            .values('institution_id', 'acronym', 'name')
-        )
-
     return render(request, 'clinical/list.html', {
         'total_pacientes': total_pacientes,
         'available_institutions': available_institutions,
+        'institution_catalog': institution_catalog,
         'available_years': available_years,
         'available_estamentos': available_estamentos,
         'unemi_only': getattr(settings, 'UNEMI', False),
@@ -319,9 +320,7 @@ def patient_list_api(request):
         'visit__living_situation', 'visit__education_level', 'visit__work_schedule',
         'visit__professional_category', 'visit__housing_type', 'visit__income_range'
     ).prefetch_related('visit__answers__question')
-
-    if getattr(settings, 'UNEMI', False):
-        qs = qs.filter(institution__acronym__iexact='UNEMI')
+    qs = filter_to_selectable_institutions(qs)
 
     q = request.GET.get('q', '').strip()
     if q:
@@ -424,6 +423,7 @@ def patient_detail_api(request, patient_id):
     Returns full details for a single patient and their clinical visit.
     """
     patient = selected_patients([patient_id])[0]
+    _ensure_selectable_institutions([patient])
 
     return JsonResponse({
         "success": True,
@@ -441,14 +441,13 @@ def patient_next_code_api(request):
     """
     try:
         uni = request.GET.get('universidad', '').strip()
-        qs = Visit.objects.all()
+        qs = filter_to_selectable_institutions(Visit.objects.all(), 'patient__institution')
         if uni and uni.lower() != 'all':
-            inst = (
-                Institution.objects.filter(acronym__iexact=uni).first() or
-                Institution.objects.filter(name__icontains=uni).first()
-            )
-            if inst:
-                qs = qs.filter(patient__institution=inst)
+            try:
+                inst = resolve_selectable_institution(uni)
+            except InstitutionResolutionError as exc:
+                return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+            qs = qs.filter(patient__institution=inst)
 
         codes = qs.values_list('study_code', flat=True)
         numeric_codes = []
@@ -520,7 +519,14 @@ def patient_create_api(request):
         fecha_nac = (data.get('fecha_nac') or data.get('fecha_nacimiento') or '').strip()
         sexo_str = data.get('sexo', 'H').strip().upper()
         estamento_str = data.get('estamento', 'PDI').strip()
-        universidad_str = data.get('universidad', 'UNEMI').strip().upper()
+        universidad_str = (data.get('universidad') or '').strip()
+        try:
+            inst = resolve_selectable_institution(
+                universidad_str,
+                allow_single_default=True,
+            )
+        except InstitutionResolutionError as exc:
+            return JsonResponse({'success': False, 'error': str(exc)}, status=400)
         # Solo Profesores (PDI) y Estudiantes tienen facultad; el resto no guarda ninguna.
         facultad = (data.get('facultad') or '').strip()
         if estamento_str.upper() not in ('PDI', 'ESTUDIANTES'):
@@ -567,11 +573,6 @@ def patient_create_api(request):
             with connection.cursor() as cursor:
                 cursor.execute('SELECT pg_advisory_xact_lock(71342001)')
             # Catálogos base
-            inst = (
-                Institution.objects.filter(acronym__iexact=universidad_str).first() or
-                Institution.objects.filter(name__icontains=universidad_str).first() or
-                Institution.objects.first()
-            )
             sexo = Sex.objects.filter(name__istartswith=sexo_str[0]).first() or Sex.objects.first()
             mestizo = Ethnicity.objects.filter(name="Mestizo").first() or Ethnicity.objects.first()
             milagro = Canton.objects.filter(name="Milagro").first() or Canton.objects.first()
@@ -1016,7 +1017,7 @@ def _build_form_datos(patient, visit):
         "f_correo": email_val,
         "f_codigo": visit.study_code if visit else "",
         "f_fecha_visita": visit.visit_date.isoformat() if (visit and visit.visit_date) else "",
-        "f_universidad": patient.institution.acronym if (patient.institution and patient.institution.acronym) else "UNEMI",
+        "f_universidad": patient.institution.acronym if (patient.institution and patient.institution.acronym) else "",
         "f_facultad": visit.faculty if visit and visit.faculty else "",
         "f_visita": str(visit.visit_number) if (visit and visit.visit_number) else "1",
         "f_estamento": visit.staff_category.name if (visit and visit.staff_category) else "PDI",
@@ -1552,6 +1553,7 @@ def form_get_api(request, patient_id):
     Fetches the full database record for a patient to populate form.html fields.
     """
     patient = selected_patients([patient_id])[0]
+    _ensure_selectable_institutions([patient])
 
     visit = getattr(patient, 'visit', None)
     datos = _build_form_datos(patient, visit)
@@ -1593,6 +1595,7 @@ def form_save_api(request):
             raise RecordSelectionError('Identificadores de paciente contradictorios.')
         # Demographic fields never select a record for update.
         patient = selected_patients(list(ids))[0]
+        _ensure_selectable_institutions([patient])
 
         # Validaciones de rangos clínicos (HU-18)
         peso_raw = raw_data.get('f_peso')
@@ -1647,6 +1650,8 @@ def form_save_api(request):
         return JsonResponse({'success': False, 'error': ' | '.join(error.messages)}, status=400)
     except RecordSelectionError:
         raise
+    except Http404:
+        raise
     except Exception as e:
         logger.error("Clinical operation failed (%s).", type(e).__name__)
         return JsonResponse({"success": False, "error": "No se pudo completar la operacion."}, status=500)
@@ -1693,6 +1698,7 @@ def export_pdf_view(request, visit_id=None):
     else:
         raise RecordSelectionError('Seleccione un paciente o una ficha clínica.')
 
+    _ensure_selectable_institutions([visit])
     pdf_bytes = generate_clinical_sheet_pdf(visit, is_blank=False)
     study_code_clean = (visit.study_code or f"V{visit.visit_id}").replace('/', '-').replace(' ', '_')
     filename = f"Cuestionario_UNEMI_{study_code_clean}.pdf"
@@ -1738,6 +1744,7 @@ def api_download_batch_pdf(request):
         raw_ids = request.POST.get('patient_ids', '')
 
     visits_list = selected_visits(raw_ids)
+    _ensure_selectable_institutions(visits_list)
 
     if len(visits_list) == 1:
         v = visits_list[0]
@@ -1821,6 +1828,7 @@ def api_send_patient_sheet_email(request):
 
     # Validar en el servidor que las fichas/visitas seleccionadas existan y sean legítimas
     visits_list = selected_visits(patient_ids)
+    _ensure_selectable_institutions(visits_list)
 
     primary_visit = visits_list[0]
     results = []
@@ -1974,6 +1982,7 @@ def public_secure_share_view(request, token):
     visits = share.get_visits()
     if not visits:
         raise Http404("No se encontraron documentos asociados a este enlace seguro.")
+    _ensure_selectable_institutions(visits)
 
     is_unlocked = request.session.get(f'share_unlocked_{share.share_id}', False)
     error_msg = None
@@ -2255,6 +2264,7 @@ def ficha_eliminar_api(request):
             }, status=400)
 
         patients_list = selected_patients(raw_ids)
+        _ensure_selectable_institutions(patients_list)
 
         deleted_ids = []
         deleted_names = []
@@ -2298,6 +2308,8 @@ def ficha_eliminar_api(request):
         })
 
     except RecordSelectionError:
+        raise
+    except Http404:
         raise
     except Exception as e:
         return JsonResponse({

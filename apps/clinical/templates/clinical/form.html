@@ -510,7 +510,8 @@
 {% endblock %}
 
 {% block extra_js %}
+  {{ institution_catalog|json_script:"cardio-institution-catalog" }}
   <script>window.CARDIO_UNEMI_ONLY = {% if unemi_only %}true{% else %}false{% endif %};</script>
-  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261120_v04"></script>
-  <script src="{% static 'clinical/js/form.js' %}?v=20261120_v02"></script>
+  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261123_institutions01"></script>
+  <script src="{% static 'clinical/js/form.js' %}?v=20261123_institutions01"></script>
 {% endblock %}

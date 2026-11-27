@@ -20,10 +20,11 @@
               <div class="form-field">
                 <label class="field-label">Universidad</label>
                 <select class="form-select" id="f_universidad" name="f_universidad" onchange="onUniversidadChange(this.value)"{% if unemi_only %} disabled data-unemi-only="true" style="background:#f1f5f9; color:#64748b; cursor:not-allowed; opacity:.75;"{% endif %}>
-                  <option value="UNEMI" selected>UNEMI</option>
-                  {% if not unemi_only %}
-                  <option value="ESPOL">ESPOL</option>
-                  {% endif %}
+                  {% for inst in institution_catalog %}
+                  <option value="{{ inst.acronym }}"{% if inst.acronym == default_institution %} selected{% endif %}>{{ inst.acronym }} - {{ inst.name }}</option>
+                  {% empty %}
+                  <option value="" selected disabled>-- No hay instituciones activas --</option>
+                  {% endfor %}
                 </select>
               </div>
               <div class="form-field">

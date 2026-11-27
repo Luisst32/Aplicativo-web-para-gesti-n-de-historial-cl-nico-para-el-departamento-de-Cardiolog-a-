@@ -495,7 +495,7 @@
                 {% for inst in available_institutions %}
                 <option value="{{ inst }}" selected>{{ inst }}</option>
                 {% empty %}
-                <option value="UNEMI" selected>UNEMI</option>
+                <option value="" selected disabled>UNEMI no está configurada</option>
                 {% endfor %}
               {% else %}
                 <option value="all">Todas las Instituciones</option>
@@ -798,7 +798,7 @@
     };
   </script>
 
-  <script src="{% static 'dashboard/js/core/dashboard-core.js' %}?v=20261121_calc03"></script>
+  <script src="{% static 'dashboard/js/core/dashboard-core.js' %}?v=20261123_institution_catalog01"></script>
   <script src="{% static 'dashboard/js/core/chart-style.js' %}?v=20261118_forest01"></script>
   <script src="{% static 'dashboard/js/sections/resumen-general.js' %}?v=20261121_calc03"></script>
   <script src="{% static 'dashboard/js/sections/datos-individuo.js' %}?v=20261121_income_risk01"></script>
@@ -809,5 +809,5 @@
   <script src="{% static 'dashboard/js/sections/historia-no-cardio.js' %}?v=20261120_scale02"></script>
   <script src="{% static 'dashboard/js/sections/covid-19.js' %}?v=20261120_scale02"></script>
   <script src="{% static 'dashboard/js/sections/electrocardiograma.js' %}?v=20261121_fc_source01"></script>
-    <script src="{% static 'dashboard/js/core/dashboard-export.js' %}?v=20261120_html08"></script>
+    <script src="{% static 'dashboard/js/core/dashboard-export.js' %}?v=20261126_export_hd02"></script>
 {% endblock %}

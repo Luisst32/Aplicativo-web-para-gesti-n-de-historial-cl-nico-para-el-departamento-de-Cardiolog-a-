@@ -1,4 +1,4 @@
-from .geography import Country, Province, Canton, Institution
+from .geography import Country, Province, Canton, Institution, InstitutionFaculty
 from .demographics import (
     Sex,
     Ethnicity,
@@ -19,6 +19,7 @@ __all__ = [
     'Province',
     'Canton',
     'Institution',
+    'InstitutionFaculty',
     'Sex',
     'Ethnicity',
     'StaffCategory',

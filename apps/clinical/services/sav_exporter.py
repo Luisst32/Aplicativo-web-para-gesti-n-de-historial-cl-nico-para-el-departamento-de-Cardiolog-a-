@@ -24,6 +24,12 @@ import pyreadstat
 import pyreadr
 from django.conf import settings
 
+from catalog.institutions import (
+    InstitutionResolutionError,
+    filter_to_selectable_institutions,
+    resolve_selectable_institution,
+    selectable_institutions,
+)
 from clinical.services.record_selection import selected_visits
 from clinical.models import Patient, Visit, VisitAnswer
 from clinical.services.sav_importer import normalize_var_name
@@ -171,10 +177,24 @@ def get_sav_template_metadata():
     # La matriz entregada por investigación es la fuente de verdad del orden,
     # nombres, tipos y etiquetas.  El JSON histórico de 342 variables no debe
     # reconstruir otra matriz ni agregar columnas que no existen en el .sav.
-    reference_candidates = [
-        Path(settings.BASE_DIR).parent / 'datos' / 'MATRIZ CARDIOESPOL 2026 FINAL.sav',
-        Path(settings.BASE_DIR) / 'datos' / 'MATRIZ CARDIOESPOL 2026 FINAL.sav',
-    ]
+    configured_reference = os.getenv('CARDIO_SAV_REFERENCE', '').strip()
+    reference_candidates = [Path(configured_reference)] if configured_reference else []
+    reference_directories = (
+        Path(settings.BASE_DIR).parent / 'datos',
+        Path(settings.BASE_DIR) / 'datos',
+    )
+    for directory in reference_directories:
+        if directory.is_dir():
+            reference_candidates.extend(sorted(
+                directory.glob('MATRIZ CARDIO*FINAL.sav'),
+                key=lambda path: path.stat().st_mtime,
+                reverse=True,
+            ))
+            reference_candidates.extend(sorted(
+                directory.glob('MATRIZ CARDIO*.sav'),
+                key=lambda path: path.stat().st_mtime,
+                reverse=True,
+            ))
     reference_path = next((p for p in reference_candidates if p.exists()), None)
     spec_json_path = Path(__file__).resolve().parent / 'sav_columns_spec.json'
 
@@ -267,6 +287,46 @@ def get_sav_template_metadata():
         'lbl_to_val_map': lbl_to_val_map
     }
     return _SAV_TEMPLATE_CACHE
+
+
+def _institution_export_codes(value_labels):
+    """Match admin-enabled institutions to existing SPSS labels, then allocate new codes."""
+    updated_labels = dict(value_labels or {})
+    university_labels = dict(updated_labels.get('UNIVERSIDAD', {}) or {})
+    code_by_institution = {}
+    used_codes = set()
+    enabled_institutions = list(selectable_institutions())
+
+    for raw_code, label in university_labels.items():
+        try:
+            number = float(raw_code)
+            code = int(number) if number.is_integer() else number
+            used_codes.add(code)
+        except (TypeError, ValueError):
+            continue
+        try:
+            institution = resolve_selectable_institution(
+                label=label,
+                institutions=enabled_institutions,
+            )
+        except InstitutionResolutionError:
+            continue
+        code_by_institution.setdefault(institution.pk, code)
+
+    next_code = max((code for code in used_codes if isinstance(code, (int, float))), default=0) + 1
+    for institution in enabled_institutions:
+        if institution.pk in code_by_institution:
+            continue
+        while next_code in used_codes:
+            next_code += 1
+        code_by_institution[institution.pk] = next_code
+        university_labels[next_code] = institution.acronym
+        used_codes.add(next_code)
+        next_code += 1
+
+    if 'UNIVERSIDAD' in updated_labels or code_by_institution:
+        updated_labels['UNIVERSIDAD'] = university_labels
+    return code_by_institution, updated_labels
 
 
 def _is_yes(val):
@@ -505,14 +565,18 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
         'ordered_studies', 'source_dataset'
     ).order_by('visit_id')
 
-    if getattr(settings, 'UNEMI', False):
-        visits_qs = visits_qs.filter(patient__institution__acronym__iexact='UNEMI')
+    visits_qs = filter_to_selectable_institutions(visits_qs, 'patient__institution')
 
     if institution_id not in (None, '', 'all'):
         try:
-            visits_qs = visits_qs.filter(patient__institution_id=int(institution_id))
+            institution_id = int(institution_id)
         except (TypeError, ValueError):
             raise ValueError('La institución seleccionada no es válida.')
+
+    if institution_id not in (None, '', 'all'):
+        if not selectable_institutions().filter(pk=institution_id).exists():
+            raise ValueError('La instituciÃ³n seleccionada no está habilitada.')
+        visits_qs = visits_qs.filter(patient__institution_id=institution_id)
 
     if patient_ids is not None:
         visits = selected_visits(patient_ids, active_only=True)
@@ -537,6 +601,7 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
             })
 
     # 2. Cargar todas las respuestas clínicas en bloque
+    institution_export_codes, col_value_labels = _institution_export_codes(col_value_labels)
     answers_by_visit = {}
     va_qs = VisitAnswer.objects.filter(visit__in=visits).select_related('question', 'selected_option')
     for va in va_qs:
@@ -578,14 +643,14 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
                 val = (p.phone if p and p.phone else '') or val
             elif col in {'EMAIL', 'CORREO'}:
                 val = (p.email if p and p.email else '') or val
+            elif col == 'UNIVERSIDAD':
+                val = institution_export_codes.get(p.institution_id, np.nan) if p and p.institution_id else np.nan
 
             # Mapeo de respaldo desde modelos relacionales de la BD y nuevos campos 2026
             elif not explicitly_empty and (val is None or str(val).strip() == ''):
                 c_up = col.upper()
                 if clean.upper() in {'CODIGO', 'CODIGONUEV'}:
                     val = v.study_code
-                elif col == 'UNIVERSIDAD':
-                    val = 2.0 if (p and p.institution and 'ESPOL' in p.institution.acronym.upper()) else 1.0
                 elif col == 'FECHA':
                     val = v.visit_date
                 elif col in {'AÑO', 'ANO'}:

@@ -109,11 +109,11 @@ class Command(BaseCommand):
         # 2. Institución
         unemi, _ = Institution.objects.get_or_create(
             acronym="UNEMI",
-            defaults={"name": "Universidad Estatal de Milagro", "status": Institution.Status.ACTIVE}
-        )
-        espol, _ = Institution.objects.get_or_create(
-            acronym="ESPOL",
-            defaults={"name": "Escuela Superior Politécnica del Litoral", "status": Institution.Status.ACTIVE}
+            defaults={
+                "name": "Universidad Estatal de Milagro",
+                "status": Institution.Status.ACTIVE,
+                "is_selectable": True,
+            }
         )
 
         # 3. Sociodemográficos

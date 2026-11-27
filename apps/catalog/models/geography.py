@@ -105,6 +105,11 @@ class Institution(models.Model):
     institution_id = models.AutoField(primary_key=True, db_column='institution_id')
     acronym = models.CharField(max_length=20, db_column='acronym')
     name = models.CharField(max_length=150, db_column='name')
+    is_selectable = models.BooleanField(
+        default=True,
+        db_column='is_selectable',
+        help_text="Permite usar esta institución en formularios, filtros e importaciones."
+    )
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
@@ -123,3 +128,40 @@ class Institution(models.Model):
 
     def __str__(self):
         return f"{self.acronym} - {self.name}"
+
+
+class InstitutionFaculty(models.Model):
+    """Faculty/dependency options administered separately for each institution."""
+
+    class Status(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Active'
+        INACTIVE = 'INACTIVE', 'Inactive'
+
+    institution_faculty_id = models.AutoField(primary_key=True, db_column='institution_faculty_id')
+    institution = models.ForeignKey(
+        Institution,
+        on_delete=models.CASCADE,
+        related_name='faculties',
+        db_column='institution_id',
+    )
+    code = models.CharField(max_length=40, db_column='code')
+    name = models.CharField(max_length=150, db_column='name')
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        db_column='status',
+    )
+
+    class Meta:
+        db_table = 'catalog"."institution_faculty'
+        constraints = [
+            models.UniqueConstraint(fields=['institution', 'code'], name='uq_institution_faculty_code'),
+            models.UniqueConstraint(fields=['institution', 'name'], name='uq_institution_faculty_name'),
+        ]
+        ordering = ('name',)
+        verbose_name = 'Institution faculty'
+        verbose_name_plural = 'Institution faculties'
+
+    def __str__(self):
+        return f"{self.institution.acronym} - {self.name}"

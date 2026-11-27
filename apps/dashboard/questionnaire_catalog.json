@@ -5,10 +5,7 @@
       "label": "Universidad",
       "section": "Datos del Individuo",
       "kind": "category",
-      "options": {
-        "UNEMI": "UNEMI",
-        "ESPOL": "ESPOL"
-      }
+      "options": {}
     },
     "f_facultad": {
       "label": "Facultad de la Universidad",

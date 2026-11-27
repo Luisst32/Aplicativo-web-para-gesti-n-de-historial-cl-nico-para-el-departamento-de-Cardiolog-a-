@@ -11,7 +11,11 @@ from pathlib import Path
 from security.access import require_clinical_access
 from clinical.services.import_tickets import store_upload, InvalidImportTicket, ERROR_MESSAGE
 
-from catalog.models import Institution
+from catalog.institutions import (
+    InstitutionResolutionError,
+    resolve_selectable_institution,
+    selectable_institutions,
+)
 from clinical.models import Patient, Visit
 
 from .constants import (
@@ -88,6 +92,30 @@ def _analyze_staged_dataset(temp_path, filename, temp_token=None, reader_fn=None
             field_to_col[matched_field] = col
             col_to_field[col] = matched_field
 
+    institution_col = field_to_col.get('universidad')
+    row_institutions = []
+    selectable_institution_rows = list(selectable_institutions())
+    try:
+        for row_index in range(total_rows):
+            value = df_dict[institution_col][row_index] if institution_col else None
+            label = ''
+            if institution_col:
+                _, label = _get_val_and_label(
+                    value,
+                    meta.variable_value_labels.get(institution_col, {}),
+                )
+            row_institutions.append(resolve_selectable_institution(
+                value=value,
+                label=label,
+                allow_single_default=True,
+                institutions=selectable_institution_rows,
+            ))
+    except InstitutionResolutionError as exc:
+        return {
+            'success': False,
+            'error': f"No se puede importar la fila {row_index + 1}: {exc}",
+        }
+
     # Diagnóstico de estructura y columnas
     warnings = []
     missing_fields = []
@@ -118,9 +146,6 @@ def _analyze_staged_dataset(temp_path, filename, temp_token=None, reader_fn=None
         })
 
     # 5. Detección de Duplicados Internos en el Archivo y con la Base de Datos
-    inst_unemi = Institution.objects.filter(acronym__iexact='UNEMI').first() or Institution.objects.first()
-    inst_espol = Institution.objects.filter(acronym__iexact='ESPOL').first() or inst_unemi
-
     db_visits = Visit.objects.select_related('patient', 'patient__institution').all()
     db_visits_map = {
         (v.patient.institution_id, str(v.study_code)): (v.patient.full_name if v.patient else f"Código {v.study_code}")
@@ -137,12 +162,7 @@ def _analyze_staged_dataset(temp_path, filename, temp_token=None, reader_fn=None
     new_patients_count = 0
 
     for idx_row in range(total_rows):
-        row_inst = inst_unemi
-        if 'universidad' in field_to_col:
-            u_val = df_dict[field_to_col['universidad']][idx_row]
-            _, u_lbl = _get_val_and_label(u_val, meta.variable_value_labels.get(field_to_col['universidad'], {}))
-            if 'ESPOL' in u_lbl.upper() or u_val == 2.0:
-                row_inst = inst_espol
+        row_inst = row_institutions[idx_row]
 
         c_str = None
         if has_codigo:
@@ -163,7 +183,7 @@ def _analyze_staged_dataset(temp_path, filename, temp_token=None, reader_fn=None
         if file_key in codes_seen_in_file:
             internal_duplicates.append({
                 "code": c_str,
-                "institution": row_inst.acronym if row_inst else "UNEMI",
+                "institution": row_inst.acronym if row_inst else "",
                 "rows": [codes_seen_in_file[file_key] + 1, idx_row + 1]
             })
         else:
@@ -183,7 +203,7 @@ def _analyze_staged_dataset(temp_path, filename, temp_token=None, reader_fn=None
             db_duplicates.append({
                 "row": idx_row + 1,
                 "code": c_str,
-                "institution": row_inst.acronym if row_inst else "UNEMI",
+                "institution": row_inst.acronym if row_inst else "",
                 "patient_name": dup_name or f"Código {c_str}"
             })
         else:
@@ -231,8 +251,7 @@ def _analyze_staged_dataset(temp_path, filename, temp_token=None, reader_fn=None
 
         # Determinar si este registro de previsualización es duplicado existente
         prev_sc = row_data.get('codigo')
-        prev_u = (row_data.get('universidad') or '').upper()
-        prev_inst = inst_espol if 'ESPOL' in prev_u else inst_unemi
+        prev_inst = row_institutions[i]
         prev_key = (prev_inst.institution_id if prev_inst else 1, prev_sc)
         is_preview_dup = prev_key in db_visits_map
         row_data['is_duplicate'] = is_preview_dup

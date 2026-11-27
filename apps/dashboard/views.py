@@ -79,6 +79,7 @@ def _dashboard_chrome_binary():
         r'C:\Program Files\Google\Chrome\Application\chrome.exe',
         r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
         r'C:\Program Files\Microsoft\Edge\Application\msedge.exe',
+        r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
     ])
     for candidate in candidates:
         if candidate and Path(candidate).is_file():
@@ -97,12 +98,25 @@ def export_dashboard_html_pdf(request):
     endpoint only invokes a fixed local Chromium executable; it never accepts a
     command or URL from the client and rejects scripts in the submitted report.
     """
-    max_payload = 18 * 1024 * 1024
-    if len(request.body) > max_payload:
+    max_payload = 48 * 1024 * 1024
+    content_length = request.META.get('CONTENT_LENGTH', '').strip()
+    if content_length:
+        try:
+            declared_length = int(content_length)
+        except ValueError:
+            return JsonResponse({'error': 'El tamaño del reporte HTML no es válido.'}, status=400)
+        if declared_length < 0:
+            return JsonResponse({'error': 'El tamaño del reporte HTML no es válido.'}, status=400)
+        if declared_length > max_payload:
+            return JsonResponse({'error': 'El reporte HTML supera el tamaño permitido.'}, status=413)
+
+    # Leer con un límite propio para no activar DATA_UPLOAD_MAX_MEMORY_SIZE global.
+    raw_body = request.read(max_payload + 1)
+    if len(raw_body) > max_payload:
         return JsonResponse({'error': 'El reporte HTML supera el tamaño permitido.'}, status=413)
 
     try:
-        payload = json.loads(request.body.decode('utf-8'))
+        payload = json.loads(raw_body.decode('utf-8'))
     except (UnicodeDecodeError, json.JSONDecodeError):
         return JsonResponse({'error': 'El reporte HTML no es válido.'}, status=400)
 
@@ -135,9 +149,10 @@ def export_dashboard_html_pdf(request):
                 '--disable-background-networking',
                 '--disable-sync',
                 '--allow-file-access-from-files',
+                '--force-device-scale-factor=2',
                 '--no-pdf-header-footer',
                 '--run-all-compositor-stages-before-draw',
-                '--virtual-time-budget=1500',
+                '--virtual-time-budget=2000',
                 f'--user-data-dir={profile_path}',
                 f'--print-to-pdf={pdf_path}',
                 html_path.as_uri(),

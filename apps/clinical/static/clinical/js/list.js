@@ -8,6 +8,7 @@
 // IDs de pacientes marcados con checkbox para exportación masiva
 const seleccionados = new Set();
 const pacientesCache = new Map();
+let revisionSeleccion = 0;
 
 // Estado de ordenamiento (Código 1, 2, 3, 4, 5... por defecto)
 let columnaOrdenActual = 'codigo';
@@ -20,6 +21,16 @@ let totalPacientesServidor = 0;
 let cargandoPacientes = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
+  const pacientesTbody = document.getElementById('pacientesTbody');
+  if (pacientesTbody) {
+    pacientesTbody.addEventListener('change', event => {
+      const target = event.target instanceof Element ? event.target : null;
+      const checkPaciente = target?.closest('input[type="checkbox"][data-id]');
+      if (!checkPaciente || !pacientesTbody.contains(checkPaciente)) return;
+      toggleSeleccion(checkPaciente.dataset.id, checkPaciente.checked);
+    });
+  }
+
   // Listeners de búsqueda y filtros con recarga bajo demanda
   let debounceBusqueda = null;
   const filtroBusqueda = document.getElementById('filtroBusqueda');
@@ -248,52 +259,19 @@ function actualizarOpcionesFiltrosDinamicos() {
     }
   }
 
-  // 3. DINAMISMO INTELIGENTE PARA FILTRO DE INSTITUCIÓN
-  // Solo se agregan las instituciones reales de los pacientes que existen
+  // 3. Las instituciones permitidas vienen del catálogo administrado en el servidor.
   const selInstitucion = document.getElementById('filtroInstitucion');
   if (selInstitucion) {
     const unemiOnly = selInstitucion.dataset.unemiOnly === 'true';
     if (unemiOnly) {
-      selInstitucion.innerHTML = '<option value="UNEMI" selected>UNEMI</option>';
-      selInstitucion.value = 'UNEMI';
+      const option = Array.from(selInstitucion.options).find(
+        item => String(item.value).toUpperCase() === 'UNEMI'
+      );
+      selInstitucion.value = option ? option.value : '';
       selInstitucion.disabled = true;
-      return;
-    }
-    const rawInst = selInstitucion.value ? selInstitucion.value.trim() : 'all';
-    const instSeleccionada = (!rawInst || rawInst.toLowerCase() === 'all') ? 'all' : rawInst;
-    const instSet = new Set();
-
-    if (Array.isArray(pacientes) && pacientes.length > 0) {
-      pacientes.forEach(p => {
-        const val = (p.institucion || p.universidad || '').trim();
-        if (val) instSet.add(val);
-      });
     } else {
-      Array.from(selInstitucion.options).forEach(opt => {
-        if (opt.value && opt.value.toLowerCase() !== 'all') {
-          instSet.add(opt.value.trim());
-        }
-      });
-    }
-
-    const instOrdenadas = Array.from(instSet).sort();
-    selInstitucion.innerHTML = '<option value="all">Todas las Instituciones</option>';
-    instOrdenadas.forEach(instVal => {
-      const opt = document.createElement('option');
-      opt.value = instVal;
-      opt.textContent = instVal;
-      selInstitucion.appendChild(opt);
-    });
-
-    if (instSeleccionada !== 'all') {
-      const matchOpt = Array.from(selInstitucion.options).find(o => o.value.toUpperCase() === instSeleccionada.toUpperCase());
-      if (matchOpt) {
-        selInstitucion.value = matchOpt.value;
-      } else {
-        selInstitucion.value = 'all';
-      }
-    } else {
-      selInstitucion.value = 'all';
+      const optionExists = Array.from(selInstitucion.options).some(option => option.value === selInstitucion.value);
+      if (!optionExists) selInstitucion.value = 'all';
     }
   }
 }
@@ -710,7 +688,7 @@ function formatearFechaLegible(fechaStr) {
 function crearFilaPaciente(p) {
   const tr = document.createElement('tr');
   tr.className = 'paciente-fila fade-in-content';
-  if (seleccionados.has(p.id)) {
+  if (seleccionados.has(String(p.id))) {
     tr.classList.add('seleccionada');
   }
 
@@ -726,7 +704,7 @@ function crearFilaPaciente(p) {
 
   tr.innerHTML = `
     <td class="td-check" onclick="event.stopPropagation()">
-      <input type="checkbox" data-id="${escapeHtml(p.id)}" ${seleccionados.has(p.id) ? 'checked' : ''}>
+      <input type="checkbox" data-id="${escapeHtml(p.id)}" ${seleccionados.has(String(p.id)) ? 'checked' : ''}>
     </td>
     <td>
       <div class="celda-paciente">
@@ -748,9 +726,6 @@ function crearFilaPaciente(p) {
   `;
 
   // Al hacer clic en la fila se abre el expediente en la página (sin modal)
-  tr.querySelector('input[type="checkbox"]').addEventListener('change', event => {
-    toggleSeleccion(p.id, event.target.checked);
-  });
   tr.querySelector('[data-clinical-action="delete"]').addEventListener('click', () => {
     solicitarEliminarFicha(p.id, p.nombre, p.codigo);
   });
@@ -787,10 +762,12 @@ function abrirHistorialesPaciente(pacienteId) {
 window.abrirHistorialesPaciente = abrirHistorialesPaciente;
 
 function toggleSeleccion(id, marcado) {
+  revisionSeleccion += 1;
+  const idSeleccion = String(id);
   if (marcado) {
-    seleccionados.add(id);
+    seleccionados.add(idSeleccion);
   } else {
-    seleccionados.delete(id);
+    seleccionados.delete(idSeleccion);
   }
   actualizarEstadoSeleccion(pacientes);
 
@@ -806,15 +783,26 @@ async function toggleSeleccionarTodos(marcarTodos) {
     document.getElementById('seleccionarTodosTabla')
   ].filter(Boolean);
 
+  // El navegador cambia primero una casilla indeterminada a marcada. Conservamos
+  // el estado parcial en data-selection-partial para interpretarlo como limpiar.
+  if (marcarTodos && checks.some(check => check.dataset.selectionPartial === 'true')) {
+    limpiarSeleccionTotal();
+    return;
+  }
+
+  const revisionActual = ++revisionSeleccion;
+
   if (!marcarTodos) {
     seleccionados.clear();
   } else {
     checks.forEach(check => { check.disabled = true; });
     try {
       const todos = await cargarTodosLosPacientesCoincidentes();
+      if (revisionActual !== revisionSeleccion) return;
       seleccionados.clear();
-      todos.forEach(p => seleccionados.add(p.id));
+      todos.forEach(p => seleccionados.add(String(p.id)));
     } catch (err) {
+      if (revisionActual !== revisionSeleccion) return;
       checks.forEach(check => { check.checked = false; });
       alert('No se pudieron cargar todos los pacientes para la selección masiva.');
       console.error('Error al seleccionar todos los pacientes:', err);
@@ -823,19 +811,39 @@ async function toggleSeleccionarTodos(marcarTodos) {
     }
   }
 
-  const tbody = document.getElementById('pacientesTbody');
-  if (tbody) {
-    tbody.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-      cb.checked = marcarTodos;
-      cb.closest('tr')?.classList.toggle('seleccionada', marcarTodos);
-    });
-  }
+  if (revisionActual !== revisionSeleccion) return;
+  sincronizarCasillasSeleccionVisibles();
   actualizarEstadoSeleccion(pacientes);
+}
+
+function limpiarSeleccionTotal() {
+  revisionSeleccion += 1;
+  seleccionados.clear();
+  [
+    document.getElementById('seleccionarTodos'),
+    document.getElementById('seleccionarTodosTabla')
+  ].filter(Boolean).forEach(check => {
+    check.checked = false;
+    check.indeterminate = false;
+    check.disabled = false;
+  });
+  sincronizarCasillasSeleccionVisibles();
+  actualizarEstadoSeleccion(pacientes);
+}
+
+function sincronizarCasillasSeleccionVisibles() {
+  const tbody = document.getElementById('pacientesTbody');
+  if (!tbody) return;
+  tbody.querySelectorAll('input[type="checkbox"][data-id]').forEach(check => {
+    const marcado = seleccionados.has(String(check.dataset.id));
+    check.checked = marcado;
+    check.closest('tr')?.classList.toggle('seleccionada', marcado);
+  });
 }
 
 function actualizarEstadoSeleccion(lista = pacientes) {
   const arr = Array.isArray(lista) ? lista : (pacientes || []);
-  const marcadosVisibles = arr.filter(p => seleccionados.has(p.id)).length;
+  const marcadosVisibles = arr.filter(p => seleccionados.has(String(p.id))).length;
   const checkTodosTop = document.getElementById('seleccionarTodos');
   const checkTodosTabla = document.getElementById('seleccionarTodosTabla');
 
@@ -845,10 +853,12 @@ function actualizarEstadoSeleccion(lista = pacientes) {
   if (checkTodosTop) {
     checkTodosTop.checked = esCompleto;
     checkTodosTop.indeterminate = esIndeterminado;
+    checkTodosTop.dataset.selectionPartial = String(esIndeterminado);
   }
   if (checkTodosTabla) {
     checkTodosTabla.checked = esCompleto;
     checkTodosTabla.indeterminate = esIndeterminado;
+    checkTodosTabla.dataset.selectionPartial = String(esIndeterminado);
   }
 
   const btnEliminarSel = document.getElementById('btnEliminarSeleccionados');

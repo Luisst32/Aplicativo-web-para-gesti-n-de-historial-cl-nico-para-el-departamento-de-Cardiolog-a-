@@ -550,25 +550,16 @@ function syncSlicerOptions() {
   const instSelect = document.getElementById('slicer-inst');
   if (instSelect) {
     const existing = Array.from(instSelect.options).map(o => o.value);
-    const unique = [...new Set(allRecords.map(r => r.institucion))].filter(Boolean).sort();
     if (instSelect.dataset.unemiOnly === 'true') {
-      const allowed = unique[0] || existing.find(value => value && value !== 'all') || 'UNEMI';
+      const allowed = existing.find(value => value && value !== 'all') || '';
       instSelect.innerHTML = '';
       const opt = document.createElement('option');
       opt.value = allowed;
-      opt.textContent = allowed;
+      opt.textContent = allowed || 'UNEMI no está configurada';
+      opt.disabled = !allowed;
       opt.selected = true;
       instSelect.appendChild(opt);
       instSelect.disabled = true;
-    } else {
-      unique.forEach(inst => {
-        if (!existing.includes(inst)) {
-          const opt = document.createElement('option');
-          opt.value = inst;
-          opt.textContent = inst;
-          instSelect.appendChild(opt);
-        }
-      });
     }
   }
 

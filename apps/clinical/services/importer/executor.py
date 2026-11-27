@@ -23,10 +23,15 @@ from security.access import require_clinical_access
 from clinical.services.import_tickets import claim_upload, InvalidImportTicket, ERROR_MESSAGE
 
 from catalog.models import (
-    Institution, Sex, Ethnicity, Canton, Province, Country,
+    Sex, Ethnicity, Canton, Province, Country,
     StaffCategory, ProfessionalCategory, MaritalStatus,
     LivingSituation, EducationLevel, WorkSchedule, HousingType,
     IncomeRange, EcgRhythm, Question, QuestionnaireSection
+)
+from catalog.institutions import (
+    InstitutionResolutionError,
+    resolve_selectable_institution,
+    selectable_institutions,
 )
 from clinical.models import (
     Patient, Visit, Anthropometry, VitalSigns,
@@ -266,9 +271,31 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
     # cualquier coincidencia por subcadena.
     field_to_col = _build_field_to_column(col_names, df_dict, total_rows)
 
+    institution_col = field_to_col.get('universidad')
+    row_institutions = []
+    selectable_institution_rows = list(selectable_institutions())
+    try:
+        for row_index in range(total_rows):
+            value = df_dict[institution_col][row_index] if institution_col else None
+            label = ''
+            if institution_col:
+                _, label = _get_val_and_label(
+                    value,
+                    meta.variable_value_labels.get(institution_col, {}),
+                )
+            row_institutions.append(resolve_selectable_institution(
+                value=value,
+                label=label,
+                allow_single_default=True,
+                institutions=selectable_institution_rows,
+            ))
+    except InstitutionResolutionError as exc:
+        return {
+            'success': False,
+            'error': f"No se puede importar la fila {row_index + 1}: {exc}",
+        }
+
     # Catálogos pre-cargados para alta eficiencia
-    inst_unemi = Institution.objects.filter(acronym__iexact='UNEMI').first() or Institution.objects.first()
-    inst_espol = Institution.objects.filter(acronym__iexact='ESPOL').first() or inst_unemi
     sex_hombre = Sex.objects.filter(name__istartswith='H').first()
     sex_mujer = Sex.objects.filter(name__istartswith='M').first()
     ethnicity_default = None
@@ -497,12 +524,7 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
         else:
             sc = str(i + 1)
 
-        row_inst = inst_unemi
-        if 'universidad' in field_to_col:
-            u_val = df_dict[field_to_col['universidad']][i]
-            _, u_lbl = _get_val_and_label(u_val, meta.variable_value_labels.get(field_to_col['universidad'], {}))
-            if 'ESPOL' in u_lbl.upper() or u_val == 2.0:
-                row_inst = inst_espol
+        row_inst = row_institutions[i]
 
         id_c = None
         if 'cedula' in field_to_col:
@@ -569,7 +591,7 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
 
                     # 2. Datos Demográficos
                     first_names = f"Participante {study_code}"
-                    last_name1 = "Estudio UNEMI"
+                    last_name1 = "Registro de estudio"
                     last_name2 = ""
                     if 'nombres' in field_to_col:
                         v_nom = df_dict[field_to_col['nombres']][i]
@@ -633,7 +655,7 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                         duplicate_records.append({
                             "row": i + 1,
                             "code": study_code,
-                            "institution": inst.acronym if inst else "UNEMI",
+                            "institution": inst.acronym if inst else "",
                             "patient_name": patient.full_name or f"Participante {study_code}",
                             "id_card": patient.id_card,
                             "action": "Omitido"
@@ -680,7 +702,7 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                             duplicate_records.append({
                                 "row": i + 1,
                                 "code": study_code,
-                                "institution": inst.acronym if inst else "UNEMI",
+                                "institution": inst.acronym if inst else "",
                                 "patient_name": patient.full_name or f"Participante {study_code}",
                                 "id_card": patient.id_card,
                                 "action": "Actualizado en BD"

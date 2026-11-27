@@ -5,7 +5,7 @@
 
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'clinical/css/pacientes.css' %}?v=20261117_v07">
-  <link rel="stylesheet" href="{% static 'clinical/css/list.css' %}?v=20261117_v07">
+  <link rel="stylesheet" href="{% static 'clinical/css/list.css' %}?v=20261126_remove_extra_clear01">
 {% endblock %}
 
 {% block content %}
@@ -95,7 +95,11 @@
             <label for="filtroInstitucion">Institución</label>
             <select id="filtroInstitucion" class="form-select slicer-select"{% if unemi_only %} disabled data-unemi-only="true" style="background:#f1f5f9; color:#64748b; cursor:not-allowed; opacity:.75;"{% endif %}>
               {% if unemi_only %}
-              <option value="UNEMI" selected>UNEMI</option>
+              {% for inst in available_institutions %}
+              <option value="{{ inst.acronym }}" selected>{{ inst.acronym }}</option>
+              {% empty %}
+              <option value="" selected disabled>UNEMI no está configurada</option>
+              {% endfor %}
               {% else %}
               <option value="all">Todas las Instituciones</option>
               {% for inst in available_institutions %}
@@ -628,7 +632,8 @@
 {% endblock %}
 
 {% block extra_js %}
+  {{ institution_catalog|json_script:"cardio-institution-catalog" }}
   <script>window.CARDIO_UNEMI_ONLY = {% if unemi_only %}true{% else %}false{% endif %};</script>
-  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261120_v04"></script>
-  <script src="{% static 'clinical/js/list.js' %}?v=20261120_v08"></script>
+  <script src="{% static 'clinical/js/pacientes.js' %}?v=20261123_institutions01"></script>
+  <script src="{% static 'clinical/js/list.js' %}?v=20261126_clear_selection07"></script>
 {% endblock %}

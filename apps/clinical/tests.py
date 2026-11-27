@@ -568,7 +568,7 @@ class PatientCreateApiTests(TestCase):
         self.province, _ = Province.objects.get_or_create(country=self.country, iso_code='EC-G', defaults={'name': 'Guayas'})
         self.canton, _ = Canton.objects.get_or_create(province=self.province, dpa_code='0910', defaults={'name': 'Milagro'})
         self.inst_unemi, _ = Institution.objects.get_or_create(acronym='UNEMI', defaults={'name': 'Universidad Estatal de Milagro'})
-        self.inst_espol, _ = Institution.objects.get_or_create(acronym='ESPOL', defaults={'name': 'Escuela Superior Politécnica del Litoral'})
+        self.inst_inst2, _ = Institution.objects.get_or_create(acronym='INST2', defaults={'name': 'Institución de prueba'})
         self.sex, _ = Sex.objects.get_or_create(sex_id=1, defaults={'name': 'Hombre'})
         self.ethnicity, _ = Ethnicity.objects.get_or_create(name='Mestizo')
         self.staff_cat, _ = StaffCategory.objects.get_or_create(name='PDI')
@@ -593,24 +593,24 @@ class PatientCreateApiTests(TestCase):
         self.assertEqual(p.institution.acronym, 'UNEMI')
         self.assertEqual(p.visit.faculty, 'FACS')
 
-    def test_create_patient_espol_success(self):
+    def test_create_patient_inst2_success(self):
         payload = {
             'nombre': 'Roberto Gómez Andrade',
             'cedula': '0923485718',
             'fecha_nac': '1992-03-22',
             'sexo': 'H',
             'estamento': 'PDI',
-            'universidad': 'ESPOL',
+            'universidad': 'INST2',
             'facultad': 'FIEC',
             'telefono': '0991234567',
-            'correo': 'rgomez@espol.edu.ec'
+            'correo': 'rgomez@example.invalid'
         }
         resp = self.client.post('/clinical/api/pacientes/crear/', data=payload, content_type='application/json')
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertTrue(data.get('success'))
         p = Patient.objects.get(id_card='0923485718')
-        self.assertEqual(p.institution.acronym, 'ESPOL')
+        self.assertEqual(p.institution.acronym, 'INST2')
         self.assertEqual(p.visit.faculty, 'FIEC')
 
     def test_create_patient_without_faculty_estamento_stores_none(self):
@@ -695,7 +695,7 @@ class PatientCreateApiTests(TestCase):
         self.assertIn('ya está asignado', resp2.json().get('error', ''))
 
     def test_same_study_code_across_different_institutions(self):
-        # UNEMI y ESPOL pueden compartir el mismo study_code ("1") con IDs autogeneradas distintas
+        # UNEMI y INST2 pueden compartir el mismo study_code ("1") con IDs autogeneradas distintas
         p_unemi = Patient.objects.create(
             institution=self.inst_unemi,
             id_card='0911111111',
@@ -715,10 +715,10 @@ class PatientCreateApiTests(TestCase):
             residence_canton=self.canton
         )
 
-        p_espol = Patient.objects.create(
-            institution=self.inst_espol,
+        p_inst2 = Patient.objects.create(
+            institution=self.inst_inst2,
             id_card='0822222222',
-            first_names='Paciente ESPOL',
+            first_names='Paciente INST2',
             last_name1='P1',
             birth_date='1988-08-20',
             sex=self.sex,
@@ -726,20 +726,20 @@ class PatientCreateApiTests(TestCase):
             birth_canton=self.canton,
             created_by=self.user
         )
-        v_espol = Visit.objects.create(
-            patient=p_espol,
+        v_inst2 = Visit.objects.create(
+            patient=p_inst2,
             evaluator=self.user,
             study_code='1',  # Mismo código de estudio
             visit_date='2026-02-10',
             residence_canton=self.canton
         )
 
-        self.assertNotEqual(p_unemi.patient_id, p_espol.patient_id)
-        self.assertNotEqual(v_unemi.visit_id, v_espol.visit_id)
+        self.assertNotEqual(p_unemi.patient_id, p_inst2.patient_id)
+        self.assertNotEqual(v_unemi.visit_id, v_inst2.visit_id)
         self.assertEqual(v_unemi.study_code, '1')
-        self.assertEqual(v_espol.study_code, '1')
+        self.assertEqual(v_inst2.study_code, '1')
         self.assertEqual(v_unemi.patient.institution.acronym, 'UNEMI')
-        self.assertEqual(v_espol.patient.institution.acronym, 'ESPOL')
+        self.assertEqual(v_inst2.patient.institution.acronym, 'INST2')
 
 
 import json

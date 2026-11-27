@@ -4,6 +4,7 @@ from .models import (
     Province,
     Canton,
     Institution,
+    InstitutionFaculty,
     Sex,
     Ethnicity,
     StaffCategory,
@@ -41,11 +42,19 @@ class CantonAdmin(admin.ModelAdmin):
     list_filter = ('province',)
 
 
+class InstitutionFacultyInline(admin.TabularInline):
+    model = InstitutionFaculty
+    extra = 0
+    fields = ('code', 'name', 'status')
+
+
 @admin.register(Institution)
 class InstitutionAdmin(admin.ModelAdmin):
-    list_display = ('institution_id', 'acronym', 'name', 'status')
+    list_display = ('institution_id', 'acronym', 'name', 'is_selectable', 'status')
     search_fields = ('acronym', 'name')
-    list_filter = ('status',)
+    list_filter = ('is_selectable', 'status')
+    list_editable = ('is_selectable', 'status')
+    inlines = (InstitutionFacultyInline,)
 
 
 @admin.register(Sex)

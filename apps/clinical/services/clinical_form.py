@@ -4,10 +4,11 @@ from collections import Counter
 from decimal import Decimal
 from django.db import transaction, connection, models
 from django.core.exceptions import ValidationError
-from catalog.models import (Country, Province, Canton, Institution, Sex, Ethnicity,
+from catalog.models import (Country, Province, Canton, Sex, Ethnicity,
  StaffCategory, ProfessionalCategory, EducationLevel, IncomeRange, MaritalStatus,
  LivingSituation, HousingType, WorkSchedule, EcgRhythm, Question, AnswerOption,
  QuestionnaireSection)
+from catalog.institutions import InstitutionResolutionError, resolve_selectable_institution
 from clinical.models import (Patient, Visit, Anthropometry, VitalSigns, Electrocardiogram,
  Echocardiogram, Laboratory, OrderedStudies, VisitAnswer)
 from audit.services import register_audit_log
@@ -98,6 +99,12 @@ def update_clinical_record(patient, raw_data, user, client_ip):
             nullable_bool(raw_data[key])
     with transaction.atomic():
         patient = Patient.objects.select_for_update().get(pk=patient.pk)
+        if not patient.institution_id:
+            raise ValidationError('El paciente no tiene una institución asignada.')
+        try:
+            resolve_selectable_institution(patient.institution.acronym)
+        except InstitutionResolutionError as exc:
+            raise ValidationError(str(exc)) from exc
         # 1. Actualizar Paciente (Módulo 1)
         f_nom = raw_data.get('f_nombre')
         f_ap1 = raw_data.get('f_apellido1')
@@ -129,11 +136,10 @@ def update_clinical_record(patient, raw_data, user, client_ip):
 
         f_uni = raw_data.get('f_universidad')
         if f_uni:
-            inst_obj = Institution.objects.filter(acronym__iexact=f_uni.strip()).first()
-            if not inst_obj:
-                inst_obj = Institution.objects.filter(name__icontains=f_uni.strip()).first()
-            if inst_obj:
-                patient.institution = inst_obj
+            try:
+                patient.institution = resolve_selectable_institution(f_uni.strip())
+            except InstitutionResolutionError as exc:
+                raise ValidationError(str(exc)) from exc
 
         f_prov_nac = raw_data.get('f_provincia_nac')
         if f_municipio:
