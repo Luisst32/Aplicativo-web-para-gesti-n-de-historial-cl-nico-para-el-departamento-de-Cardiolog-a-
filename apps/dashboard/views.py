@@ -1,8 +1,11 @@
 import json
 import os
+import queue
 import shutil
 import subprocess
 import tempfile
+import threading
+import uuid
 from pathlib import Path
 
 from django.shortcuts import render
@@ -67,24 +70,70 @@ def api_dashboard_data(request):
     })
 
 
+_CACHED_CHROME_BINARY = None
+_CHROME_BINARY_LOCK = threading.Lock()
+_CHROME_PROFILE_POOL = queue.LifoQueue(maxsize=4)
+
+
 def _dashboard_chrome_binary():
     """Return a locally installed Chromium binary used for real HTML-to-PDF conversion."""
+    global _CACHED_CHROME_BINARY
     configured = os.environ.get('DASHBOARD_CHROME_BINARY', '').strip()
-    candidates = [configured] if configured else []
-    candidates.extend([
-        shutil.which('chrome'),
-        shutil.which('google-chrome'),
-        shutil.which('chromium'),
-        shutil.which('chromium-browser'),
-        r'C:\Program Files\Google\Chrome\Application\chrome.exe',
-        r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
-        r'C:\Program Files\Microsoft\Edge\Application\msedge.exe',
-        r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
-    ])
-    for candidate in candidates:
-        if candidate and Path(candidate).is_file():
-            return candidate
+    if configured:
+        return configured if Path(configured).is_file() else None
+
+    if _CACHED_CHROME_BINARY and Path(_CACHED_CHROME_BINARY).is_file():
+        return _CACHED_CHROME_BINARY
+
+    with _CHROME_BINARY_LOCK:
+        if _CACHED_CHROME_BINARY and Path(_CACHED_CHROME_BINARY).is_file():
+            return _CACHED_CHROME_BINARY
+        candidates = [
+            shutil.which('chrome'),
+            shutil.which('google-chrome'),
+            shutil.which('chromium'),
+            shutil.which('chromium-browser'),
+            r'C:\Program Files\Google\Chrome\Application\chrome.exe',
+            r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
+            r'C:\Program Files\Microsoft\Edge\Application\msedge.exe',
+            r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
+        ]
+        for candidate in candidates:
+            if candidate and Path(candidate).is_file():
+                _CACHED_CHROME_BINARY = candidate
+                return candidate
     return None
+
+
+def _acquire_chrome_profile_dir():
+    """Acquire an isolated warm Chromium profile directory to avoid 1.2s cold-init overhead."""
+    while True:
+        try:
+            existing = _CHROME_PROFILE_POOL.get_nowait()
+        except queue.Empty:
+            break
+        if existing.is_dir():
+            return existing, True
+    base = Path(tempfile.gettempdir()) / 'cardiounemi-chrome-profiles'
+    try:
+        base.mkdir(parents=True, exist_ok=True)
+        prof = base / f'prof-{os.getpid()}-{uuid.uuid4().hex[:10]}'
+        prof.mkdir(parents=True, exist_ok=True)
+        return prof, True
+    except OSError:
+        return None, False
+
+
+def _release_chrome_profile_dir(profile_dir, poolable):
+    if not profile_dir:
+        return
+    if poolable and profile_dir.is_dir():
+        try:
+            _CHROME_PROFILE_POOL.put_nowait(profile_dir)
+            return
+        except queue.Full:
+            pass
+    shutil.rmtree(profile_dir, ignore_errors=True)
 
 
 @login_required
@@ -132,12 +181,13 @@ def export_dashboard_html_pdf(request):
             'error': 'No hay un navegador Chromium disponible para convertir el HTML a PDF.'
         }, status=503)
 
+    pooled_profile, is_poolable = _acquire_chrome_profile_dir()
     try:
         with tempfile.TemporaryDirectory(prefix='cardiounemi-dashboard-export-') as workdir:
             work_path = Path(workdir)
             html_path = work_path / 'report.html'
             pdf_path = work_path / 'report.pdf'
-            profile_path = work_path / 'profile'
+            profile_path = pooled_profile if pooled_profile is not None else (work_path / 'profile')
             html_path.write_text(report_html, encoding='utf-8')
 
             command = [
@@ -145,14 +195,17 @@ def export_dashboard_html_pdf(request):
                 '--headless=new',
                 '--disable-gpu',
                 '--disable-extensions',
-                '--no-first-run',
+                '--disable-default-apps',
+                '--disable-component-update',
                 '--disable-background-networking',
                 '--disable-sync',
+                '--metrics-recording-only',
+                '--no-first-run',
+                '--no-default-browser-check',
+                '--disk-cache-size=1',
                 '--allow-file-access-from-files',
                 '--force-device-scale-factor=2',
                 '--no-pdf-header-footer',
-                '--run-all-compositor-stages-before-draw',
-                '--virtual-time-budget=2000',
                 f'--user-data-dir={profile_path}',
                 f'--print-to-pdf={pdf_path}',
                 html_path.as_uri(),
@@ -168,12 +221,17 @@ def export_dashboard_html_pdf(request):
                 check=False,
             )
             if completed.returncode != 0 or not pdf_path.is_file():
+                is_poolable = False
                 return JsonResponse({'error': 'Chromium no pudo convertir el reporte HTML a PDF.'}, status=503)
             pdf_bytes = pdf_path.read_bytes()
     except subprocess.TimeoutExpired:
+        is_poolable = False
         return JsonResponse({'error': 'La conversión HTML a PDF excedió el tiempo permitido.'}, status=504)
     except OSError:
+        is_poolable = False
         return JsonResponse({'error': 'No se pudo ejecutar el conversor HTML a PDF.'}, status=503)
+    finally:
+        _release_chrome_profile_dir(pooled_profile, is_poolable)
 
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="CardioUNEMI_Dashboard.pdf"'

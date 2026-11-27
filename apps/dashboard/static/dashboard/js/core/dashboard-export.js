@@ -131,16 +131,11 @@ async function startExport() {
     if (progBar) progBar.style.width = `${pct}%`;
   };
 
+  const nextFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
+
   try {
-    if (scope === 'all') {
-      if (typeof updateAllKPIs === 'function') updateAllKPIs();
-      if (Array.isArray(DASHBOARD_TABS) && typeof renderTabCharts === 'function') {
-        DASHBOARD_TABS.forEach(t => renderTabCharts(t.id));
-      }
-    } else {
-      if (typeof updateActiveTabKPIs === 'function') updateActiveTabKPIs(activeTabId);
-      if (typeof renderTabCharts === 'function') renderTabCharts(activeTabId);
-    }
+    setProgress('Iniciando exportación de alta velocidad...', 6);
+    await nextFrame();
 
     if (format === 'csv') {
       await exportCsv(scope, setProgress);
@@ -153,7 +148,7 @@ async function startExport() {
     }
     setTimeout(() => {
       closeExportModal();
-    }, 500);
+    }, 350);
   } catch (err) {
     console.error('Error durante la exportación:', err);
     alert('Ocurrió un inconveniente al generar la exportación: ' + (err.message || err));
@@ -174,7 +169,7 @@ function fixSvgFillsForHtml2Canvas(clonedDoc, tabId, rootOverride = null) {
     const root = rootOverride || (tabId ? clonedDoc.getElementById('tab-' + tabId) : null) || clonedDoc;
 
     // 1. Desactivar clip-path SVG que trunca etiquetas y barras en exportación
-    root.querySelectorAll('*').forEach(el => {
+    root.querySelectorAll('[clip-path], [clipPath], [style*="clip-path"]').forEach(el => {
       if (el.hasAttribute('clip-path')) el.removeAttribute('clip-path');
       if (el.hasAttribute('clipPath')) el.removeAttribute('clipPath');
       if (el.style && el.style.clipPath) el.style.clipPath = 'none';
@@ -375,52 +370,54 @@ function getPdfVisualRows(targetEl) {
 // Paginación de calidad presentación ejecutiva:
 // Exactamente 1 fila visual de gráficas por lámina horizontal (100% ancho útil,
 // escala 1:1 sin encogimiento, números grandes y nítidos).
+function getTabExportItems(tab) {
+  const targetEl = document.getElementById('tab-' + tab.id);
+  const cfg = getTabPartsConfig(tab.id);
+  const { visualRows } = targetEl ? getPdfVisualRows(targetEl) : { visualRows: [] };
+
+  if (!visualRows.length) {
+    return [{
+      tab,
+      partNumber: 1,
+      title: cfg.part1Title,
+      suffix: 'lamina_1',
+      layout: null
+    }];
+  }
+
+  return visualRows.map((row, pageIndex) => {
+    let slideTitle = cfg.part1Title;
+    if (pageIndex === 1) {
+      slideTitle = cfg.part2Title;
+    } else if (pageIndex >= 2) {
+      slideTitle = cfg.extraTitle || cfg.part2Title;
+    }
+
+    const includeKpis = pageIndex === 0;
+    const preferredHeight = includeKpis
+      ? 410
+      : Math.max(460, Math.min(515, row.chartHeight));
+
+    return {
+      tab,
+      title: slideTitle,
+      partNumber: pageIndex + 1,
+      suffix: `lamina_${pageIndex + 1}`,
+      layout: {
+        visualRows: [row.cardIndexes],
+        includeKpis,
+        chartHeight: preferredHeight
+      }
+    };
+  });
+}
+
 function getPdfExportItems(scope) {
   const tabs = scope === 'all'
     ? DASHBOARD_TABS
     : [DASHBOARD_TABS.find(t => t.id === activeTabId) || DASHBOARD_TABS[0]];
 
-  return tabs.flatMap(tab => {
-    const targetEl = document.getElementById('tab-' + tab.id);
-    const cfg = getTabPartsConfig(tab.id);
-    const { visualRows } = targetEl ? getPdfVisualRows(targetEl) : { visualRows: [] };
-
-    if (!visualRows.length) {
-      return [{
-        tab,
-        partNumber: 1,
-        title: cfg.part1Title,
-        suffix: 'lamina_1',
-        layout: null
-      }];
-    }
-
-    return visualRows.map((row, pageIndex) => {
-      let slideTitle = cfg.part1Title;
-      if (pageIndex === 1) {
-        slideTitle = cfg.part2Title;
-      } else if (pageIndex >= 2) {
-        slideTitle = cfg.extraTitle || cfg.part2Title;
-      }
-
-      const includeKpis = pageIndex === 0;
-      const preferredHeight = includeKpis
-        ? 410
-        : Math.max(460, Math.min(515, row.chartHeight));
-
-      return {
-        tab,
-        title: slideTitle,
-        partNumber: pageIndex + 1,
-        suffix: `lamina_${pageIndex + 1}`,
-        layout: {
-          visualRows: [row.cardIndexes],
-          includeKpis,
-          chartHeight: preferredHeight
-        }
-      };
-    });
-  });
+  return tabs.flatMap(tab => getTabExportItems(tab));
 }
 
 // Unifica los bloques de exportación para PDF, PPTX e Imágenes PNG de alta resolución
@@ -481,7 +478,7 @@ function renderExportChartJsDataUrl(sourceCanvas, targetWidthPx, targetHeightPx)
     options.responsive = false;
     options.maintainAspectRatio = false;
     options.animation = false;
-    options.devicePixelRatio = 4;
+    options.devicePixelRatio = 2.5;
 
     options.layout = options.layout || {};
     options.layout.padding = isCircular
@@ -676,7 +673,7 @@ function enhanceApexSvgForExport(cloneRoot, sourceTabEl = null) {
 
     // 1. Limpiar filtros rasterizados que emborronan los dígitos en PDF
     svg.querySelectorAll('[filter]').forEach(el => el.removeAttribute('filter'));
-    svg.querySelectorAll('text, tspan, g').forEach(el => {
+    svg.querySelectorAll('[style*="filter"]').forEach(el => {
       if (el.style && el.style.filter) el.style.filter = 'none';
     });
 
@@ -817,7 +814,7 @@ function enhanceApexSvgForExport(cloneRoot, sourceTabEl = null) {
         let maxY = -Infinity;
 
         svg.querySelectorAll(
-          'text, .export-svg-label-pill, .apexcharts-bar-area, .apexcharts-rangebar-area, .apexcharts-pie-area, .apexcharts-gridline, .apexcharts-xaxis line, .apexcharts-yaxis line, .apexcharts-series path, .apexcharts-datalabels rect, circle, polygon, line'
+          'text, .apexcharts-graphical, .apexcharts-datalabels, .apexcharts-xaxis, .apexcharts-yaxis'
         ).forEach(node => {
           if (node.style?.display === 'none' || node.style?.visibility === 'hidden') return;
           if (node.getAttribute('opacity') === '0' || node.getAttribute('stroke') === 'transparent') return;
@@ -880,40 +877,18 @@ function buildExportHtmlStage(tab, partNumber, layout = null) {
   stage.setAttribute('aria-hidden', 'true');
   stage.style.cssText = `position:fixed;left:-100000px;top:0;width:${exportSourceWidth}px;min-height:10px;padding:0;margin:0;background:#FFFFFF;z-index:1;overflow:visible;pointer-events:none;`;
 
-  const clone = targetEl.cloneNode(true);
-  clone.id = 'dashboard-export-tab-' + tab.id;
-  clone.classList.add('dashboard-export-html-source');
-  clone.classList.add('active');
-  clone.style.setProperty('display', 'flex', 'important');
-  clone.style.flexDirection = 'column';
-  clone.style.gap = '12px';
-  clone.style.width = `${exportSourceWidth}px`;
-  clone.style.maxWidth = `${exportSourceWidth}px`;
-  clone.style.height = 'auto';
-  clone.style.minHeight = '0';
-  clone.style.maxHeight = 'none';
-  clone.style.padding = '0';
-  clone.style.margin = '0';
-  clone.style.background = '#FFFFFF';
-
-  clone.querySelectorAll('.chart-skeleton-placeholder').forEach(el => el.remove());
-  clone.querySelectorAll('button, input, select, textarea').forEach(el => {
-    el.style.pointerEvents = 'none';
-  });
-
-  const cfg = getTabPartsConfig(tab.id);
-  const rows = Array.from(clone.children).filter(c =>
-    c && c.nodeType === 1 && c.tagName === 'DIV' &&
-    (c.classList.contains('kpi-row') || c.classList.contains('grid-row') || c.classList.contains('grid'))
-  );
-
+  let clone;
   if (layout?.visualRows) {
-    const visualCards = Array.from(clone.querySelectorAll('.card-visual'));
-    rows.filter(row => !row.classList.contains('kpi-row')).forEach(row => row.remove());
-    if (!layout.includeKpis) {
-      rows.filter(row => row.classList.contains('kpi-row')).forEach(row => row.remove());
+    clone = document.createElement('div');
+    clone.className = `${targetEl.className || ''} dashboard-export-html-source active`.trim();
+    if (layout.includeKpis) {
+      Array.from(targetEl.children).forEach(child => {
+        if (child && child.nodeType === 1 && child.classList.contains('kpi-row')) {
+          clone.appendChild(child.cloneNode(true));
+        }
+      });
     }
-
+    const sourceVisualCards = Array.from(targetEl.querySelectorAll('.card-visual'));
     layout.visualRows.forEach(cardIndexes => {
       const exportRow = document.createElement('div');
       const isSingleCol = cardIndexes.length === 1;
@@ -931,8 +906,9 @@ function buildExportHtmlStage(tab, partNumber, layout = null) {
       exportRow.style.setProperty('margin', '0', 'important');
 
       cardIndexes.forEach(cardIndex => {
-        const card = visualCards[cardIndex];
-        if (!card) return;
+        const srcCard = sourceVisualCards[cardIndex];
+        if (!srcCard) return;
+        const card = srcCard.cloneNode(true);
         card.style.setProperty('width', '100%', 'important');
         card.style.setProperty('min-width', '0', 'important');
         card.style.setProperty('margin', '0', 'important');
@@ -943,11 +919,37 @@ function buildExportHtmlStage(tab, partNumber, layout = null) {
       clone.appendChild(exportRow);
     });
   } else {
+    clone = targetEl.cloneNode(true);
+    clone.classList.add('dashboard-export-html-source');
+    clone.classList.add('active');
+    const cfg = getTabPartsConfig(tab.id);
+    const rows = Array.from(clone.children).filter(c =>
+      c && c.nodeType === 1 && c.tagName === 'DIV' &&
+      (c.classList.contains('kpi-row') || c.classList.contains('grid-row') || c.classList.contains('grid'))
+    );
     const splitIdx = cfg.splitIdx || 3;
     rows.forEach((row, index) => {
       if ((partNumber === 1 && index >= splitIdx) || (partNumber === 2 && index < splitIdx)) row.remove();
     });
   }
+
+  clone.id = 'dashboard-export-tab-' + tab.id;
+  clone.style.setProperty('display', 'flex', 'important');
+  clone.style.flexDirection = 'column';
+  clone.style.gap = '12px';
+  clone.style.width = `${exportSourceWidth}px`;
+  clone.style.maxWidth = `${exportSourceWidth}px`;
+  clone.style.height = 'auto';
+  clone.style.minHeight = '0';
+  clone.style.maxHeight = 'none';
+  clone.style.padding = '0';
+  clone.style.margin = '0';
+  clone.style.background = '#FFFFFF';
+
+  clone.querySelectorAll('.chart-skeleton-placeholder').forEach(el => el.remove());
+  clone.querySelectorAll('button, input, select, textarea').forEach(el => {
+    el.style.pointerEvents = 'none';
+  });
 
   // Configurar tarjetas KPI visibles para aprovechar el 100% del ancho de lámina
   clone.querySelectorAll('.kpi-row').forEach(row => {
@@ -1043,13 +1045,12 @@ function buildExportHtmlStage(tab, partNumber, layout = null) {
   return { stage, root: clone };
 }
 
-async function renderSectionPartCanvas(h2c, tab, partNumber, scale = 2.2, layout = null) {
+async function renderSectionPartCanvas(h2c, tab, partNumber, scale = 2.0, layout = null) {
   const htmlStage = buildExportHtmlStage(tab, partNumber, layout);
   if (!htmlStage) return null;
   const targetEl = htmlStage.stage;
 
   try {
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     return await h2c(targetEl, {
       scale: scale,
       useCORS: true,
@@ -1058,9 +1059,10 @@ async function renderSectionPartCanvas(h2c, tab, partNumber, scale = 2.2, layout
       imageTimeout: 0,
       ignoreElements: (el) => {
         if (!el) return false;
-        if (el.id === 'modal-export-dashboard') return true;
-        if (el.id === 'slicers-bar' || el.id === 'main-nav' || el.id === 'app-header' || el.classList?.contains('sidebar')) return true;
-        if (el.classList && el.classList.contains('tab-view') && el.id !== ('dashboard-export-tab-' + tab.id)) return true;
+        if (el.parentElement === document.body) {
+          const tag = el.tagName;
+          return el !== targetEl && tag !== 'STYLE' && tag !== 'LINK';
+        }
         return false;
       },
       onclone: (clonedDoc) => {
@@ -1083,28 +1085,48 @@ async function renderSectionPartCanvas(h2c, tab, partNumber, scale = 2.2, layout
 }
 
 // Wrapper retrocompatible
-async function renderSectionCanvas(h2c, tab, scale = 2.2) {
+async function renderSectionCanvas(h2c, tab, scale = 2.0) {
   return await renderSectionPartCanvas(h2c, tab, 1, scale);
 }
 
-// Asegura que la pestaña esté visible, renderizada y con etiquetas SVG posicionadas antes de exportar
-async function prepareTabForExport(tabId, isNewTab) {
-  if (activeTabId !== tabId) {
+// Prepara cada pestaña a lo sumo UNA sola vez por exportación y omite esperas artificiales:
+// si la pestaña activa ya está renderizada en pantalla, su costo es 0 ms.
+async function ensureTabReadyForExport(tabId, preparedTabs) {
+  if (preparedTabs && preparedTabs.has(tabId)) return;
+
+  const targetView = document.getElementById('tab-' + tabId);
+  const alreadyVisibleAndRendered = (
+    activeTabId === tabId &&
+    targetView &&
+    targetView.offsetWidth > 0 &&
+    !targetView.querySelector('.chart-skeleton-placeholder') &&
+    Boolean(targetView.querySelector('canvas, svg.apexcharts-svg, [data-empty-chart]'))
+  );
+
+  if (alreadyVisibleAndRendered) {
+    try {
+      if (typeof updateActiveTabKPIs === 'function') updateActiveTabKPIs(tabId);
+    } catch (err) {}
+    if (preparedTabs) preparedTabs.add(tabId);
+    return;
+  }
+
+  if (activeTabId !== tabId && typeof switchTab === 'function') {
     switchTab(tabId, document.querySelector(`.nav-item[onclick*="${tabId}"]`));
-    await new Promise(r => setTimeout(r, 260));
-  } else if (isNewTab) {
-    await new Promise(r => setTimeout(r, 120));
   }
   try {
     if (typeof updateActiveTabKPIs === 'function') updateActiveTabKPIs(tabId);
     if (typeof renderTabCharts === 'function') renderTabCharts(tabId);
   } catch (err) {
-    console.warn('Advertencia al refrescar pestaña para exportación:', err);
+    console.warn('Advertencia al preparar pestaña para exportación:', err);
   }
-  window.dispatchEvent(new Event('resize'));
-  await new Promise(r => setTimeout(r, 140));
-  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-  await new Promise(r => setTimeout(r, 80));
+  await new Promise(r => requestAnimationFrame(r));
+  if (preparedTabs) preparedTabs.add(tabId);
+}
+
+async function prepareTabForExport(tabId, isNewTab) {
+  const dummySet = isNewTab ? null : new Set([tabId]);
+  await ensureTabReadyForExport(tabId, dummySet);
 }
 
 // 1. Exportación a Imagen PNG Ultra-HD (Láminas de Presentación)
@@ -1114,33 +1136,41 @@ async function exportImage(scope, setProgress) {
     throw new Error('La librería html2canvas no está disponible.');
   }
 
-  const exportItems = getPdfExportItems(scope);
-  const total = exportItems.length;
+  const tabs = scope === 'all'
+    ? DASHBOARD_TABS
+    : [DASHBOARD_TABS.find(t => t.id === activeTabId) || DASHBOARD_TABS[0]];
   const originalTab = activeTabId;
-  let currentRenderedTab = null;
+  const preparedTabs = new Set();
 
   try {
-    for (let i = 0; i < total; i++) {
-      const item = exportItems[i];
-      const tab = item.tab;
-      setProgress(`Renderizando lámina HD: ${item.title} (${i + 1}/${total})...`, Math.round(((i + 0.3) / total) * 100));
+    let slideCounter = 0;
+    for (let tIdx = 0; tIdx < tabs.length; tIdx++) {
+      const tab = tabs[tIdx];
+      await ensureTabReadyForExport(tab.id, preparedTabs);
+      const tabItems = getTabExportItems(tab);
 
-      await prepareTabForExport(tab.id, currentRenderedTab !== tab.id);
-      currentRenderedTab = tab.id;
+      for (let sIdx = 0; sIdx < tabItems.length; sIdx++) {
+        const item = tabItems[sIdx];
+        slideCounter++;
+        const approxPct = Math.min(95, Math.round(((tIdx + (sIdx + 0.5) / tabItems.length) / tabs.length) * 95));
+        setProgress(`Renderizando lámina HD: ${item.title}...`, approxPct);
 
-      const canvas = await renderSectionPartCanvas(h2c, tab, item.partNumber, 2.5, item.layout);
-      if (!canvas) continue;
+        const canvas = await renderSectionPartCanvas(h2c, tab, item.partNumber, 2.0, item.layout);
+        if (!canvas) continue;
 
-      const link = document.createElement('a');
-      const safeTitle = tab.id.replace(/[^a-z0-9]/gi, '_');
-      link.download = `CardioUNEMI_${safeTitle}_${item.suffix}_${new Date().toISOString().slice(0, 10)}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      await new Promise(r => setTimeout(r, 80));
+        const link = document.createElement('a');
+        const safeTitle = tab.id.replace(/[^a-z0-9]/gi, '_');
+        link.download = `CardioUNEMI_${safeTitle}_${item.suffix}_${new Date().toISOString().slice(0, 10)}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        if (slideCounter < tabItems.length || tIdx < tabs.length - 1) {
+          await new Promise(r => requestAnimationFrame(r));
+        }
+      }
     }
     setProgress('¡Imágenes PNG en alta resolución descargadas con éxito!', 100);
   } finally {
-    if (activeTabId !== originalTab) {
+    if (activeTabId !== originalTab && typeof switchTab === 'function') {
       switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
     }
   }
@@ -1162,7 +1192,10 @@ function getExportCsrfToken() {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
+let _cachedExportCss = null;
+
 function collectDashboardExportStyles() {
+  if (_cachedExportCss !== null) return _cachedExportCss;
   const chunks = [];
   document.querySelectorAll('style').forEach(style => {
     if (style.textContent) chunks.push(style.textContent);
@@ -1175,14 +1208,15 @@ function collectDashboardExportStyles() {
       }
     } catch (err) {}
   });
-  return chunks.join('\n');
+  _cachedExportCss = chunks.join('\n');
+  return _cachedExportCss;
 }
 
-function serializeExportRoot(root) {
-  const clone = root.cloneNode(true);
-  clone.querySelectorAll('.chart-skeleton-placeholder').forEach(el => el.remove());
-  clone.querySelectorAll('button, input, select, textarea').forEach(el => el.remove());
-  clone.querySelectorAll('canvas').forEach(canvas => {
+function serializeExportRoot(root, mutateInPlace = false) {
+  const target = mutateInPlace ? root : root.cloneNode(true);
+  target.querySelectorAll('.chart-skeleton-placeholder').forEach(el => el.remove());
+  target.querySelectorAll('button, input, select, textarea').forEach(el => el.remove());
+  target.querySelectorAll('canvas').forEach(canvas => {
     const image = document.createElement('img');
     image.src = canvas.toDataURL('image/png');
     image.width = canvas.width;
@@ -1191,7 +1225,7 @@ function serializeExportRoot(root) {
     image.className = canvas.className;
     canvas.replaceWith(image);
   });
-  return clone.outerHTML;
+  return target.outerHTML;
 }
 
 function buildDashboardHtmlReport(pages, scope) {
@@ -1426,32 +1460,37 @@ function downloadExportBlob(blob, fileName) {
 }
 
 async function exportPdf(scope, setProgress) {
-  const exportItems = getPdfExportItems(scope);
-  const total = exportItems.length;
+  const tabs = scope === 'all'
+    ? DASHBOARD_TABS
+    : [DASHBOARD_TABS.find(t => t.id === activeTabId) || DASHBOARD_TABS[0]];
   const originalTab = activeTabId;
-  let currentRenderedTab = null;
+  const preparedTabs = new Set();
   const pages = [];
 
   try {
-    for (let i = 0; i < total; i++) {
-      const item = exportItems[i];
-      const tab = item.tab;
-      setProgress(`Preparando lámina HD: ${item.title} (${i + 1}/${total})...`, Math.round(((i + 0.2) / total) * 80));
+    for (let tIdx = 0; tIdx < tabs.length; tIdx++) {
+      const tab = tabs[tIdx];
+      setProgress(`Preparando sección: ${tab.title} (${tIdx + 1}/${tabs.length})...`, Math.round(10 + ((tIdx + 0.3) / tabs.length) * 65));
+      await ensureTabReadyForExport(tab.id, preparedTabs);
+      const tabItems = getTabExportItems(tab);
 
-      await prepareTabForExport(tab.id, currentRenderedTab !== tab.id);
-      currentRenderedTab = tab.id;
-
-      const htmlStage = buildExportHtmlStage(tab, item.partNumber, item.layout);
-      if (!htmlStage) continue;
-      try {
-        pages.push({ title: item.title, html: serializeExportRoot(htmlStage.root) });
-      } finally {
-        htmlStage.stage.remove();
+      for (let sIdx = 0; sIdx < tabItems.length; sIdx++) {
+        const item = tabItems[sIdx];
+        const htmlStage = buildExportHtmlStage(tab, item.partNumber, item.layout);
+        if (!htmlStage) continue;
+        try {
+          pages.push({ title: item.title, html: serializeExportRoot(htmlStage.root, true) });
+        } finally {
+          htmlStage.stage.remove();
+        }
+      }
+      if (tabs.length > 1) {
+        await new Promise(r => requestAnimationFrame(r));
       }
     }
     if (!pages.length) throw new Error('No se encontraron secciones con datos para exportar.');
 
-    setProgress('Generando PDF vectorial de alta definición...', 90);
+    setProgress('Generando PDF vectorial de alta definición...', 85);
     try {
       const pdfBlob = await requestDashboardHtmlPdf(buildDashboardHtmlReport(pages, scope));
       downloadExportBlob(pdfBlob, scope === 'all'
@@ -1461,19 +1500,19 @@ async function exportPdf(scope, setProgress) {
     } catch (pdfErr) {
       if (pdfErr && pdfErr.status === 503) {
         console.warn('Chromium no disponible en servidor, usando motor PDF HD de respaldo:', pdfErr.message);
-        await exportPdfRasterFallback(scope, setProgress);
+        await exportPdfRasterFallback(scope, setProgress, preparedTabs);
         return;
       }
       throw pdfErr;
     }
   } finally {
-    if (activeTabId !== originalTab) {
+    if (activeTabId !== originalTab && typeof switchTab === 'function') {
       switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
     }
   }
 }
 
-async function exportPdfRasterFallback(scope, setProgress) {
+async function exportPdfRasterFallback(scope, setProgress, existingPreparedTabs = null) {
   const { jsPDF } = window.jspdf || window;
   if (!jsPDF) {
     throw new Error('La librería jsPDF no está disponible.');
@@ -1484,10 +1523,11 @@ async function exportPdfRasterFallback(scope, setProgress) {
   }
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
-  const exportItems = getPdfExportItems(scope);
-  const total = exportItems.length;
+  const tabs = scope === 'all'
+    ? DASHBOARD_TABS
+    : [DASHBOARD_TABS.find(t => t.id === activeTabId) || DASHBOARD_TABS[0]];
   const originalTab = activeTabId;
-  let currentRenderedTab = null;
+  const preparedTabs = existingPreparedTabs || new Set();
 
   const pageWidth = 297;
   const pageHeight = 210;
@@ -1497,15 +1537,20 @@ async function exportPdfRasterFallback(scope, setProgress) {
   const meta = getExportCohortMetadata();
 
   try {
+    const allSlides = [];
+    for (let tIdx = 0; tIdx < tabs.length; tIdx++) {
+      await ensureTabReadyForExport(tabs[tIdx].id, preparedTabs);
+      allSlides.push(...getTabExportItems(tabs[tIdx]));
+    }
+    const total = allSlides.length;
+
     for (let i = 0; i < total; i++) {
-      const item = exportItems[i];
+      const item = allSlides[i];
       const tab = item.tab;
-      setProgress(`Renderizando lámina HD: ${item.title} (${i + 1}/${total})...`, Math.round(((i + 0.1) / total) * 92));
+      setProgress(`Renderizando lámina HD: ${item.title} (${i + 1}/${total})...`, Math.round(((i + 0.2) / total) * 92));
 
-      await prepareTabForExport(tab.id, currentRenderedTab !== tab.id);
-      currentRenderedTab = tab.id;
-
-      const canvas = await renderSectionPartCanvas(h2c, tab, item.partNumber, 2.4, item.layout);
+      await ensureTabReadyForExport(tab.id, preparedTabs);
+      const canvas = await renderSectionPartCanvas(h2c, tab, item.partNumber, 2.0, item.layout);
       if (!canvas) continue;
 
       if (i > 0) doc.addPage();
@@ -1556,7 +1601,7 @@ async function exportPdfRasterFallback(scope, setProgress) {
     doc.save(fileName);
     setProgress('¡PDF generado exitosamente!', 100);
   } finally {
-    if (activeTabId !== originalTab) {
+    if (activeTabId !== originalTab && typeof switchTab === 'function') {
       switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
     }
   }
@@ -1576,14 +1621,22 @@ async function exportPowerPoint(scope, setProgress) {
   const pptx = new pptxClass();
   pptx.layout = 'LAYOUT_16x9';
 
-  const exportItems = getPdfExportItems(scope);
-  const total = exportItems.length;
+  const tabs = scope === 'all'
+    ? DASHBOARD_TABS
+    : [DASHBOARD_TABS.find(t => t.id === activeTabId) || DASHBOARD_TABS[0]];
   const originalTab = activeTabId;
-  let currentRenderedTab = null;
+  const preparedTabs = new Set();
   const meta = getExportCohortMetadata();
 
   try {
-    setProgress('Construyendo portada institucional...', 5);
+    setProgress('Preparando secciones para PowerPoint...', 8);
+    const exportItems = [];
+    for (let tIdx = 0; tIdx < tabs.length; tIdx++) {
+      await ensureTabReadyForExport(tabs[tIdx].id, preparedTabs);
+      exportItems.push(...getTabExportItems(tabs[tIdx]));
+    }
+    const total = exportItems.length;
+
     const slidePortada = pptx.addSlide();
     slidePortada.background = { color: '1B2A41' };
 
@@ -1634,12 +1687,10 @@ async function exportPowerPoint(scope, setProgress) {
     for (let i = 0; i < total; i++) {
       const item = exportItems[i];
       const tab = item.tab;
-      setProgress(`Generando diapositivas HD: ${item.title} (${i + 1}/${total})...`, Math.round(10 + ((i + 1) / total) * 82));
+      setProgress(`Generando diapositivas HD: ${item.title} (${i + 1}/${total})...`, Math.round(14 + ((i + 1) / total) * 80));
 
-      await prepareTabForExport(tab.id, currentRenderedTab !== tab.id);
-      currentRenderedTab = tab.id;
-
-      const canvas = await renderSectionPartCanvas(h2c, tab, item.partNumber, 2.2, item.layout);
+      await ensureTabReadyForExport(tab.id, preparedTabs);
+      const canvas = await renderSectionPartCanvas(h2c, tab, item.partNumber, 2.0, item.layout);
       if (!canvas) continue;
 
       const imgData = canvas.toDataURL('image/png');
@@ -1692,7 +1743,7 @@ async function exportPowerPoint(scope, setProgress) {
     await pptx.writeFile({ fileName });
     setProgress('¡Presentación PPTX descargada exitosamente!', 100);
   } finally {
-    if (activeTabId !== originalTab) {
+    if (activeTabId !== originalTab && typeof switchTab === 'function') {
       switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
     }
   }
@@ -1736,11 +1787,12 @@ async function exportCsv(scope, setProgress) {
     c => c && c.w && c.w.config
   );
 
+  const preparedTabs = new Set();
   try {
     for (let i = 0; i < tabs.length; i++) {
       const tab = tabs[i];
       setProgress(`Extrayendo métricas: ${tab.title} (${i + 1}/${tabs.length})...`, Math.round(((i + 0.4) / tabs.length) * 90));
-      await prepareTabForExport(tab.id, true);
+      await ensureTabReadyForExport(tab.id, preparedTabs);
 
       const tabEl = document.getElementById('tab-' + tab.id);
       if (!tabEl) continue;
