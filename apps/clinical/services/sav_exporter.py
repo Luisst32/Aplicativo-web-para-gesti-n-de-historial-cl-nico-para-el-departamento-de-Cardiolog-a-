@@ -835,11 +835,11 @@ def generate_export_dataset(patient_ids=None, format_type='sav', privacy_mode=Fa
     return _write_export_frame(out_df, format_type, {
         'column_labels': col_names_to_labels,
         'value_labels': col_value_labels,
-        'original_variable_types': tpl['original_variable_types'],
-        'variable_display_width': tpl['variable_display_width'],
-        'variable_measure': tpl['variable_measure'],
-        'missing_ranges': tpl['missing_ranges'],
-        'file_label': tpl['file_label'],
+        'original_variable_types': tpl.get('original_variable_types') or {},
+        'variable_display_width': tpl.get('variable_display_width') or {},
+        'variable_measure': tpl.get('variable_measure') or {},
+        'missing_ranges': tpl.get('missing_ranges') or {},
+        'file_label': tpl.get('file_label') or '',
     })
 
 
