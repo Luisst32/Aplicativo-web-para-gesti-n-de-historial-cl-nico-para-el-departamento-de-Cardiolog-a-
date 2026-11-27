@@ -100,15 +100,16 @@ def _match_column_to_field(col_name):
 
 def get_column_destination(col_name):
     """Identifica con precisión médica el módulo y campo destino en PostgreSQL para una columna SPSS."""
+    norm = normalize_var_name(col_name)
+
+    # 0. Estudios Solicitados: se evalúa antes de los alias porque el alias
+    # genérico ``estudios`` (nivel educativo) contiene la misma palabra.
+    if any(k in norm for k in ['usted_se_ha_realizado_estudios', 'estudios_de_mapa', 'estudios_holter_ecg', 'estudios_clinicos', 'estudios_de_ergonometria', 'estudios_de_tac', 'estudios_de_rnm', 'estudios_de_electrofisiologia']):
+        return ('Estudios Solicitados', f'Estudio Indicado al Paciente ({col_name})')
+
     matched_field = _match_column_to_field(col_name)
     if matched_field and matched_field in FIELD_DESTINATIONS:
         return FIELD_DESTINATIONS[matched_field]
-
-    norm = normalize_var_name(col_name)
-
-    # 0. Estudios Solicitados
-    if any(k in norm for k in ['usted_se_ha_realizado_estudios', 'estudios_de_mapa', 'estudios_holter_ecg', 'estudios_clinicos', 'estudios_de_ergonometria', 'estudios_de_tac', 'estudios_de_rnm', 'estudios_de_electrofisiologia']):
-        return ('Estudios Solicitados', f'Estudio Indicado al Paciente ({col_name})')
 
     # 1. Ecocardiograma
     if any(k in norm for k in ['eco', 'mitral', 'aortic', 'tritusp', 'tricusp', 'pulmonar', 'pulmunar', 'ventricul', 'auricul', 'onda_e', 'onda_a', 'onda_s', 'llenado', 'regurgit', 'valvul', 'estenosis', 'esternosis', 'gradiente', 'gradiante', 'tapse', 'mapse', 'dopler', 'biplanar', 'subcostal', 'cayado', 'engrados', 'movilidad', 'prolapso', 'velocidad', 'thp', 'jet_color', 'derrame', 'contractilidad', 'presiones_llenado', 'araesternal', 'area_sistolica', 'area_valvular', 'itv_de_tsvi', 'funcion_sistolica']):

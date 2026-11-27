@@ -1,6 +1,7 @@
 import datetime
 import json
 from decimal import Decimal
+from types import SimpleNamespace
 from django.urls import reverse
 from django.test import TestCase, SimpleTestCase
 from django.contrib.auth import get_user_model
@@ -380,10 +381,18 @@ class SavImporterTests(TestCase):
         from clinical.services.import_tickets import store_upload
         ticket, dummy_file = store_upload(BytesIO(b'fake sav content'), 'dataset.sav', self.user)
 
-        mock_meta = MagicMock()
-        mock_meta.number_rows = 1
-        mock_meta.number_columns = 2
-        mock_meta.variable_value_labels = {'UNIVERSIDAD': {1.0: 'UNEMI'}}
+        mock_meta = SimpleNamespace(
+            number_rows=1,
+            number_columns=2,
+            variable_value_labels={'UNIVERSIDAD': {1.0: 'UNEMI'}},
+            column_names_to_labels={},
+            original_variable_types={},
+            variable_display_width={},
+            variable_measure={},
+            missing_ranges={},
+            file_label='',
+            file_encoding='UTF-8',
+        )
         mock_df = {'CODIGO': [1], 'UNIVERSIDAD': [1.0]}
 
         with patch('apps.clinical.services.sav_importer.pyreadstat.read_sav', return_value=(mock_df, mock_meta)):

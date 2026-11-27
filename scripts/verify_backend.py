@@ -14,7 +14,7 @@ def main():
     os.environ.update(
         DJANGO_SETTINGS_MODULE='config.settings', APP_ENV='test', DEBUG='False',
         ALLOWED_HOSTS='localhost,127.0.0.1,testserver', TRUST_PROXY_HEADERS='False',
-        SECURE_HSTS_SECONDS='0', GEMINI_API_KEY='',
+        SECURE_HSTS_SECONDS='0', GEMINI_API_KEY='', UNEMI='false',
         SECRET_KEY=secrets.token_urlsafe(64),
         FIELD_ENCRYPTION_KEYS=base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(),
     )
