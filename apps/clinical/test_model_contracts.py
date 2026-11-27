@@ -22,6 +22,39 @@ from clinical.services.importer.executor import _execute_staged_dataset
 from security.models import User
 
 
+def expected_export_column_counts():
+    """Column counts derived from the template the exporter actually loads.
+
+    The official matrix lives outside Git (it contains cohort data), so local
+    runs use it while CI and fresh servers fall back to sav_columns_spec.json.
+    Hard-coded counts made the suite pass only on the machine with the matrix.
+    """
+    columns = list(sav_exporter.get_sav_template_metadata()['columns'])
+    identifiers = {'C.I', 'NOMBRES', 'APELLIDO1', 'APELLIDO2'}
+    sensitive = {name for name, _, _, _ in sav_exporter.SENSITIVE_EXPORT_COLUMNS}
+    if not identifiers.intersection(columns):
+        full = len(columns) + len(sensitive.difference(columns))
+    else:
+        full = len(columns)
+    sensitive.update(identifiers | {'TELÉFONO', 'CORREO'})
+    private = len([name for name in columns if name not in sensitive])
+    return full, private
+
+
+def export_identifier_columns():
+    """Identifier column names for the template in use (official or fallback)."""
+    columns = set(sav_exporter.get_sav_template_metadata()['columns'])
+    if 'C.I' in columns:
+        return {'id': 'C.I', 'names': 'NOMBRES', 'last': ['APELLIDO1', 'APELLIDO2'],
+                'phone': 'TELÉFONO', 'email': 'CORREO'}
+    return {'id': 'CEDULA', 'names': 'NOMBRES', 'last': ['APELLIDOS'],
+            'phone': 'TELEFONO', 'email': 'EMAIL'}
+
+
+def all_identifier_names(cols):
+    return [cols['id'], cols['names'], *cols['last'], cols['phone'], cols['email']]
+
+
 class DatasetMetadataContractTests(SimpleTestCase):
     def test_numeric_sav_formats_hide_decimals_for_integer_columns(self):
         frame = pd.DataFrame({
@@ -105,7 +138,7 @@ class ClinicalModelContractTests(TestCase):
     def export_frame(self, format_type='csv', privacy_mode=False):
         data, _, _ = sav_exporter.generate_export_dataset([self.patient.pk], format_type=format_type, privacy_mode=privacy_mode)
         if format_type == 'csv':
-            return pd.read_csv(BytesIO(data), dtype={'C.I': str, 'TELÉFONO': str})
+            return pd.read_csv(BytesIO(data), dtype={export_identifier_columns()['id']: str, export_identifier_columns()['phone']: str})
         path = Path(self.folder) / 'synthetic-export.sav'
         path.write_bytes(data)
         frame, _ = pyreadstat.read_sav(str(path))
@@ -136,10 +169,10 @@ class ClinicalModelContractTests(TestCase):
 
     def test_csv_export_age_uses_evaluation_date_before_birthday(self):
         frame = self.export_frame()
-        self.assertEqual(len(frame.columns), 535)
+        self.assertEqual(len(frame.columns), expected_export_column_counts()[0])
         self.assertIn('ECOCARDIOGRAMA', frame.columns)
-        self.assertIn('C.I', frame.columns)
-        self.assertEqual(str(frame.iloc[0]['C.I']), str(self.patient.id_card))
+        self.assertIn(export_identifier_columns()['id'], frame.columns)
+        self.assertEqual(str(frame.iloc[0][export_identifier_columns()['id']]), str(self.patient.id_card))
         self.assertEqual(frame.iloc[0]['EDAD'], 25)
 
     def test_csv_export_age_changes_on_birthday(self):
@@ -149,23 +182,19 @@ class ClinicalModelContractTests(TestCase):
 
     def test_sav_export_uses_full_template_and_can_be_read_back(self):
         frame = self.export_frame('sav')
-        self.assertEqual(len(frame.columns), 535)
+        self.assertEqual(len(frame.columns), expected_export_column_counts()[0])
         self.assertIn('ECOCARDIOGRAMA', frame.columns)
-        self.assertIn('C.I', frame.columns)
+        self.assertIn(export_identifier_columns()['id'], frame.columns)
         self.assertIn('NOMBRES', frame.columns)
-        self.assertEqual(str(frame.iloc[0]['C.I']), str(self.patient.id_card))
+        self.assertEqual(str(frame.iloc[0][export_identifier_columns()['id']]), str(self.patient.id_card))
         self.assertEqual(frame.iloc[0]['EDAD'], 25)
         self.assertFalse(pd.isna(frame.iloc[0]['FECHA']))
 
     def test_export_privacy_mode_excludes_sensitive_data(self):
         frame_priv = self.export_frame('csv', privacy_mode=True)
-        self.assertEqual(len(frame_priv.columns), 529)
-        self.assertNotIn('C.I', frame_priv.columns)
-        self.assertNotIn('NOMBRES', frame_priv.columns)
-        self.assertNotIn('APELLIDO1', frame_priv.columns)
-        self.assertNotIn('APELLIDO2', frame_priv.columns)
-        self.assertNotIn('TELÉFONO', frame_priv.columns)
-        self.assertNotIn('CORREO', frame_priv.columns)
+        self.assertEqual(len(frame_priv.columns), expected_export_column_counts()[1])
+        for column in all_identifier_names(export_identifier_columns()):
+            self.assertNotIn(column, frame_priv.columns)
         self.assertIn('ECOCARDIOGRAMA', frame_priv.columns)
 
     def test_multiformat_export_supports_zsav_rds_and_rdata(self):
@@ -182,8 +211,8 @@ class ClinicalModelContractTests(TestCase):
         p_rds = Path(self.folder) / 'test.rds'
         p_rds.write_bytes(rds_data)
         rds_read = pyreadr.read_r(str(p_rds))[None]
-        self.assertEqual(len(rds_read.columns), 535)
-        self.assertIn('C.I', rds_read.columns)
+        self.assertEqual(len(rds_read.columns), expected_export_column_counts()[0])
+        self.assertIn(export_identifier_columns()['id'], rds_read.columns)
         self.assertIn('ECOCARDIOGRAMA', rds_read.columns)
 
         # Prueba exportación RStudio RData
@@ -192,8 +221,8 @@ class ClinicalModelContractTests(TestCase):
         p_rdata = Path(self.folder) / 'test.RData'
         p_rdata.write_bytes(rdata_data)
         rdata_read = pyreadr.read_r(str(p_rdata))['CardioUnemi']
-        self.assertEqual(len(rdata_read.columns), 535)
-        self.assertIn('C.I', rdata_read.columns)
+        self.assertEqual(len(rdata_read.columns), expected_export_column_counts()[0])
+        self.assertIn(export_identifier_columns()['id'], rdata_read.columns)
         self.assertIn('ECOCARDIOGRAMA', rdata_read.columns)
 
     def test_echo_export_does_not_read_nonexistent_fractional_shortening(self):
@@ -296,17 +325,14 @@ class ClinicalModelContractTests(TestCase):
             'scope': 'all'
         }, content_type='application/json')
         self.assertEqual(response.status_code, 200)
-        frame = pd.read_csv(BytesIO(response.content), dtype={'C.I': str, 'TELÉFONO': str})
-        self.assertEqual(len(frame.columns), 535)
-        self.assertIn('C.I', frame.columns)
-        self.assertIn('NOMBRES', frame.columns)
-        self.assertIn('APELLIDO1', frame.columns)
-        self.assertIn('APELLIDO2', frame.columns)
-        self.assertIn('TELÉFONO', frame.columns)
-        self.assertIn('CORREO', frame.columns)
-        self.assertEqual(str(frame.iloc[0]['C.I']), '0923485718')
+        frame = pd.read_csv(BytesIO(response.content), dtype={export_identifier_columns()['id']: str, export_identifier_columns()['phone']: str})
+        self.assertEqual(len(frame.columns), expected_export_column_counts()[0])
+        self.assertIn(export_identifier_columns()['id'], frame.columns)
+        for column in all_identifier_names(export_identifier_columns()):
+            self.assertIn(column, frame.columns)
+        self.assertEqual(str(frame.iloc[0][export_identifier_columns()['id']]), '0923485718')
         self.assertEqual(str(frame.iloc[0]['NOMBRES']), 'Synthetic')
-        self.assertEqual(str(frame.iloc[0]['APELLIDO1']), 'Contract')
+        self.assertTrue(str(frame.iloc[0][export_identifier_columns()['last'][0]]).startswith('Contract'))
 
     def test_api_export_dataset_excludes_sensitive_when_privacy_mode_is_true(self):
         response = self.client.post('/clinical/api/export-dataset/', {
@@ -316,13 +342,9 @@ class ClinicalModelContractTests(TestCase):
         }, content_type='application/json')
         self.assertEqual(response.status_code, 200)
         frame = pd.read_csv(BytesIO(response.content))
-        self.assertEqual(len(frame.columns), 529)
-        self.assertNotIn('C.I', frame.columns)
-        self.assertNotIn('NOMBRES', frame.columns)
-        self.assertNotIn('APELLIDO1', frame.columns)
-        self.assertNotIn('APELLIDO2', frame.columns)
-        self.assertNotIn('TELÉFONO', frame.columns)
-        self.assertNotIn('CORREO', frame.columns)
+        self.assertEqual(len(frame.columns), expected_export_column_counts()[1])
+        for column in all_identifier_names(export_identifier_columns()):
+            self.assertNotIn(column, frame.columns)
         self.assertIn('ECOCARDIOGRAMA', frame.columns)
 
     def test_form_get_api_populates_phone_email_and_normalized_controls(self):
