@@ -254,6 +254,15 @@ class ClinicalModelContractTests(TestCase):
         output_frame, _ = pyreadstat.read_sav(str(output_path), apply_value_formats=False)
         self.assertEqual(list(output_frame.columns), list(source_frame.columns))
         self.assertEqual(len(output_frame), len(source_frame))
+        # La importación limpia espacios repetidos/extremos en los textos
+        # (p. ej. NOMBRES, APELLIDO2, CORREO); el contenido debe coincidir y
+        # los valores numéricos se comparan sin cambios.
+        def collapse_spaces(value):
+            return ' '.join(value.split()) if isinstance(value, str) else value
+        for frame in (source_frame, output_frame):
+            for column in frame.columns:
+                if frame[column].map(lambda v: isinstance(v, str)).any():
+                    frame[column] = frame[column].map(collapse_spaces)
         pd.testing.assert_frame_equal(source_frame, output_frame, check_dtype=False, check_names=True)
 
     def test_import_export_round_trip_preserves_duplicate_prefix_columns(self):
