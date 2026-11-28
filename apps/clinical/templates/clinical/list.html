@@ -62,7 +62,7 @@
           <span>Eliminar (<span id="countSeleccionadosEliminar">0</span>)</span>
         </button>
 
-        <button type="button" class="btn btn-exportar-modal" id="btnDescargarPdfsSeleccionados" data-clinical-action="export" onclick="descargarPDFsSeleccionados()" title="Descargar fichas clínicas seleccionadas en PDF (.ZIP)" style="display: none;">
+        <button type="button" class="btn btn-exportar-modal" id="btnDescargarPdfsSeleccionados" data-clinical-action="pdf" onclick="descargarPDFsSeleccionados()" title="Descargar fichas clínicas seleccionadas en PDF (.ZIP)" style="display: none;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           <span>Descargar PDFs (<span id="countSeleccionadosDescargar">0</span>)</span>
         </button>
@@ -635,5 +635,5 @@
   {{ institution_catalog|json_script:"cardio-institution-catalog" }}
   <script>window.CARDIO_UNEMI_ONLY = {% if unemi_only %}true{% else %}false{% endif %};</script>
   <script src="{% static 'clinical/js/pacientes.js' %}?v=20261123_institutions01"></script>
-  <script src="{% static 'clinical/js/list.js' %}?v=20261127_privacy_pdf01"></script>
+  <script src="{% static 'clinical/js/list.js' %}?v=20261127_pdf_save01"></script>
 {% endblock %}

@@ -749,7 +749,7 @@ function abrirHistorialesPaciente(pacienteId) {
       cardH.innerHTML = `
         <span class="historial-tag-numero">${escapeHtml(h.numeroVisita)}</span>
         <span>${escapeHtml(h.medico || '')}</span>
-        <button type="button" data-clinical-action="export">PDF</button>
+        <button type="button" data-clinical-action="pdf">PDF</button>
         <button type="button" data-clinical-action="delete">Eliminar</button>
       `;
       cardH.querySelector('[data-clinical-action="delete"]').addEventListener('click', () => {

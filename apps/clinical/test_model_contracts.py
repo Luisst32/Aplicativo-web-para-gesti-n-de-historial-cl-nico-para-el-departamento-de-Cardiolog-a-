@@ -419,3 +419,59 @@ class ClinicalModelContractTests(TestCase):
         self.patient.refresh_from_db()
         self.assertEqual(self.patient.phone, '0990931649')
 
+    def test_form_save_api_returns_fresh_patient_and_persists_all_edited_fields(self):
+        self.answer('arritmias', text='No tiene arritmias')
+        self.answer('sincopes', text='No ha tenido síncope')
+        self.answer('usted_consume_leche_de_vaca', text='Sí, leche entera 1 vez por semana')
+        self.answer('usted_consume_queso', text='Sí, 2 o más veces por semana')
+
+        save_res = self.client.post('/clinical/api/ficha/guardar/', {
+            'idPaciente': str(self.patient.pk),
+            'f_codigo': '777',
+            'f_nombre': 'CARLOS ALBERTO',
+            'f_apellido1': 'PEREZ',
+            'f_apellido2': 'GOMEZ',
+            'f_cedula': '0910000009',
+            'f_telefono': '0987654321',
+            'f_correo': 'carlos.perez@unemi.edu.ec',
+            'f_sexo': 'H',
+            'f_raza': 'BLANCA',
+            'f_peso': '84.5',
+            'f_talla': '174',
+            'f_tas': '132',
+            'f_tsi': '84',
+            'r_arritmias': 'Si',
+            'arritmias_tipo': 'Sí, arritmia tipo taquicardia',
+            'r_sincopes': 'Si',
+            'sincopes_tipo': 'Sí, síncope vasovagal',
+            'pred_q13_consume': 'Si',
+            'pred_leche_vasos_sem': '5',
+            'pred_leche_tipo': 'Deslactosada',
+            'pred_q14_consume': 'Si',
+            'pred_queso_veces_sem': '4',
+        })
+        self.assertEqual(save_res.status_code, 200, save_res.content)
+        body = save_res.json()
+        self.assertTrue(body['success'])
+
+        # El JSON devuelto por guardar DEBE reflejar inmediatamente los nuevos datos sin revertir al valor anterior
+        self.assertEqual(body['paciente']['first_names'], 'CARLOS ALBERTO')
+        self.assertEqual(body['paciente']['last_name1'], 'PEREZ')
+        self.assertEqual(body['paciente']['last_name2'], 'GOMEZ')
+        self.assertEqual(body['paciente']['cedula'], '0910000009')
+        self.assertEqual(body['paciente']['telefono'], '0987654321')
+        self.assertEqual(body['paciente']['correo'], 'carlos.perez@unemi.edu.ec')
+        self.assertEqual(body['paciente']['raza'], 'BLANCA')
+        self.assertEqual(body['datos']['f_nombre'], 'CARLOS ALBERTO')
+        self.assertEqual(body['datos']['f_telefono'], '0987654321')
+        self.assertEqual(body['datos']['f_correo'], 'carlos.perez@unemi.edu.ec')
+        self.assertEqual(body['datos']['f_cedula'], '0910000009')
+        self.assertEqual(body['datos']['f_raza'], 'BLANCA')
+        self.assertEqual(body['datos']['f_codigo'], '777')
+        self.assertEqual(body['datos']['arritmias_tipo'], 'Sí, arritmia tipo taquicardia')
+        self.assertEqual(body['datos']['sincopes_tipo'], 'Sí, síncope vasovagal')
+        self.assertEqual(body['datos']['pred_leche_vasos_sem'], '5')
+        self.assertEqual(body['datos']['pred_leche_tipo'], 'Deslactosada')
+        self.assertEqual(body['datos']['pred_queso_veces_sem'], '4')
+
+

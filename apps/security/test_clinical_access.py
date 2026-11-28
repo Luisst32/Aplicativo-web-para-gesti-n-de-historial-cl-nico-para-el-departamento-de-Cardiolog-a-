@@ -348,6 +348,15 @@ class ClinicalAuthorizationTests(TestCase):
             'export': False,
         })
         self.assertFalse(has_clinical_access(cardio_user, 'dashboard'))
+        self.assertTrue(has_clinical_access(cardio_user, 'pdf'))
+
+        visit = Visit.objects.create(
+            patient=self.patients[0],
+            evaluator=cardio_user,
+            visit_number=1,
+            study_code='CARDIO-PDF-1',
+            visit_date=date(2026, 4, 10),
+        )
 
         self.client.force_login(cardio_user)
         list_res = self.client.get('/')
@@ -355,9 +364,18 @@ class ClinicalAuthorizationTests(TestCase):
         self.assertContains(list_res, '[data-clinical-action="dashboard"] { display: none !important; }')
         self.assertContains(list_res, '[data-clinical-action="import"] { display: none !important; }')
         self.assertContains(list_res, '[data-clinical-action="export"] { display: none !important; }')
+        self.assertNotContains(list_res, '[data-clinical-action="pdf"] { display: none !important; }')
         self.assertNotIn('id="cardModoRolAdmin"', list_res.content.decode())
 
-        # Dashboard, import and export endpoints are blocked for Cardiólogo
+        # Cardiólogo CAN view and download clinical sheet PDFs in form and list
+        with patch('clinical.views.generate_clinical_sheet_pdf', return_value=b'%PDF-cardio') as pdf_mock:
+            form_pdf_res = self.client.get(f'/clinical/ficha/pdf/?paciente={self.patients[0].pk}&historial={visit.pk}&download=1')
+            self.assertEqual(form_pdf_res.status_code, 200)
+            batch_pdf_res = self.client.get(f'/clinical/api/ficha/descargar-seleccionados/?patient_ids={self.patients[0].pk}')
+            self.assertEqual(batch_pdf_res.status_code, 200)
+            self.assertEqual(pdf_mock.call_count, 2)
+
+        # Dashboard, import and dataset export endpoints remain blocked for Cardiólogo
         self.assertEqual(self.client.get('/dashboard/').status_code, 403)
         self.assertEqual(self.client.get('/dashboard/api/data/').status_code, 403)
         self.assertEqual(self.client.get('/clinical/api/export-dataset/').status_code, 403)

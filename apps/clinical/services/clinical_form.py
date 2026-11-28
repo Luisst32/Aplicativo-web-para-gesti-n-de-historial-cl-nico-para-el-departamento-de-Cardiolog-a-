@@ -15,6 +15,7 @@ from audit.services import register_audit_log
 from .measurements import save_measurements
 from .yes_no import nullable_bool, RADIO_FIELDS, CHECKBOX_FIELDS
 from .sav_importer import SPSS_QUESTION_ALIASES, classify_spss_question_section
+from clinical.validators import validate_ecuadorian_id
 QUESTION_ALIASES = SPSS_QUESTION_ALIASES
 ALIAS_COUNTS = Counter(QUESTION_ALIASES.values())
 REVERSE_QUESTION_ALIASES = {v: k for k,v in QUESTION_ALIASES.items() if ALIAS_COUNTS[v] == 1}
@@ -109,6 +110,7 @@ def update_clinical_record(patient, raw_data, user, client_ip):
         f_nom = raw_data.get('f_nombre')
         f_ap1 = raw_data.get('f_apellido1')
         f_ap2 = raw_data.get('f_apellido2')
+        f_ced = raw_data.get('f_cedula')
         f_tel = raw_data.get('f_telefono')
         f_cor = raw_data.get('f_correo')
         f_sex = raw_data.get('f_sexo')
@@ -119,6 +121,15 @@ def update_clinical_record(patient, raw_data, user, client_ip):
         if f_nom and not f_nom.strip().startswith('Paciente') and '***' not in f_nom: patient.first_names = f_nom.strip()
         if f_ap1 and f_ap1.strip() != '[Protegido]' and not f_ap1.strip().isdigit() and '***' not in f_ap1: patient.last_name1 = f_ap1.strip()
         if f_ap2 is not None and f_ap2.strip() != '[Protegido]' and '***' not in f_ap2: patient.last_name2 = f_ap2.strip()
+        if f_ced and '***' not in str(f_ced):
+            ced_clean = str(f_ced).strip()
+            if (
+                ced_clean
+                and ced_clean != patient.id_card
+                and validate_ecuadorian_id(ced_clean)
+                and not Patient.objects.filter(id_card=ced_clean).exclude(pk=patient.pk).exists()
+            ):
+                patient.id_card = ced_clean
         if f_tel is not None and '***' not in f_tel: patient.phone = f_tel.strip()
         if f_cor is not None and '***' not in f_cor: patient.email = f_cor.strip()
         if f_fecha_nac:
@@ -129,9 +140,12 @@ def update_clinical_record(patient, raw_data, user, client_ip):
             s_obj = Sex.objects.filter(name__istartswith=f_sex.strip()[0]).first()
             if s_obj: patient.sex = s_obj
         if f_raza:
-            eth_map = {'MESTIZO': 'Mestizo', 'BLANCA': 'Blanco', 'AFRICANA': 'Afroecuatoriano', 'INDÍGENA': 'Indígena', 'MONTUBIA': 'Montuvio', 'OTRA': 'Otro'}
-            eth_name = eth_map.get(f_raza.upper().strip(), f_raza.strip())
+            eth_map = {'MESTIZO': 'Mestizo', 'BLANCA': 'Blanco', 'AFRICANA': 'Afroecuatoriano', 'INDÍGENA': 'Indígena', 'INDIGENA': 'Indígena', 'MONTUBIA': 'Montuvio', 'OTRA': 'Otro'}
+            raza_key = f_raza.upper().strip()
+            eth_name = eth_map.get(raza_key, f_raza.strip())
             eth_obj = Ethnicity.objects.filter(name__icontains=eth_name).first()
+            if not eth_obj and raza_key in eth_map:
+                eth_obj, _ = Ethnicity.objects.get_or_create(name=eth_name)
             if eth_obj: patient.ethnicity = eth_obj
 
         f_uni = raw_data.get('f_universidad')
@@ -188,8 +202,9 @@ def update_clinical_record(patient, raw_data, user, client_ip):
             except ValueError:
                 raise ValidationError('Fecha clinica invalida.')
 
-        f_fac = raw_data.get('f_facultad')
-        if f_fac: visit.faculty = f_fac.strip()
+        if 'f_facultad' in raw_data:
+            f_fac = raw_data.get('f_facultad')
+            visit.faculty = f_fac.strip() if (f_fac and str(f_fac).strip()) else None
 
         f_estam = raw_data.get('f_estamento')
         if f_estam:
@@ -203,63 +218,91 @@ def update_clinical_record(patient, raw_data, user, client_ip):
             if res_cant:
                 visit.residence_canton = res_cant
 
-        f_hijos = raw_data.get('f_hijos') or raw_data.get('f_num_hijos')
-        if f_hijos and str(f_hijos).isdigit():
-            visit.num_children = int(f_hijos)
+        if 'f_hijos' in raw_data or 'f_num_hijos' in raw_data:
+            f_hijos = raw_data.get('f_hijos') if 'f_hijos' in raw_data else raw_data.get('f_num_hijos')
+            if f_hijos in ('', None):
+                visit.num_children = None
+            elif str(f_hijos).strip().isdigit():
+                visit.num_children = int(str(f_hijos).strip())
 
-        f_conviv = raw_data.get('f_convivientes') or raw_data.get('f_num_convivientes')
-        if f_conviv and str(f_conviv).isdigit():
-            visit.num_cohabitants = int(f_conviv)
+        if 'f_convivientes' in raw_data or 'f_num_convivientes' in raw_data:
+            f_conviv = raw_data.get('f_convivientes') if 'f_convivientes' in raw_data else raw_data.get('f_num_convivientes')
+            if f_conviv in ('', None):
+                visit.num_cohabitants = None
+            elif str(f_conviv).strip().isdigit():
+                visit.num_cohabitants = int(str(f_conviv).strip())
 
-        f_estado_civil = raw_data.get('f_estado_civil')
-        if f_estado_civil:
-            ms_map = {'1_soltero': 'Soltero', '2_casado': 'Casado', '3_divorciado': 'Divorciado', '4_viudo': 'Viudo', '5_union_libre': 'Unión de hecho'}
-            ms_name = ms_map.get(f_estado_civil.strip(), f_estado_civil.strip())
-            ms_obj = MaritalStatus.objects.filter(name__icontains=ms_name).first()
-            if ms_obj: visit.marital_status = ms_obj
+        if 'f_estado_civil' in raw_data:
+            f_estado_civil = raw_data.get('f_estado_civil')
+            if f_estado_civil:
+                ms_map = {'1_soltero': 'Soltero', '2_casado': 'Casado', '3_divorciado': 'Divorciado', '4_viudo': 'Viudo', '5_union_libre': 'Unión de hecho'}
+                ms_name = ms_map.get(f_estado_civil.strip(), f_estado_civil.strip())
+                ms_obj = MaritalStatus.objects.filter(name__icontains=ms_name).first()
+                if ms_obj: visit.marital_status = ms_obj
+            else:
+                visit.marital_status = None
 
-        f_convive_con = raw_data.get('f_convive_con')
-        if f_convive_con:
-            ls_map = {'1': 'Solo', '2': 'Con pareja', '3': 'Con pareja', '4': 'Con familia', '5': 'Con familia', '6': 'Con familia', '7': 'Con amigos'}
-            ls_name = ls_map.get(f_convive_con.strip(), f_convive_con.strip())
-            ls_obj = LivingSituation.objects.filter(name__icontains=ls_name).first()
-            if ls_obj: visit.living_situation = ls_obj
+        if 'f_convive_con' in raw_data:
+            f_convive_con = raw_data.get('f_convive_con')
+            if f_convive_con:
+                ls_map = {'1': 'Solo', '2': 'Con pareja', '3': 'Con pareja', '4': 'Con familia', '5': 'Con familia', '6': 'Con familia', '7': 'Con amigos'}
+                ls_name = ls_map.get(f_convive_con.strip(), f_convive_con.strip())
+                ls_obj = LivingSituation.objects.filter(name__icontains=ls_name).first()
+                if ls_obj: visit.living_situation = ls_obj
+            else:
+                visit.living_situation = None
 
-        f_estudios = raw_data.get('f_estudios')
-        if f_estudios:
-            ed_map = {'1': 'Primaria', '2': 'Primaria', '3': 'Primaria', '4': 'Secundaria', '5': 'Secundaria', '6': 'Tercer Nivel', '7': 'Cuarto Nivel'}
-            ed_name = ed_map.get(f_estudios.strip(), f_estudios.strip())
-            ed_obj = EducationLevel.objects.filter(name__icontains=ed_name).first()
-            if ed_obj: visit.education_level = ed_obj
+        if 'f_estudios' in raw_data:
+            f_estudios = raw_data.get('f_estudios')
+            if f_estudios:
+                ed_map = {'1': 'Primaria', '2': 'Primaria', '3': 'Primaria', '4': 'Secundaria', '5': 'Secundaria', '6': 'Tercer Nivel', '7': 'Cuarto Nivel'}
+                ed_name = ed_map.get(f_estudios.strip(), f_estudios.strip())
+                ed_obj = EducationLevel.objects.filter(name__icontains=ed_name).first()
+                if ed_obj: visit.education_level = ed_obj
+            else:
+                visit.education_level = None
 
-        f_horario = raw_data.get('f_horario')
-        if f_horario:
-            ws_map = {'1': 'Tiempo Completo', '2': 'Tiempo Completo', '3': 'Parcial', '4': 'Turnos'}
-            ws_name = ws_map.get(f_horario.strip(), f_horario.strip())
-            ws_obj = WorkSchedule.objects.filter(name__icontains=ws_name).first()
-            if ws_obj: visit.work_schedule = ws_obj
+        if 'f_horario' in raw_data:
+            f_horario = raw_data.get('f_horario')
+            if f_horario:
+                ws_map = {'1': 'Tiempo Completo', '2': 'Tiempo Completo', '3': 'Parcial', '4': 'Turnos'}
+                ws_name = ws_map.get(f_horario.strip(), f_horario.strip())
+                ws_obj = WorkSchedule.objects.filter(name__icontains=ws_name).first()
+                if ws_obj: visit.work_schedule = ws_obj
+            else:
+                visit.work_schedule = None
 
-        f_profesion = raw_data.get('f_profesion')
-        if f_profesion:
-            pc_map = {'1': 'Docente Titular', '2': 'Docente Ocasional', '3': 'Servidor Público', '4': 'Auxiliar', '5': 'Otro', '6': 'Estudiante', '7': 'Otro'}
-            pc_name = pc_map.get(f_profesion.strip(), f_profesion.strip())
-            pc_obj = ProfessionalCategory.objects.filter(name__icontains=pc_name).first()
-            if pc_obj: visit.professional_category = pc_obj
+        if 'f_profesion' in raw_data:
+            f_profesion = raw_data.get('f_profesion')
+            if f_profesion:
+                pc_map = {'1': 'Docente Titular', '2': 'Docente Ocasional', '3': 'Servidor Público', '4': 'Auxiliar', '5': 'Otro', '6': 'Estudiante', '7': 'Otro'}
+                pc_name = pc_map.get(f_profesion.strip(), f_profesion.strip())
+                pc_obj = ProfessionalCategory.objects.filter(name__icontains=pc_name).first()
+                if pc_obj: visit.professional_category = pc_obj
+            else:
+                visit.professional_category = None
 
-        f_vivienda = raw_data.get('f_vivienda')
-        if f_vivienda:
-            ht_map = {'1': 'Propia', '2': 'Arrendada', '3': 'Familiar', '4': 'Prestada'}
-            ht_name = ht_map.get(f_vivienda.strip(), f_vivienda.strip())
-            ht_obj = HousingType.objects.filter(name__icontains=ht_name).first()
-            if ht_obj: visit.housing_type = ht_obj
+        if 'f_vivienda' in raw_data:
+            f_vivienda = raw_data.get('f_vivienda')
+            if f_vivienda:
+                ht_map = {'1': 'Propia', '2': 'Arrendada', '3': 'Familiar', '4': 'Prestada'}
+                ht_name = ht_map.get(f_vivienda.strip(), f_vivienda.strip())
+                ht_obj = HousingType.objects.filter(name__icontains=ht_name).first()
+                if ht_obj: visit.housing_type = ht_obj
+            else:
+                visit.housing_type = None
 
-        f_ingresos = raw_data.get('f_ingresos')
-        if f_ingresos:
-            ir_map = {'1': 'Menos de $500', '2': '$500 - $1000', '3': '$1001 - $2000', '4': '$1001 - $2000', '5': 'Más de $2000', '6': 'Más de $2000', '7': 'Más de $2000', '8': 'Más de $2000'}
-            ir_name = ir_map.get(f_ingresos.strip(), f_ingresos.strip())
-            ir_obj = IncomeRange.objects.filter(name__icontains=ir_name).first()
-            if ir_obj: visit.income_range = ir_obj
+        if 'f_ingresos' in raw_data:
+            f_ingresos = raw_data.get('f_ingresos')
+            if f_ingresos:
+                ir_map = {'1': 'Menos de $500', '2': '$500 - $1000', '3': '$1001 - $2000', '4': '$1001 - $2000', '5': 'Más de $2000', '6': 'Más de $2000', '7': 'Más de $2000', '8': 'Más de $2000'}
+                ir_name = ir_map.get(f_ingresos.strip(), f_ingresos.strip())
+                ir_obj = IncomeRange.objects.filter(name__icontains=ir_name).first()
+                if ir_obj: visit.income_range = ir_obj
+            else:
+                visit.income_range = None
 
+        visit.source_row_data = None
         visit.status = Visit.Status.COMPLETED
         visit.save()
 
@@ -273,38 +316,42 @@ def update_clinical_record(patient, raw_data, user, client_ip):
             rhythm_obj = EcgRhythm.objects.filter(name__icontains=ecg_ritmo_nom[:10]).first() or EcgRhythm.objects.first()
             ecg, _ = Electrocardiogram.objects.get_or_create(visit=visit, defaults={"rhythm": rhythm_obj})
             ecg.rhythm = rhythm_obj
-            if raw_data.get('ecg_fc') and str(raw_data.get('ecg_fc')).isdigit():
-                if any(key in raw_data for key in ('ecg_fc',)):
-                    ecg.heart_rate = int(raw_data.get('ecg_fc'))
-            if raw_data.get('ecg_pr') and str(raw_data.get('ecg_pr')).isdigit():
-                if any(key in raw_data for key in ('ecg_pr',)):
-                    ecg.pr_interval_ms = int(raw_data.get('ecg_pr'))
-            if raw_data.get('ecg_qrs') and str(raw_data.get('ecg_qrs')).isdigit():
-                if any(key in raw_data for key in ('ecg_qrs',)):
-                    ecg.qrs_duration_ms = int(raw_data.get('ecg_qrs'))
-            if raw_data.get('ecg_qt') and str(raw_data.get('ecg_qt')).isdigit():
-                if any(key in raw_data for key in ('ecg_qt',)):
-                    ecg.qt_interval_ms = int(raw_data.get('ecg_qt'))
-            if raw_data.get('ecg_qtc') and str(raw_data.get('ecg_qtc')).isdigit():
-                if any(key in raw_data for key in ('ecg_qtc',)):
-                    ecg.qtc_bazett_ms = int(raw_data.get('ecg_qtc'))
-            if raw_data.get('ecg_eje') and str(raw_data.get('ecg_eje')).replace('-', '').isdigit():
-                if any(key in raw_data for key in ('ecg_eje',)):
-                    ecg.qrs_axis_degrees = int(raw_data.get('ecg_eje'))
+            for html_key, model_key in (
+                ('ecg_fc', 'heart_rate'),
+                ('ecg_pr', 'pr_interval_ms'),
+                ('ecg_qrs', 'qrs_duration_ms'),
+                ('ecg_qt', 'qt_interval_ms'),
+                ('ecg_qtc', 'qtc_bazett_ms'),
+                ('ecg_eje', 'qrs_axis_degrees'),
+            ):
+                if html_key in raw_data:
+                    raw_v = raw_data.get(html_key)
+                    if raw_v in ('', None):
+                        setattr(ecg, model_key, None)
+                    else:
+                        clean_v = str(raw_v).strip().rstrip('°').strip()
+                        if clean_v.lstrip('-').isdigit():
+                            setattr(ecg, model_key, int(clean_v))
 
             # Campos exhaustivos del ECG
-            if raw_data.get('ecg_rr'):
-                try:
-                    val_rr = float(raw_data['ecg_rr'])
-                    if val_rr > 10.0:  # Ingresado en milisegundos (ej. 800 ms -> 0.800 s)
-                        val_rr = val_rr / 1000.0
-                    ecg.rr_interval_sec = Decimal(str(round(val_rr, 3)))
-                except (ValueError, TypeError, ArithmeticError):
-                    raise ValidationError('Valor numerico clinico invalido.')
-            if raw_data.get('ecg_p_mm'):
-                try: ecg.p_wave_mm = Decimal(str(raw_data['ecg_p_mm']))
-                except (ValueError, TypeError, ArithmeticError):
-                    raise ValidationError('Valor numerico clinico invalido.')
+            if 'ecg_rr' in raw_data:
+                if raw_data.get('ecg_rr') in ('', None):
+                    ecg.rr_interval_sec = None
+                else:
+                    try:
+                        val_rr = float(raw_data['ecg_rr'])
+                        if val_rr > 10.0:  # Ingresado en milisegundos (ej. 800 ms -> 0.800 s)
+                            val_rr = val_rr / 1000.0
+                        ecg.rr_interval_sec = Decimal(str(round(val_rr, 3)))
+                    except (ValueError, TypeError, ArithmeticError):
+                        raise ValidationError('Valor numerico clinico invalido.')
+            if 'ecg_p_mm' in raw_data:
+                if raw_data.get('ecg_p_mm') in ('', None):
+                    ecg.p_wave_mm = None
+                else:
+                    try: ecg.p_wave_mm = Decimal(str(raw_data['ecg_p_mm']))
+                    except (ValueError, TypeError, ArithmeticError):
+                        raise ValidationError('Valor numerico clinico invalido.')
             if any(key in raw_data for key in ('ecg_p_mitral',)):
                 ecg.p_mitrale = nullable_bool(raw_data.get('ecg_p_mitral'))
             if any(key in raw_data for key in ('ecg_bloqueo_av',)):
@@ -439,12 +486,15 @@ def update_clinical_record(patient, raw_data, user, client_ip):
                 ('tiroidea_tsh', 'tsh_u_iu_ml'),
             ]
             for html_key, model_key in lab_fields:
-                val = raw_data.get(html_key)
-                if val:
-                    try:
-                        setattr(lab, model_key, Decimal(str(val)))
-                    except (ValueError, TypeError, ArithmeticError):
-                        raise ValidationError('Valor de laboratorio invalido.')
+                if html_key in raw_data:
+                    val = raw_data.get(html_key)
+                    if val in ('', None):
+                        setattr(lab, model_key, None)
+                    else:
+                        try:
+                            setattr(lab, model_key, Decimal(str(val)))
+                        except (ValueError, TypeError, ArithmeticError):
+                            raise ValidationError('Valor de laboratorio invalido.')
             lab.save()
 
         if any(key.startswith(('est_',)) for key in raw_data):
@@ -466,7 +516,7 @@ def update_clinical_record(patient, raw_data, user, client_ip):
 
 
         # 8. Persistencia Universal y Bidireccional de Todos los Campos del Formulario (VisitAnswer)
-        ignore_keys = {'csrfmiddlewaretoken', 'idPaciente', 'paciente_id', 'f_codigo'}
+        ignore_keys = {'csrfmiddlewaretoken', 'idPaciente', 'paciente_id'}
         sections_by_code = {s.code: s for s in QuestionnaireSection.objects.all()}
         default_section = sections_by_code.get('MOD_3_FACTORES_MOD') or QuestionnaireSection.objects.first()
 
@@ -475,16 +525,18 @@ def update_clinical_record(patient, raw_data, user, client_ip):
                 continue
             val_str = '' if v is None else str(v).strip()
             k_clean = k.strip()
+            if k_clean in ('f_nombre', 'f_apellido1', 'f_apellido2', 'f_cedula', 'f_telefono', 'f_correo') and ('***' in val_str or val_str == '[Protegido]'):
+                continue
 
             target_sec_code = classify_spss_question_section(k_clean)
             target_sec = sections_by_code.get(target_sec_code, default_section)
 
-            q = Question.objects.filter(code=k_clean).first()
-            if not q and len(k_clean) <= 30:
+            q = Question.objects.filter(code=k_clean[:30]).first()
+            if not q:
                 q = Question.objects.create(
                     section=target_sec,
-                    code=k_clean,
-                    text=f"Campo {k_clean}",
+                    code=k_clean[:30],
+                    text=f"Campo {k_clean}"[:250],
                     response_type=Question.ResponseType.TEXTO,
                     display_order=999
                 )
@@ -507,10 +559,11 @@ def update_clinical_record(patient, raw_data, user, client_ip):
                     VisitAnswer.objects.update_or_create(visit=visit, question=q, defaults={'text_value': None, 'numeric_value': None, 'selected_option': None})
 
             # Sincronización bidireccional de alias (Formulario HTML <-> SPSS)
-            alias_code = QUESTION_ALIASES.get(k_clean) or REVERSE_QUESTION_ALIASES.get(k_clean)
-            if alias_code and ALIAS_COUNTS.get(alias_code, 0) > 1:
-                alias_code = None
-            if alias_code and len(alias_code) <= 30:
+            raw_alias = QUESTION_ALIASES.get(k_clean) or REVERSE_QUESTION_ALIASES.get(k_clean)
+            if raw_alias and ALIAS_COUNTS.get(raw_alias, 0) > 1:
+                raw_alias = None
+            alias_code = raw_alias[:30] if raw_alias else None
+            if alias_code and alias_code != k_clean[:30]:
                 alias_sec_code = classify_spss_question_section(alias_code)
                 alias_sec = sections_by_code.get(alias_sec_code, default_section)
                 q_alias = Question.objects.filter(code=alias_code).first()
@@ -518,7 +571,7 @@ def update_clinical_record(patient, raw_data, user, client_ip):
                     q_alias = Question.objects.create(
                         section=alias_sec,
                         code=alias_code,
-                        text=f"Campo {alias_code}",
+                        text=f"Campo {alias_code}"[:250],
                         response_type=Question.ResponseType.TEXTO,
                         display_order=999
                     )
@@ -539,6 +592,15 @@ def update_clinical_record(patient, raw_data, user, client_ip):
                         )
                     else:
                         VisitAnswer.objects.update_or_create(visit=visit, question=q_alias, defaults={'text_value': None, 'numeric_value': None, 'selected_option': None})
+
+            if k_clean == 'f_correo':
+                q_email = Question.objects.filter(code='email').first()
+                if q_email:
+                    VisitAnswer.objects.update_or_create(
+                        visit=visit,
+                        question=q_email,
+                        defaults={'text_value': val_str[:250] if val_str != '' else None, 'numeric_value': None, 'selected_option': None},
+                    )
 
         # 9. Auditoría Automática (HU-14)
         register_audit_log(

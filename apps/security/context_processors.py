@@ -6,13 +6,14 @@ logger = logging.getLogger(__name__)
 
 
 def clinical_access(request):
-    from security.access import clinical_capabilities, has_dashboard_access
+    from security.access import clinical_capabilities, has_dashboard_access, has_pdf_access
 
     capabilities = getattr(request, 'clinical_capabilities', None)
     if capabilities is None:
         capabilities = clinical_capabilities(request.user)
     ui_access = dict(capabilities)
     ui_access['dashboard'] = has_dashboard_access(request.user)
+    ui_access['pdf'] = has_pdf_access(request.user)
     return {'clinical_access': ui_access}
 
 

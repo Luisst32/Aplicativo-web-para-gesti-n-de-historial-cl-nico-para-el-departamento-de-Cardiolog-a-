@@ -144,9 +144,27 @@ def has_dashboard_access(user) -> bool:
     return clinical_capabilities(user)['read']
 
 
+def has_pdf_access(user) -> bool:
+    """Determine whether the user can view and download clinical sheet PDFs."""
+    if not is_active_user(user):
+        return False
+    if user.is_administrator:
+        return True
+    if not SystemSetting.is_role_mode_enabled():
+        return True
+
+    role_names = _active_role_names_lower(user)
+    if role_names & (CARDIOLOGO_ALIASES | ESTADISTICA_ALIASES):
+        return True
+
+    return clinical_capabilities(user)['export']
+
+
 def has_clinical_access(user, action='read'):
     if action == 'dashboard':
         return has_dashboard_access(user)
+    if action == 'pdf':
+        return has_pdf_access(user)
     return clinical_capabilities(user)[action]
 
 
@@ -156,7 +174,7 @@ def require_clinical_access(user, action='read'):
 
 
 def clinical_access_required(action='read', *, api=False):
-    if action != 'dashboard' and action not in ACTION_PERMISSIONS:
+    if action not in ('dashboard', 'pdf') and action not in ACTION_PERMISSIONS:
         raise ValueError(f'Unknown clinical action: {action}')
 
     def decorate(view):
@@ -164,7 +182,12 @@ def clinical_access_required(action='read', *, api=False):
         def wrapped(request, *args, **kwargs):
             capabilities = clinical_capabilities(request.user)
             request.clinical_capabilities = capabilities
-            allowed = has_dashboard_access(request.user) if action == 'dashboard' else capabilities[action]
+            if action == 'dashboard':
+                allowed = has_dashboard_access(request.user)
+            elif action == 'pdf':
+                allowed = has_pdf_access(request.user)
+            else:
+                allowed = capabilities[action]
             if not allowed:
                 if api:
                     authenticated = bool(request.user and request.user.is_authenticated)

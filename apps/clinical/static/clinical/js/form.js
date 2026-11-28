@@ -1129,6 +1129,14 @@ async function guardarFichaCompleta() {
     btnTop.textContent = 'Guardando cambios en BD...';
   }
 
+  if (!(typeof esModoPrivacidadActivo === 'function' && esModoPrivacidadActivo()) && typeof unirNombresFicha === 'function') {
+    const n1El = document.getElementById('f_nombre1');
+    const n2El = document.getElementById('f_nombre2');
+    if ((n1El && n1El.value.trim()) || (n2El && n2El.value.trim())) {
+      unirNombresFicha();
+    }
+  }
+
   // Recopilar todos los elementos del formulario mediante FormData
   const formData = new FormData(form);
 

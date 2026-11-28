@@ -39,8 +39,20 @@ def save_measurements(visit, data):
             if 'extratonos' in data:
                 values['extra_heart_sounds'] = nullable_bool(data['extratonos'])
             if 'soplos' in data:
-                values['systolic_murmur'] = None if data['soplos'] in ('', None) else data['soplos'] in ('1','Si','sistolico')
-                values['diastolic_murmur'] = None if data['soplos'] in ('', None) else data['soplos'] in ('2','diastolico')
+                soplo_raw = str(data.get('soplos') or '').strip().lower()
+                tipo_raw = str(data.get('soplo_tipo') or '').strip().lower()
+                if data['soplos'] in ('', None):
+                    values['systolic_murmur'] = None
+                    values['diastolic_murmur'] = None
+                elif soplo_raw in ('0', 'no'):
+                    values['systolic_murmur'] = False
+                    values['diastolic_murmur'] = False
+                elif 'diast' in tipo_raw or soplo_raw in ('2', 'diastolico', 'diastólico'):
+                    values['systolic_murmur'] = False
+                    values['diastolic_murmur'] = True
+                else:
+                    values['systolic_murmur'] = soplo_raw in ('1', 'si', 'sí', 'sistolico', 'sistólico')
+                    values['diastolic_murmur'] = False
             for key, field, negative in (
                 ('resp_norm','pulmonary_auscultation_normal','No'),
                 ('abdom_norm','abdominal_auscultation_normal','No'),

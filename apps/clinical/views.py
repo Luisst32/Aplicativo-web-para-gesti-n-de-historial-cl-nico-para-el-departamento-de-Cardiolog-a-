@@ -78,6 +78,30 @@ REVERSE_QUESTION_ALIASES = {v: k for k, v in QUESTION_ALIASES.items()}
 REVERSE_ALIASES = REVERSE_QUESTION_ALIASES
 
 
+def _ethnicity_to_form_code(ethnicity) -> str:
+    if not ethnicity or not ethnicity.name:
+        return "MESTIZO"
+    raw = ethnicity.name.strip().upper()
+    mapping = {
+        "MESTIZO": "MESTIZO",
+        "MESTIZA": "MESTIZO",
+        "BLANCO": "BLANCA",
+        "BLANCA": "BLANCA",
+        "AFROECUATORIANO": "AFRICANA",
+        "AFROECUATORIANA": "AFRICANA",
+        "AFRICANA": "AFRICANA",
+        "AFRICANO": "AFRICANA",
+        "INDÍGENA": "INDÍGENA",
+        "INDIGENA": "INDÍGENA",
+        "MONTUVIO": "MONTUBIA",
+        "MONTUBIO": "MONTUBIA",
+        "MONTUBIA": "MONTUBIA",
+        "OTRO": "OTRA",
+        "OTRA": "OTRA",
+    }
+    return mapping.get(raw, raw)
+
+
 def _patient_to_dict(patient, visit=None):
     """
     Serializes a Patient and their active Visit into the structure expected
@@ -147,14 +171,29 @@ def _patient_to_dict(patient, visit=None):
         ir_val_map = {'Menos de $500': '1', '$500 - $1000': '2', '$1001 - $2000': '3', 'Más de $2000': '5'}
         ir_val = ir_val_map.get(visit.income_range.name, "")
 
+    exact_sociodemo = {}
     phone_val = patient.phone or ""
     email_val = patient.email or ""
-    if visit and (not phone_val or not email_val):
+    if visit:
         for ans in visit.answers.all():
-            if not phone_val and ans.question.code in ('telefono', 'f_telefono') and ans.text_value:
+            q_code = ans.question.code
+            if q_code in ('f_estado_civil', 'f_convive_con', 'f_estudios', 'f_horario', 'f_profesion', 'f_vivienda', 'f_ingresos') and ans.text_value:
+                exact_sociodemo[q_code] = ans.text_value.strip()
+            if not phone_val and q_code in ('telefono', 'f_telefono') and ans.text_value:
                 phone_val = ans.text_value.strip()
-            if not email_val and ans.question.code in ('correo', 'f_correo', 'email') and ans.text_value:
+            if not email_val and q_code in ('correo', 'f_correo', 'email') and ans.text_value:
                 email_val = ans.text_value.strip()
+
+    if exact_sociodemo:
+        probe = dict(exact_sociodemo)
+        _normalize_clinical_form_data(probe, {}, vs)
+        ms_val = probe.get('f_estado_civil') or ms_val
+        ls_val = probe.get('f_convive_con') or ls_val
+        ed_val = probe.get('f_estudios') or ed_val
+        ws_val = probe.get('f_horario') or ws_val
+        pc_val = probe.get('f_profesion') or pc_val
+        ht_val = probe.get('f_vivienda') or ht_val
+        ir_val = probe.get('f_ingresos') or ir_val
 
     return {
         "id": str(patient.patient_id),
@@ -181,7 +220,7 @@ def _patient_to_dict(patient, visit=None):
         "municipio": patient.birth_canton.name if patient.birth_canton else "Milagro",
         "provincia_nac": patient.birth_canton.province.name.upper() if (patient.birth_canton and patient.birth_canton.province) else "GUAYAS",
         "numeroVisita": visit.visit_number if (visit and visit.visit_number) else 1,
-        "raza": patient.ethnicity.name.upper() if patient.ethnicity else "MESTIZO",
+        "raza": _ethnicity_to_form_code(patient.ethnicity),
         "estado_civil": ms_val,
         "hijos": str(visit.num_children if (visit and visit.num_children is not None) else 0),
         "convivientes": str(visit.num_cohabitants if (visit and visit.num_cohabitants is not None) else 4),
@@ -659,11 +698,12 @@ ECUADOR_PROVINCES = {
 }
 
 
-def _normalize_clinical_form_data(datos, ans_dict, vs=None):
+def _normalize_clinical_form_data(datos, ans_dict, vs=None, exact_answers=None):
     """
     Normaliza exhaustivamente los valores del formulario procedentes de SPSS / VisitAnswer
     para que encajen con precisión en las opciones de <select>, radios y campos numéricos HTML.
     """
+    exact = exact_answers or {}
     # 1. Sexo
     sex_val = str(datos.get('f_sexo', '')).strip().lower()
     if 'h' in sex_val or sex_val == '1':
@@ -853,7 +893,10 @@ def _normalize_clinical_form_data(datos, ans_dict, vs=None):
             datos['arritmias_tipo'] = ''
         else:
             datos['r_arritmias'] = 'Si'
-            if 'no conoce' in arr_val or 'no especifica' in arr_val:
+            exact_arr_tipo = str(exact.get('arritmias_tipo') or '').strip()
+            if exact_arr_tipo and 'no tiene' not in exact_arr_tipo.lower() and exact_arr_tipo.lower() != 'no':
+                datos['arritmias_tipo'] = exact_arr_tipo
+            elif 'no conoce' in arr_val or 'no especifica' in arr_val:
                 datos['arritmias_tipo'] = 'Sí, no especifica'
 
     # Síncopes
@@ -864,6 +907,11 @@ def _normalize_clinical_form_data(datos, ans_dict, vs=None):
             datos['sincopes_tipo'] = ''
         else:
             datos['r_sincopes'] = 'Si'
+            exact_sinc_tipo = str(exact.get('sincopes_tipo') or '').strip()
+            if exact_sinc_tipo and 'no ha tenido' not in exact_sinc_tipo.lower() and exact_sinc_tipo.lower() != 'no':
+                datos['sincopes_tipo'] = exact_sinc_tipo
+            else:
+                datos['sincopes_tipo'] = ''
 
     # Insuficiencia renal crónica
     irc_val = str(datos.get('r_irc', '') or ans_dict.get('f_renal_cronica', '')).strip().lower()
@@ -922,14 +970,15 @@ def _normalize_clinical_form_data(datos, ans_dict, vs=None):
             datos['pred_q13_consume'] = 'No'
         else:
             datos['pred_q13_consume'] = 'Si'
-            if 'día' in l_low or 'dia' in l_low:
+            if 'pred_leche_vasos_dia' not in exact and ('día' in l_low or 'dia' in l_low):
                 datos['pred_leche_vasos_dia'] = '1'
-            elif 'semana' in l_low:
+            elif 'pred_leche_vasos_sem' not in exact and 'semana' in l_low:
                 datos['pred_leche_vasos_sem'] = '1'
-            if 'deslactosada' in l_low:
-                datos['pred_leche_tipo'] = 'Deslactosada'
-            elif 'entera' in l_low:
-                datos['pred_leche_tipo'] = 'Entera'
+            if 'pred_leche_tipo' not in exact:
+                if 'deslactosada' in l_low:
+                    datos['pred_leche_tipo'] = 'Deslactosada'
+                elif 'entera' in l_low:
+                    datos['pred_leche_tipo'] = 'Entera'
 
     queso_val = str(ans_dict.get('usted_consume_queso', '')).strip()
     if queso_val:
@@ -938,10 +987,11 @@ def _normalize_clinical_form_data(datos, ans_dict, vs=None):
             datos['pred_q14_consume'] = 'No'
         else:
             datos['pred_q14_consume'] = 'Si'
-            if '2 o más' in q_low or '2 o mas' in q_low:
-                datos['pred_queso_veces_sem'] = '2'
-            elif '1 vez' in q_low:
-                datos['pred_queso_veces_sem'] = '1'
+            if 'pred_queso_veces_sem' not in exact:
+                if '2 o más' in q_low or '2 o mas' in q_low:
+                    datos['pred_queso_veces_sem'] = '2'
+                elif '1 vez' in q_low:
+                    datos['pred_queso_veces_sem'] = '1'
 
     yog_val = str(ans_dict.get('usted_consume_yogurt', '')).strip()
     if yog_val:
@@ -950,17 +1000,19 @@ def _normalize_clinical_form_data(datos, ans_dict, vs=None):
             datos['pred_q15_consume'] = 'No'
         else:
             datos['pred_q15_consume'] = 'Si'
-            if '2 o más' in y_low or '2 o mas' in y_low:
-                datos['pred_yogurt_cant_sem'] = '2'
-            elif '1 ves' in y_low or '1 vez' in y_low:
-                datos['pred_yogurt_cant_sem'] = '1'
-            if 'griego' in y_low:
-                datos['pred_yogurt_tipo'] = 'Griego'
-            elif 'entero' in y_low:
-                datos['pred_yogurt_tipo'] = 'Entero'
+            if 'pred_yogurt_cant_sem' not in exact:
+                if '2 o más' in y_low or '2 o mas' in y_low:
+                    datos['pred_yogurt_cant_sem'] = '2'
+                elif '1 ves' in y_low or '1 vez' in y_low:
+                    datos['pred_yogurt_cant_sem'] = '1'
+            if 'pred_yogurt_tipo' not in exact:
+                if 'griego' in y_low:
+                    datos['pred_yogurt_tipo'] = 'Griego'
+                elif 'entero' in y_low:
+                    datos['pred_yogurt_tipo'] = 'Entero'
 
 
-from .services.yes_no import yes_no, any_known, RADIO_FIELDS, CHECKBOX_FIELDS, CHOICE_FIELDS
+from .services.yes_no import yes_no, any_known, nullable_bool, RADIO_FIELDS, CHECKBOX_FIELDS, CHOICE_FIELDS
 
 
 def _build_form_datos(patient, visit):
@@ -1012,7 +1064,7 @@ def _build_form_datos(patient, visit):
         "f_fecha_nac": patient.birth_date.isoformat() if patient.birth_date else "",
         "f_edad": edad_val,
         "f_sexo": "H" if (patient.sex and patient.sex.name.lower().startswith('h')) else "M",
-        "f_raza": patient.ethnicity.name.upper() if patient.ethnicity else "MESTIZO",
+        "f_raza": _ethnicity_to_form_code(patient.ethnicity),
         "f_telefono": phone_val,
         "f_correo": email_val,
         "f_codigo": visit.study_code if visit else "",
@@ -1273,29 +1325,45 @@ def _build_form_datos(patient, visit):
             datos['est_electrofisiologia'] = yes_no(ordered.electrophysiology)
 
         # Cargar todas las respuestas guardadas en VisitAnswer
+        authoritative_model_keys = {
+            'f_nombre', 'f_apellido1', 'f_apellido2', 'f_cedula', 'f_fecha_nac',
+            'f_edad', 'f_sexo', 'f_raza', 'f_telefono', 'f_correo', 'f_codigo',
+            'f_fecha_visita', 'f_universidad', 'f_facultad', 'f_visita', 'f_estamento',
+            'f_hijos', 'f_convivientes', 'f_ciudad', 'f_provincia', 'f_municipio',
+            'f_provincia_nac', 'f_peso', 'f_talla', 'f_perimetro', 'f_imc', 'f_asc',
+            'f_tas', 'f_tsi', 'f_sat_o2', 'f_fc',
+        }
+        exact_answers = {}
         ans_dict = {}
-        for ans in visit.answers.select_related('question').all():
-            q_code = ans.question.code
-            if ans.text_value:
-                val = ans.text_value
-            elif ans.numeric_value is not None:
-                if ans.numeric_value % 1 == 0:
-                    val = str(int(ans.numeric_value))
+        all_answers = list(visit.answers.select_related('question', 'selected_option').all())
+        for answer in all_answers:
+            q_code = answer.question.code
+            if answer.selected_option_id:
+                raw_exact = answer.selected_option.label
+            elif answer.numeric_value is not None:
+                if answer.numeric_value % 1 == 0:
+                    raw_exact = str(int(answer.numeric_value))
                 else:
-                    val = f"{float(ans.numeric_value):.2f}".rstrip('0').rstrip('.')
-            elif ans.selected_option:
-                val = ans.selected_option.label
+                    raw_exact = f"{float(answer.numeric_value):.2f}".rstrip('0').rstrip('.')
             else:
-                val = None
+                raw_exact = answer.text_value
+            exact_answers[q_code] = raw_exact
+
+        for ans in all_answers:
+            q_code = ans.question.code
+            val = exact_answers.get(q_code)
             if val is not None and str(val).strip() != '':
                 ans_dict[q_code] = val
-                datos[q_code] = val
+                if q_code not in authoritative_model_keys or not datos.get(q_code):
+                    datos[q_code] = val
                 # Sincronizar bidireccionalmente con los identificadores del formulario HTML
                 for form_k, spss_k in QUESTION_ALIASES.items():
-                    if q_code.lower() == spss_k.lower():
-                        datos[form_k] = val
+                    if q_code.lower() in (spss_k.lower(), spss_k[:30].lower()):
+                        if form_k not in exact_answers and (form_k not in authoritative_model_keys or not datos.get(form_k)):
+                            datos[form_k] = val
                     elif q_code.lower() == form_k.lower():
-                        datos[spss_k] = val
+                        if spss_k not in exact_answers:
+                            datos[spss_k] = val
 
         # Inyecciones y deducciones inteligentes para compatibilidad total con SPSS:
         # 0. Soplos cardiacos (normalizar grado y tipo sin volcar texto crudo)
@@ -1327,8 +1395,8 @@ def _build_form_datos(patient, visit):
                     datos['f_soplo_diastolico'] = 'Si'
                     datos['f_soplo_sistolico'] = 'No'
 
-        # 0.1. Edad real reportada en SPSS/VisitAnswer
-        if ans_dict.get('edad'):
+        # 0.1. Edad real reportada en SPSS/VisitAnswer (solo si el paciente no tiene fecha de nacimiento)
+        if not patient.birth_date and ans_dict.get('edad'):
             try:
                 edad_num = str(ans_dict.get('edad')).split('.')[0].strip()
                 if edad_num.isdigit() and int(edad_num) > 0:
@@ -1412,7 +1480,8 @@ def _build_form_datos(patient, visit):
                 datos['chk_ex_alcohol'] = 'Si'
             elif any(k in a_up for k in ['CONSUME', 'DIARIA', 'SEMANAL', 'OCASIONAL']):
                 datos['r_alcohol'] = 'Si'
-                datos['alcohol_frecuencia'] = alc
+                if 'alcohol_frecuencia' not in exact_answers:
+                    datos['alcohol_frecuencia'] = alc
         drg = ans_dict.get('drogas', '')
         if drg:
             d_up = drg.upper()
@@ -1423,7 +1492,8 @@ def _build_form_datos(patient, visit):
                 datos['chk_ex_drogas'] = 'Si'
             elif 'CONSUME' in d_up:
                 datos['r_drogas'] = 'Si'
-                datos['drogas_frecuencia'] = drg
+                if 'drogas_frecuencia' not in exact_answers:
+                    datos['drogas_frecuencia'] = drg
 
         # 7. COVID-19 y Secuelas
         from .services.covid_answers import resolve_covid
@@ -1442,7 +1512,8 @@ def _build_form_datos(patient, visit):
             l_up = lc.upper()
             if l_up.startswith('S') or 'SÍ' in l_up or 'SI' in l_up:
                 datos['longcovid'] = 'Si'
-                datos['longcovid_sintomas'] = lc
+                if 'longcovid_sintomas' not in exact_answers and l_up not in ('SI', 'SÍ'):
+                    datos['longcovid_sintomas'] = lc
             elif 'NO' in l_up:
                 datos['longcovid'] = 'No'
 
@@ -1525,17 +1596,25 @@ def _build_form_datos(patient, visit):
         datos['ac_resultado'] = None
 
     if visit:
-        _normalize_clinical_form_data(datos, ans_dict, vs)
+        _normalize_clinical_form_data(datos, ans_dict, vs, exact_answers=exact_answers)
+    else:
+        exact_answers = {}
 
     # Exact answers (including an explicit NULL) beat defaults and legacy inferences.
-    exact_answers = {}
-    if visit:
-        for answer in visit.answers.select_related('question', 'selected_option').all():
-            exact_answers[answer.question.code] = (answer.selected_option.label if answer.selected_option_id
-                else answer.numeric_value if answer.numeric_value is not None else answer.text_value)
     for key in RADIO_FIELDS | CHECKBOX_FIELDS | CHOICE_FIELDS:
         if key in exact_answers:
-            datos[key] = exact_answers[key]
+            raw_val = exact_answers[key]
+            if raw_val in (None, ''):
+                datos[key] = None
+            elif key in RADIO_FIELDS and str(raw_val).strip() not in ('Si', 'No'):
+                try:
+                    datos[key] = yes_no(nullable_bool(raw_val))
+                except ValidationError:
+                    if datos.get(key) not in ('Si', 'No'):
+                        low = str(raw_val).strip().lower()
+                        datos[key] = 'No' if low.startswith('no') else 'Si'
+            else:
+                datos[key] = raw_val
         elif key not in datos:
             datos[key] = None
         if datos.get(key) == '':
@@ -1627,14 +1706,19 @@ def form_save_api(request):
             }, status=400)
 
         f_tel = (raw_data.get('f_telefono') or '').strip()
-        if f_tel and '***' not in f_tel and not validate_ecuadorian_phone(f_tel):
+        existing_tel = (patient.phone or '').strip()
+        if f_tel and '***' not in f_tel and f_tel != existing_tel and not validate_ecuadorian_phone(f_tel):
             return JsonResponse({
                 "success": False,
                 "error": f"El teléfono '{f_tel}' no es válido. Debe tener 10 dígitos iniciando con 09 (ej: 0987654321)."
             }, status=400)
 
         # Transacción Atómica Completa (HU-11, HU-12, HU-13)
-        visit = update_clinical_record(patient, raw_data, request.user, getattr(request, 'client_ip', 'unknown'))
+        update_clinical_record(patient, raw_data, request.user, getattr(request, 'client_ip', 'unknown'))
+
+        # Recargar instancias frescas desde PostgreSQL para devolver los cambios reales recién guardados
+        patient = selected_patients([patient.pk])[0]
+        visit = getattr(patient, 'visit', None)
 
         # Generar snapshot completo de todos los datos actualizados
         datos = _build_form_datos(patient, visit)
@@ -1695,7 +1779,7 @@ def export_pdf_view(request, visit_id=None):
         response['X-Frame-Options'] = 'SAMEORIGIN'
         return response
 
-    require_clinical_access(request.user, 'export')
+    require_clinical_access(request.user, 'pdf')
     patient_id_param = request.GET.get('paciente')
     historial_param = request.GET.get('historial')
     target_visit_id = visit_id if visit_id is not None else historial_param
@@ -1751,7 +1835,7 @@ def _generate_zip_stream(visits, privacy_mode=False):
 
 
 @login_required
-@clinical_access_required('export', api=True)
+@clinical_access_required('pdf', api=True)
 @selection_errors
 def api_download_batch_pdf(request):
     """
