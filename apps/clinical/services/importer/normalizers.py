@@ -19,6 +19,50 @@ from .constants import (
     CIUDAD_CODE_MAP,
 )
 
+def normalize_phone_value(raw_val):
+    """
+    Normaliza números telefónicos provenientes de CSV, RStudio (.rds/.RData) o SPSS (.sav):
+    - Elimina sufijos decimales (.0) o notación científica generados cuando la columna fue leída como float.
+    - Restaura el 0 inicial en números ecuatorianos de 9 dígitos que perdieron el cero al castearse a número.
+    """
+    if raw_val is None:
+        return None
+    if isinstance(raw_val, bool):
+        return str(raw_val)
+    if isinstance(raw_val, int):
+        s = str(raw_val)
+        return s.zfill(10) if (len(s) == 9 and s.isdigit()) else s
+    if isinstance(raw_val, float):
+        if math.isnan(raw_val) or math.isinf(raw_val):
+            return None
+        try:
+            d = Decimal(str(raw_val))
+            if d == d.to_integral_value():
+                s = format(int(d), 'd')
+                return s.zfill(10) if (len(s) == 9 and s.isdigit()) else s
+        except Exception:
+            pass
+        return str(raw_val).strip()
+
+    s = str(raw_val).strip()
+    if not s or s.lower() in ('nan', 'none', 'null', 'na', '<na>'):
+        return None
+
+    # Detectar cadenas numéricas contaminadas por conversión float (ej. "991792652.0" o "9.91792652e+08")
+    if re.match(r'^[+-]?\d+\.0+$', s) or re.match(r'^[+-]?\d+(?:\.\d+)?[eE][+-]?\d+$', s):
+        try:
+            d = Decimal(s)
+            if d == d.to_integral_value():
+                int_str = format(int(d), 'd')
+                return int_str.zfill(10) if (len(int_str) == 9 and int_str.isdigit()) else int_str
+        except Exception:
+            pass
+
+    if len(s) == 9 and s.isdigit():
+        return s.zfill(10)
+    return s
+
+
 def normalize_var_name(name):
     """
     Limpia y normaliza un identificador de variable SPSS:

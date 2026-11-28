@@ -389,3 +389,33 @@ class ClinicalModelContractTests(TestCase):
         self.assertEqual(payload['paciente']['correo'], 'fallback@test.org')
         self.assertEqual(payload['datos']['f_telefono'], '0988776655')
         self.assertEqual(payload['datos']['f_correo'], 'fallback@test.org')
+
+    def test_csv_and_rds_import_normalize_float_and_leading_zero_phones(self):
+        csv_path = Path(self.folder) / 'phones.csv'
+        csv_path.write_text(
+            'CODIGO,UNIVERSIDAD,C.I,TELÉFONO\n701,1,0923485718,0991792652\n',
+            encoding='utf-8',
+        )
+        analysis_csv = sav_importer.analyze_sav_file(BytesIO(csv_path.read_bytes()), csv_path.name, self.user)
+        self.assertTrue(analysis_csv['success'])
+        res_csv = sav_importer.execute_sav_import(analysis_csv['temp_token'], self.user)
+        self.assertTrue(res_csv['success'])
+        self.patient.refresh_from_db()
+        self.assertEqual(self.patient.phone, '0991792652')
+
+        # Simular archivo RStudio (.rds) donde TELÉFONO quedó como float64 (990931649.0 sin 0 inicial)
+        rds_frame = pd.DataFrame({
+            'CODIGO': [701.0],
+            'UNIVERSIDAD': [1.0],
+            'C.I': [923485718.0],
+            'TELÉFONO': [990931649.0],
+        })
+        rds_path = Path(self.folder) / 'phones.rds'
+        pyreadr.write_rds(str(rds_path), rds_frame)
+        analysis_rds = sav_importer.analyze_sav_file(BytesIO(rds_path.read_bytes()), rds_path.name, self.user)
+        self.assertTrue(analysis_rds['success'])
+        res_rds = sav_importer.execute_sav_import(analysis_rds['temp_token'], self.user)
+        self.assertTrue(res_rds['success'])
+        self.patient.refresh_from_db()
+        self.assertEqual(self.patient.phone, '0990931649')
+

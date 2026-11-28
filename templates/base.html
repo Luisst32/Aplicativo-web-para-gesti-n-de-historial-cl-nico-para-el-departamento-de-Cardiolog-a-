@@ -34,6 +34,7 @@
     {% if not clinical_access.import %}[data-clinical-action="import"] { display: none !important; }{% endif %}
     {% if not clinical_access.export %}[data-clinical-action="export"] { display: none !important; }{% endif %}
     {% if not clinical_access.share %}[data-clinical-action="share"] { display: none !important; }{% endif %}
+    {% if not clinical_access.dashboard %}[data-clinical-action="dashboard"] { display: none !important; }{% endif %}
   </style>
 </head>
 <body>
@@ -55,12 +56,13 @@
       last_name: "{{ request.user.last_name|escapejs }}",
       second_last_name: "{{ request.user.second_last_name|default:''|escapejs }}",
       nombre: "{{ request.user.full_name|default:request.user.username|escapejs }}",
-      rol: "{% if request.user.is_superuser %}Administrador{% elif request.user.roles.exists %}{{ request.user.roles.first.name|escapejs }}{% elif request.user.is_staff %}Médico Evaluador{% else %}Usuario{% endif %}",
+      rol: "{{ request.user.primary_role_name|escapejs }}",
       correo: "{{ request.user.email|default:''|escapejs }}",
       is_staff: {% if request.user.is_staff or request.user.is_superuser %}true{% else %}false{% endif %},
       is_admin: {% if request.user.is_administrator %}true{% else %}false{% endif %}
     };
     window.CHATBOT_ENABLED = {{ chatbot_enabled|yesno:"true,false" }};
+    window.ROLE_MODE_ENABLED = {{ role_mode_enabled|yesno:"true,false" }};
     window.CLINICAL_ACCESS = {
       read: {{ clinical_access.read|yesno:"true,false" }},
       create: {{ clinical_access.create|yesno:"true,false" }},
@@ -68,13 +70,14 @@
       delete: {{ clinical_access.delete|yesno:"true,false" }},
       import: {{ clinical_access.import|yesno:"true,false" }},
       export: {{ clinical_access.export|yesno:"true,false" }},
-      share: {{ clinical_access.share|yesno:"true,false" }}
+      share: {{ clinical_access.share|yesno:"true,false" }},
+      dashboard: {{ clinical_access.dashboard|yesno:"true,false" }}
     };
     {% endif %}
   </script>
   <script src="{% static 'js/global/utils.js' %}?v=20261113_a03"></script>
   <script src="{% static 'js/global/api.js' %}?v=20261104_02"></script>
-  <script src="{% static 'js/global/ui.js' %}?v=20261120_settings03"></script>
+  <script src="{% static 'js/global/ui.js' %}?v=20261127_rolemode01"></script>
   <script src="{% static 'js/global/sav_importer.js' %}?v=20261113_rstudio03"></script>
   <script src="{% static 'js/global/eliminar_ficha.js' %}?v=20261113_a03"></script>
 

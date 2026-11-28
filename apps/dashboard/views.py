@@ -17,11 +17,11 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
 from . import services
-from security.access import clinical_access_required
+from security.access import dashboard_access_required, require_clinical_access
 
 
 @login_required
-@clinical_access_required('read')
+@dashboard_access_required()
 @ensure_csrf_cookie
 @never_cache
 def index_view(request):
@@ -47,7 +47,7 @@ def index_view(request):
 
 
 @login_required
-@clinical_access_required('read', api=True)
+@dashboard_access_required(api=True)
 @never_cache
 def api_dashboard_data(request):
     """
@@ -137,10 +137,11 @@ def _release_chrome_profile_dir(profile_dir, poolable):
 
 
 @login_required
-@clinical_access_required('read')
+@dashboard_access_required()
 @require_POST
 @never_cache
 def export_dashboard_html_pdf(request):
+    require_clinical_access(request.user, 'export')
     """Convert the dashboard's self-contained HTML report into a vector PDF.
 
     The browser builds the report HTML from the same dashboard sections. This

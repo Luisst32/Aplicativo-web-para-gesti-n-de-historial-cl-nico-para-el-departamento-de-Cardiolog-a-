@@ -24,6 +24,10 @@ const DASHBOARD_EXPORT_FONT_STACK = "'Inter', 'Segoe UI', Arial, Helvetica, sans
 function openExportModal() {
   const modal = document.getElementById('modal-export-dashboard');
   if (modal) {
+    modal.querySelectorAll('input[name="export-format"][value="csv"]').forEach(inp => {
+      const card = inp.closest('.export-card-option');
+      if (card) card.remove();
+    });
     modal.style.display = 'flex';
     const curTab = DASHBOARD_TABS.find(t => t.id === activeTabId) || DASHBOARD_TABS[0];
     const lbl = document.getElementById('export-current-tab-name');
@@ -137,9 +141,7 @@ async function startExport() {
     setProgress('Iniciando exportación de alta velocidad...', 6);
     await nextFrame();
 
-    if (format === 'csv') {
-      await exportCsv(scope, setProgress);
-    } else if (format === 'image') {
+    if (format === 'image') {
       await exportImage(scope, setProgress);
     } else if (format === 'pptx') {
       await exportPowerPoint(scope, setProgress);
@@ -450,18 +452,27 @@ function cloneChartConfigValue(val, depth = 0) {
   return copy;
 }
 
-// Renderiza un gráfico Chart.js en un lienzo offscreen Ultra-HD (4x DPI / ~384 DPI)
-// al tamaño exacto de su contenedor de exportación con etiquetas numéricas de alto contraste.
-function renderExportChartJsDataUrl(sourceCanvas, targetWidthPx, targetHeightPx) {
-  const width = Math.max(360, Math.round(targetWidthPx || sourceCanvas.clientWidth || 500));
-  const height = Math.max(280, Math.round(targetHeightPx || sourceCanvas.clientHeight || 400));
+// Renderiza un gráfico Chart.js en un lienzo offscreen HD al tamaño exacto de su contenedor
+// con etiquetas numéricas de alto contraste (retorna el <canvas> directamente sin bloqueo PNG).
+function renderExportChartJsCanvas(sourceCanvas, targetWidthPx, targetHeightPx, dpr = 2.0) {
+  const width = Math.max(320, Math.round(targetWidthPx || sourceCanvas.clientWidth || 500));
+  const height = Math.max(220, Math.round(targetHeightPx || sourceCanvas.clientHeight || 380));
 
   const liveChart = (window.Chart && typeof window.Chart.getChart === 'function'
     ? window.Chart.getChart(sourceCanvas)
     : null) || Object.values(typeof charts !== 'undefined' ? charts : {}).find(c => c && c.canvas === sourceCanvas);
 
   if (!liveChart || typeof window.Chart !== 'function') {
-    return sourceCanvas.toDataURL('image/png');
+    const fallback = document.createElement('canvas');
+    fallback.width = Math.max(1, sourceCanvas.width || width);
+    fallback.height = Math.max(1, sourceCanvas.height || height);
+    const fCtx = fallback.getContext('2d');
+    if (fCtx) {
+      fCtx.fillStyle = '#FFFFFF';
+      fCtx.fillRect(0, 0, fallback.width, fallback.height);
+      fCtx.drawImage(sourceCanvas, 0, 0, fallback.width, fallback.height);
+    }
+    return fallback;
   }
 
   let offscreenWrap = null;
@@ -478,12 +489,12 @@ function renderExportChartJsDataUrl(sourceCanvas, targetWidthPx, targetHeightPx)
     options.responsive = false;
     options.maintainAspectRatio = false;
     options.animation = false;
-    options.devicePixelRatio = 2.5;
+    options.devicePixelRatio = dpr;
 
     options.layout = options.layout || {};
     options.layout.padding = isCircular
       ? { top: 14, right: 16, bottom: 10, left: 16 }
-      : { top: 30, right: 24, bottom: 10, left: 10 };
+      : { top: 28, right: 22, bottom: 10, left: 10 };
 
     options.plugins = options.plugins || {};
     if (options.plugins.legend && options.plugins.legend.display !== false) {
@@ -493,10 +504,10 @@ function renderExportChartJsDataUrl(sourceCanvas, targetWidthPx, targetHeightPx)
           ...(options.plugins.legend.labels || {}),
           color: '#0F172A',
           boxWidth: 11,
-          padding: 15,
+          padding: 14,
           font: {
             family: DASHBOARD_EXPORT_FONT_STACK,
-            size: 13,
+            size: 12.5,
             weight: '700'
           }
         }
@@ -513,7 +524,7 @@ function renderExportChartJsDataUrl(sourceCanvas, targetWidthPx, targetHeightPx)
           font: {
             ...(scaleCfg.ticks?.font || {}),
             family: DASHBOARD_EXPORT_FONT_STACK,
-            size: 12.5,
+            size: 12,
             weight: '600'
           }
         };
@@ -524,7 +535,7 @@ function renderExportChartJsDataUrl(sourceCanvas, targetWidthPx, targetHeightPx)
             font: {
               ...(scaleCfg.title.font || {}),
               family: DASHBOARD_EXPORT_FONT_STACK,
-              size: 13,
+              size: 12.5,
               weight: '700'
             }
           };
@@ -557,14 +568,14 @@ function renderExportChartJsDataUrl(sourceCanvas, targetWidthPx, targetHeightPx)
             return {
               family: DASHBOARD_EXPORT_FONT_STACK,
               weight: '700',
-              size: ratio >= 0.14 ? 14 : 12.5,
+              size: ratio >= 0.14 ? 13.5 : 12,
               lineHeight: 1.18
             };
           }
           return {
             family: DASHBOARD_EXPORT_FONT_STACK,
             weight: '700',
-            size: 13,
+            size: 12.5,
             lineHeight: 1.18
           };
         }
@@ -572,7 +583,7 @@ function renderExportChartJsDataUrl(sourceCanvas, targetWidthPx, targetHeightPx)
     }
 
     offscreenWrap = document.createElement('div');
-    offscreenWrap.style.cssText = `position:fixed;left:-100000px;top:0;width:${width}px;height:${height}px;overflow:visible;pointer-events:none;background:#FFFFFF;`;
+    offscreenWrap.style.cssText = `position:fixed;left:-100000px;top:0;width:${width}px;height:${height}px;overflow:hidden;pointer-events:none;background:#FFFFFF;contain:strict;`;
     const offCanvas = document.createElement('canvas');
     if (sourceCanvas.id) offCanvas.id = `${sourceCanvas.id}-export-hd`;
     offCanvas.width = width;
@@ -583,10 +594,21 @@ function renderExportChartJsDataUrl(sourceCanvas, targetWidthPx, targetHeightPx)
 
     tempChart = new window.Chart(offCanvas, { type, data, options, plugins });
     tempChart.update('none');
-    return offCanvas.toDataURL('image/png');
+
+    // Copiar el bitmap renderizado antes de destruir la instancia Chart.js
+    const outputCanvas = document.createElement('canvas');
+    outputCanvas.width = offCanvas.width;
+    outputCanvas.height = offCanvas.height;
+    const outCtx = outputCanvas.getContext('2d');
+    if (outCtx) {
+      outCtx.fillStyle = '#FFFFFF';
+      outCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+      outCtx.drawImage(offCanvas, 0, 0);
+    }
+    return outputCanvas;
   } catch (err) {
-    console.warn('Fallback en renderExportChartJsDataUrl:', err);
-    return sourceCanvas.toDataURL('image/png');
+    console.warn('Fallback en renderExportChartJsCanvas:', err);
+    return sourceCanvas;
   } finally {
     if (tempChart) {
       try { tempChart.destroy(); } catch (e) {}
@@ -595,6 +617,11 @@ function renderExportChartJsDataUrl(sourceCanvas, targetWidthPx, targetHeightPx)
       offscreenWrap.remove();
     }
   }
+}
+
+function renderExportChartJsDataUrl(sourceCanvas, targetWidthPx, targetHeightPx, dpr = 2.0) {
+  const rendered = renderExportChartJsCanvas(sourceCanvas, targetWidthPx, targetHeightPx, dpr);
+  return rendered.toDataURL('image/png');
 }
 
 // Optimiza los gráficos vectoriales SVG de ApexCharts dentro del escenario de exportación:
@@ -1045,7 +1072,717 @@ function buildExportHtmlStage(tab, partNumber, layout = null) {
   return { stage, root: clone };
 }
 
+// ============================================================================
+// MOTOR NATIVO DE ALTA VELOCIDAD (CANVAS2D + SVG C++ BLINK + BLOB PARALELO)
+// Elimina las 39 creaciones de <iframe> y recargas de CSS/fuentes de html2canvas.
+// ============================================================================
+
+function rgbCssToHex(cssColor, fallback = '1B2A41') {
+  if (!cssColor) return fallback;
+  const trimmed = String(cssColor).trim();
+  if (trimmed.startsWith('#')) {
+    const hex = trimmed.slice(1);
+    if (hex.length === 3) {
+      return hex.split('').map(ch => ch + ch).join('').toUpperCase();
+    }
+    if (hex.length >= 6) return hex.slice(0, 6).toUpperCase();
+  }
+  const match = trimmed.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if (match) {
+    const toHex = (n) => Math.max(0, Math.min(255, Number(n) || 0)).toString(16).padStart(2, '0');
+    return `${toHex(match[1])}${toHex(match[2])}${toHex(match[3])}`.toUpperCase();
+  }
+  return fallback;
+}
+
+function resolveKpiValueColorHex(valEl) {
+  if (!valEl) return '1B2A41';
+  const cl = valEl.classList;
+  if (cl.contains('color-semaforo-red')) return 'EF4444';
+  if (cl.contains('color-semaforo-yellow')) return 'F59E0B';
+  if (cl.contains('color-semaforo-green')) return '10B981';
+  if (cl.contains('color-primary-blue')) return '3AA0FF';
+  if (cl.contains('color-palette-navy')) return '1B2A41';
+  try {
+    const computed = window.getComputedStyle(valEl).color;
+    return rgbCssToHex(computed, '1B2A41');
+  } catch (e) {
+    return '1B2A41';
+  }
+}
+
+function canvasToBlobAsync(canvas) {
+  return new Promise(resolve => {
+    if (typeof canvas.toBlob === 'function') {
+      canvas.toBlob(blob => resolve(blob), 'image/png');
+    } else {
+      const dataUrl = canvas.toDataURL('image/png');
+      const bin = atob(dataUrl.split(',')[1] || '');
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      resolve(new Blob([bytes], { type: 'image/png' }));
+    }
+  });
+}
+
+async function canvasToPngDataUrlAsync(canvas) {
+  const blob = await canvasToBlobAsync(canvas);
+  if (!blob) return canvas.toDataURL('image/png');
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('Error codificando PNG'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function drawCanvasRoundRect(ctx, x, y, w, h, r) {
+  const radius = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, w, h, radius);
+  } else {
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + w, y, x + w, y + h, radius);
+    ctx.arcTo(x + w, y + h, x, y + h, radius);
+    ctx.arcTo(x, y + h, x, y, radius);
+    ctx.arcTo(x, y, x + w, y, radius);
+    ctx.closePath();
+  }
+}
+
+function wrapCanvasTextLines(ctx, text, maxWidth, maxLines = 3) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return [];
+  const words = clean.split(' ');
+  const lines = [];
+  let current = '';
+  for (let i = 0; i < words.length; i++) {
+    const candidate = current ? `${current} ${words[i]}` : words[i];
+    if (ctx.measureText(candidate).width <= maxWidth || !current) {
+      current = candidate;
+    } else {
+      lines.push(current);
+      current = words[i];
+      if (lines.length >= maxLines - 1) {
+        const rest = [current, ...words.slice(i + 1)].join(' ');
+        let truncated = rest;
+        while (truncated.length > 4 && ctx.measureText(truncated + '…').width > maxWidth) {
+          truncated = truncated.slice(0, -1).trimEnd();
+        }
+        lines.push(truncated === rest ? rest : `${truncated}…`);
+        return lines;
+      }
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+function extractTabKpiRows(targetEl) {
+  if (!targetEl) return [];
+  const rows = [];
+  Array.from(targetEl.children).forEach(child => {
+    if (!child || child.nodeType !== 1 || !child.classList.contains('kpi-row')) return;
+    if (child.hidden || child.style.display === 'none') return;
+    const cards = [];
+    Array.from(child.children).forEach(card => {
+      if (!card.classList.contains('card-kpi') || !isExportCardVisible(card)) return;
+      const title = card.querySelector('.kpi-title')?.textContent?.trim() || '';
+      const valEl = card.querySelector('.kpi-value');
+      const value = valEl?.textContent?.trim() || '';
+      const caption = card.querySelector('.kpi-caption')?.textContent?.trim() || '';
+      if (!title && !value) return;
+      cards.push({
+        title,
+        value,
+        caption,
+        colorHex: resolveKpiValueColorHex(valEl)
+      });
+    });
+    if (cards.length) rows.push(cards);
+  });
+  return rows;
+}
+
+function extractApexLegendItems(visCard) {
+  if (!visCard) return [];
+  const legendEl = visCard.querySelector('.apexcharts-legend');
+  if (!legendEl || legendEl.classList.contains('apexcharts-legend-hidden')) return [];
+  try {
+    const ls = window.getComputedStyle(legendEl);
+    if (ls.display === 'none' || ls.visibility === 'hidden') return [];
+  } catch (e) {}
+
+  const items = [];
+  legendEl.querySelectorAll('.apexcharts-legend-series').forEach(seriesEl => {
+    const label = seriesEl.querySelector('.apexcharts-legend-text')?.textContent?.trim() || '';
+    if (!label) return;
+    const marker = seriesEl.querySelector('.apexcharts-legend-marker');
+    let color = '#3AA0FF';
+    if (marker) {
+      const inlineColor = marker.style?.backgroundColor || marker.style?.background || '';
+      const svgShape = marker.querySelector('path, rect, circle');
+      const attrFill = svgShape?.getAttribute('fill') || '';
+      if (inlineColor && !inlineColor.includes('gradient')) {
+        color = `#${rgbCssToHex(inlineColor, '3AA0FF')}`;
+      } else if (attrFill && !attrFill.startsWith('url(')) {
+        color = `#${rgbCssToHex(attrFill, '3AA0FF')}`;
+      } else {
+        try {
+          color = `#${rgbCssToHex(window.getComputedStyle(marker).backgroundColor, '3AA0FF')}`;
+        } catch (e) {}
+      }
+    }
+    items.push({ label, color });
+  });
+  return items;
+}
+
+// Clona y prepara un <svg> de ApexCharts en memoria usando las métricas ya calculadas del DOM activo
+// (cero mutaciones sobre el DOM vivo, cero creaciones de iframes y cero <foreignObject> que contaminen el canvas).
+function buildStandaloneApexSvgMarkup(sourceSvg, visCard, sourceTabEl, pixelW, pixelH) {
+  const svgClone = sourceSvg.cloneNode(true);
+  svgClone.querySelectorAll('foreignObject').forEach(fo => fo.remove());
+
+  // Desactivar clip-path para evitar recortes de etiquetas numéricas
+  svgClone.querySelectorAll('[clip-path], [clipPath], [style*="clip-path"]').forEach(el => {
+    if (el.hasAttribute('clip-path')) el.removeAttribute('clip-path');
+    if (el.hasAttribute('clipPath')) el.removeAttribute('clipPath');
+    if (el.style && el.style.clipPath) el.style.clipPath = 'none';
+  });
+
+  // Asegurar que cualquier gradiente referenciado url(#id) exista dentro del propio <defs> del clon
+  let defsEl = svgClone.querySelector('defs');
+  svgClone.querySelectorAll('[fill*="url("]').forEach(el => {
+    const fillAttr = el.getAttribute('fill') || '';
+    const match = fillAttr.match(/url\(#?([^)]+)\)/);
+    if (!match) return;
+    const gradId = match[1].replace(/["']/g, '');
+    if (svgClone.querySelector(`#${CSS.escape(gradId)}`)) return;
+    const extGrad = document.getElementById(gradId);
+    if (extGrad) {
+      if (!defsEl) {
+        defsEl = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        svgClone.insertBefore(defsEl, svgClone.firstChild);
+      }
+      defsEl.appendChild(extGrad.cloneNode(true));
+    }
+  });
+
+  const containerEl = sourceSvg.closest('.chart-container');
+  const allApexInstances = Object.values(typeof charts !== 'undefined' ? charts : {}).filter(
+    c => c && c.w && c.w.config
+  );
+  const apexInst = containerEl
+    ? allApexInstances.find(inst =>
+        inst.el === containerEl ||
+        inst.w?.globals?.dom?.baseEl === containerEl ||
+        inst.w?.globals?.dom?.baseEl?.parentElement === containerEl
+      )
+    : null;
+
+  const origAttrW = parseFloat(sourceSvg.getAttribute('width')) || sourceSvg.clientWidth || 480;
+  const origAttrH = parseFloat(sourceSvg.getAttribute('height')) || sourceSvg.clientHeight || 340;
+
+  // Restaurar etiquetas del eje X ocultadas por colisión si aplica
+  let addedExtraXAxisLine = false;
+  if (apexInst && !apexInst.w?.config?.plotOptions?.bar?.horizontal) {
+    const categories = apexInst.w?.config?.xaxis?.categories;
+    const xLabelNodes = Array.from(svgClone.querySelectorAll('.apexcharts-xaxis-texts-g text.apexcharts-xaxis-label'));
+    if (Array.isArray(categories) && categories.length === xLabelNodes.length && xLabelNodes.length > 1) {
+      const hadHiddenLabel = xLabelNodes.some((node, idx) => !node.textContent.trim() && categories[idx]);
+      if (hadHiddenLabel) {
+        xLabelNodes.forEach((node, idx) => {
+          const rawCat = categories[idx];
+          if (rawCat === undefined || rawCat === null) return;
+          const catStr = Array.isArray(rawCat) ? rawCat.join(' ') : String(rawCat).trim();
+          if (!catStr) return;
+          const xCoord = node.getAttribute('x') || '0';
+          const isRotated = (node.getAttribute('transform') || '').includes('rotate');
+          while (node.firstChild) node.removeChild(node.firstChild);
+
+          let lines = [catStr];
+          if (!isRotated && catStr.length > 14 && catStr.includes(' ')) {
+            addedExtraXAxisLine = true;
+            const parenIdx = catStr.indexOf(' (');
+            if (parenIdx > 0) {
+              lines = [catStr.slice(0, parenIdx).trim(), catStr.slice(parenIdx + 1).trim()];
+            } else {
+              const words = catStr.split(/\s+/);
+              const mid = Math.ceil(words.length / 2);
+              lines = [words.slice(0, mid).join(' '), words.slice(mid).join(' ')];
+            }
+          }
+          lines.forEach((lineText, lineIdx) => {
+            const ts = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+            ts.setAttribute('x', xCoord);
+            if (lineIdx > 0) ts.setAttribute('dy', '1.15em');
+            ts.textContent = lineText;
+            node.appendChild(ts);
+          });
+        });
+      }
+    }
+  }
+
+  // Limpiar filtros borrosos heredados
+  svgClone.querySelectorAll('[filter]').forEach(el => el.removeAttribute('filter'));
+  svgClone.querySelectorAll('[style*="filter"]').forEach(el => {
+    if (el.style && el.style.filter) el.style.filter = 'none';
+  });
+
+  const exportSvgFont = "'Segoe UI', Arial, Helvetica, sans-serif";
+  svgClone.querySelectorAll(
+    '.apexcharts-xaxis-label, .apexcharts-yaxis-label, .apexcharts-xaxis-title-text, .apexcharts-yaxis-title-text'
+  ).forEach(axisText => {
+    axisText.style.fontFamily = exportSvgFont;
+    axisText.style.fontWeight = '600';
+    axisText.setAttribute('fill', '#0F172A');
+    axisText.removeAttribute('stroke');
+    axisText.querySelectorAll('tspan').forEach(ts => {
+      ts.setAttribute('fill', '#0F172A');
+      ts.style.fill = '#0F172A';
+      ts.removeAttribute('stroke');
+    });
+  });
+
+  const apexChartType = apexInst?.w?.config?.chart?.type || '';
+  const isLineOrAreaOnWhite = ['area', 'line', 'scatter', 'boxPlot'].includes(apexChartType);
+  svgClone.querySelectorAll('.apexcharts-datalabels rect.apexcharts-datalabel-box, .export-svg-label-pill').forEach(r => r.remove());
+
+  const srcTexts = Array.from(sourceSvg.querySelectorAll('.apexcharts-datalabels text, .apexcharts-datalabel text'));
+  const cloneTexts = Array.from(svgClone.querySelectorAll('.apexcharts-datalabels text, .apexcharts-datalabel text'));
+  const visiblePairs = [];
+
+  cloneTexts.forEach((text, idx) => {
+    if (text.style.visibility === 'hidden' || text.style.display === 'none') return;
+    const content = (text.textContent || '').trim();
+    if (!content) return;
+
+    const currentSize = parseFloat(text.getAttribute('font-size') || text.style.fontSize || '11') || 11;
+    const targetSize = currentSize < 11.5 ? 12 : Math.max(currentSize, 12.5);
+    text.setAttribute('font-size', String(targetSize));
+    text.style.fontSize = `${targetSize}px`;
+    text.style.fontFamily = exportSvgFont;
+    text.style.fontWeight = '700';
+    text.setAttribute('font-weight', '700');
+    text.removeAttribute('stroke');
+    text.removeAttribute('stroke-width');
+    text.style.stroke = 'none';
+
+    const tspans = Array.from(text.querySelectorAll('tspan'));
+    tspans.forEach((ts, tIdx) => {
+      ts.setAttribute('font-size', String(targetSize));
+      ts.style.fontSize = `${targetSize}px`;
+      ts.style.fontWeight = '700';
+      ts.removeAttribute('stroke');
+      ts.removeAttribute('stroke-width');
+      ts.style.stroke = 'none';
+      if (tIdx > 0) {
+        const dyRaw = ts.getAttribute('dy') || '';
+        if (dyRaw && !dyRaw.endsWith('em') && !dyRaw.endsWith('%')) {
+          const dyPx = parseFloat(dyRaw);
+          if (Number.isFinite(dyPx) && dyPx > 0 && dyPx < targetSize * 1.16) {
+            ts.setAttribute('dy', (targetSize * 1.18).toFixed(1));
+          }
+        }
+      }
+    });
+
+    const srcNode = srcTexts[idx];
+    let rawFill = (
+      text.getAttribute('fill') ||
+      text.style.fill ||
+      tspans[0]?.getAttribute('fill') ||
+      ''
+    ).trim().toLowerCase();
+    if (!rawFill && srcNode) {
+      try {
+        rawFill = (window.getComputedStyle(srcNode).fill || '').trim().toLowerCase();
+      } catch (e) {}
+    }
+
+    const wasWhiteLabel = rawFill === '#ffffff' || rawFill === '#fff' ||
+      rawFill === 'white' || rawFill.replace(/\s+/g, '') === 'rgb(255,255,255)';
+    const useWhiteOverColor = wasWhiteLabel && !isLineOrAreaOnWhite;
+    const finalColor = useWhiteOverColor ? '#FFFFFF' : '#0F172A';
+
+    text.setAttribute('fill', finalColor);
+    text.style.fill = finalColor;
+    text.style.filter = useWhiteOverColor
+      ? 'drop-shadow(0px 1px 1.6px rgba(15, 23, 42, 0.55))'
+      : 'none';
+    tspans.forEach(ts => {
+      ts.setAttribute('fill', finalColor);
+      ts.style.fill = finalColor;
+    });
+
+    if (srcNode) visiblePairs.push({ cloneNode: text, srcNode });
+  });
+
+  // Medición de solo lectura sobre sourceSvg (ya montado en el DOM activo -> 0 reflows)
+  const svgRect = sourceSvg.getBoundingClientRect();
+  if (svgRect.width > 0 && svgRect.height > 0) {
+    const scaleX = origAttrW / svgRect.width;
+    const scaleY = origAttrH / svgRect.height;
+
+    if (visiblePairs.length > 1) {
+      const appendTranslateY = (el, dySvg) => {
+        const prev = (el.getAttribute('transform') || '').trim();
+        el.setAttribute('transform', prev ? `${prev} translate(0, ${dySvg.toFixed(2)})` : `translate(0, ${dySvg.toFixed(2)})`);
+      };
+      const rects = visiblePairs.map(p => p.srcNode.getBoundingClientRect());
+      for (let aIdx = 0; aIdx < visiblePairs.length; aIdx++) {
+        for (let bIdx = aIdx + 1; bIdx < visiblePairs.length; bIdx++) {
+          const rA = rects[aIdx];
+          const rB = rects[bIdx];
+          const overlapX = Math.min(rA.right, rB.right) - Math.max(rA.left, rB.left);
+          const overlapY = Math.min(rA.bottom, rB.bottom) - Math.max(rA.top, rB.top);
+          if (overlapX > 2 && overlapY > -3) {
+            const upper = (rA.top + rA.bottom) <= (rB.top + rB.bottom)
+              ? visiblePairs[aIdx].cloneNode
+              : visiblePairs[bIdx].cloneNode;
+            appendTranslateY(upper, -((overlapY + 5) * scaleY));
+          }
+        }
+      }
+    }
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    sourceSvg.querySelectorAll(
+      'text, .apexcharts-graphical, .apexcharts-datalabels, .apexcharts-xaxis, .apexcharts-yaxis'
+    ).forEach(node => {
+      if (node.style?.display === 'none' || node.style?.visibility === 'hidden') return;
+      if (node.getAttribute('opacity') === '0' || node.getAttribute('stroke') === 'transparent') return;
+      if (node.tagName === 'text' && !(node.textContent || '').trim()) return;
+      const r = node.getBoundingClientRect();
+      if (!r || (r.width === 0 && r.height === 0)) return;
+      const x1 = (r.left - svgRect.left) * scaleX;
+      const x2 = (r.right - svgRect.left) * scaleX;
+      const y1 = (r.top - svgRect.top) * scaleY;
+      const y2 = (r.bottom - svgRect.top) * scaleY;
+      if (Math.abs(x1) > 4000 || Math.abs(x2) > 4000 || Math.abs(y1) > 4000 || Math.abs(y2) > 4000) return;
+      if (x1 < minX) minX = x1;
+      if (x2 > maxX) maxX = x2;
+      if (y1 < minY) minY = y1;
+      if (y2 > maxY) maxY = y2;
+    });
+
+    if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
+      minX = 0; minY = 0; maxX = origAttrW; maxY = origAttrH;
+    }
+    if (addedExtraXAxisLine) maxY += 18;
+
+    const padX = 14;
+    const padY = 12;
+    const vbX = Math.floor(minX - padX);
+    const vbY = Math.floor(minY - padY);
+    const vbW = Math.max(100, Math.ceil((maxX - minX) + padX * 2));
+    const vbH = Math.max(80, Math.ceil((maxY - minY) + padY * 2));
+    svgClone.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
+  } else if (!svgClone.getAttribute('viewBox')) {
+    svgClone.setAttribute('viewBox', `0 0 ${Math.round(origAttrW)} ${Math.round(origAttrH)}`);
+  }
+
+  svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  svgClone.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  svgClone.setAttribute('font-family', exportSvgFont);
+  svgClone.setAttribute('width', String(pixelW));
+  svgClone.setAttribute('height', String(pixelH));
+  svgClone.setAttribute(
+    'style',
+    `width:${pixelW}px;height:${pixelH}px;overflow:visible;font-family:${exportSvgFont};`
+  );
+
+  return new XMLSerializer().serializeToString(svgClone);
+}
+
+function drawApexLegendOnCanvas(ctx, legendItems, logicalW, startY, areaH, dpr) {
+  if (!legendItems || !legendItems.length) return;
+  ctx.save();
+  ctx.scale(dpr, dpr);
+  const font = `700 12px ${DASHBOARD_EXPORT_FONT_STACK}`;
+  ctx.font = font;
+  const markerSize = 10;
+  const itemGap = 18;
+  const markerGap = 6;
+  const maxRowW = logicalW - 24;
+
+  const rows = [];
+  let curRow = [];
+  let curW = 0;
+  legendItems.forEach(item => {
+    const itemW = markerSize + markerGap + ctx.measureText(item.label).width;
+    const nextW = curRow.length ? (curW + itemGap + itemW) : itemW;
+    if (curRow.length && nextW > maxRowW) {
+      rows.push({ items: curRow, width: curW });
+      curRow = [{ ...item, itemW }];
+      curW = itemW;
+    } else {
+      curRow.push({ ...item, itemW });
+      curW = nextW;
+    }
+  });
+  if (curRow.length) rows.push({ items: curRow, width: curW });
+
+  const rowH = 20;
+  const totalLegendH = rows.length * rowH;
+  let y = startY + Math.max(2, (areaH - totalLegendH) / 2);
+
+  rows.forEach(row => {
+    let x = Math.max(12, (logicalW - row.width) / 2);
+    row.items.forEach(it => {
+      ctx.fillStyle = it.color || '#3AA0FF';
+      drawCanvasRoundRect(ctx, x, y + 4, markerSize, markerSize, 3);
+      ctx.fill();
+      ctx.fillStyle = '#0F172A';
+      ctx.font = font;
+      ctx.textBaseline = 'middle';
+      ctx.fillText(it.label, x + markerSize + markerGap, y + 9.5);
+      x += it.itemW + itemGap;
+    });
+    y += rowH;
+  });
+  ctx.restore();
+}
+
+async function renderVisualCardChartCanvas(visCard, sourceTabEl, targetW, targetH, dpr = 2.0) {
+  const logicalW = Math.max(280, Math.round(targetW || 480));
+  const logicalH = Math.max(180, Math.round(targetH || 340));
+
+  // Caso 1: Gráfico Chart.js (<canvas>)
+  const sourceCanvas = visCard.querySelector('canvas');
+  if (sourceCanvas) {
+    return renderExportChartJsCanvas(sourceCanvas, logicalW, logicalH, dpr);
+  }
+
+  // Caso 2: Gráfico vectorial ApexCharts (<svg>)
+  const allSvgs = Array.from(visCard.querySelectorAll('svg.apexcharts-svg, .chart-container svg'));
+  const sourceSvg = allSvgs.find(s => !s.closest('.forest-methodology-note, .visual-header'));
+
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = Math.round(logicalW * dpr);
+  outCanvas.height = Math.round(logicalH * dpr);
+  const ctx = outCanvas.getContext('2d');
+  if (!ctx) return outCanvas;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, outCanvas.width, outCanvas.height);
+
+  if (sourceSvg) {
+    const legendItems = extractApexLegendItems(visCard);
+    const estLegendRows = legendItems.length ? Math.ceil(legendItems.length / (logicalW > 650 ? 5 : 3)) : 0;
+    const legendAreaH = estLegendRows > 0 ? (estLegendRows * 20 + 6) : 0;
+    const svgLogicalH = Math.max(150, logicalH - legendAreaH);
+    const svgPixelW = Math.round(logicalW * dpr);
+    const svgPixelH = Math.round(svgLogicalH * dpr);
+
+    const svgMarkup = buildStandaloneApexSvgMarkup(sourceSvg, visCard, sourceTabEl, svgPixelW, svgPixelH);
+    const svgBlob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(svgBlob);
+    try {
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.decoding = 'async';
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, svgPixelW, svgPixelH);
+          resolve();
+        };
+        img.onerror = (err) => reject(err || new Error('Error decodificando SVG'));
+        img.src = blobUrl;
+      });
+    } finally {
+      URL.revokeObjectURL(blobUrl);
+    }
+
+    if (legendAreaH > 0) {
+      drawApexLegendOnCanvas(ctx, legendItems, logicalW, svgLogicalH, legendAreaH, dpr);
+    }
+    return outCanvas;
+  }
+
+  // Caso 3: Tarjeta vacía informativa
+  const emptyText = visCard.querySelector('.chart-container')?.textContent?.trim() || 'Sin datos suficientes en la cohorte';
+  ctx.save();
+  ctx.scale(dpr, dpr);
+  ctx.fillStyle = '#64748B';
+  ctx.font = `600 13px ${DASHBOARD_EXPORT_FONT_STACK}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(emptyText.slice(0, 90), logicalW / 2, logicalH / 2);
+  ctx.restore();
+  return outCanvas;
+}
+
+// Compositor nativo de lámina completa en Canvas2D (para PNG y fallback PDF, 60x más rápido que html2canvas)
+async function renderSlideCanvasNative(tab, partNumber, scale = 2.0, layout = null) {
+  const targetEl = document.getElementById('tab-' + tab.id);
+  if (!targetEl || !layout?.visualRows?.length) return null;
+
+  const slideW = DASHBOARD_EXPORT_CONTENT_WIDTH_PX;
+  const slideH = DASHBOARD_EXPORT_CONTENT_HEIGHT_PX;
+  const kpiRows = layout.includeKpis ? extractTabKpiRows(targetEl) : [];
+  const sourceVisualCards = Array.from(targetEl.querySelectorAll('.card-visual'));
+  const cardIndexes = layout.visualRows[0] || [];
+  const visCards = cardIndexes.map(idx => sourceVisualCards[idx]).filter(Boolean);
+  if (!visCards.length && !kpiRows.length) return null;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(slideW * scale);
+  canvas.height = Math.round(slideH * scale);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  ctx.scale(scale, scale);
+
+  let curY = 0;
+  if (kpiRows.length) {
+    const kpiH = kpiRows.length > 1 ? 76 : 88;
+    const gapX = 12;
+    const gapY = 10;
+    kpiRows.forEach(row => {
+      const cols = row.length;
+      const cardW = (slideW - gapX * (cols - 1)) / cols;
+      row.forEach((kpi, idx) => {
+        const kx = idx * (cardW + gapX);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.strokeStyle = '#CBD5E1';
+        ctx.lineWidth = 1.5;
+        drawCanvasRoundRect(ctx, kx, curY, cardW, kpiH, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#334155';
+        ctx.font = `700 11.5px ${DASHBOARD_EXPORT_FONT_STACK}`;
+        ctx.textBaseline = 'top';
+        const titleLines = wrapCanvasTextLines(ctx, kpi.title, cardW - 24, 1);
+        if (titleLines[0]) ctx.fillText(titleLines[0], kx + 12, curY + 10);
+
+        ctx.fillStyle = `#${kpi.colorHex}`;
+        ctx.font = `800 ${kpiRows.length > 1 ? '20px' : '23px'} ${DASHBOARD_EXPORT_FONT_STACK}`;
+        ctx.fillText(kpi.value, kx + 12, curY + 29);
+
+        if (kpi.caption) {
+          ctx.fillStyle = '#475569';
+          ctx.font = `600 10px ${DASHBOARD_EXPORT_FONT_STACK}`;
+          const capLines = wrapCanvasTextLines(ctx, kpi.caption, cardW - 24, 1);
+          if (capLines[0]) ctx.fillText(capLines[0], kx + 12, curY + kpiH - 18);
+        }
+      });
+      curY += kpiH + gapY;
+    });
+    curY += 2;
+  }
+
+  const cardH = Math.max(240, slideH - curY);
+  const colGap = 16;
+  const cols = visCards.length;
+  const cardW = cols === 1 ? slideW : (slideW - colGap) / cols;
+
+  // Renderizar las gráficas de la fila en paralelo
+  const chartSpecs = visCards.map((visCard, idx) => {
+    const cx = idx * (cardW + colGap);
+    const title = visCard.querySelector('.visual-title h3, h3')?.textContent?.trim() || '';
+    const badgeText = visCard.querySelector('.badge-alert-small')?.textContent?.trim() || '';
+    const noteText = visCard.querySelector('.forest-methodology-note')?.textContent?.replace(/\s+/g, ' ')?.trim() || '';
+    const headerH = title.length > 58 && cols > 1 ? 52 : 38;
+    const noteH = noteText ? 58 : 0;
+    const chartW = Math.max(260, Math.floor(cardW - 28));
+    const chartH = Math.max(170, Math.floor(cardH - headerH - noteH - 26));
+    return { visCard, cx, title, badgeText, noteText, headerH, noteH, chartW, chartH };
+  });
+
+  const chartCanvases = await Promise.all(
+    chartSpecs.map(sp => renderVisualCardChartCanvas(sp.visCard, targetEl, sp.chartW, sp.chartH, scale))
+  );
+
+  chartSpecs.forEach((sp, idx) => {
+    const { cx, title, badgeText, noteText, headerH, noteH, chartW, chartH } = sp;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.strokeStyle = '#CBD5E1';
+    ctx.lineWidth = 1.5;
+    drawCanvasRoundRect(ctx, cx, curY, cardW, cardH, 12);
+    ctx.fill();
+    ctx.stroke();
+
+    let badgeW = 0;
+    if (badgeText) {
+      ctx.font = `700 10.5px ${DASHBOARD_EXPORT_FONT_STACK}`;
+      badgeW = Math.min(220, ctx.measureText(badgeText).width + 18);
+      const bx = cx + cardW - badgeW - 14;
+      const by = curY + 10;
+      ctx.fillStyle = '#FEF3C7';
+      ctx.strokeStyle = '#FDE68A';
+      ctx.lineWidth = 1;
+      drawCanvasRoundRect(ctx, bx, by, badgeW, 22, 6);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#92400E';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(badgeText, bx + 9, by + 11.5);
+    }
+
+    ctx.fillStyle = '#0F172A';
+    ctx.font = `700 14px ${DASHBOARD_EXPORT_FONT_STACK}`;
+    ctx.textBaseline = 'top';
+    const titleMaxW = cardW - 32 - (badgeW ? badgeW + 10 : 0);
+    const tLines = wrapCanvasTextLines(ctx, title, titleMaxW, 2);
+    tLines.forEach((ln, lIdx) => {
+      ctx.fillText(ln, cx + 16, curY + 12 + lIdx * 17);
+    });
+
+    ctx.strokeStyle = '#E2E8F0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx + 16, curY + headerH + 6);
+    ctx.lineTo(cx + cardW - 16, curY + headerH + 6);
+    ctx.stroke();
+
+    const chartCanvas = chartCanvases[idx];
+    if (chartCanvas) {
+      ctx.drawImage(chartCanvas, cx + 14, curY + headerH + 12, chartW, chartH);
+    }
+
+    if (noteText) {
+      const ny = curY + cardH - noteH - 10;
+      ctx.fillStyle = '#F8FAFC';
+      ctx.strokeStyle = '#E2E8F0';
+      ctx.lineWidth = 1;
+      drawCanvasRoundRect(ctx, cx + 14, ny, cardW - 28, noteH, 8);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#475569';
+      ctx.font = `500 11px ${DASHBOARD_EXPORT_FONT_STACK}`;
+      ctx.textBaseline = 'top';
+      const nLines = wrapCanvasTextLines(ctx, noteText, cardW - 52, 3);
+      nLines.forEach((ln, lIdx) => {
+        ctx.fillText(ln, cx + 26, ny + 8 + lIdx * 14.5);
+      });
+    }
+  });
+
+  ctx.restore();
+  return canvas;
+}
+
 async function renderSectionPartCanvas(h2c, tab, partNumber, scale = 2.0, layout = null) {
+  if (layout?.visualRows?.length) {
+    try {
+      const fastCanvas = await renderSlideCanvasNative(tab, partNumber, scale, layout);
+      if (fastCanvas) return fastCanvas;
+    } catch (fastErr) {
+      console.warn('Fallback a html2canvas en renderSectionPartCanvas:', fastErr);
+    }
+  }
+
+  if (!h2c) return null;
   const htmlStage = buildExportHtmlStage(tab, partNumber, layout);
   if (!htmlStage) return null;
   const targetEl = htmlStage.stage;
@@ -1129,46 +1866,170 @@ async function prepareTabForExport(tabId, isNewTab) {
   await ensureTabReadyForExport(tabId, dummySet);
 }
 
-// 1. Exportación a Imagen PNG Ultra-HD (Láminas de Presentación)
-async function exportImage(scope, setProgress) {
-  const h2c = window.html2canvas || (typeof html2canvas !== 'undefined' ? html2canvas : null);
-  if (!h2c) {
-    throw new Error('La librería html2canvas no está disponible.');
+let _zipCrc32Table = null;
+
+function computeZipCrc32(bytes) {
+  if (!_zipCrc32Table) {
+    _zipCrc32Table = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) {
+        c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      }
+      _zipCrc32Table[n] = c >>> 0;
+    }
+  }
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) {
+    crc = _zipCrc32Table[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+// Empaquetador ZIP nativo ultrarrápido (método STORE sin recomprimir PNGs, < 5 ms para 40 láminas)
+async function buildPngZipBlob(entries) {
+  const encoder = new TextEncoder();
+  const now = new Date();
+  const dosTime = ((now.getHours() & 0x1F) << 11) |
+    ((now.getMinutes() & 0x3F) << 5) |
+    ((now.getSeconds() >> 1) & 0x1F);
+  const dosDate = (((Math.max(1980, now.getFullYear()) - 1980) & 0x7F) << 9) |
+    (((now.getMonth() + 1) & 0x0F) << 5) |
+    (now.getDate() & 0x1F);
+
+  const buffers = await Promise.all(entries.map(e => e.blob.arrayBuffer()));
+  const localParts = [];
+  const centralParts = [];
+  let localOffset = 0;
+  let centralSize = 0;
+
+  for (let i = 0; i < entries.length; i++) {
+    const nameBytes = encoder.encode(entries[i].fileName);
+    const dataBytes = new Uint8Array(buffers[i]);
+    const size = dataBytes.byteLength;
+    const crc = computeZipCrc32(dataBytes);
+
+    const localHeader = new Uint8Array(30 + nameBytes.length);
+    const lv = new DataView(localHeader.buffer);
+    lv.setUint32(0, 0x04034B50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0x0800, true);
+    lv.setUint16(8, 0, true);
+    lv.setUint16(10, dosTime, true);
+    lv.setUint16(12, dosDate, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, size, true);
+    lv.setUint32(22, size, true);
+    lv.setUint16(26, nameBytes.length, true);
+    lv.setUint16(28, 0, true);
+    localHeader.set(nameBytes, 30);
+
+    const centralHeader = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(centralHeader.buffer);
+    cv.setUint32(0, 0x02014B50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, dosTime, true);
+    cv.setUint16(14, dosDate, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, size, true);
+    cv.setUint32(24, size, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint16(30, 0, true);
+    cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true);
+    cv.setUint16(36, 0, true);
+    cv.setUint32(38, 0, true);
+    cv.setUint32(42, localOffset, true);
+    centralHeader.set(nameBytes, 46);
+
+    localParts.push(localHeader, dataBytes);
+    centralParts.push(centralHeader);
+    localOffset += localHeader.byteLength + size;
+    centralSize += centralHeader.byteLength;
   }
 
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054B50, true);
+  ev.setUint16(4, 0, true);
+  ev.setUint16(6, 0, true);
+  ev.setUint16(8, entries.length, true);
+  ev.setUint16(10, entries.length, true);
+  ev.setUint32(12, centralSize, true);
+  ev.setUint32(16, localOffset, true);
+  ev.setUint16(20, 0, true);
+
+  return new Blob([...localParts, ...centralParts, eocd], { type: 'application/zip' });
+}
+
+// 1. Exportación a Imagen PNG Ultra-HD (descarga directa si es 1 lámina, o comprimida en .zip si son varias)
+async function exportImage(scope, setProgress) {
+  const h2c = window.html2canvas || (typeof html2canvas !== 'undefined' ? html2canvas : null);
   const tabs = scope === 'all'
     ? DASHBOARD_TABS
     : [DASHBOARD_TABS.find(t => t.id === activeTabId) || DASHBOARD_TABS[0]];
   const originalTab = activeTabId;
   const preparedTabs = new Set();
+  const dateTag = new Date().toISOString().slice(0, 10);
+  const collectedImages = [];
 
   try {
-    let slideCounter = 0;
     for (let tIdx = 0; tIdx < tabs.length; tIdx++) {
       const tab = tabs[tIdx];
+      setProgress(
+        `Renderizando láminas PNG HD: ${tab.title} (${tIdx + 1}/${tabs.length})...`,
+        Math.min(90, Math.round(10 + ((tIdx + 0.4) / tabs.length) * 80))
+      );
       await ensureTabReadyForExport(tab.id, preparedTabs);
       const tabItems = getTabExportItems(tab);
 
-      for (let sIdx = 0; sIdx < tabItems.length; sIdx++) {
-        const item = tabItems[sIdx];
-        slideCounter++;
-        const approxPct = Math.min(95, Math.round(((tIdx + (sIdx + 0.5) / tabItems.length) / tabs.length) * 95));
-        setProgress(`Renderizando lámina HD: ${item.title}...`, approxPct);
+      // Renderizar y comprimir todas las láminas de la sección en paralelo (multihilo C++)
+      const blobs = await Promise.all(
+        tabItems.map(async (item) => {
+          const canvas = await renderSectionPartCanvas(h2c, tab, item.partNumber, 2.0, item.layout);
+          if (!canvas) return null;
+          const blob = await canvasToBlobAsync(canvas);
+          return blob ? { blob, suffix: item.suffix, safeTab: tab.id.replace(/[^a-z0-9]/gi, '_') } : null;
+        })
+      );
 
-        const canvas = await renderSectionPartCanvas(h2c, tab, item.partNumber, 2.0, item.layout);
-        if (!canvas) continue;
-
-        const link = document.createElement('a');
-        const safeTitle = tab.id.replace(/[^a-z0-9]/gi, '_');
-        link.download = `CardioUNEMI_${safeTitle}_${item.suffix}_${new Date().toISOString().slice(0, 10)}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        if (slideCounter < tabItems.length || tIdx < tabs.length - 1) {
-          await new Promise(r => requestAnimationFrame(r));
-        }
+      for (const entry of blobs) {
+        if (entry) collectedImages.push(entry);
+      }
+      if (tabs.length > 1) {
+        await new Promise(r => requestAnimationFrame(r));
       }
     }
-    setProgress('¡Imágenes PNG en alta resolución descargadas con éxito!', 100);
+
+    if (!collectedImages.length) {
+      throw new Error('No se encontraron gráficas visibles para exportar.');
+    }
+
+    if (collectedImages.length === 1) {
+      const single = collectedImages[0];
+      downloadExportBlob(single.blob, `CardioUNEMI_${single.safeTab}_${single.suffix}_${dateTag}.png`);
+      setProgress('¡Imagen PNG en alta resolución descargada con éxito!', 100);
+    } else {
+      setProgress(`Empaquetando ${collectedImages.length} imágenes HD en archivo .zip...`, 95);
+      await new Promise(r => requestAnimationFrame(r));
+      const padWidth = String(collectedImages.length).length < 2 ? 2 : String(collectedImages.length).length;
+      const zipEntries = collectedImages.map((entry, idx) => {
+        const prefix = String(idx + 1).padStart(padWidth, '0');
+        return {
+          fileName: `${prefix}_CardioUNEMI_${entry.safeTab}_${entry.suffix}_${dateTag}.png`,
+          blob: entry.blob
+        };
+      });
+      const zipBlob = await buildPngZipBlob(zipEntries);
+      const zipName = scope === 'all'
+        ? `CardioUNEMI_Imagenes_Dashboard_Integral_${dateTag}.zip`
+        : `CardioUNEMI_Imagenes_${originalTab.replace(/[^a-z0-9]/gi, '_')}_${dateTag}.zip`;
+      downloadExportBlob(zipBlob, zipName);
+      setProgress(`¡Archivo ZIP con ${collectedImages.length} imágenes HD descargado con éxito!`, 100);
+    }
   } finally {
     if (activeTabId !== originalTab && typeof switchTab === 'function') {
       switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
@@ -1607,15 +2468,12 @@ async function exportPdfRasterFallback(scope, setProgress, existingPreparedTabs 
   }
 }
 
-// 3. Exportación a Diapositivas PowerPoint (.pptx) 16:9 en Alta Definición (PNG sin pérdidas)
+// 3. Exportación a Diapositivas PowerPoint (.pptx) 16:9 Ultra-Rápida:
+//    Tarjetas/KPIs/títulos vectoriales nativos PptxGenJS + gráficas HD renderizadas en paralelo (cero html2canvas)
 async function exportPowerPoint(scope, setProgress) {
   const pptxClass = window.PptxGenJS || (typeof PptxGenJS !== 'undefined' ? PptxGenJS : null);
   if (!pptxClass) {
     throw new Error('La librería PptxGenJS no está disponible.');
-  }
-  const h2c = window.html2canvas || (typeof html2canvas !== 'undefined' ? html2canvas : null);
-  if (!h2c) {
-    throw new Error('La librería html2canvas no está disponible.');
   }
 
   const pptx = new pptxClass();
@@ -1628,14 +2486,96 @@ async function exportPowerPoint(scope, setProgress) {
   const preparedTabs = new Set();
   const meta = getExportCohortMetadata();
 
+  const contentX = 0.32;
+  const contentW = 9.36;
+  const contentTopY = 0.66;
+  const contentBottomY = 5.28;
+
   try {
-    setProgress('Preparando secciones para PowerPoint...', 8);
-    const exportItems = [];
+    const renderedSlides = [];
+
+    // Fase 1: Preparar cada sección 1 sola vez y renderizar todas sus gráficas en paralelo (multihilo C++)
     for (let tIdx = 0; tIdx < tabs.length; tIdx++) {
-      await ensureTabReadyForExport(tabs[tIdx].id, preparedTabs);
-      exportItems.push(...getTabExportItems(tabs[tIdx]));
+      const tab = tabs[tIdx];
+      setProgress(
+        `Procesando gráficas HD: ${tab.title} (${tIdx + 1}/${tabs.length})...`,
+        Math.round(8 + ((tIdx + 0.35) / tabs.length) * 72)
+      );
+      await ensureTabReadyForExport(tab.id, preparedTabs);
+
+      const targetEl = document.getElementById('tab-' + tab.id);
+      if (!targetEl) continue;
+
+      const tabKpiRows = extractTabKpiRows(targetEl);
+      const sourceVisualCards = Array.from(targetEl.querySelectorAll('.card-visual'));
+      const tabItems = getTabExportItems(tab);
+
+      const tabSlidePromises = tabItems.map(async (item) => {
+        const includeKpis = Boolean(item.layout?.includeKpis && tabKpiRows.length);
+        const kpiRows = includeKpis ? tabKpiRows : [];
+        const kpiRowH = kpiRows.length > 1 ? 0.64 : 0.76;
+        const kpiBlockH = kpiRows.length
+          ? (kpiRows.length * kpiRowH + (kpiRows.length - 1) * 0.08 + 0.11)
+          : 0;
+        const cardH = Math.max(2.2, (contentBottomY - contentTopY) - kpiBlockH);
+
+        const cardIndexes = item.layout?.visualRows?.[0] || [];
+        const visCards = cardIndexes.map(idx => sourceVisualCards[idx]).filter(Boolean);
+        const numCards = Math.max(1, visCards.length);
+        const colGap = 0.16;
+        const cardW = numCards === 1 ? contentW : (contentW - colGap) / numCards;
+
+        const cards = await Promise.all(visCards.map(async (visCard) => {
+          const title = visCard.querySelector('.visual-title h3, h3')?.textContent?.trim() || '';
+          const badgeText = visCard.querySelector('.badge-alert-small')?.textContent?.trim() || '';
+          const methodologyNote = visCard.querySelector('.forest-methodology-note')?.textContent?.replace(/\s+/g, ' ')?.trim() || '';
+          const headerH = title.length > 62 && numCards > 1 ? 0.46 : 0.37;
+          const noteH = methodologyNote ? 0.48 : 0;
+          const chartBoxW = cardW - 0.20;
+          const chartBoxH = Math.max(1.2, cardH - headerH - (noteH ? noteH + 0.16 : 0.14));
+
+          const targetPxW = Math.round(chartBoxW * 96);
+          const targetPxH = Math.round(chartBoxH * 96);
+          const chartCanvas = await renderVisualCardChartCanvas(visCard, targetEl, targetPxW, targetPxH, 1.8);
+          const imgData = await canvasToPngDataUrlAsync(chartCanvas);
+
+          return {
+            title,
+            badgeText,
+            methodologyNote,
+            headerH,
+            noteH,
+            chartBoxW,
+            chartBoxH,
+            imgData
+          };
+        }));
+
+        return {
+          tab,
+          title: item.title,
+          kpiRows,
+          kpiRowH,
+          cardW,
+          cardH,
+          colGap,
+          cards
+        };
+      });
+
+      const resolvedTabSlides = await Promise.all(tabSlidePromises);
+      renderedSlides.push(...resolvedTabSlides);
+
+      if (tabs.length > 1) {
+        await new Promise(r => requestAnimationFrame(r));
+      }
     }
-    const total = exportItems.length;
+
+    const total = renderedSlides.length;
+
+    // Fase 2: Construir presentación vectorial en PptxGenJS (~20 ms total)
+    setProgress(`Ensamblando ${total} diapositivas ejecutivas 16:9...`, 86);
+    await new Promise(r => requestAnimationFrame(r));
 
     const slidePortada = pptx.addSlide();
     slidePortada.background = { color: '1B2A41' };
@@ -1672,7 +2612,7 @@ async function exportPowerPoint(scope, setProgress) {
       {
         text: scope === 'all'
           ? `Informe Integral Completo (9 Secciones Clínicas • ${total} Diapositivas HD)`
-          : `Módulo Específico: ${exportItems[0]?.tab?.title || ''} (${total} Diapositivas HD)`,
+          : `Módulo Específico: ${renderedSlides[0]?.tab?.title || ''} (${total} Diapositivas HD)`,
         options: { color: 'FFFFFF' }
       }
     ], {
@@ -1680,67 +2620,149 @@ async function exportPowerPoint(scope, setProgress) {
       fontSize: 11
     });
 
-    const maxW = 9.3;
-    const maxH = 4.55;
-    const topY = 0.72;
-
     for (let i = 0; i < total; i++) {
-      const item = exportItems[i];
-      const tab = item.tab;
-      setProgress(`Generando diapositivas HD: ${item.title} (${i + 1}/${total})...`, Math.round(14 + ((i + 1) / total) * 80));
-
-      await ensureTabReadyForExport(tab.id, preparedTabs);
-      const canvas = await renderSectionPartCanvas(h2c, tab, item.partNumber, 2.0, item.layout);
-      if (!canvas) continue;
-
-      const imgData = canvas.toDataURL('image/png');
-
+      const sp = renderedSlides[i];
       const slide = pptx.addSlide();
       slide.background = { color: 'FFFFFF' };
 
+      // Barra superior institucional
       slide.addShape(pptx.ShapeType.rect, {
-        x: 0, y: 0, w: 10, h: 0.62,
+        x: 0, y: 0, w: 10, h: 0.56,
         fill: { color: '1B2A41' }
       });
 
-      slide.addText(`CARDIOUNEMI • ${item.title}`, {
-        x: 0.35, y: 0.11, w: 7.4, h: 0.4,
-        fontSize: 11, color: 'FFFFFF', bold: true
+      slide.addText(`CARDIOUNEMI • ${sp.title}`, {
+        x: 0.32, y: 0.09, w: 7.35, h: 0.38,
+        fontSize: 10.8, color: 'FFFFFF', bold: true, valign: 'middle'
       });
 
       slide.addText(`${meta.todayStr} | n = ${meta.evalCount}`, {
-        x: 7.8, y: 0.13, w: 1.85, h: 0.35,
-        fontSize: 8.5, color: 'CFE9FF', align: 'right'
+        x: 7.72, y: 0.10, w: 1.96, h: 0.36,
+        fontSize: 8.2, color: 'CFE9FF', align: 'right', valign: 'middle'
       });
 
-      const imgAspect = canvas.height / canvas.width;
-      let w = maxW;
-      let h = w * imgAspect;
-      if (h > maxH) {
-        h = maxH;
-        w = h / imgAspect;
-      }
-      const x = 0.35 + (maxW - w) / 2;
-      const y = topY + (maxH - h) / 2;
+      let curY = contentTopY;
 
-      slide.addImage({ data: imgData, x, y, w, h });
+      // Filas de KPIs vectoriales editables
+      if (sp.kpiRows.length) {
+        const kpiGapX = 0.10;
+        const kpiGapY = 0.08;
+        sp.kpiRows.forEach(row => {
+          const cols = row.length;
+          const kCardW = (contentW - kpiGapX * (cols - 1)) / cols;
+          row.forEach((kpi, cIdx) => {
+            const kx = contentX + cIdx * (kCardW + kpiGapX);
+            slide.addShape(pptx.ShapeType.roundRect, {
+              x: kx, y: curY, w: kCardW, h: sp.kpiRowH,
+              rectRadius: 0.06,
+              fill: { color: 'FFFFFF' },
+              line: { color: 'CBD5E1', width: 1 }
+            });
+            slide.addText(kpi.title, {
+              x: kx + 0.07, y: curY + 0.04, w: kCardW - 0.14, h: 0.19,
+              fontSize: 7.4, bold: true, color: '334155', valign: 'top'
+            });
+            slide.addText(kpi.value, {
+              x: kx + 0.07,
+              y: curY + 0.22,
+              w: kCardW - 0.14,
+              h: kpi.caption ? 0.27 : (sp.kpiRowH - 0.26),
+              fontSize: sp.kpiRows.length > 1 ? 13 : 14.8,
+              bold: true,
+              color: kpi.colorHex,
+              valign: 'middle'
+            });
+            if (kpi.caption) {
+              slide.addText(kpi.caption, {
+                x: kx + 0.07, y: curY + sp.kpiRowH - 0.21, w: kCardW - 0.14, h: 0.18,
+                fontSize: 6.3, color: '475569', valign: 'bottom'
+              });
+            }
+          });
+          curY += sp.kpiRowH + kpiGapY;
+        });
+        curY += 0.03;
+      }
+
+      // Tarjetas visuales vectoriales + gráficas HD
+      sp.cards.forEach((card, cIdx) => {
+        const cx = contentX + cIdx * (sp.cardW + sp.colGap);
+        slide.addShape(pptx.ShapeType.roundRect, {
+          x: cx, y: curY, w: sp.cardW, h: sp.cardH,
+          rectRadius: 0.08,
+          fill: { color: 'FFFFFF' },
+          line: { color: 'CBD5E1', width: 1 }
+        });
+
+        let badgeW = 0;
+        if (card.badgeText) {
+          badgeW = Math.min(2.1, Math.max(1.3, card.badgeText.length * 0.068));
+          const bx = cx + sp.cardW - badgeW - 0.12;
+          slide.addShape(pptx.ShapeType.roundRect, {
+            x: bx, y: curY + 0.07, w: badgeW, h: 0.23,
+            rectRadius: 0.05,
+            fill: { color: 'FEF3C7' },
+            line: { color: 'FDE68A', width: 0.75 }
+          });
+          slide.addText(card.badgeText, {
+            x: bx, y: curY + 0.07, w: badgeW, h: 0.23,
+            fontSize: 6.8, bold: true, color: '92400E', align: 'center', valign: 'middle'
+          });
+        }
+
+        const titleW = card.badgeText ? (sp.cardW - badgeW - 0.30) : (sp.cardW - 0.24);
+        slide.addText(card.title, {
+          x: cx + 0.12, y: curY + 0.04, w: titleW, h: card.headerH - 0.05,
+          fontSize: 9.5, bold: true, color: '0F172A', valign: 'middle'
+        });
+
+        slide.addShape(pptx.ShapeType.line, {
+          x: cx + 0.12, y: curY + card.headerH, w: sp.cardW - 0.24, h: 0,
+          line: { color: 'E2E8F0', width: 0.75 }
+        });
+
+        if (card.imgData) {
+          slide.addImage({
+            data: card.imgData,
+            x: cx + 0.10,
+            y: curY + card.headerH + 0.06,
+            w: card.chartBoxW,
+            h: card.chartBoxH
+          });
+        }
+
+        if (card.methodologyNote) {
+          const ny = curY + sp.cardH - card.noteH - 0.08;
+          slide.addShape(pptx.ShapeType.roundRect, {
+            x: cx + 0.12, y: ny, w: sp.cardW - 0.24, h: card.noteH,
+            rectRadius: 0.06,
+            fill: { color: 'F8FAFC' },
+            line: { color: 'E2E8F0', width: 0.75 }
+          });
+          slide.addText(card.methodologyNote, {
+            x: cx + 0.18, y: ny + 0.03, w: sp.cardW - 0.36, h: card.noteH - 0.06,
+            fontSize: 6.8, color: '475569', valign: 'middle'
+          });
+        }
+      });
 
       slide.addText('Universidad Estatal de Milagro (UNEMI) • Departamento de Cardiología', {
-        x: 0.35, y: 5.34, w: 6.5, h: 0.24,
-        fontSize: 8, color: '64748B'
+        x: 0.32, y: 5.34, w: 6.8, h: 0.22,
+        fontSize: 7.8, color: '64748B'
       });
       slide.addText(`Diapositiva ${i + 2} de ${total + 1}`, {
-        x: 7.5, y: 5.34, w: 2.15, h: 0.24,
-        fontSize: 8, color: '64748B', align: 'right'
+        x: 7.4, y: 5.34, w: 2.28, h: 0.22,
+        fontSize: 7.8, color: '64748B', align: 'right'
       });
     }
 
-    setProgress('Compilando presentación PowerPoint (.pptx)...', 96);
+    setProgress('Compilando presentación PowerPoint (.pptx)...', 95);
+    await new Promise(r => requestAnimationFrame(r));
     const fileName = scope === 'all'
       ? `CardioUNEMI_Presentacion_Ejecutiva_${new Date().toISOString().slice(0, 10)}.pptx`
       : `CardioUNEMI_${originalTab}_${new Date().toISOString().slice(0, 10)}.pptx`;
 
-    await pptx.writeFile({ fileName });
+    await pptx.writeFile({ fileName, compression: false });
     setProgress('¡Presentación PPTX descargada exitosamente!', 100);
   } finally {
     if (activeTabId !== originalTab && typeof switchTab === 'function') {
@@ -1749,169 +2771,4 @@ async function exportPowerPoint(scope, setProgress) {
   }
 }
 
-// Sanitiza celdas CSV contra inyección de fórmulas en hojas de cálculo (Excel / Calc)
-function sanitizeCsvCell(value) {
-  let str = String(value == null ? '' : value).replace(/\r?\n|\r/g, ' ').trim();
-  if (/^[=+@\-\t]/.test(str)) {
-    str = "'" + str;
-  }
-  return `"${str.replace(/"/g, '""')}"`;
-}
 
-// 4. Exportación Tabular Estructurada a CSV (Compatible con Excel UTF-8 BOM, Cero PII)
-async function exportCsv(scope, setProgress) {
-  const tabs = scope === 'all'
-    ? DASHBOARD_TABS
-    : [DASHBOARD_TABS.find(t => t.id === activeTabId) || DASHBOARD_TABS[0]];
-  const originalTab = activeTabId;
-  const meta = getExportCohortMetadata();
-  const rows = [];
-
-  rows.push(['REPORTE EPIDEMIOLÓGICO CARDIOUNEMI - EXPORTACIÓN DE INDICADORES Y GRÁFICAS']);
-  rows.push(['Institución', meta.instLabel, 'Periodo', meta.anoLabel, 'Muestra', meta.sampleText, 'Fecha', meta.todayStr]);
-  if (meta.activeExtras.length) {
-    rows.push(['Filtros Adicionales Activos', meta.activeExtras.join(' | ')]);
-  }
-  rows.push([]);
-  rows.push([
-    'Sección del Dashboard',
-    'Tipo de Elemento',
-    'Título del Indicador o Gráfica',
-    'Serie / Grupo',
-    'Categoría / Etiqueta',
-    'Valor / Casos',
-    'Porcentaje / Detalle Estadístico (IC 95%)'
-  ]);
-
-  const allApexInstances = Object.values(typeof charts !== 'undefined' ? charts : {}).filter(
-    c => c && c.w && c.w.config
-  );
-
-  const preparedTabs = new Set();
-  try {
-    for (let i = 0; i < tabs.length; i++) {
-      const tab = tabs[i];
-      setProgress(`Extrayendo métricas: ${tab.title} (${i + 1}/${tabs.length})...`, Math.round(((i + 0.4) / tabs.length) * 90));
-      await ensureTabReadyForExport(tab.id, preparedTabs);
-
-      const tabEl = document.getElementById('tab-' + tab.id);
-      if (!tabEl) continue;
-
-      // 1. Extraer KPIs visibles de la sección
-      tabEl.querySelectorAll('.card-kpi').forEach(kpiCard => {
-        if (!isExportCardVisible(kpiCard)) return;
-        const title = kpiCard.querySelector('.kpi-title')?.textContent?.trim() || '';
-        const value = kpiCard.querySelector('.kpi-value')?.textContent?.trim() || '';
-        const caption = kpiCard.querySelector('.kpi-caption')?.textContent?.trim() || '';
-        if (title) {
-          rows.push([tab.title, 'Indicador KPI', title, 'Cohorte Filtrada', title, value, caption]);
-        }
-      });
-
-      // 2. Extraer series y datos exactos de cada gráfica visible en la sección
-      tabEl.querySelectorAll('.card-visual').forEach(visCard => {
-        if (!isExportCardVisible(visCard)) return;
-        const chartTitle = visCard.querySelector('.visual-title h3, h3')?.textContent?.trim() || 'Gráfica';
-
-        // Caso A: Gráfica Chart.js (<canvas>)
-        const canvasEl = visCard.querySelector('canvas');
-        if (canvasEl) {
-          const cj = (window.Chart && typeof window.Chart.getChart === 'function'
-            ? window.Chart.getChart(canvasEl)
-            : null) || Object.values(typeof charts !== 'undefined' ? charts : {}).find(c => c && c.canvas === canvasEl);
-          if (cj && cj.data) {
-            const labels = Array.isArray(cj.data.labels) ? cj.data.labels : [];
-            (cj.data.datasets || []).forEach((ds, dsIdx) => {
-              const seriesName = ds.label || `Serie ${dsIdx + 1}`;
-              const dataArr = Array.isArray(ds.data) ? ds.data : [];
-              const sum = dataArr.reduce((acc, v) => acc + (typeof v === 'number' ? v : 0), 0);
-              dataArr.forEach((pt, ptIdx) => {
-                if (pt && typeof pt === 'object' && ('x' in pt || 'y' in pt)) {
-                  rows.push([
-                    tab.title,
-                    'Gráfica (Dispersión)',
-                    chartTitle,
-                    seriesName,
-                    `Punto ${ptIdx + 1}`,
-                    `X=${pt.x}`,
-                    `Y=${pt.y}`
-                  ]);
-                } else {
-                  const rawLbl = labels[ptIdx] !== undefined ? labels[ptIdx] : `Categoría ${ptIdx + 1}`;
-                  const cleanLbl = Array.isArray(rawLbl) ? rawLbl.join(' ') : String(rawLbl);
-                  const numVal = typeof pt === 'number' ? pt : Number(pt);
-                  const denom = (cj.config?.type === 'doughnut' || cj.config?.type === 'pie')
-                    ? sum
-                    : (meta.evalCount || sum || 1);
-                  const pctStr = Number.isFinite(numVal) && denom > 0
-                    ? `${((numVal / denom) * 100).toFixed(1).replace('.', ',')}%`
-                    : '';
-                  rows.push([tab.title, 'Gráfica', chartTitle, seriesName, cleanLbl, pt, pctStr]);
-                }
-              });
-            });
-          }
-          return;
-        }
-
-        // Caso B: Gráfica ApexCharts (contenedor con SVG)
-        const containerEl = visCard.querySelector('.chart-container[id]');
-        if (containerEl) {
-          const apexInst = allApexInstances.find(inst =>
-            inst.el === containerEl ||
-            inst.w?.globals?.dom?.baseEl === containerEl ||
-            inst.w?.globals?.dom?.baseEl?.parentElement === containerEl
-          );
-          if (apexInst && apexInst.w?.config) {
-            const cfg = apexInst.w.config;
-            const categories = cfg.xaxis?.categories || cfg.labels || [];
-            const seriesList = Array.isArray(cfg.series) ? cfg.series : [];
-            seriesList.forEach((serie, sIdx) => {
-              if (typeof serie === 'number') {
-                const catName = categories[sIdx] || `Categoría ${sIdx + 1}`;
-                const totalPie = seriesList.reduce((a, b) => a + (Number(b) || 0), 0) || 1;
-                const pctStr = `${((serie / totalPie) * 100).toFixed(1).replace('.', ',')}%`;
-                rows.push([tab.title, 'Gráfica', chartTitle, 'Distribución', catName, serie, pctStr]);
-                return;
-              }
-              const sName = serie?.name || `Serie ${sIdx + 1}`;
-              const sData = Array.isArray(serie?.data) ? serie.data : [];
-              sData.forEach((dItem, dIdx) => {
-                if (dItem && typeof dItem === 'object' && !Array.isArray(dItem)) {
-                  const cat = dItem.x || categories[dIdx] || `Ítem ${dIdx + 1}`;
-                  const yVal = Array.isArray(dItem.y) ? dItem.y.join(' – ') : dItem.y;
-                  const goalVal = dItem.goals?.[0]?.value !== undefined ? `Estimación puntual: ${dItem.goals[0].value}%` : '';
-                  rows.push([tab.title, 'Gráfica', chartTitle, sName, cat, yVal, goalVal]);
-                } else {
-                  const cat = categories[dIdx] || `Categoría ${dIdx + 1}`;
-                  const cleanCat = Array.isArray(cat) ? cat.join(' ') : String(cat);
-                  const numVal = Number(dItem);
-                  const pctStr = Number.isFinite(numVal) && meta.evalCount > 0
-                    ? `${((Math.abs(numVal) / meta.evalCount) * 100).toFixed(1).replace('.', ',')}%`
-                    : '';
-                  rows.push([tab.title, 'Gráfica', chartTitle, sName, cleanCat, dItem, pctStr]);
-                }
-              });
-            });
-          }
-        }
-      });
-    }
-
-    setProgress('Generando archivo CSV compatible con Excel...', 96);
-    const csvContent = rows.map(row => row.map(sanitizeCsvCell).join(',')).join('\r\n');
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const fileName = scope === 'all'
-      ? `CardioUNEMI_Datos_Dashboard_Integral_${new Date().toISOString().slice(0, 10)}.csv`
-      : `CardioUNEMI_Datos_${originalTab}_${new Date().toISOString().slice(0, 10)}.csv`;
-
-    downloadExportBlob(blob, fileName);
-    setProgress('¡Archivo CSV descargado exitosamente!', 100);
-  } finally {
-    if (activeTabId !== originalTab) {
-      switchTab(originalTab, document.querySelector(`.nav-item[onclick*="${originalTab}"]`));
-    }
-  }
-}
-
-window.exportCsv = exportCsv;

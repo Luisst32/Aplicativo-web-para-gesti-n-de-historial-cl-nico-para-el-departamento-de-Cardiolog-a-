@@ -912,6 +912,18 @@ async function cargarAjustesSistema() {
     const data = await res.json();
 
     if (res.ok && data.status === 'success') {
+      // 0. Modo Rol (Exclusivo Admin)
+      const roleModeActivo = typeof data.role_mode_enabled === 'boolean' ? data.role_mode_enabled : true;
+      window._initialRoleModeEnabled = roleModeActivo;
+      const switchModoRol = document.getElementById('switchModoRol');
+      if (switchModoRol) {
+        switchModoRol.checked = roleModeActivo;
+        actualizarBadgeSwitchModoRol(roleModeActivo);
+      }
+      if (data.is_admin && Array.isArray(data.users_roles)) {
+        renderizarTablaRolesUsuariosAdmin(data.users_roles, data.available_roles || []);
+      }
+
       // 1. Chatbot Master
       const activo = Boolean(data.chatbot_enabled);
       if (switchChatbot) {
@@ -1006,6 +1018,76 @@ async function cargarAjustesSistema() {
   }
 }
 
+function actualizarBadgeSwitchModoRol(activo) {
+  const badge = document.getElementById('badgeModoRolEstado');
+  const slider = document.getElementById('sliderSwitchModoRol');
+  const circulo = document.getElementById('circuloSwitchModoRol');
+
+  if (badge) {
+    badge.textContent = activo ? 'ACTIVO' : 'MODO LIBRE';
+    badge.style.background = activo ? '#dcfce7' : '#fef3c7';
+    badge.style.color = activo ? '#15803d' : '#92400e';
+  }
+  if (slider) {
+    slider.style.backgroundColor = activo ? '#3aa0ff' : '#cbd5e1';
+  }
+  if (circulo) {
+    circulo.style.transform = activo ? 'translateX(22px)' : 'translateX(0)';
+  }
+}
+
+function renderizarTablaRolesUsuariosAdmin(usersList, availableRoles) {
+  const container = document.getElementById('contenedorUsuariosRolesAdmin');
+  if (!container) return;
+  container.textContent = '';
+
+  const roles = availableRoles.length
+    ? availableRoles
+    : ['Administrador', 'Cardiólogo', 'Departamento de Estadística'];
+
+  usersList.forEach(usr => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;';
+
+    const info = document.createElement('div');
+    info.style.cssText = 'min-width:0;flex:1;';
+    const nameSpan = document.createElement('div');
+    nameSpan.style.cssText = 'font-size:0.82rem;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    nameSpan.textContent = `${usr.full_name || usr.username} (${usr.username})`;
+    const mailSpan = document.createElement('div');
+    mailSpan.style.cssText = 'font-size:0.73rem;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    mailSpan.textContent = usr.email || '';
+    info.appendChild(nameSpan);
+    info.appendChild(mailSpan);
+
+    const sel = document.createElement('select');
+    sel.className = 'form-input select-user-role-admin';
+    sel.dataset.userId = String(usr.id);
+    const initialRole = roles.includes(usr.role) ? usr.role : 'Cardiólogo';
+    sel.dataset.initialRole = initialRole;
+    sel.style.cssText = 'width:215px;max-width:52%;padding:5px 8px;border-radius:6px;border:1px solid #cbd5e1;font-size:0.78rem;font-weight:600;background:#ffffff;color:#0f172a;';
+
+    roles.forEach(rName => {
+      const opt = document.createElement('option');
+      opt.value = rName;
+      opt.textContent = rName;
+      if (rName === initialRole) opt.selected = true;
+      sel.appendChild(opt);
+    });
+
+    if (usr.is_superuser) {
+      sel.value = 'Administrador';
+      sel.disabled = true;
+      sel.title = 'El superusuario principal siempre conserva el rol Administrador';
+      sel.style.opacity = '0.75';
+    }
+
+    row.appendChild(info);
+    row.appendChild(sel);
+    container.appendChild(row);
+  });
+}
+
 function actualizarBadgeSwitchChatbot(activo) {
   const badge = document.getElementById('badgeChatbotEstado');
   const slider = document.getElementById('sliderSwitchChatbot');
@@ -1084,6 +1166,17 @@ async function guardarAjustesSistema(event) {
 
   // Recopilar valores
   const chatbot_enabled = document.getElementById('switchChatbotActivo')?.checked;
+  const switchModoRolEl = document.getElementById('switchModoRol');
+  const role_mode_enabled = switchModoRolEl ? switchModoRolEl.checked : undefined;
+  const roleSelects = Array.from(document.querySelectorAll('.select-user-role-admin'));
+  const user_roles = roleSelects.map(sel => ({
+    user_id: Number(sel.dataset.userId),
+    role: sel.value
+  }));
+  const rolesChanged = (
+    (switchModoRolEl && Boolean(window._initialRoleModeEnabled) !== Boolean(role_mode_enabled)) ||
+    roleSelects.some(sel => sel.dataset.initialRole !== sel.value)
+  );
   const active_llm_provider = document.querySelector('input[name="radioActiveProvider"]:checked')?.value || 'gemini';
 
   // Gemini
@@ -1118,6 +1211,8 @@ async function guardarAjustesSistema(event) {
   try {
     const fullPayload = {
       chatbot_enabled,
+      role_mode_enabled,
+      user_roles,
       active_llm_provider,
       gemini_api_key,
       gemini_model,
@@ -1189,6 +1284,9 @@ async function guardarAjustesSistema(event) {
       // Solo mantener la notificación flotante (toast) a la derecha
       showToast('Ajustes y credenciales de APIs guardados correctamente.', 'success');
       cerrarModalUniversal();
+      if (rolesChanged) {
+        setTimeout(() => window.location.reload(), 450);
+      }
     } else {
       if (errEl) {
         errEl.textContent = data.message || 'Error al guardar los ajustes.';

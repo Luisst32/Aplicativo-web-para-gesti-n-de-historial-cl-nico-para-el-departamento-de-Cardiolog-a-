@@ -13,24 +13,38 @@ from decimal import Decimal
 import pandas as pd
 import pyreadstat
 
-from .normalizers import normalize_var_name
+from .normalizers import normalize_phone_value, normalize_var_name
 from ..reference_matrix import load_unemi_reference_metadata
+
+_STRING_IDENTIFIER_COLS = frozenset({
+    'cedula', 'ci', 'id_card', 'identificacion',
+    'telefono', 'celular', 'phone', 'num_telefono', 'tlf', 'telefono_contacto',
+})
+_PHONE_COLS = frozenset({
+    'telefono', 'celular', 'phone', 'num_telefono', 'tlf', 'telefono_contacto',
+})
+
 
 def _sanitize_dataset_dict(raw_dict):
     """
     Reemplaza NaN, NaT, infinitos y cadenas vacías por None en todas las columnas
-    para evitar fallos de casteo a Decimal o enteros en Django.
+    para evitar fallos de casteo a Decimal o enteros en Django, y limpia valores
+    numéricos/flotantes en columnas telefónicas (ej. 991792652.0 -> '0991792652').
     """
     import math
     import pandas as pd
     clean_dict = {}
     for col, values in raw_dict.items():
+        norm_col = normalize_var_name(col)
+        is_phone_col = norm_col in _PHONE_COLS
         clean_vals = []
         for v in values:
             if v is None:
                 clean_vals.append(None)
             elif isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
                 clean_vals.append(None)
+            elif is_phone_col and (isinstance(v, (int, float)) or (isinstance(v, str) and ('.' in v or 'e+' in v.lower()))):
+                clean_vals.append(normalize_phone_value(v))
             elif isinstance(v, str):
                 s = v.strip()
                 if s.lower() in ('', 'nan', 'none', 'null', 'na', '<na>'):
@@ -181,16 +195,32 @@ def _read_dataset_file(temp_path: Path, filename: str):
             last_err = None
             for enc in encodings:
                 try:
+                    read_kwargs = {'encoding': enc}
                     if detected_sep:
-                        df = pd.read_csv(str(temp_path), sep=detected_sep, encoding=enc)
+                        hdr = pd.read_csv(str(temp_path), sep=detected_sep, encoding=enc, nrows=0)
+                        str_dtypes = {
+                            c: str for c in hdr.columns
+                            if normalize_var_name(c) in _STRING_IDENTIFIER_COLS
+                        }
+                        df = pd.read_csv(str(temp_path), sep=detected_sep, encoding=enc, dtype=str_dtypes or None)
                     else:
-                        df = pd.read_csv(str(temp_path), sep=None, engine='python', encoding=enc)
+                        hdr = pd.read_csv(str(temp_path), sep=None, engine='python', encoding=enc, nrows=0)
+                        str_dtypes = {
+                            c: str for c in hdr.columns
+                            if normalize_var_name(c) in _STRING_IDENTIFIER_COLS
+                        }
+                        df = pd.read_csv(str(temp_path), sep=None, engine='python', encoding=enc, dtype=str_dtypes or None)
 
                     # Si sólo leyó 1 columna pero hay delimitadores comunes en el encabezado, reintentar
                     if len(df.columns) == 1 and (';' in str(df.columns[0]) or ',' in str(df.columns[0])):
                         for alt_sep in (';', ','):
                             if alt_sep in str(df.columns[0]):
-                                df = pd.read_csv(str(temp_path), sep=alt_sep, encoding=enc)
+                                hdr = pd.read_csv(str(temp_path), sep=alt_sep, encoding=enc, nrows=0)
+                                str_dtypes = {
+                                    c: str for c in hdr.columns
+                                    if normalize_var_name(c) in _STRING_IDENTIFIER_COLS
+                                }
+                                df = pd.read_csv(str(temp_path), sep=alt_sep, encoding=enc, dtype=str_dtypes or None)
                                 break
                     break
                 except UnicodeDecodeError as ue:

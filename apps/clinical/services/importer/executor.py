@@ -51,6 +51,7 @@ from .constants import (
     CIUDAD_CODE_MAP,
 )
 from .normalizers import (
+    normalize_phone_value,
     normalize_var_name,
     classify_spss_question_section,
     _match_column_to_field,
@@ -680,8 +681,9 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                     patient.foreign_birth_place = None
                     if 'telefono' in field_to_col:
                         v_tel = df_dict[field_to_col['telefono']][i]
-                        if v_tel and str(v_tel).strip() and str(v_tel).strip().lower() != 'nan':
-                            patient.phone = str(v_tel).strip()
+                        clean_tel = normalize_phone_value(v_tel)
+                        if clean_tel:
+                            patient.phone = clean_tel[:20]
                     if 'email' in field_to_col:
                         v_mail = df_dict[field_to_col['email']][i]
                         if v_mail and str(v_mail).strip() and str(v_mail).strip().lower() != 'nan':
@@ -1324,7 +1326,10 @@ def _execute_staged_dataset(temp_path, user, current_year=2026, duplicate_action
                             continue
 
                         num_val = None
-                        if clean_code in ['cedula', 'id_card', 'identificacion', 'telefono', 'celular', 'codigo']:
+                        if clean_code in ['telefono', 'celular', 'phone', 'tlf']:
+                            norm_tel = normalize_phone_value(val_raw)
+                            ans_text = (norm_tel or val_str)[:250]
+                        elif clean_code in ['cedula', 'id_card', 'identificacion', 'codigo']:
                             ans_text = val_str[:250]
                         elif isinstance(val_raw, (int, float)) and not text_lbl:
                             try:

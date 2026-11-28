@@ -278,6 +278,55 @@
                SUB-SECCIÓN 1: AJUSTES GENERALES (CHATBOT & PROVEEDOR IA)
                ========================================================= -->
           <div id="subseccionAjustesGeneral">
+            {% if request.user.is_administrator %}
+            <!-- Control Exclusivo Administrador: Modo Rol y Permisos por Departamento -->
+            <div id="cardModoRolAdmin" style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; box-shadow: 0 2px 6px rgba(27,42,65,0.05);">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px;">
+                <div style="flex: 1;">
+                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: #1b2a41;">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    </div>
+                    <span style="font-size: 0.95rem; font-weight: 700; color: #0f172a;">Modo Rol (Permisos por Departamento)</span>
+                    <span style="font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #1b2a41; color: #ffffff;">SOLO ADMIN</span>
+                    <span id="badgeModoRolEstado" style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #dcfce7; color: #15803d;">ACTIVO</span>
+                  </div>
+                  <p style="margin: 6px 0 0 40px; font-size: 0.8rem; color: #64748b; line-height: 1.4;">
+                    Cuando está <strong>activo</strong>, aplica las condiciones estrictas de cada rol. Si está <strong>desactivado</strong>, habilita el modo libre en pacientes y Dashboard para todos los usuarios (las opciones de administrador de Ajustes permanecen siempre exclusivas del Administrador).
+                  </p>
+                </div>
+                <label style="position: relative; display: inline-block; width: 50px; height: 28px; flex-shrink: 0; cursor: pointer;" title="Activar o desactivar Modo Rol">
+                  <input type="checkbox" id="switchModoRol" checked onchange="actualizarBadgeSwitchModoRol(this.checked)" style="opacity: 0; width: 0; height: 0;">
+                  <span id="sliderSwitchModoRol" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #3aa0ff; transition: .25s ease; border-radius: 28px;">
+                    <span id="circuloSwitchModoRol" style="position: absolute; content: ''; height: 22px; width: 22px; left: 3px; bottom: 3px; transform: translateX(22px); background-color: white; transition: .25s ease; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
+                  </span>
+                </label>
+              </div>
+
+              <!-- Resumen de reglas por rol -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f1f5f9;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 11px;">
+                  <div style="font-size: 0.8rem; font-weight: 700; color: #0f172a;">Cardiólogo</div>
+                  <div style="font-size: 0.74rem; color: #475569; margin-top: 3px; line-height: 1.35;">Ver, crear, editar, borrar fichas/pacientes y enviar por correo. Sin Importar, Exportar ni botón de Dashboard.</div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 11px;">
+                  <div style="font-size: 0.8rem; font-weight: 700; color: #0f172a;">Departamento de Estadística</div>
+                  <div style="font-size: 0.74rem; color: #475569; margin-top: 3px; line-height: 1.35;">Ver fichas (solo lectura), Dashboard, Importar, Exportar y enviar por correo. Sin crear, editar ni borrar fichas.</div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 11px;">
+                  <div style="font-size: 0.8rem; font-weight: 700; color: #0f172a;">Administrador</div>
+                  <div style="font-size: 0.74rem; color: #475569; margin-top: 3px; line-height: 1.35;">Acceso total al sistema y vista exclusiva de las opciones administrativas de Ajustes.</div>
+                </div>
+              </div>
+
+              <!-- Asignación rápida de rol a usuarios registrados -->
+              <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #f1f5f9;">
+                <div style="font-size: 0.78rem; font-weight: 700; color: #334155; margin-bottom: 8px;">Asignación de Rol por Usuario:</div>
+                <div id="contenedorUsuariosRolesAdmin" style="display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto;"></div>
+              </div>
+            </div>
+            {% endif %}
+
             <!-- Control Master: Modo de Privacidad y Protección de Datos Clínicos -->
             <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
               <div style="flex: 1;">

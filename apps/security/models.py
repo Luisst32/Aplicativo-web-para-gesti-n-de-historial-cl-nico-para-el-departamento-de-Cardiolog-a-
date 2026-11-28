@@ -10,6 +10,13 @@ from django.db import models
 logger = logging.getLogger(__name__)
 
 ADMIN_ROLE_NAME = 'Administrador'
+CARDIOLOGO_ROLE_NAME = 'Cardiólogo'
+ESTADISTICA_ROLE_NAME = 'Departamento de Estadística'
+INSTITUTIONAL_ROLE_NAMES = (
+    ADMIN_ROLE_NAME,
+    CARDIOLOGO_ROLE_NAME,
+    ESTADISTICA_ROLE_NAME,
+)
 SYSTEM_SETTING_CACHE_KEY = 'security:system_setting:admin'
 DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash'
 DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
@@ -179,6 +186,21 @@ class User(AbstractBaseUser, PermissionsMixin):
             status=UserRole.Status.ACTIVE,
         ).exists()
 
+    @property
+    def primary_role_name(self) -> str:
+        """Retorna el nombre legible del rol activo principal del usuario."""
+        if self.is_administrator:
+            return ADMIN_ROLE_NAME
+        active_ur = (
+            self.userrole_set.select_related('role')
+            .filter(status=UserRole.Status.ACTIVE, role__status=Role.Status.ACTIVE)
+            .order_by('role_id')
+            .first()
+        )
+        if active_ur and active_ur.role_id:
+            return active_ur.role.name
+        return 'Usuario'
+
 
 class UserRole(models.Model):
     """Tabla asociativa entre User y Role (mapeada a security.user_role)."""
@@ -264,6 +286,11 @@ class SystemSetting(models.Model):
         default=True,
         db_column='chatbot_enabled',
         help_text='Interruptor global para activar o desactivar el Asistente Clínico con IA',
+    )
+    role_mode_enabled = models.BooleanField(
+        default=True,
+        db_column='role_mode_enabled',
+        help_text='Interruptor exclusivo de Administrador para aplicar restricciones por rol (Cardiólogo / Estadística) o permitir acceso clínico libre',
     )
     active_llm_provider = models.CharField(
         max_length=30,
@@ -410,11 +437,68 @@ class SystemSetting(models.Model):
         role, _ = Role.objects.get_or_create(
             name=ADMIN_ROLE_NAME,
             defaults={
-                'description': 'Rol administrativo con acceso exclusivo a credenciales de API y configuración del sistema',
+                'description': 'Rol administrativo con acceso total y configuración exclusiva del sistema',
                 'status': Role.Status.ACTIVE,
             },
         )
         return role
+
+    @classmethod
+    def ensure_institutional_roles(cls) -> dict:
+        """Garantiza que existan los 3 roles institucionales con sus permisos canónicos."""
+        from django.contrib.auth.models import Permission
+
+        admin_role = cls.get_admin_role()
+        cardiologo_role, _ = Role.objects.get_or_create(
+            name=CARDIOLOGO_ROLE_NAME,
+            defaults={
+                'description': 'Ver, crear, editar y eliminar fichas/pacientes y enviar por correo (sin importar, exportar ni Dashboard)',
+                'status': Role.Status.ACTIVE,
+            },
+        )
+        estadistica_role, _ = Role.objects.get_or_create(
+            name=ESTADISTICA_ROLE_NAME,
+            defaults={
+                'description': 'Ver fichas en solo lectura, Dashboard, importar, exportar y enviar por correo (sin crear, editar ni eliminar fichas)',
+                'status': Role.Status.ACTIVE,
+            },
+        )
+
+        for r in (admin_role, cardiologo_role, estadistica_role):
+            if r.status != Role.Status.ACTIVE:
+                r.status = Role.Status.ACTIVE
+                r.save(update_fields=['status'])
+
+        cardio_perms = Permission.objects.filter(
+            content_type__app_label='clinical',
+            codename__in=[
+                'view_patient', 'view_visit',
+                'add_patient', 'add_visit',
+                'change_patient', 'change_visit',
+                'delete_patient', 'delete_visit',
+                'add_secureshare',
+            ],
+        )
+        if cardio_perms.exists():
+            cardiologo_role.permissions.set(cardio_perms)
+
+        stats_perms = Permission.objects.filter(
+            content_type__app_label='clinical',
+            codename__in=[
+                'view_patient', 'view_visit',
+                'export_clinical_data',
+                'import_clinical_data',
+                'add_secureshare',
+            ],
+        )
+        if stats_perms.exists():
+            estadistica_role.permissions.set(stats_perms)
+
+        return {
+            ADMIN_ROLE_NAME: admin_role,
+            CARDIOLOGO_ROLE_NAME: cardiologo_role,
+            ESTADISTICA_ROLE_NAME: estadistica_role,
+        }
 
     def is_role_authorized(self, user) -> bool:
         """
@@ -422,6 +506,8 @@ class SystemSetting(models.Model):
         a esta configuración (o sea superusuario).
         """
         if not user or not getattr(user, 'is_authenticated', False):
+            return False
+        if not getattr(user, 'is_active', False) or getattr(user, 'status', None) != User.Status.ACTIVE:
             return False
         if not self.role_id or self.role.status != Role.Status.ACTIVE:
             return False
@@ -447,6 +533,7 @@ class SystemSetting(models.Model):
             role=admin_role,
             defaults={
                 'chatbot_enabled': True,
+                'role_mode_enabled': True,
                 'active_llm_provider': 'gemini',
                 'gemini_api_key_encrypted': '',
                 'gemini_model': DEFAULT_GEMINI_MODEL,
@@ -466,6 +553,18 @@ class SystemSetting(models.Model):
         )
         cache.set(SYSTEM_SETTING_CACHE_KEY, obj, timeout=300)
         return obj
+
+    @classmethod
+    def is_role_mode_enabled(cls) -> bool:
+        """
+        Consulta si el Modo Rol está activo. Falla cerrado (True = aplica roles estrictos)
+        si ocurre algún error de acceso a base de datos.
+        """
+        try:
+            return bool(cls.get_settings().role_mode_enabled)
+        except Exception:
+            logger.exception("Error consultando role_mode_enabled en SystemSetting; fallando cerrado (True).")
+            return True
 
     @classmethod
     def is_chatbot_enabled(cls) -> bool:
@@ -574,6 +673,7 @@ class SystemSetting(models.Model):
     def set_settings(
         cls,
         chatbot_enabled: bool = None,
+        role_mode_enabled: bool = None,
         active_llm_provider: str = None,
         raw_api_key: str = None,
         model: str = None,
@@ -596,12 +696,15 @@ class SystemSetting(models.Model):
         Actualiza la configuración del sistema validando autorización del rol Administrador.
         Lanza PermissionDenied si un usuario sin autorización intenta modificarla.
         """
+        cache.delete(SYSTEM_SETTING_CACHE_KEY)
         cfg = cls.get_settings()
         if user is not None and not cfg.is_role_authorized(user):
             raise PermissionDenied("Solo el rol Administrador puede modificar la configuración del sistema.")
 
         if chatbot_enabled is not None:
             cfg.chatbot_enabled = bool(chatbot_enabled)
+        if role_mode_enabled is not None:
+            cfg.role_mode_enabled = bool(role_mode_enabled)
         if active_llm_provider is not None:
             cfg.active_llm_provider = active_llm_provider.strip().lower()
 

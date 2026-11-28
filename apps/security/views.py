@@ -14,7 +14,17 @@ from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_de
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods, require_POST
 
-from .models import User, SystemSetting
+from django.db import transaction
+from .models import (
+    ADMIN_ROLE_NAME,
+    CARDIOLOGO_ROLE_NAME,
+    ESTADISTICA_ROLE_NAME,
+    INSTITUTIONAL_ROLE_NAMES,
+    Role,
+    SystemSetting,
+    User,
+    UserRole,
+)
 from security.services.email_service import send_password_reset_email
 
 logger = logging.getLogger(__name__)
@@ -65,6 +75,17 @@ def login_view(request):
                 user_obj = User.objects.filter(email__iexact=identifier).first()
             if not user_obj:
                 user_obj = User.objects.filter(username__iexact=identifier).first()
+            if not user_obj:
+                import unicodedata
+                ascii_ident = ''.join(
+                    ch for ch in unicodedata.normalize('NFKD', identifier)
+                    if not unicodedata.combining(ch)
+                )
+                if ascii_ident and ascii_ident != identifier:
+                    if '@' in ascii_ident:
+                        user_obj = User.objects.filter(email__iexact=ascii_ident).first()
+                    if not user_obj:
+                        user_obj = User.objects.filter(username__iexact=ascii_ident).first()
 
             username_to_auth = user_obj.username if user_obj else identifier
             user = authenticate(request, username=username_to_auth, password=password)
@@ -111,7 +132,7 @@ def api_profile_view(request):
     """
     user = request.user
     if request.method == "GET":
-        role_name = "Administrador" if user.is_superuser else (user.roles.first().name if user.roles.exists() else "Usuario")
+        role_name = user.primary_role_name
         return JsonResponse({
             "status": "success",
             "user": {
@@ -174,7 +195,7 @@ def api_profile_view(request):
         user.email = email
         user.save()
 
-        role_name = "Administrador" if user.is_superuser else (user.roles.first().name if user.roles.exists() else "Usuario")
+        role_name = user.primary_role_name
         return JsonResponse({
             "status": "success",
             "message": "Perfil actualizado correctamente.",
@@ -293,9 +314,25 @@ def api_settings_view(request):
         raw_gmail_secret = SystemSetting.get_gmail_client_secret(user=request.user) if is_admin else ""
         raw_gmail_refresh = SystemSetting.get_gmail_refresh_token(user=request.user) if is_admin else ""
 
+        users_roles = []
+        if is_admin:
+            SystemSetting.ensure_institutional_roles()
+            for usr in User.objects.filter(status=User.Status.ACTIVE).order_by('username'):
+                users_roles.append({
+                    "id": usr.user_id,
+                    "username": usr.username,
+                    "full_name": usr.full_name,
+                    "email": usr.email,
+                    "role": usr.primary_role_name,
+                    "is_superuser": bool(usr.is_superuser),
+                })
+
         return JsonResponse({
             "status": "success",
             "chatbot_enabled": cfg.chatbot_enabled,
+            "role_mode_enabled": cfg.role_mode_enabled,
+            "available_roles": list(INSTITUTIONAL_ROLE_NAMES) if is_admin else [],
+            "users_roles": users_roles,
             "active_llm_provider": (cfg.active_llm_provider or "gemini") if is_admin else "",
 
             # Google Gemini
@@ -375,6 +412,7 @@ def api_settings_view(request):
             return str(val).lower() in ('true', '1', 'on', 'yes')
 
         chatbot_enabled = _to_bool(data.get('chatbot_enabled'), default=cfg.chatbot_enabled)
+        role_mode_enabled = _to_bool(data.get('role_mode_enabled'), default=cfg.role_mode_enabled)
         active_llm_provider = data.get('active_llm_provider', cfg.active_llm_provider)
 
         # Gemini
@@ -412,6 +450,7 @@ def api_settings_view(request):
 
         cfg = SystemSetting.set_settings(
             chatbot_enabled=chatbot_enabled,
+            role_mode_enabled=role_mode_enabled,
             active_llm_provider=active_llm_provider,
             raw_api_key=raw_gemini_key,
             model=gemini_model,
@@ -431,6 +470,37 @@ def api_settings_view(request):
             user=request.user
         )
 
+        # Actualizar asignaciones de rol por usuario si fueron enviadas por el Administrador
+        raw_user_roles = data.get('user_roles')
+        if isinstance(raw_user_roles, list) and raw_user_roles:
+            roles_map = SystemSetting.ensure_institutional_roles()
+            with transaction.atomic():
+                for item in raw_user_roles:
+                    if not isinstance(item, dict):
+                        continue
+                    uid = item.get('user_id')
+                    target_role_name = (item.get('role') or '').strip()
+                    if target_role_name not in roles_map:
+                        continue
+                    target_user = User.objects.filter(pk=uid).first()
+                    if not target_user:
+                        continue
+                    # Impedir que un administrador no-superusuario se quite a sí mismo el rol Administrador
+                    if target_user.pk == request.user.pk and not request.user.is_superuser and target_role_name != ADMIN_ROLE_NAME:
+                        continue
+                    # Superusuarios siempre conservan condición de Administrador
+                    if target_user.is_superuser:
+                        target_role_name = ADMIN_ROLE_NAME
+                    selected_role = roles_map[target_role_name]
+                    UserRole.objects.filter(user=target_user).exclude(role=selected_role).update(
+                        status=UserRole.Status.INACTIVE
+                    )
+                    UserRole.objects.update_or_create(
+                        user=target_user,
+                        role=selected_role,
+                        defaults={'status': UserRole.Status.ACTIVE},
+                    )
+
         raw_gemini = SystemSetting.get_gemini_api_key(user=request.user, check_enabled=False)
         raw_openai = SystemSetting.get_openai_api_key(user=request.user, check_enabled=False)
         raw_claude = SystemSetting.get_claude_api_key(user=request.user, check_enabled=False)
@@ -440,6 +510,7 @@ def api_settings_view(request):
             "status": "success",
             "message": "Ajustes del sistema y credenciales de APIs guardados correctamente.",
             "chatbot_enabled": cfg.chatbot_enabled,
+            "role_mode_enabled": cfg.role_mode_enabled,
             "active_llm_provider": cfg.active_llm_provider,
             "gemini_model": cfg.gemini_model,
             "gemini_enabled": cfg.gemini_enabled,

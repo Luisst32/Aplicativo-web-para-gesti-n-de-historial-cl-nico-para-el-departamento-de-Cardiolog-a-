@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from django.contrib import admin
 from django.contrib.auth.models import AnonymousUser, Group, Permission
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase
 
@@ -32,6 +33,9 @@ class ClinicalAuthorizationTests(TestCase):
             last_name1='Authorization', birth_date=date(1990, 1, 1),
             birth_country=country, sex=sex, ethnicity=ethnicity, created_by=cls.user,
         ) for i, institution in enumerate((cls.home, cls.other))]
+
+    def setUp(self):
+        cache.clear()
 
     def grant(self, action, *, target=None):
         required = ACTION_PERMISSIONS[action]
@@ -319,3 +323,132 @@ class ClinicalAuthorizationTests(TestCase):
         response = self.client.get('/clinical/formulario/')
         self.assertTrue(response.context['clinical_access']['change'])
         self.assertContains(response, 'change: true')
+
+    def test_cardiologo_role_capabilities_and_restrictions_when_role_mode_active(self):
+        from security.models import SystemSetting
+
+        roles_map = SystemSetting.ensure_institutional_roles()
+        SystemSetting.set_settings(role_mode_enabled=True)
+        cardio_user = User.objects.create_user(
+            username='cardiologo_role_user',
+            email='cardio_role@example.invalid',
+            password='SyntheticPassword2026!',
+            institution=self.home,
+        )
+        UserRole.objects.create(user=cardio_user, role=roles_map['Cardiólogo'], status=UserRole.Status.ACTIVE)
+
+        caps = clinical_capabilities(cardio_user)
+        self.assertEqual(caps, {
+            'read': True,
+            'create': True,
+            'change': True,
+            'delete': True,
+            'share': True,
+            'import': False,
+            'export': False,
+        })
+        self.assertFalse(has_clinical_access(cardio_user, 'dashboard'))
+
+        self.client.force_login(cardio_user)
+        list_res = self.client.get('/')
+        self.assertEqual(list_res.status_code, 200)
+        self.assertContains(list_res, '[data-clinical-action="dashboard"] { display: none !important; }')
+        self.assertContains(list_res, '[data-clinical-action="import"] { display: none !important; }')
+        self.assertContains(list_res, '[data-clinical-action="export"] { display: none !important; }')
+        self.assertNotIn('id="cardModoRolAdmin"', list_res.content.decode())
+
+        # Dashboard, import and export endpoints are blocked for Cardiólogo
+        self.assertEqual(self.client.get('/dashboard/').status_code, 403)
+        self.assertEqual(self.client.get('/dashboard/api/data/').status_code, 403)
+        self.assertEqual(self.client.get('/clinical/api/export-dataset/').status_code, 403)
+        self.assertEqual(self.client.post('/clinical/api/import-sav/analyze/').status_code, 403)
+
+    def test_estadistica_role_capabilities_and_restrictions_when_role_mode_active(self):
+        from security.models import SystemSetting
+
+        roles_map = SystemSetting.ensure_institutional_roles()
+        SystemSetting.set_settings(role_mode_enabled=True)
+        stats_user = User.objects.create_user(
+            username='estadistica_role_user',
+            email='stats_role@example.invalid',
+            password='SyntheticPassword2026!',
+            institution=self.home,
+        )
+        UserRole.objects.create(
+            user=stats_user,
+            role=roles_map['Departamento de Estadística'],
+            status=UserRole.Status.ACTIVE,
+        )
+
+        caps = clinical_capabilities(stats_user)
+        self.assertEqual(caps, {
+            'read': True,
+            'create': False,
+            'change': False,
+            'delete': False,
+            'share': True,
+            'import': True,
+            'export': True,
+        })
+        self.assertTrue(has_clinical_access(stats_user, 'dashboard'))
+
+        self.client.force_login(stats_user)
+        self.assertEqual(self.client.get('/').status_code, 200)
+        self.assertEqual(self.client.get('/dashboard/').status_code, 200)
+        self.assertEqual(self.client.get('/dashboard/api/data/').status_code, 200)
+
+        # Create, edit and delete are strictly denied for Estadística
+        self.assertEqual(self.client.post('/clinical/api/pacientes/crear/').status_code, 403)
+        self.assertEqual(self.client.post('/clinical/api/ficha/guardar/').status_code, 403)
+        self.assertEqual(self.client.post('/clinical/api/ficha/eliminar/').status_code, 403)
+
+    def test_disabling_role_mode_unlocks_clinical_and_dashboard_but_keeps_admin_settings_exclusive(self):
+        import json
+        from security.models import SystemSetting
+
+        roles_map = SystemSetting.ensure_institutional_roles()
+        cardio_user = User.objects.create_user(
+            username='cardio_freemode',
+            email='cardio_free@example.invalid',
+            password='SyntheticPassword2026!',
+            institution=self.home,
+        )
+        UserRole.objects.create(user=cardio_user, role=roles_map['Cardiólogo'], status=UserRole.Status.ACTIVE)
+
+        admin_user = User.objects.create_user(
+            username='admin_rolemode',
+            email='admin_rolemode@example.invalid',
+            password='SyntheticPassword2026!',
+            institution=self.home,
+        )
+        UserRole.objects.create(user=admin_user, role=roles_map['Administrador'], status=UserRole.Status.ACTIVE)
+
+        # Admin disables Modo Rol via /security/api/settings/
+        self.client.force_login(admin_user)
+        res = self.client.post(
+            '/security/api/settings/',
+            data=json.dumps({'chatbot_enabled': True, 'role_mode_enabled': False}),
+            content_type='application/json',
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(SystemSetting.is_role_mode_enabled())
+
+        # Now Cardiólogo has free access to Dashboard, Export, Import, etc.
+        self.assertTrue(all(clinical_capabilities(cardio_user).values()))
+        self.assertTrue(has_clinical_access(cardio_user, 'dashboard'))
+
+        self.client.force_login(cardio_user)
+        self.assertEqual(self.client.get('/dashboard/').status_code, 200)
+        home_html = self.client.get('/').content.decode()
+        # Admin settings in Ajustes MUST remain hidden and forbidden to non-admins
+        self.assertNotIn('id="cardModoRolAdmin"', home_html)
+        self.assertNotIn('id="tabBtnAjustesApis"', home_html)
+
+        forbidden_res = self.client.post(
+            '/security/api/settings/',
+            data=json.dumps({'role_mode_enabled': True}),
+            content_type='application/json',
+        )
+        self.assertEqual(forbidden_res.status_code, 403)
+        self.assertFalse(SystemSetting.is_role_mode_enabled())
+

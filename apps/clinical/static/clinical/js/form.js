@@ -223,7 +223,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     aplicarProteccionPrivacidadFormulario(pacienteActual, historialActual);
     quitarSkeletonsFormulario();
     inicializarTodasLasCondiciones();
-    activarRastreoDeCambiosFormulario();
+    if (window.CLINICAL_ACCESS && window.CLINICAL_ACCESS.change === false) {
+      aplicarModoSoloLecturaFicha();
+    } else {
+      activarRastreoDeCambiosFormulario();
+    }
   } catch (err) {
     console.error('Error al cargar la ficha del paciente:', err);
     alert('No se pudo cargar la información del paciente desde la base de datos.');
@@ -232,6 +236,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   restringirCamposNumericos();
   configurarInterceptoresSalida();
 });
+
+// Bloquea todos los controles del formulario cuando el rol es de solo lectura (ej. Departamento de Estadística)
+function aplicarModoSoloLecturaFicha() {
+  escuchandoCambiosFormulario = false;
+  formularioTieneCambios = false;
+  actualizarIndicadorCambios();
+  const form = document.getElementById('ehrCleanForm');
+  if (!form) return;
+  form.querySelectorAll('input, select, textarea').forEach(el => {
+    el.disabled = true;
+  });
+  form.querySelectorAll('button, .null-radio-clear-btn, .btn-clear-null, [data-null-clear]').forEach(btn => {
+    btn.disabled = true;
+    btn.style.pointerEvents = 'none';
+    btn.style.opacity = '0.45';
+  });
+}
 
 // REMOVER PLACEHOLDERS SKELETON SCREENS DEL FORMULARIO
 function quitarSkeletonsFormulario() {

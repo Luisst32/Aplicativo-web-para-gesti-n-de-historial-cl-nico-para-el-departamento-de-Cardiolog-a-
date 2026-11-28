@@ -36,5 +36,5 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(SystemSetting)
 class SystemSettingAdmin(admin.ModelAdmin):
-    list_display = ('setting_id', 'role', 'chatbot_enabled', 'gemini_model', 'updated_by', 'updated_at_utc')
+    list_display = ('setting_id', 'role', 'role_mode_enabled', 'chatbot_enabled', 'gemini_model', 'updated_by', 'updated_at_utc')
     readonly_fields = ('updated_at_utc', 'updated_by')

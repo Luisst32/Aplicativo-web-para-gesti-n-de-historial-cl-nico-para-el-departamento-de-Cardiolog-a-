@@ -310,8 +310,8 @@
           document.addEventListener('DOMContentLoaded', actualizarOpcionesMenuPdfSegunPrivacidad);
           window.addEventListener('cardio_privacy_mode_changed', actualizarOpcionesMenuPdfSegunPrivacidad);
         </script>
-        <div class="dropdown" style="display:inline-block; position:relative;">
-          <button type="button" class="btn" id="btnExportarPdfDropdown" onclick="togglePdfMenu(event)" title="Exportar o visualizar cuestionario UNEMI oficial en PDF">
+        <div class="dropdown" data-clinical-action="export" style="display:inline-block; position:relative;">
+          <button type="button" class="btn" id="btnExportarPdfDropdown" data-clinical-action="export" onclick="togglePdfMenu(event)" title="Exportar o visualizar cuestionario UNEMI oficial en PDF">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
             <span>Cuestionario PDF</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -356,7 +356,7 @@
     </header>
 
     {% if not clinical_access.change %}
-      <p role="status" style="padding: 12px 24px;">Modo de consulta: no tiene permiso para guardar cambios.</p>
+      <p role="status" style="margin: 12px 24px 0; padding: 10px 16px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; border-radius: 8px; font-size: 0.84rem; font-weight: 600;">Modo de consulta: no tiene permiso para guardar cambios.</p>
     {% endif %}
     <!-- PATIENT HERO STRIP (ejemplo.png) -->
     <div class="patient-strip" id="patientHeroStrip">
@@ -507,5 +507,5 @@
   {{ institution_catalog|json_script:"cardio-institution-catalog" }}
   <script>window.CARDIO_UNEMI_ONLY = {% if unemi_only %}true{% else %}false{% endif %};</script>
   <script src="{% static 'clinical/js/pacientes.js' %}?v=20261123_institutions01"></script>
-  <script src="{% static 'clinical/js/form.js' %}?v=20261127_privacy_pdf01"></script>
+  <script src="{% static 'clinical/js/form.js' %}?v=20261127_rolemode01"></script>
 {% endblock %}
