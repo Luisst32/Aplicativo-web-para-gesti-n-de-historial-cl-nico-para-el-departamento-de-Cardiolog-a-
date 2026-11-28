@@ -9,7 +9,6 @@ Universidad Estatal de Milagro (UNEMI)
 ![Django](https://img.shields.io/badge/Django-6.1-092E20?style=for-the-badge&logo=django&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES6-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
-![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 
 </div>
 
@@ -120,15 +119,3 @@ python manage.py runserver
 Abrir **http://127.0.0.1:8000** e iniciar sesión con el usuario creado.
 
 > La clave de Google Gemini se configura desde **Ajustes del Sistema** dentro del aplicativo, no en `.env`.
-
----
-
-## Despliegue
-
-Cada push a la rama `develop` ejecuta las pruebas en GitHub Actions y, si pasan, despliega automáticamente en el servidor de producción (AWS EC2 con Nginx y Gunicorn). La configuración está en [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
-
----
-
-## Licencia
-
-Distribuido bajo la licencia MIT. Ver [LICENSE](LICENSE).
