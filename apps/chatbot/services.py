@@ -1258,11 +1258,11 @@ def query_gemini_assistant(
     else:
         verified_metric = get_live_questionnaire_metric(clean_question)
 
-    # 3. Runtime credentials come only from administrator-managed settings.
-    # No environment fallback may override role, provider or enabled switches.
+    # 3. Runtime credentials come only from administrator-managed settings,
+    # available to all clinically authorized roles (Administrador, Cardiólogo, Estadística).
+    # No environment fallback may override provider or enabled switches.
     db_key = ""
     db_model = "gemini-3.5-flash-lite"
-    has_admin_access = False
     provider_enabled = False
     active_provider = ''
     config_available = False
@@ -1274,9 +1274,8 @@ def query_gemini_assistant(
             active_provider = (cfg.active_llm_provider or '').strip().lower()
             db_model = cfg.gemini_model or 'gemini-3.5-flash-lite'
             provider_enabled = bool(cfg.gemini_enabled)
-            has_admin_access = cfg.is_role_authorized(user)
-            if cfg.chatbot_enabled and active_provider == 'gemini' and has_admin_access and provider_enabled:
-                db_key = SystemSetting.get_gemini_api_key(user=user, check_enabled=True)
+            if cfg.chatbot_enabled and active_provider == 'gemini' and provider_enabled:
+                db_key = SystemSetting.get_gemini_api_key(check_enabled=True)
     except Exception:
         # A failed policy/key lookup must never enable another credential source.
         db_key = ''
@@ -1294,8 +1293,6 @@ def query_gemini_assistant(
             note = "\n\n> ℹ️ *(El proveedor seleccionado no dispone de una integración ejecutable en este asistente. Mostrando análisis estadístico local)*"
         elif not provider_enabled:
             note = "\n\n> ⚠️ *(La integración con Google Gemini se encuentra deshabilitada en los Ajustes del Sistema. Mostrando análisis estadístico determinista local)*"
-        elif not has_admin_access:
-            note = "\n\n> 🔒 *(Modo estadístico local: el uso de credenciales de Gemini AI está restringido al rol Administrador)*"
         else:
             note = "\n\n> ℹ️ *(No se detectó una clave válida de Gemini. Un Administrador puede configurarla en Ajustes del Sistema)*"
         final_answer = fallback_answer + note

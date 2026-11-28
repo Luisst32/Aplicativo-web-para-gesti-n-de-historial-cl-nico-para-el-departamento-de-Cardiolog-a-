@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from django.contrib.auth.models import Permission
 from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 
 from chatbot.services import query_gemini_assistant
@@ -41,15 +42,30 @@ class ProviderCredentialPolicyTests(TestCase):
         self.sdk.assert_not_called()
         self.context.assert_not_called()
 
-    def test_reader_cannot_use_database_or_environment_credentials(self):
-        with patch.object(SystemSetting, 'get_gemini_api_key') as getter:
-            self.assert_local(self.reader)
-            getter.assert_not_called()
+    def test_authorized_clinical_roles_can_use_chatbot_with_database_credentials(self):
+        roles_map = SystemSetting.ensure_institutional_roles()
+        SystemSetting.set_settings(role_mode_enabled=True, user=self.admin)
 
-    def test_staff_flag_does_not_enable_provider_credentials(self):
-        self.reader.is_staff = True
-        self.reader.save()
-        self.assert_local(self.reader)
+        cardiologo = User.objects.create_user(username='chat_cardiologo', email='cardio_chat@example.invalid')
+        UserRole.objects.create(user=cardiologo, role=roles_map['Cardiólogo'], status=UserRole.Status.ACTIVE)
+
+        estadistica = User.objects.create_user(username='chat_estadistica', email='stats_chat@example.invalid')
+        UserRole.objects.create(user=estadistica, role=roles_map['Departamento de Estadística'], status=UserRole.Status.ACTIVE)
+
+        for actor in (self.reader, cardiologo, estadistica):
+            with self.subTest(actor=actor.username):
+                self.sdk.reset_mock()
+                res = self.query(actor)
+                self.assertEqual(res['mode'], 'gemini_flash')
+                self.sdk.assert_called_once_with(api_key='synthetic-db-credential')
+
+    def test_staff_flag_without_clinical_role_cannot_use_chatbot_or_credentials(self):
+        staff_only = User.objects.create_user(username='staff_no_role', email='staff_only@example.invalid', is_staff=True)
+        with patch.object(SystemSetting, 'get_gemini_api_key') as getter:
+            with self.assertRaises(PermissionDenied):
+                self.query(staff_only)
+            getter.assert_not_called()
+            self.sdk.assert_not_called()
 
     def test_disabled_gemini_does_not_fall_back_to_environment(self):
         SystemSetting.set_settings(gemini_enabled=False, user=self.admin)
@@ -97,14 +113,18 @@ class ProviderCredentialPolicyTests(TestCase):
         self.assertEqual(call.kwargs['model'], 'configured-synthetic-model')
         self.assertEqual(result['tokens_used'], 7)
 
-    def test_revoked_admin_assignment_cannot_use_provider_credentials(self):
-        assignment = UserRole.objects.create(user=self.reader, role=self.cfg.role)
-        self.assertEqual(self.query(self.reader)['mode'], 'gemini_flash')
+    def test_revoked_role_assignment_cannot_use_chatbot_or_provider_credentials(self):
+        role_only_user = User.objects.create_user(username='revoked_role_user', email='revoked@example.invalid')
+        roles_map = SystemSetting.ensure_institutional_roles()
+        assignment = UserRole.objects.create(user=role_only_user, role=roles_map['Cardiólogo'], status=UserRole.Status.ACTIVE)
+        self.assertEqual(self.query(role_only_user)['mode'], 'gemini_flash')
         self.sdk.reset_mock()
         self.context.reset_mock()
         assignment.status = UserRole.Status.INACTIVE
         assignment.save()
-        self.assert_local(self.reader)
+        with self.assertRaises(PermissionDenied):
+            self.query(role_only_user)
+        self.sdk.assert_not_called()
 
     def test_inactive_admin_role_prevents_external_calls(self):
         role = self.cfg.role
