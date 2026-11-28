@@ -1116,6 +1116,7 @@ async function ejecutarExportacionInteligente() {
     const extMap = {
       'sav': 'sav',
       'zsav': 'zsav',
+      'xlsx': 'xlsx',
       'rds': 'rds',
       'rdata': 'RData',
       'rda': 'RData',

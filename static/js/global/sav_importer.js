@@ -128,9 +128,9 @@ async function onSavFileSelected(file) {
   if (!file) return;
 
   const fname = file.name.toLowerCase();
-  const validExts = ['.sav', '.zsav', '.rds', '.rdata', '.rda', '.r', '.csv'];
+  const validExts = ['.sav', '.zsav', '.xlsx', '.rds', '.rdata', '.rda', '.r', '.csv'];
   if (!validExts.some(ext => fname.endsWith(ext))) {
-    alert('Por favor selecciona un archivo soportado: SPSS (.sav, .zsav), CSV (.csv) o RStudio (.rds, .RData).');
+    alert('Por favor selecciona un archivo soportado: SPSS (.sav, .zsav), Excel (.xlsx), CSV (.csv) o RStudio (.rds, .RData).');
     return;
   }
 

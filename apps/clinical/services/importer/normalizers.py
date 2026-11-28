@@ -63,6 +63,15 @@ def normalize_phone_value(raw_val):
     return s
 
 
+def normalize_id_card_value(raw_val):
+    """
+    Normaliza números de cédula / C.I. ecuatorianos:
+    - Elimina sufijos decimales (.0) o notación científica provenientes de floats.
+    - Restaura el 0 inicial en cédulas de 9 dígitos (provincias 01 a 09) que perdieron el cero en Excel/CSV.
+    """
+    return normalize_phone_value(raw_val)
+
+
 def normalize_var_name(name):
     """
     Limpia y normaliza un identificador de variable SPSS:

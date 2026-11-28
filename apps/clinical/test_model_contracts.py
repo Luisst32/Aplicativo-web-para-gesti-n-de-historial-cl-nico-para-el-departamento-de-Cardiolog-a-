@@ -220,6 +220,34 @@ class ClinicalModelContractTests(TestCase):
         self.assertIn(export_identifier_columns()['id'], rdata_read.columns)
         self.assertIn('ECOCARDIOGRAMA', rdata_read.columns)
 
+    def test_xlsx_export_preserves_leading_zeros_and_roundtrips_import(self):
+        self.patient.id_card = '0908795248'
+        self.patient.phone = '0991792652'
+        self.patient.save(update_fields=['id_card', 'phone'])
+
+        xlsx_data, xlsx_name, xlsx_type = sav_exporter.generate_export_dataset([self.patient.pk], format_type='xlsx')
+        self.assertTrue(xlsx_name.endswith('.xlsx'))
+        self.assertEqual(xlsx_type, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+        xlsx_path = Path(self.folder) / 'exported.xlsx'
+        xlsx_path.write_bytes(xlsx_data)
+
+        from clinical.services.importer.readers import _read_xlsx_to_dataframe
+        df_xlsx = _read_xlsx_to_dataframe(xlsx_path)
+        id_col = export_identifier_columns()['id']
+        phone_col = export_identifier_columns()['phone']
+        self.assertEqual(df_xlsx.iloc[0][id_col], '0908795248')
+        self.assertEqual(df_xlsx.iloc[0][phone_col], '0991792652')
+
+        # Re-importar el archivo .xlsx verificando que conserva los ceros iniciales
+        analysis = sav_importer.analyze_sav_file(BytesIO(xlsx_data), 'exported.xlsx', self.user)
+        self.assertTrue(analysis['success'], analysis)
+        result = sav_importer.execute_sav_import(analysis['temp_token'], self.user)
+        self.assertTrue(result['success'], result)
+        self.patient.refresh_from_db()
+        self.assertEqual(self.patient.id_card, '0908795248')
+        self.assertEqual(self.patient.phone, '0991792652')
+
     def test_echo_export_does_not_read_nonexistent_fractional_shortening(self):
         Echocardiogram.objects.create(visit=self.visit, lvef_percentage=Decimal('61.0'))
         frame = self.export_frame()

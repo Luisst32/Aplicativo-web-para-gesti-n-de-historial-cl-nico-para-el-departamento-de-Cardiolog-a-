@@ -387,7 +387,7 @@
 
         <!-- 2. FORMATO DE SALIDA -->
         <div class="export-seccion">
-          <label style="display:block; font-size:0.86rem; font-weight:700; color:#1b2a41; margin-bottom:8px;">2. Formato de Salida (SPSS, RStudio o CSV)</label>
+          <label style="display:block; font-size:0.86rem; font-weight:700; color:#1b2a41; margin-bottom:8px;">2. Formato de Salida (Excel, SPSS, RStudio o CSV)</label>
           <div class="export-format-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
             <label class="export-format-card" id="cardFormatoSav" style="border:1.5px solid #bfdbfe; border-radius:8px; padding:10px 12px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:#eff6ff; transition:all 0.15s ease;">
               <input type="radio" name="exportFormato" value="sav" checked onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41; margin-top:3px;">
@@ -415,6 +415,32 @@
               </div>
             </label>
 
+            <label class="export-format-card" id="cardFormatoXlsx" style="border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 12px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:#f8fafc; transition:all 0.15s ease;">
+              <input type="radio" name="exportFormato" value="xlsx" onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41; margin-top:3px;">
+              <div>
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+                  <span style="background:#15803d; color:#fff; font-size:0.68rem; font-weight:800; padding:2px 6px; border-radius:4px;">EXCEL (.XLSX)</span>
+                  <strong style="font-size:0.86rem; color:#1e293b;">Microsoft Excel</strong>
+                </div>
+                <span style="font-size:0.74rem; color:#475569; line-height:1.3; display:block;">
+                  Libro nativo de Excel con celdas de texto protegidas (conserva los ceros iniciales en C.I y teléfono).
+                </span>
+              </div>
+            </label>
+
+            <label class="export-format-card" id="cardFormatoCsv" style="border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 12px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:#f8fafc; transition:all 0.15s ease;">
+              <input type="radio" name="exportFormato" value="csv" onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41; margin-top:3px;">
+              <div>
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+                  <span style="background:#0f766e; color:#fff; font-size:0.68rem; font-weight:800; padding:2px 6px; border-radius:4px;">CSV (.CSV)</span>
+                  <strong style="font-size:0.86rem; color:#1e293b;">Texto Delimitado</strong>
+                </div>
+                <span style="font-size:0.74rem; color:#475569; line-height:1.3; display:block;">
+                  Archivo plano separado por comas (UTF-8) para Python, R o sistemas externos.
+                </span>
+              </div>
+            </label>
+
             <label class="export-format-card" id="cardFormatoRds" style="border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 12px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:#f8fafc; transition:all 0.15s ease;">
               <input type="radio" name="exportFormato" value="rds" onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41; margin-top:3px;">
               <div>
@@ -437,19 +463,6 @@
                 </div>
                 <span style="font-size:0.74rem; color:#475569; line-height:1.3; display:block;">
                   Espacio de trabajo listo para cargar en R (load) con el dataframe CardioUnemi.
-                </span>
-              </div>
-            </label>
-
-            <label class="export-format-card" id="cardFormatoCsv" style="border:1.5px solid #e2e8f0; border-radius:8px; padding:10px 12px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; background:#f8fafc; transition:all 0.15s ease;">
-              <input type="radio" name="exportFormato" value="csv" onchange="actualizarResumenExportacion()" style="accent-color:#1b2a41; margin-top:3px;">
-              <div>
-                <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
-                  <span style="background:#047857; color:#fff; font-size:0.68rem; font-weight:800; padding:2px 6px; border-radius:4px;">CSV / EXCEL</span>
-                  <strong style="font-size:0.86rem; color:#1e293b;">Hoja de Cálculo</strong>
-                </div>
-                <span style="font-size:0.74rem; color:#475569; line-height:1.3; display:block;">
-                  Archivo delimitado por comas con codificación UTF-8 BOM para Excel y Sheets.
                 </span>
               </div>
             </label>
@@ -635,5 +648,5 @@
   {{ institution_catalog|json_script:"cardio-institution-catalog" }}
   <script>window.CARDIO_UNEMI_ONLY = {% if unemi_only %}true{% else %}false{% endif %};</script>
   <script src="{% static 'clinical/js/pacientes.js' %}?v=20261123_institutions01"></script>
-  <script src="{% static 'clinical/js/list.js' %}?v=20261127_pdf_save01"></script>
+  <script src="{% static 'clinical/js/list.js' %}?v=20261127_xlsx01"></script>
 {% endblock %}

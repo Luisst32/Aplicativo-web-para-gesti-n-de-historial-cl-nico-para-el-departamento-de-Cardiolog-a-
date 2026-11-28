@@ -9,6 +9,8 @@ Usa el esquema exacto de la matriz vacía de referencia UNEMI, conservando el
 orden de columnas, tipos y metadatos SPSS disponibles.
 """
 
+import io
+import math
 import os
 import re
 import tempfile
@@ -19,6 +21,7 @@ import numpy as np
 import pandas as pd
 import pyreadstat
 import pyreadr
+import xlsxwriter
 from catalog.institutions import (
     InstitutionResolutionError,
     filter_to_selectable_institutions,
@@ -27,6 +30,7 @@ from catalog.institutions import (
 )
 from clinical.services.record_selection import selected_visits
 from clinical.models import Patient, Visit, VisitAnswer
+from clinical.services.importer.normalizers import normalize_id_card_value, normalize_phone_value
 from clinical.services.sav_importer import normalize_var_name
 from .reference_matrix import load_unemi_reference_metadata
 
@@ -310,6 +314,117 @@ def _source_snapshot_frame(visits, include_unlinked=False):
     return pd.DataFrame(converted, columns=columns), dataset
 
 
+_TABULAR_ID_COLS = frozenset({'cedula', 'ci', 'id_card', 'identificacion'})
+_TABULAR_PHONE_COLS = frozenset({'telefono', 'celular', 'phone', 'num_telefono', 'tlf', 'telefono_contacto'})
+
+
+def _prepare_tabular_identifiers(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Garantiza que las columnas identificativas de cédula y teléfono conserven
+    sus ceros iniciales como texto limpio al exportar a formatos tabulares (.xlsx, .csv).
+    """
+    out = df.copy()
+    for col in out.columns:
+        norm_col = normalize_var_name(col)
+        if norm_col in _TABULAR_ID_COLS:
+            out[col] = [
+                '' if (v is None or (isinstance(v, float) and math.isnan(v)) or str(v).strip() == '')
+                else (normalize_id_card_value(v) or '')
+                for v in out[col].tolist()
+            ]
+        elif norm_col in _TABULAR_PHONE_COLS:
+            out[col] = [
+                '' if (v is None or (isinstance(v, float) and math.isnan(v)) or str(v).strip() == '')
+                else (normalize_phone_value(v) or '')
+                for v in out[col].tolist()
+            ]
+    return out
+
+
+def _write_xlsx_bytes(out_df: pd.DataFrame) -> bytes:
+    """
+    Genera un libro nativo de Microsoft Excel (.xlsx) protegiendo explícitamente
+    las columnas de texto (C.I, TELÉFONO, nombres, correos) con formato '@' para
+    que Excel jamás convierta identificadores en enteros ni elimine ceros a la izquierda.
+    """
+    df_tab = _prepare_tabular_identifiers(out_df)
+    bio = io.BytesIO()
+    workbook = xlsxwriter.Workbook(bio, {'in_memory': True, 'strings_to_numbers': False})
+    worksheet = workbook.add_worksheet('CardioUnemi')
+
+    header_fmt = workbook.add_format({
+        'bold': True,
+        'bg_color': '#1B2A41',
+        'font_color': '#FFFFFF',
+        'border': 1,
+        'valign': 'vcenter',
+    })
+    text_fmt = workbook.add_format({'num_format': '@'})
+    date_fmt = workbook.add_format({'num_format': 'yyyy-mm-dd'})
+    datetime_fmt = workbook.add_format({'num_format': 'yyyy-mm-dd hh:mm:ss'})
+
+    columns = list(df_tab.columns)
+    forced_text_cols = set()
+    for c_idx, col_name in enumerate(columns):
+        col_str = str(col_name)
+        worksheet.write_string(0, c_idx, col_str, header_fmt)
+        norm_col = normalize_var_name(col_str)
+        col_width = max(12, min(32, len(col_str) + 4))
+        if norm_col in (_TABULAR_ID_COLS | _TABULAR_PHONE_COLS):
+            forced_text_cols.add(c_idx)
+            worksheet.set_column(c_idx, c_idx, max(15, col_width), text_fmt)
+        else:
+            worksheet.set_column(c_idx, c_idx, col_width)
+
+    worksheet.freeze_panes(1, 0)
+
+    col_lists = [df_tab[col].tolist() for col in columns]
+    n_rows = len(df_tab)
+    for r_idx in range(n_rows):
+        excel_row = r_idx + 1
+        for c_idx in range(len(columns)):
+            val = col_lists[c_idx][r_idx]
+            if c_idx in forced_text_cols:
+                if val is None or (isinstance(val, float) and math.isnan(val)) or str(val).strip() == '':
+                    worksheet.write_blank(excel_row, c_idx, None, text_fmt)
+                else:
+                    worksheet.write_string(excel_row, c_idx, str(val).strip(), text_fmt)
+                continue
+
+            if val is None:
+                continue
+            if isinstance(val, bool):
+                worksheet.write_boolean(excel_row, c_idx, val)
+            elif isinstance(val, (int, float, np.integer, np.floating, Decimal)):
+                fval = float(val)
+                if math.isnan(fval) or math.isinf(fval):
+                    continue
+                worksheet.write_number(excel_row, c_idx, int(fval) if fval.is_integer() else fval)
+            elif isinstance(val, datetime.datetime):
+                clean_dt = val.replace(tzinfo=None) if val.tzinfo else val
+                worksheet.write_datetime(excel_row, c_idx, clean_dt, datetime_fmt)
+            elif isinstance(val, datetime.date):
+                worksheet.write_datetime(
+                    excel_row,
+                    c_idx,
+                    datetime.datetime(val.year, val.month, val.day),
+                    date_fmt,
+                )
+            else:
+                try:
+                    if pd.isna(val):
+                        continue
+                except Exception:
+                    pass
+                sval = str(val)
+                if sval.strip() == '' or sval.strip().lower() == 'nan':
+                    continue
+                worksheet.write_string(excel_row, c_idx, sval, text_fmt)
+
+    workbook.close()
+    return bio.getvalue()
+
+
 def _write_export_frame(out_df, format_type, metadata=None):
     """Write a dataframe while retaining source SPSS metadata when available."""
     fecha_str = datetime.date.today().strftime('%Y%m%d')
@@ -349,8 +464,15 @@ def _write_export_frame(out_df, format_type, metadata=None):
     }
     file_label = metadata.get('file_label') or ''
 
+    if fmt == 'xlsx':
+        return (
+            _write_xlsx_bytes(out_df),
+            f'CardioUNEMI_Dataset_{fecha_str}.xlsx',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
     if fmt == 'csv':
-        return out_df.to_csv(index=False, encoding='utf-8-sig').encode('utf-8-sig'), f'CardioUNEMI_Dataset_{fecha_str}.csv', 'text/csv; charset=utf-8'
+        csv_df = _prepare_tabular_identifiers(out_df)
+        return csv_df.to_csv(index=False, encoding='utf-8-sig').encode('utf-8-sig'), f'CardioUNEMI_Dataset_{fecha_str}.csv', 'text/csv; charset=utf-8'
     if fmt == 'rds':
         suffix = '.rds'
         content_type = 'application/octet-stream'
